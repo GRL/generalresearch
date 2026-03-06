@@ -1,0 +1,2 @@
+class ContestError(Exception):
+    pass

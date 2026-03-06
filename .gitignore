@@ -1,0 +1,10 @@
+.idea
+.vscode
+*.pytest*
+*.pyc
+__pycache__
+*.csv
+generalresearch/resources/brokerage_trust_calculated.csv
+tests/.env.test
+.env.*
+.DS_Store
