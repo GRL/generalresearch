@@ -49,28 +49,28 @@ EXAMPLE_TANGO_CASHOUT_METHODS = [
     ),
 ]
 
-AMT_ASSIGNMENT_CASHOUT_METHOD = CashoutMethod(
-    id=uuid4().hex,
-    last_updated="2021-06-23T20:45:38.239182Z",
-    is_live=True,
-    type=PayoutType.AMT,
-    ext_id=None,
-    name="AMT Assignment",
-    data=AmtCashoutMethodData(),
-    user=None,
-    min_value=1,
-    max_value=5,
-)
+# AMT_ASSIGNMENT_CASHOUT_METHOD = CashoutMethod(
+#     id=uuid4().hex,
+#     last_updated="2021-06-23T20:45:38.239182Z",
+#     is_live=True,
+#     type=PayoutType.AMT,
+#     ext_id=None,
+#     name="AMT Assignment",
+#     data=AmtCashoutMethodData(),
+#     user=None,
+#     min_value=1,
+#     max_value=5,
+# )
 
-AMT_BONUS_CASHOUT_METHOD = CashoutMethod(
-    id=uuid4().hex,
-    last_updated="2021-06-23T20:45:38.239182Z",
-    is_live=True,
-    type=PayoutType.AMT,
-    ext_id=None,
-    name="AMT Bonus",
-    data=AmtCashoutMethodData(),
-    user=None,
-    min_value=7,
-    max_value=4000,
-)
+# AMT_BONUS_CASHOUT_METHOD = CashoutMethod(
+#     id=uuid4().hex,
+#     last_updated="2021-06-23T20:45:38.239182Z",
+#     is_live=True,
+#     type=PayoutType.AMT,
+#     ext_id=None,
+#     name="AMT Bonus",
+#     data=AmtCashoutMethodData(),
+#     user=None,
+#     min_value=7,
+#     max_value=4000,
+# )

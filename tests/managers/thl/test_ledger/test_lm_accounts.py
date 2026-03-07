@@ -1,5 +1,6 @@
 from itertools import product as iproduct
 from random import randint
+from typing import TYPE_CHECKING, Callable
 from uuid import uuid4
 
 import pytest
@@ -10,11 +11,20 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerAccountDoesntExistError,
 )
 from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
-from generalresearch.models.thl.ledger import LedgerAccount, AccountType, Direction
 from generalresearch.models.thl.ledger import (
+    AccountType,
+    Direction,
+    LedgerAccount,
     LedgerEntry,
 )
-from test_utils.managers.ledger.conftest import ledger_account
+
+if TYPE_CHECKING:
+    from generalresearch.config import GRLSettings
+    from generalresearch.currency import LedgerCurrency
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
+    from generalresearch.models.thl.wallet import PayoutType
 
 
 @pytest.mark.parametrize(
@@ -23,13 +33,15 @@ from test_utils.managers.ledger.conftest import ledger_account
         iproduct(
             ["USD", "test", "EUR"],
             ["expense", "wallet", "revenue", "cash"],
-            [uuid4().hex for i in range(3)],
+            [uuid4().hex for _ in range(3)],
         )
     ),
 )
 class TestLedgerAccountManagerNoResults:
 
-    def test_get_account_no_results(self, currency, kind, acct_id, lm):
+    def test_get_account_no_results(
+        self, currency: "LedgerCurrency", kind, acct_id, lm
+    ):
         """Try to query for accounts that we know don't exist and confirm that
         we either get the expected None result or it raises the correct
         exception
@@ -46,7 +58,9 @@ class TestLedgerAccountManagerNoResults:
         # (2) .get_account_if_exists is another wrapper
         assert lm.get_account(qualified_name=qn, raise_on_error=False) is None
 
-    def test_get_account_no_results_many(self, currency, kind, acct_id, lm):
+    def test_get_account_no_results_many(
+        self, currency: "LedgerCurrency", kind, acct_id, lm
+    ):
         qn = ":".join([currency, kind, acct_id])
 
         # (1) .get_many_
@@ -81,7 +95,7 @@ class TestLedgerAccountManagerNoResults:
 class TestLedgerAccountManagerCreate:
 
     def test_create_account_error_permission(
-        self, currency, account_type, direction, lm
+        self, currency: "LedgerCurrency", account_type, direction, lm
     ):
         """Confirm that the Permission values that are set on the Ledger Manger
         allow the Creation action to occur.
@@ -126,7 +140,7 @@ class TestLedgerAccountManagerCreate:
             str(excinfo.value) == "LedgerManager does not have sufficient permissions"
         )
 
-    def test_create(self, currency, account_type, direction, lm):
+    def test_create(self, currency: "LedgerCurrency", account_type, direction, lm):
         """Confirm that the Permission values that are set on the Ledger Manger
         allow the Creation action to occur.
         """
@@ -149,7 +163,9 @@ class TestLedgerAccountManagerCreate:
         res = lm.get_account(qualified_name=qn, raise_on_error=True)
         assert account.uuid == res.uuid
 
-    def test_get_or_create(self, currency, account_type, direction, lm):
+    def test_get_or_create(
+        self, currency: "LedgerCurrency", account_type, direction, lm
+    ):
         """Confirm that the Permission values that are set on the Ledger Manger
         allow the Creation action to occur.
         """

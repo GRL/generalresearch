@@ -1,5 +1,6 @@
 from datetime import timedelta, datetime
 from typing import TYPE_CHECKING, Optional, Callable
+from generalresearch.pg_helper import PostgresConfig
 
 import pytest
 
@@ -25,7 +26,7 @@ def user_collection(
     offset: str,
     duration: timedelta,
     start: datetime,
-    thl_web_rr,
+    thl_web_rr: PostgresConfig,
 ) -> "UserDFCollection":
     from generalresearch.incite.collections.thl_web import (
         UserDFCollection,
@@ -47,7 +48,7 @@ def wall_collection(
     offset: str,
     duration: timedelta,
     start: datetime,
-    thl_web_rr,
+    thl_web_rr: PostgresConfig,
 ) -> "WallDFCollection":
     from generalresearch.incite.collections.thl_web import (
         WallDFCollection,
@@ -69,7 +70,7 @@ def session_collection(
     offset: str,
     duration: timedelta,
     start: datetime,
-    thl_web_rr,
+    thl_web_rr: PostgresConfig,
 ) -> "SessionDFCollection":
     from generalresearch.incite.collections.thl_web import (
         SessionDFCollection,
@@ -153,7 +154,7 @@ def ledger_collection(
     offset: str,
     duration: timedelta,
     start: datetime,
-    thl_web_rr,
+    thl_web_rr: PostgresConfig,
 ) -> "LedgerDFCollection":
     from generalresearch.incite.collections.thl_web import (
         LedgerDFCollection,
@@ -170,11 +171,12 @@ def ledger_collection(
 
 
 @pytest.fixture(scope="function")
-def rm_ledger_collection(ledger_collection) -> Callable:
-    def _rm_ledger_collection():
+def rm_ledger_collection(ledger_collection: "LedgerDFCollection") -> Callable:
+
+    def _inner():
         clear_directory(ledger_collection.archive_path)
 
-    return _rm_ledger_collection
+    return _inner
 
 
 # --------------------------
@@ -184,12 +186,12 @@ def rm_ledger_collection(ledger_collection) -> Callable:
 
 @pytest.fixture(scope="function")
 def df_collection(
-    mnt_filepath,
+    mnt_filepath: "GRLDatasets",
     df_collection_data_type: "DFCollectionType",
-    offset,
-    duration,
-    utc_90days_ago,
-    thl_web_rr,
+    offset: str,
+    duration: timedelta,
+    utc_90days_ago: datetime,
+    thl_web_rr: PostgresConfig,
 ) -> "DFCollection":
     from generalresearch.incite.collections import DFCollection
 

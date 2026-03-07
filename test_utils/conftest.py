@@ -1,12 +1,13 @@
 import os
 import shutil
-from datetime import datetime, timezone
 from os.path import join as pjoin
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 from uuid import uuid4
 
 import pytest
 import redis
+from _pytest.config import Config
 from dotenv import load_dotenv
 from pydantic import MariaDBDsn
 from redis import Redis
@@ -16,13 +17,15 @@ from generalresearch.redis_helper import RedisConfig
 from generalresearch.sql_helper import SqlHelper
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
+    from generalresearch.config import GRLBaseSettings
     from generalresearch.currency import USDCent
     from generalresearch.models.thl.session import Status
-    from generalresearch.config import GRLBaseSettings
 
 
 @pytest.fixture(scope="session")
-def env_file_path(pytestconfig):
+def env_file_path(pytestconfig: Config) -> str:
     root_path = pytestconfig.rootpath
     env_path = os.path.join(root_path, ".env.test")
 
@@ -33,7 +36,7 @@ def env_file_path(pytestconfig):
 
 
 @pytest.fixture(scope="session")
-def settings(env_file_path) -> "GRLBaseSettings":
+def settings(env_file_path: str) -> "GRLBaseSettings":
     from generalresearch.config import GRLBaseSettings
 
     s = GRLBaseSettings(_env_file=env_file_path)
@@ -53,7 +56,8 @@ def settings(env_file_path) -> "GRLBaseSettings":
 
 
 @pytest.fixture(scope="session")
-def thl_web_rr(settings) -> PostgresConfig:
+def thl_web_rr(settings: "GRLBaseSettings") -> PostgresConfig:
+    assert settings.thl_web_rr_db is not None
     assert "/unittest-" in settings.thl_web_rr_db.path
 
     return PostgresConfig(
@@ -64,7 +68,8 @@ def thl_web_rr(settings) -> PostgresConfig:
 
 
 @pytest.fixture(scope="session")
-def thl_web_rw(settings) -> PostgresConfig:
+def thl_web_rw(settings: "GRLBaseSettings") -> PostgresConfig:
+    assert settings.thl_web_rw_db is not None
     assert "/unittest-" in settings.thl_web_rw_db.path
 
     return PostgresConfig(
@@ -75,13 +80,14 @@ def thl_web_rw(settings) -> PostgresConfig:
 
 
 @pytest.fixture(scope="session")
-def gr_db(settings) -> PostgresConfig:
+def gr_db(settings: "GRLBaseSettings") -> PostgresConfig:
     assert "/unittest-" in settings.gr_db.path
     return PostgresConfig(dsn=settings.gr_db, connect_timeout=5, statement_timeout=2)
 
 
 @pytest.fixture(scope="session")
-def spectrum_rw(settings) -> SqlHelper:
+def spectrum_rw(settings: "GRLBaseSettings") -> SqlHelper:
+    assert settings.spectrum_rw_db is not None
     assert "/unittest-" in settings.spectrum_rw_db.path
 
     return SqlHelper(
@@ -93,7 +99,8 @@ def spectrum_rw(settings) -> SqlHelper:
 
 
 @pytest.fixture(scope="session")
-def grliq_db(settings) -> PostgresConfig:
+def grliq_db(settings: "GRLBaseSettings") -> PostgresConfig:
+    assert settings.grliq_db is not None
     assert "/unittest-" in settings.grliq_db.path
 
     # test_words = {"localhost", "127.0.0.1", "unittest", "grliq-test"}
@@ -108,7 +115,7 @@ def grliq_db(settings) -> PostgresConfig:
 
 
 @pytest.fixture(scope="session")
-def thl_redis(settings) -> "Redis":
+def thl_redis(settings: "GRLBaseSettings") -> "Redis":
     # todo: this should get replaced with redisconfig (in most places)
     # I'm not sure where this would be? in the domain name?
     assert "unittest" in str(settings.thl_redis) or "127.0.0.1" in str(
@@ -126,7 +133,7 @@ def thl_redis(settings) -> "Redis":
 
 
 @pytest.fixture(scope="session")
-def thl_redis_config(settings) -> RedisConfig:
+def thl_redis_config(settings: "GRLBaseSettings") -> RedisConfig:
     assert "unittest" in str(settings.thl_redis) or "127.0.0.1" in str(
         settings.thl_redis
     )
@@ -139,7 +146,7 @@ def thl_redis_config(settings) -> RedisConfig:
 
 
 @pytest.fixture(scope="session")
-def gr_redis_config(settings) -> "RedisConfig":
+def gr_redis_config(settings: "GRLBaseSettings") -> "RedisConfig":
     assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
 
     return RedisConfig(
@@ -151,7 +158,7 @@ def gr_redis_config(settings) -> "RedisConfig":
 
 
 @pytest.fixture(scope="session")
-def gr_redis(settings) -> "Redis":
+def gr_redis(settings: "GRLBaseSettings") -> "Redis":
     assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
     return redis.Redis.from_url(
         **{
@@ -163,8 +170,8 @@ def gr_redis(settings) -> "Redis":
     )
 
 
-@pytest.fixture()
-def gr_redis_async(settings):
+@pytest.fixture
+def gr_redis_async(settings: "GRLBaseSettings"):
     assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
 
     import redis.asyncio as redis_async
@@ -180,8 +187,10 @@ def gr_redis_async(settings):
 # === Random helpers ===
 
 
-@pytest.fixture(scope="function")
-def start():
+@pytest.fixture
+def start() -> "datetime":
+    from datetime import datetime, timezone
+
     return datetime(year=1900, month=1, day=1, tzinfo=timezone.utc)
 
 
@@ -192,44 +201,44 @@ def wall_status(request) -> "Status":
     return request.param if hasattr(request, "wall_status") else Status.COMPLETE
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def utc_now() -> "datetime":
     from datetime import datetime, timezone
 
     return datetime.now(tz=timezone.utc)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def utc_hour_ago() -> "datetime":
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     return datetime.now(tz=timezone.utc) - timedelta(hours=1)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def utc_day_ago() -> "datetime":
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     return datetime.now(tz=timezone.utc) - timedelta(hours=24)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def utc_90days_ago() -> "datetime":
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     return datetime.now(tz=timezone.utc) - timedelta(days=90)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def utc_60days_ago() -> "datetime":
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     return datetime.now(tz=timezone.utc) - timedelta(days=60)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def utc_30days_ago() -> "datetime":
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     return datetime.now(tz=timezone.utc) - timedelta(days=30)
 
@@ -301,7 +310,7 @@ def amount_100(request) -> "USDCent":
     return USDCent(100)
 
 
-def clear_directory(path):
+def clear_directory(path: Path):
     for entry in os.listdir(path):
         full_path = os.path.join(path, entry)
         if os.path.isfile(full_path) or os.path.islink(full_path):

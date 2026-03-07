@@ -1,7 +1,8 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from random import randint, choice as randchoice
-from typing import Callable, TYPE_CHECKING, Optional, List, Dict
+from random import choice as randchoice
+from random import randint
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 from uuid import uuid4
 
 import pytest
@@ -12,40 +13,40 @@ from generalresearch.models.thl.definitions import (
     WALL_ALLOWED_STATUS_STATUS_CODE,
     Status,
 )
+from generalresearch.models.thl.survey.model import Buyer, Survey
 from test_utils.managers.conftest import (
-    product_manager,
-    user_manager,
-    wall_manager,
-    session_manager,
+    business_address_manager,
+    business_manager,
     gr_um,
     membership_manager,
+    product_manager,
+    session_manager,
     team_manager,
-    business_manager,
-    business_address_manager,
+    user_manager,
+    wall_manager,
 )
-from generalresearch.models.thl.survey.model import Survey, Buyer
 
 if TYPE_CHECKING:
-    from generalresearch.models.thl.userhealth import AuditLog, AuditLogLevel
-    from generalresearch.models.thl.payout import UserPayoutEvent
-    from generalresearch.models.gr.authentication import GRUser, GRToken
-    from generalresearch.models.gr.team import Team, Membership
+    from generalresearch.currency import USDCent
+    from generalresearch.models.gr.authentication import GRToken, GRUser
     from generalresearch.models.gr.business import (
         Business,
         BusinessAddress,
         BusinessBankAccount,
     )
-    from generalresearch.models.thl.user import User
-    from generalresearch.models.thl.product import Product
-    from generalresearch.models.thl.session import Session, Wall
-    from generalresearch.currency import USDCent
+    from generalresearch.models.gr.team import Membership, Team
+    from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation
+    from generalresearch.models.thl.payout import UserPayoutEvent
     from generalresearch.models.thl.product import (
         PayoutConfig,
         PayoutTransformation,
         PayoutTransformationPercentArgs,
+        Product,
     )
+    from generalresearch.models.thl.session import Session, Wall
+    from generalresearch.models.thl.user import User
     from generalresearch.models.thl.user_iphistory import IPRecord
-    from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation
+    from generalresearch.models.thl.userhealth import AuditLog, AuditLogLevel
 
 
 # === THL ===
@@ -145,10 +146,10 @@ def wall(session, user, wall_manager) -> Optional["Wall"]:
 @pytest.fixture(scope="function")
 def session_factory(
     wall_factory, session_manager, wall_manager, utc_hour_ago
-) -> Callable:
+) -> Callable[..., "Session"]:
     from generalresearch.models.thl.session import Source
 
-    def _create_session(
+    def _inner(
         user: "User",
         # Wall details
         wall_count: int = 5,
@@ -202,7 +203,7 @@ def session_factory(
 
         return s
 
-    return _create_session
+    return _inner
 
 
 @pytest.fixture(scope="function")
@@ -250,7 +251,7 @@ def finished_session_factory(
 
 @pytest.fixture(scope="function")
 def session(user, session_manager, wall_manager) -> "Session":
-    from generalresearch.models.thl.session import Wall, Session
+    from generalresearch.models.thl.session import Session, Wall
 
     session: Session = session_manager.create_dummy(user=user, country_iso="us")
     wall: Wall = wall_manager.create_dummy(
@@ -316,8 +317,8 @@ def payout_config(request) -> "PayoutConfig":
 
 @pytest.fixture(scope="function")
 def product_user_wallet_yes(payout_config, product_manager) -> "Product":
-    from generalresearch.models.thl.product import UserWalletConfig
     from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.thl.product import UserWalletConfig
 
     product_manager: ProductManager
     return product_manager.create_dummy(
@@ -327,8 +328,8 @@ def product_user_wallet_yes(payout_config, product_manager) -> "Product":
 
 @pytest.fixture(scope="function")
 def product_user_wallet_no(product_manager) -> "Product":
-    from generalresearch.models.thl.product import UserWalletConfig
     from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.thl.product import UserWalletConfig
 
     product_manager: ProductManager
     return product_manager.create_dummy(

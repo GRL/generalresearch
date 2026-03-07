@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 from uuid import uuid4
 
 import pytest
@@ -8,29 +8,27 @@ import pytest
 from generalresearch.currency import USDCent
 
 if TYPE_CHECKING:
-    from generalresearch.models.thl.contest.contest import Contest
+    from generalresearch.managers.thl.contest_manager import ContestManager
     from generalresearch.models.thl.contest import (
-        ContestPrize,
         ContestEndCondition,
+        ContestPrize,
     )
-
+    from generalresearch.models.thl.contest.contest import Contest
     from generalresearch.models.thl.contest.definitions import (
-        ContestType,
         ContestPrizeKind,
+        ContestType,
     )
     from generalresearch.models.thl.contest.io import contest_create_to_contest
     from generalresearch.models.thl.contest.leaderboard import (
         LeaderboardContestCreate,
     )
     from generalresearch.models.thl.contest.milestone import (
-        MilestoneContestCreate,
         ContestEntryTrigger,
+        MilestoneContestCreate,
         MilestoneContestEndCondition,
     )
     from generalresearch.models.thl.contest.raffle import (
         ContestEntryType,
-    )
-    from generalresearch.models.thl.contest.raffle import (
         RaffleContestCreate,
     )
     from generalresearch.models.thl.product import Product
@@ -39,19 +37,17 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def raffle_contest_create() -> "RaffleContestCreate":
-    from generalresearch.models.thl.contest.raffle import (
-        RaffleContestCreate,
-    )
     from generalresearch.models.thl.contest import (
-        ContestPrize,
         ContestEndCondition,
+        ContestPrize,
     )
     from generalresearch.models.thl.contest.definitions import (
-        ContestType,
         ContestPrizeKind,
+        ContestType,
     )
     from generalresearch.models.thl.contest.raffle import (
         ContestEntryType,
+        RaffleContestCreate,
     )
 
     # This is what we'll get from the fastapi endpoint
@@ -74,7 +70,7 @@ def raffle_contest_create() -> "RaffleContestCreate":
 def raffle_contest_in_db(
     product_user_wallet_yes: "Product",
     raffle_contest_create: "RaffleContestCreate",
-    contest_manager,
+    contest_manager: "ContestManager",
 ) -> "Contest":
     return contest_manager.create(
         product_id=product_user_wallet_yes.uuid, contest_create=raffle_contest_create
@@ -96,16 +92,17 @@ def raffle_contest(
 def raffle_contest_factory(
     product_user_wallet_yes: "Product",
     raffle_contest_create: "RaffleContestCreate",
-    contest_manager,
-) -> Callable:
-    def _create_contest(**kwargs):
+    contest_manager: "ContestManager",
+) -> Callable[..., "Contest"]:
+
+    def _inner(**kwargs):
         raffle_contest_create.update(**kwargs)
         return contest_manager.create(
             product_id=product_user_wallet_yes.uuid,
             contest_create=raffle_contest_create,
         )
 
-    return _create_contest
+    return _inner
 
 
 @pytest.fixture
@@ -114,12 +111,12 @@ def milestone_contest_create() -> "MilestoneContestCreate":
         ContestPrize,
     )
     from generalresearch.models.thl.contest.definitions import (
-        ContestType,
         ContestPrizeKind,
+        ContestType,
     )
     from generalresearch.models.thl.contest.milestone import (
-        MilestoneContestCreate,
         ContestEntryTrigger,
+        MilestoneContestCreate,
         MilestoneContestEndCondition,
     )
 
@@ -154,7 +151,7 @@ def milestone_contest_create() -> "MilestoneContestCreate":
 def milestone_contest_in_db(
     product_user_wallet_yes: "Product",
     milestone_contest_create: "MilestoneContestCreate",
-    contest_manager,
+    contest_manager: "ContestManager",
 ) -> "Contest":
     return contest_manager.create(
         product_id=product_user_wallet_yes.uuid, contest_create=milestone_contest_create
@@ -177,31 +174,32 @@ def milestone_contest(
 def milestone_contest_factory(
     product_user_wallet_yes: "Product",
     milestone_contest_create: "MilestoneContestCreate",
-    contest_manager,
-) -> Callable:
-    def _create_contest(**kwargs):
+    contest_manager: "ContestManager",
+) -> Callable[..., "Contest"]:
+
+    def _inner(**kwargs):
         milestone_contest_create.update(**kwargs)
         return contest_manager.create(
             product_id=product_user_wallet_yes.uuid,
             contest_create=milestone_contest_create,
         )
 
-    return _create_contest
+    return _inner
 
 
 @pytest.fixture
 def leaderboard_contest_create(
     product_user_wallet_yes: "Product",
 ) -> "LeaderboardContestCreate":
-    from generalresearch.models.thl.contest.leaderboard import (
-        LeaderboardContestCreate,
-    )
     from generalresearch.models.thl.contest import (
         ContestPrize,
     )
     from generalresearch.models.thl.contest.definitions import (
-        ContestType,
         ContestPrizeKind,
+        ContestType,
+    )
+    from generalresearch.models.thl.contest.leaderboard import (
+        LeaderboardContestCreate,
     )
 
     # This is what we'll get from the fastapi endpoint
@@ -232,7 +230,7 @@ def leaderboard_contest_create(
 def leaderboard_contest_in_db(
     product_user_wallet_yes: "Product",
     leaderboard_contest_create: "LeaderboardContestCreate",
-    contest_manager,
+    contest_manager: "ContestManager",
 ) -> "Contest":
     return contest_manager.create(
         product_id=product_user_wallet_yes.uuid,
@@ -257,21 +255,25 @@ def leaderboard_contest(
 def leaderboard_contest_factory(
     product_user_wallet_yes: "Product",
     leaderboard_contest_create: "LeaderboardContestCreate",
-    contest_manager,
-) -> Callable:
-    def _create_contest(**kwargs):
+    contest_manager: "ContestManager",
+) -> Callable[..., "Contest"]:
+
+    def _inner(**kwargs):
         leaderboard_contest_create.update(**kwargs)
         return contest_manager.create(
             product_id=product_user_wallet_yes.uuid,
             contest_create=leaderboard_contest_create,
         )
 
-    return _create_contest
+    return _inner
 
 
 @pytest.fixture
 def user_with_money(
-    request, user_factory, product_user_wallet_yes: "Product", thl_lm
+    request,
+    user_factory: Callable[..., "User"],
+    product_user_wallet_yes: "Product",
+    thl_lm,
 ) -> "User":
     from generalresearch.models.thl.user import User
 

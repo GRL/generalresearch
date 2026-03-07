@@ -1,39 +1,42 @@
-from datetime import timedelta, datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import TYPE_CHECKING, Callable
 from uuid import uuid4
 
-from generalresearch.managers.thl.payout import (
-    AMT_ASSIGNMENT_CASHOUT_METHOD,
-    AMT_BONUS_CASHOUT_METHOD,
-)
+from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.managers.thl.user_compensate import user_compensate
 from generalresearch.models.thl.definitions import (
     Status,
     WallAdjustedStatus,
 )
 from generalresearch.models.thl.ledger import (
+    TransactionType,
     UserLedgerTransactionTypesSummary,
     UserLedgerTransactionTypeSummary,
-    TransactionType,
 )
-from generalresearch.models.thl.session import Session
-from generalresearch.models.thl.user import User
-from generalresearch.models.thl.wallet import PayoutType
+
+if TYPE_CHECKING:
+    from generalresearch.config import GRLSettings
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
+    from generalresearch.models.thl.wallet import PayoutType
 
 
 def test_user_txs(
-    user_factory,
-    product_amt_true,
-    create_main_accounts,
-    thl_lm,
+    user_factory: Callable[..., "User"],
+    product_amt_true: "Product",
+    create_main_accounts: Callable[..., None],
+    thl_lm: ThlLedgerManager,
     lm,
-    delete_ledger_db,
+    delete_ledger_db: Callable[..., None],
     session_with_tx_factory,
     adj_to_fail_with_tx_factory,
     adj_to_complete_with_tx_factory,
     session_factory,
     user_payout_event_manager,
-    utc_now,
+    utc_now: datetime,
+    settings: "GRLSettings",
 ):
     delete_ledger_db()
     create_main_accounts()
@@ -53,7 +56,7 @@ def test_user_txs(
     pe = user_payout_event_manager.create(
         uuid=uuid4().hex,
         debit_account_uuid=account.uuid,
-        cashout_method_uuid=AMT_ASSIGNMENT_CASHOUT_METHOD,
+        cashout_method_uuid=settings.amt_assignment_cashout_method_id,
         amount=5,
         created=utc_now,
         payout_type=PayoutType.AMT_HIT,
@@ -66,7 +69,7 @@ def test_user_txs(
     pe = user_payout_event_manager.create(
         uuid=uuid4().hex,
         debit_account_uuid=account.uuid,
-        cashout_method_uuid=AMT_BONUS_CASHOUT_METHOD,
+        cashout_method_uuid=settings.amt_bonus_cashout_method_id,
         amount=127,
         created=utc_now,
         payout_type=PayoutType.AMT_BONUS,
@@ -133,16 +136,16 @@ def test_user_txs(
 
 
 def test_user_txs_pagination(
-    user_factory,
-    product_amt_true,
-    create_main_accounts,
-    thl_lm,
-    lm,
-    delete_ledger_db,
-    session_with_tx_factory,
+    user_factory: Callable[..., "User"],
+    product_amt_true: "Product",
+    create_main_accounts: Callable[..., None],
+    thl_lm: "ThlLedgerManager",
+    lm: "LedgerManager",
+    delete_ledger_db: Callable[..., None],
+    session_with_tx_factory: Callable[..., "Session"],
     adj_to_fail_with_tx_factory,
     user_payout_event_manager,
-    utc_now,
+    utc_now: datetime,
 ):
     delete_ledger_db()
     create_main_accounts()
@@ -212,15 +215,16 @@ def test_user_txs_pagination(
 
 
 def test_user_txs_rolling_balance(
-    user_factory,
-    product_amt_true,
+    user_factory: Callable[..., "User"],
+    product_amt_true: "Product",
     create_main_accounts,
     thl_lm,
     lm,
-    delete_ledger_db,
+    delete_ledger_db: Callable[..., None],
     session_with_tx_factory,
     adj_to_fail_with_tx_factory,
     user_payout_event_manager,
+    settings: "GRLSettings",
 ):
     """
     Creates 3 $1.00 bonuses (postive),
@@ -242,10 +246,11 @@ def test_user_txs_rolling_balance(
             amount_int=100,
             skip_flag_check=True,
         )
+
     pe = user_payout_event_manager.create(
         uuid=uuid4().hex,
         debit_account_uuid=account.uuid,
-        cashout_method_uuid=AMT_BONUS_CASHOUT_METHOD,
+        cashout_method_uuid=settings.amt_bonus_cashout_method_id,
         amount=150,
         payout_type=PayoutType.AMT_BONUS,
         request_data=dict(),

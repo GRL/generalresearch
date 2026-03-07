@@ -1,24 +1,30 @@
 import logging
-
 import time
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 import pytest
-from datetime import datetime, timezone
+
 from generalresearch.managers.spectrum.survey import (
-    SpectrumSurveyManager,
     SpectrumCriteriaManager,
+    SpectrumSurveyManager,
 )
 from generalresearch.models.spectrum.survey import SpectrumSurvey
 from generalresearch.sql_helper import SqlHelper
 
-from .surveys_json import SURVEYS_JSON, CONDITIONS
+from .surveys_json import CONDITIONS, SURVEYS_JSON
+
+if TYPE_CHECKING:
+    from generalresearch.config import GRLBaseSettings
 
 
 @pytest.fixture(scope="session")
-def spectrum_rw(settings) -> SqlHelper:
-    print(f"{settings.spectrum_rw_db=}")
+def spectrum_rw(settings: "GRLBaseSettings") -> SqlHelper:
     logging.info(f"{settings.spectrum_rw_db=}")
+
+    assert settings.spectrum_rw_db is not None
     assert "/unittest-" in settings.spectrum_rw_db.path
+
     return SqlHelper(
         dsn=settings.spectrum_rw_db,
         read_timeout=2,

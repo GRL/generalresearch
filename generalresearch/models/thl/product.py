@@ -3,39 +3,39 @@ from __future__ import annotations
 import copy
 import inspect
 import json
+import math
 import warnings
 from collections import defaultdict
 from decimal import Decimal
 from enum import Enum
-from functools import partial, cached_property
+from functools import cached_property, partial
 from typing import (
-    Optional,
-    List,
-    Callable,
-    Any,
-    Literal,
-    Dict,
-    Set,
     TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Set,
 )
-from urllib.parse import parse_qs, urlsplit, urlencode, urlunsplit
+from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
 
-import math
 import pandas as pd
 from dask.distributed import Client
 from pydantic import (
     BaseModel,
-    Field,
-    model_validator,
-    field_validator,
-    field_serializer,
-    NonNegativeInt,
-    NonNegativeFloat,
-    computed_field,
     ConfigDict,
-    PositiveInt,
+    Field,
+    NonNegativeFloat,
+    NonNegativeInt,
     PositiveFloat,
+    PositiveInt,
+    computed_field,
+    field_serializer,
+    field_validator,
+    model_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
 from typing_extensions import Self
@@ -44,17 +44,21 @@ from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
 from generalresearch.models import Source
 from generalresearch.models.custom_types import (
-    UUIDStr,
     AwareDatetimeISO,
-    HttpsUrlStr,
     CountryISOLike,
+    HttpsUrlStr,
+    UUIDStr,
 )
 from generalresearch.models.thl.ledger import LedgerAccount
 from generalresearch.models.thl.payout_format import (
     PayoutFormatType,
-    description as payout_format_description,
-    examples as payout_format_examples,
     format_payout_format,
+)
+from generalresearch.models.thl.payout_format import (
+    description as payout_format_description,
+)
+from generalresearch.models.thl.payout_format import (
+    examples as payout_format_examples,
 )
 from generalresearch.models.thl.supplier_tag import SupplierTag
 from generalresearch.models.thl.wallet import PayoutType
@@ -62,21 +66,20 @@ from generalresearch.models.utils import decimal_to_usd_cents
 from generalresearch.redis_helper import RedisConfig
 
 if TYPE_CHECKING:
-    from generalresearch.models.thl.payout import (
-        BrokerageProductPayoutEvent,
-    )
     from generalresearch.incite.base import GRLDatasets
-
-    from generalresearch.managers.thl.payout import (
-        BrokerageProductPayoutEventManager,
-    )
+    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
-    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
+    from generalresearch.managers.thl.payout import (
+        BrokerageProductPayoutEventManager,
+    )
     from generalresearch.models.thl.finance import (
-        ProductBalances,
         POPFinancial,
+        ProductBalances,
+    )
+    from generalresearch.models.thl.payout import (
+        BrokerageProductPayoutEvent,
     )
     from generalresearch.models.thl.user import User
 
@@ -1152,12 +1155,12 @@ class Product(BaseModel, validate_assignment=True):
         if self.bp_account is None:
             self.prefetch_bp_account(thl_lm=thl_lm)
 
+        from generalresearch.incite.schemas.mergers.pop_ledger import (
+            numerical_col_names,
+        )
         from generalresearch.models.admin.request import (
             ReportRequest,
             ReportType,
-        )
-        from generalresearch.incite.schemas.mergers.pop_ledger import (
-            numerical_col_names,
         )
 
         rr = ReportRequest(report_type=ReportType.POP_LEDGER, interval="5min")

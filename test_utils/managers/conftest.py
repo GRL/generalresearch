@@ -1,4 +1,4 @@
-from typing import Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import pymysql
 import pytest
@@ -7,8 +7,6 @@ from generalresearch.managers.base import Permission
 from generalresearch.models import Source
 from test_utils.managers.cashout_methods import (
     EXAMPLE_TANGO_CASHOUT_METHODS,
-    AMT_ASSIGNMENT_CASHOUT_METHOD,
-    AMT_BONUS_CASHOUT_METHOD,
 )
 
 if TYPE_CHECKING:
@@ -21,26 +19,18 @@ if TYPE_CHECKING:
     from generalresearch.grliq.managers.forensic_results import (
         GrlIqCategoryResultsReader,
     )
-    from generalresearch.managers.thl.userhealth import AuditLogManager
-    from generalresearch.managers.thl.payout import (
-        BusinessPayoutEventManager,
-    )
-    from generalresearch.managers.thl.maxmind.basic import (
-        MaxmindBasicManager,
-    )
-
     from generalresearch.managers.gr.authentication import (
-        GRUserManager,
         GRTokenManager,
+        GRUserManager,
     )
     from generalresearch.managers.gr.business import (
-        BusinessManager,
         BusinessAddressManager,
         BusinessBankAccountManager,
+        BusinessManager,
     )
     from generalresearch.managers.gr.team import (
-        TeamManager,
         MembershipManager,
+        TeamManager,
     )
     from generalresearch.managers.thl.contest_manager import ContestManager
     from generalresearch.managers.thl.ipinfo import (
@@ -49,22 +39,28 @@ if TYPE_CHECKING:
         IPInformationManager,
     )
     from generalresearch.managers.thl.ledger_manager.ledger import (
-        LedgerTransactionManager,
-        LedgerManager,
         LedgerAccountManager,
+        LedgerManager,
+        LedgerTransactionManager,
     )
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
     from generalresearch.managers.thl.maxmind import MaxmindManager
-    from generalresearch.managers.thl.payout import PayoutEventManager
+    from generalresearch.managers.thl.maxmind.basic import (
+        MaxmindBasicManager,
+    )
     from generalresearch.managers.thl.payout import (
+        BrokerageProductPayoutEventManager,
+        BusinessPayoutEventManager,
         PayoutEventManager,
         UserPayoutEventManager,
-        BrokerageProductPayoutEventManager,
     )
     from generalresearch.managers.thl.product import ProductManager
     from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.managers.thl.task_adjustment import (
+        TaskAdjustmentManager,
+    )
     from generalresearch.managers.thl.user_manager.user_manager import (
         UserManager,
     )
@@ -73,18 +69,14 @@ if TYPE_CHECKING:
     )
     from generalresearch.managers.thl.userhealth import (
         AuditLogManager,
-        IPRecordManager,
-        UserIpHistoryManager,
         IPGeonameManager,
         IPInformationManager,
         IPRecordManager,
+        UserIpHistoryManager,
     )
     from generalresearch.managers.thl.wall import (
-        WallManager,
         WallCacheManager,
-    )
-    from generalresearch.managers.thl.task_adjustment import (
-        TaskAdjustmentManager,
+        WallManager,
     )
 
 
@@ -539,7 +531,9 @@ def delete_cashoutmethod_db(thl_web_rw) -> Callable:
 
 
 @pytest.fixture(scope="session")
-def setup_cashoutmethod_db(cashout_method_manager, delete_cashoutmethod_db):
+def setup_cashoutmethod_db(settings, cashout_method_manager, delete_cashoutmethod_db):
+    settings.amt_
+
     delete_cashoutmethod_db()
     for x in EXAMPLE_TANGO_CASHOUT_METHODS:
         cashout_method_manager.create(x)

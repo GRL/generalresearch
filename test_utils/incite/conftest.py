@@ -1,33 +1,41 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from os.path import join as pjoin
 from pathlib import Path
 from random import choice as randchoice
 from shutil import rmtree
-from typing import Callable, TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Callable, Optional
 from uuid import uuid4
 
 import pytest
 from _pytest.fixtures import SubRequest
 from faker import Faker
 
-from test_utils.managers.ledger.conftest import session_with_tx_factory
-from test_utils.models.conftest import session_factory
+# from test_utils.managers.ledger.conftest import session_with_tx_factory
+# from test_utils.models.conftest import session_factory
 
 if TYPE_CHECKING:
-    from generalresearch.models.thl.user import User
+    from generalresearch.config import GRLSettings
     from generalresearch.incite.base import GRLDatasets
-    from generalresearch.incite.mergers import MergeType
     from generalresearch.incite.collections import (
         DFCollection,
-        DFCollectionType,
         DFCollectionItem,
+        DFCollectionType,
     )
+    from generalresearch.incite.mergers import MergeType
+    from generalresearch.models.admin.request import (
+        ReportRequest,
+        ReportType,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
+
 
 fake = Faker()
 
 
-@pytest.fixture(scope="function")
-def mnt_gr_api_dir(request: SubRequest, settings):
+@pytest.fixture
+def mnt_gr_api_dir(request: SubRequest, settings: "GRLSettings") -> Path:
     p = Path(settings.mnt_gr_api_dir)
     p.mkdir(parents=True, exist_ok=True)
 
@@ -49,8 +57,8 @@ def mnt_gr_api_dir(request: SubRequest, settings):
     return p
 
 
-@pytest.fixture(scope="function")
-def event_report_request(utc_hour_ago, start):
+@pytest.fixture
+def event_report_request(utc_hour_ago: datetime, start: datetime) -> "ReportRequest":
     from generalresearch.models.admin.request import (
         ReportRequest,
         ReportType,
@@ -65,8 +73,8 @@ def event_report_request(utc_hour_ago, start):
     )
 
 
-@pytest.fixture(scope="function")
-def session_report_request(utc_hour_ago, start):
+@pytest.fixture
+def session_report_request(utc_hour_ago: datetime, start: datetime) -> "ReportRequest":
     from generalresearch.models.admin.request import (
         ReportRequest,
         ReportType,
@@ -81,10 +89,11 @@ def session_report_request(utc_hour_ago, start):
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def mnt_filepath(request: SubRequest) -> "GRLDatasets":
-    """Creates a temporary file path for all DFCollections & Mergers parquet
-    files.
+    """
+    Creates a temporary file path for all DFCollections &
+    Mergers parquet files.
     """
     from generalresearch.incite.base import GRLDatasets, NFSMount
 
@@ -106,44 +115,45 @@ def mnt_filepath(request: SubRequest) -> "GRLDatasets":
     return instance
 
 
-@pytest.fixture(scope="function")
-def start(utc_90days_ago) -> "datetime":
+@pytest.fixture
+def start(utc_90days_ago: datetime) -> "datetime":
     s = utc_90days_ago.replace(microsecond=0)
     return s
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def offset() -> str:
     return "15min"
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def duration() -> Optional["timedelta"]:
     return timedelta(hours=1)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def df_collection_data_type() -> "DFCollectionType":
     from generalresearch.incite.collections import DFCollectionType
 
     return DFCollectionType.TEST
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def merge_type() -> "MergeType":
     from generalresearch.incite.mergers import MergeType
 
     return MergeType.TEST
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def incite_item_factory(
-    session_factory,
-    product,
-    user_factory,
-    session_with_tx_factory,
-) -> Callable:
-    def _incite_item_factory(
+    session_factory: Callable[..., "Session"],
+    product: "Product",
+    user_factory: Callable[..., "User"],
+    session_with_tx_factory: Callable[..., "Session"],
+) -> Callable[..., None]:
+
+    def _inner(
         item: "DFCollectionItem",
         observations: int = 3,
         user: Optional["User"] = None,
@@ -157,7 +167,7 @@ def incite_item_factory(
         collection: DFCollection = item._collection
         data_type: DFCollectionType = collection.data_type
 
-        for idx in range(5):
+        for _ in range(5):
             item_time = fake.date_time_between(
                 start_date=item.start, end_date=item.finish, tzinfo=timezone.utc
             )
@@ -198,4 +208,4 @@ def incite_item_factory(
 
         return None
 
-    return _incite_item_factory
+    return _inner

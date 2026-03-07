@@ -1,25 +1,26 @@
 from datetime import datetime
 from decimal import Decimal
 from random import randint
-from typing import Optional, Dict, Callable, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Dict, Optional
 from uuid import uuid4
 
 import pytest
 
 from generalresearch.currency import USDCent
+from generalresearch.managers.base import PostgresManager
 from test_utils.models.conftest import (
-    product_factory,
-    user,
-    product,
-    user_factory,
-    product_user_wallet_no,
-    wall,
-    product_amt_true,
-    product_user_wallet_yes,
-    session_factory,
-    session,
-    wall_factory,
     payout_config,
+    product,
+    product_amt_true,
+    product_factory,
+    product_user_wallet_no,
+    product_user_wallet_yes,
+    session,
+    session_factory,
+    user,
+    user_factory,
+    wall,
+    wall_factory,
 )
 
 _ = (
@@ -35,24 +36,36 @@ _ = (
 )
 
 if TYPE_CHECKING:
+    from datetime import datetime, timedelta
+
     from generalresearch.currency import LedgerCurrency
+    from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
     from generalresearch.models.thl.ledger import (
-        Direction,
         AccountType,
+        Direction,
+        LedgerAccount,
+        LedgerEntry,
         LedgerTransaction,
     )
-    from generalresearch.models.thl.ledger import (
-        LedgerEntry,
-        LedgerAccount,
+    from generalresearch.models.thl.payout import (
+        BrokerageProductPayoutEvent,
+        UserPayoutEvent,
     )
-    from generalresearch.models.thl.payout import UserPayoutEvent
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
 
 
-@pytest.fixture(scope="function")
-def ledger_account(request, lm, currency) -> "LedgerAccount":
+@pytest.fixture
+def ledger_account(
+    request, lm: "LedgerManager", currency: "LedgerCurrency"
+) -> "LedgerAccount":
     from generalresearch.models.thl.ledger import (
-        Direction,
         AccountType,
+        Direction,
         LedgerAccount,
     )
 
@@ -73,19 +86,22 @@ def ledger_account(request, lm, currency) -> "LedgerAccount":
     return lm.create_account(account=acct_model)
 
 
-@pytest.fixture(scope="function")
-def ledger_account_factory(request, thl_lm, lm, currency) -> Callable:
+@pytest.fixture
+def ledger_account_factory(
+    request, thl_lm: "ThlLedgerManager", lm: "LedgerManager", currency: "LedgerCurrency"
+) -> Callable[..., "LedgerAccount"]:
+
     from generalresearch.models.thl.ledger import (
-        Direction,
         AccountType,
+        Direction,
         LedgerAccount,
     )
 
-    def _ledger_account_factory(
-        product,
+    def _inner(
+        product: "Product",
         account_type: AccountType = AccountType.CASH,
         direction: Direction = Direction.CREDIT,
-    ):
+    ) -> "LedgerAccount":
         thl_lm.get_account_or_create_bp_wallet(product=product)
         acct_uuid = uuid4().hex
         qn = ":".join([currency, account_type, acct_uuid])
@@ -100,12 +116,14 @@ def ledger_account_factory(request, thl_lm, lm, currency) -> Callable:
         )
         return lm.create_account(account=acct_model)
 
-    return _ledger_account_factory
+    return _inner
 
 
-@pytest.fixture(scope="function")
-def ledger_account_credit(request, lm, currency) -> "LedgerAccount":
-    from generalresearch.models.thl.ledger import Direction, AccountType
+@pytest.fixture
+def ledger_account_credit(
+    request, lm: "LedgerManager", currency: "LedgerCurrency"
+) -> "LedgerAccount":
+    from generalresearch.models.thl.ledger import AccountType, Direction
 
     account_type = AccountType.REVENUE
     acct_uuid = uuid4().hex
@@ -124,9 +142,11 @@ def ledger_account_credit(request, lm, currency) -> "LedgerAccount":
     return lm.create_account(account=acct_model)
 
 
-@pytest.fixture(scope="function")
-def ledger_account_debit(request, lm, currency) -> "LedgerAccount":
-    from generalresearch.models.thl.ledger import Direction, AccountType
+@pytest.fixture
+def ledger_account_debit(
+    request, lm: "LedgerManager", currency: "LedgerCurrency"
+) -> "LedgerAccount":
+    from generalresearch.models.thl.ledger import AccountType, Direction
 
     account_type = AccountType.EXPENSE
     acct_uuid = uuid4().hex
@@ -145,8 +165,8 @@ def ledger_account_debit(request, lm, currency) -> "LedgerAccount":
     return lm.create_account(account=acct_model)
 
 
-@pytest.fixture(scope="function")
-def tag(request, lm) -> str:
+@pytest.fixture
+def tag(request, lm: "LedgerManager") -> str:
     from generalresearch.currency import LedgerCurrency
 
     return (
@@ -156,16 +176,20 @@ def tag(request, lm) -> str:
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def usd_cent(request) -> USDCent:
     amount = randint(99, 9_999)
     return request.param if hasattr(request, "usd_cent") else USDCent(amount)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def bp_payout_event(
-    product, usd_cent, business_payout_event_manager, thl_lm
+    product: "Product",
+    usd_cent,
+    business_payout_event_manager,
+    thl_lm: "ThlLedgerManager",
 ) -> "UserPayoutEvent":
+
     return business_payout_event_manager.create_bp_payout_event(
         thl_ledger_manager=thl_lm,
         product=product,
@@ -176,13 +200,18 @@ def bp_payout_event(
 
 
 @pytest.fixture
-def bp_payout_event_factory(brokerage_product_payout_event_manager, thl_lm) -> Callable:
-    from generalresearch.models.thl.product import Product
-    from generalresearch.currency import USDCent
+def bp_payout_event_factory(
+    brokerage_product_payout_event_manager: "BrokerageProductPayoutEventManager",
+    thl_lm: "ThlLedgerManager",
+) -> Callable[..., "BrokerageProductPayoutEvent"]:
 
-    def _create_bp_payout_event(
+    from generalresearch.currency import USDCent
+    from generalresearch.models.thl.product import Product
+
+    def _inner(
         product: Product, usd_cent: USDCent, ext_ref_id: Optional[str] = None
-    ):
+    ) -> "BrokerageProductPayoutEvent":
+
         return brokerage_product_payout_event_manager.create_bp_payout_event(
             thl_ledger_manager=thl_lm,
             product=product,
@@ -192,16 +221,16 @@ def bp_payout_event_factory(brokerage_product_payout_event_manager, thl_lm) -> C
             skip_one_per_day_check=True,
         )
 
-    return _create_bp_payout_event
+    return _inner
 
 
-@pytest.fixture(scope="function")
-def currency(lm) -> "LedgerCurrency":
+@pytest.fixture
+def currency(lm: "LedgerManager") -> "LedgerCurrency":
     # return request.param if hasattr(request, "currency") else LedgerCurrency.TEST
     return lm.currency
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def tx_metadata(request) -> Optional[Dict[str, str]]:
     return (
         request.param
@@ -210,15 +239,15 @@ def tx_metadata(request) -> Optional[Dict[str, str]]:
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def ledger_tx(
     request,
     ledger_account_credit,
     ledger_account_debit,
     tag,
-    currency,
+    currency: "LedgerCurrency",
     tx_metadata,
-    lm,
+    lm: "LedgerManager",
 ) -> "LedgerTransaction":
     from generalresearch.models.thl.ledger import Direction, LedgerEntry
 
@@ -240,13 +269,16 @@ def ledger_tx(
     return lm.create_tx(entries=entries, tag=tag, metadata=tx_metadata)
 
 
-@pytest.fixture(scope="function")
-def create_main_accounts(lm, currency) -> Callable:
-    def _create_main_accounts():
+@pytest.fixture
+def create_main_accounts(
+    lm: "LedgerManager", currency: "LedgerCurrency"
+) -> Callable[..., None]:
+
+    def _inner() -> None:
         from generalresearch.models.thl.ledger import (
-            LedgerAccount,
-            Direction,
             AccountType,
+            Direction,
+            LedgerAccount,
         )
 
         account = LedgerAccount(
@@ -268,12 +300,15 @@ def create_main_accounts(lm, currency) -> Callable:
 
         lm.get_account_or_create(account=account)
 
-    return _create_main_accounts
+        return None
+
+    return _inner
 
 
-@pytest.fixture(scope="function")
-def delete_ledger_db(thl_web_rw) -> Callable:
-    def _delete_ledger_db():
+@pytest.fixture
+def delete_ledger_db(thl_web_rw: "PostgresManager") -> Callable[..., None]:
+
+    def _inner():
         for table in [
             "ledger_transactionmetadata",
             "ledger_entry",
@@ -284,12 +319,15 @@ def delete_ledger_db(thl_web_rw) -> Callable:
                 query=f"DELETE FROM {table};",
             )
 
-    return _delete_ledger_db
+    return _inner
 
 
-@pytest.fixture(scope="function")
-def wipe_main_accounts(thl_web_rw, lm, currency) -> Callable:
-    def _wipe_main_accounts():
+@pytest.fixture
+def wipe_main_accounts(
+    thl_web_rw: "PostgresManager", lm: "LedgerManager", currency: "LedgerCurrency"
+) -> Callable[..., None]:
+
+    def _inner() -> None:
         db_table = thl_web_rw.db_name
         qual_names = [
             f"{currency.value}:revenue:task_complete",
@@ -352,15 +390,17 @@ def wipe_main_accounts(thl_web_rw, lm, currency) -> Callable:
             commit=True,
         )
 
-    return _wipe_main_accounts
+        return None
+
+    return _inner
 
 
-@pytest.fixture(scope="function")
-def account_cash(lm, currency) -> "LedgerAccount":
+@pytest.fixture
+def account_cash(lm: "LedgerManager", currency: "LedgerCurrency") -> "LedgerAccount":
     from generalresearch.models.thl.ledger import (
-        LedgerAccount,
-        Direction,
         AccountType,
+        Direction,
+        LedgerAccount,
     )
 
     account = LedgerAccount(
@@ -373,12 +413,14 @@ def account_cash(lm, currency) -> "LedgerAccount":
     return lm.get_account_or_create(account=account)
 
 
-@pytest.fixture(scope="function")
-def account_revenue_task_complete(lm, currency) -> "LedgerAccount":
+@pytest.fixture
+def account_revenue_task_complete(
+    lm: "LedgerManager", currency: "LedgerCurrency"
+) -> "LedgerAccount":
     from generalresearch.models.thl.ledger import (
-        LedgerAccount,
-        Direction,
         AccountType,
+        Direction,
+        LedgerAccount,
     )
 
     account = LedgerAccount(
@@ -391,12 +433,14 @@ def account_revenue_task_complete(lm, currency) -> "LedgerAccount":
     return lm.get_account_or_create(account=account)
 
 
-@pytest.fixture(scope="function")
-def account_expense_tango(lm, currency) -> "LedgerAccount":
+@pytest.fixture
+def account_expense_tango(
+    lm: "LedgerManager", currency: "LedgerCurrency"
+) -> "LedgerAccount":
     from generalresearch.models.thl.ledger import (
-        LedgerAccount,
-        Direction,
         AccountType,
+        Direction,
+        LedgerAccount,
     )
 
     account = LedgerAccount(
@@ -409,12 +453,14 @@ def account_expense_tango(lm, currency) -> "LedgerAccount":
     return lm.get_account_or_create(account=account)
 
 
-@pytest.fixture(scope="function")
-def user_account_user_wallet(lm, user, currency) -> "LedgerAccount":
+@pytest.fixture
+def user_account_user_wallet(
+    lm: "LedgerManager", user, currency: "LedgerCurrency"
+) -> "LedgerAccount":
     from generalresearch.models.thl.ledger import (
-        LedgerAccount,
-        Direction,
         AccountType,
+        Direction,
+        LedgerAccount,
     )
 
     account = LedgerAccount(
@@ -429,12 +475,14 @@ def user_account_user_wallet(lm, user, currency) -> "LedgerAccount":
     return lm.get_account_or_create(account=account)
 
 
-@pytest.fixture(scope="function")
-def product_account_bp_wallet(lm, product, currency) -> "LedgerAccount":
+@pytest.fixture
+def product_account_bp_wallet(
+    lm: "LedgerManager", product: "Product", currency: "LedgerCurrency"
+) -> "LedgerAccount":
     from generalresearch.models.thl.ledger import (
-        LedgerAccount,
-        Direction,
         AccountType,
+        Direction,
+        LedgerAccount,
     )
 
     account = LedgerAccount.model_validate(
@@ -451,12 +499,17 @@ def product_account_bp_wallet(lm, product, currency) -> "LedgerAccount":
     return lm.get_account_or_create(account=account)
 
 
-@pytest.fixture(scope="function")
-def setup_accounts(product_factory, lm, user, currency) -> None:
+@pytest.fixture
+def setup_accounts(
+    product_factory: Callable[..., "Product"],
+    lm: "LedgerManager",
+    user: "User",
+    currency: "LedgerCurrency",
+) -> None:
     from generalresearch.models.thl.ledger import (
-        LedgerAccount,
-        Direction,
         AccountType,
+        Direction,
+        LedgerAccount,
     )
 
     # BP's wallet and a revenue from their commissions account.
@@ -522,24 +575,25 @@ def setup_accounts(product_factory, lm, user, currency) -> None:
     lm.get_account_or_create(account=account)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def session_with_tx_factory(
-    user_factory,
-    product,
-    session_factory,
+    user_factory: Callable[..., "User"],
+    product: "Product",
+    session_factory: Callable[..., "Session"],
     session_manager,
     wall_manager,
-    utc_hour_ago,
-    thl_lm,
-) -> Callable:
+    utc_hour_ago: datetime,
+    thl_lm: "ThlLedgerManager",
+) -> Callable[..., "Session"]:
+
     from generalresearch.models.thl.session import (
-        Status,
         Session,
+        Status,
         StatusCode1,
     )
     from generalresearch.models.thl.user import User
 
-    def _session_with_tx_factory(
+    def _inner(
         user: User,
         final_status: Status = Status.COMPLETE,
         wall_req_cpi: Decimal = Decimal(".50"),
@@ -583,18 +637,21 @@ def session_with_tx_factory(
 
         return s
 
-    return _session_with_tx_factory
+    return _inner
 
 
-@pytest.fixture(scope="function")
-def adj_to_fail_with_tx_factory(session_manager, wall_manager, thl_lm) -> Callable:
+@pytest.fixture
+def adj_to_fail_with_tx_factory(
+    session_manager, wall_manager, thl_lm: "ThlLedgerManager"
+) -> Callable[..., None]:
+    from datetime import datetime, timedelta
+
+    from generalresearch.models.thl.definitions import WallAdjustedStatus
     from generalresearch.models.thl.session import (
         Session,
     )
-    from datetime import timedelta
-    from generalresearch.models.thl.definitions import WallAdjustedStatus
 
-    def _adj_to_fail_with_tx_factory(
+    def _inner(
         session: Session,
         created: datetime,
     ) -> None:
@@ -636,18 +693,21 @@ def adj_to_fail_with_tx_factory(session_manager, wall_manager, thl_lm) -> Callab
 
         return None
 
-    return _adj_to_fail_with_tx_factory
+    return _inner
 
 
-@pytest.fixture(scope="function")
-def adj_to_complete_with_tx_factory(session_manager, wall_manager, thl_lm) -> Callable:
+@pytest.fixture
+def adj_to_complete_with_tx_factory(
+    session_manager, wall_manager, thl_lm: "ThlLedgerManager"
+) -> Callable[..., None]:
+    from datetime import timedelta
+
+    from generalresearch.models.thl.definitions import WallAdjustedStatus
     from generalresearch.models.thl.session import (
         Session,
     )
-    from datetime import timedelta
-    from generalresearch.models.thl.definitions import WallAdjustedStatus
 
-    def _adj_to_complete_with_tx_factory(
+    def _inner(
         session: Session,
         created: datetime,
     ) -> None:
@@ -675,4 +735,4 @@ def adj_to_complete_with_tx_factory(session_manager, wall_manager, thl_lm) -> Ca
 
         return None
 
-    return _adj_to_complete_with_tx_factory
+    return _inner

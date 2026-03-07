@@ -1,5 +1,5 @@
-from datetime import timedelta, datetime
-from typing import TYPE_CHECKING, Optional, Callable
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, Callable, Optional
 
 import pytest
 
@@ -7,14 +7,8 @@ from test_utils.conftest import clear_directory
 from test_utils.incite.conftest import mnt_filepath
 
 if TYPE_CHECKING:
-    from generalresearch.incite.mergers import MergeType
-    from generalresearch.incite.mergers.ym_wall_summary import (
-        YMWallSummaryMerge,
-        YMWallSummaryMergeItem,
-    )
-    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
-    from generalresearch.incite.mergers.ym_survey_wall import YMSurveyWallMerge
     from generalresearch.incite.base import GRLDatasets
+    from generalresearch.incite.mergers import MergeType
     from generalresearch.incite.mergers.foundations.enriched_session import (
         EnrichedSessionMerge,
     )
@@ -27,8 +21,14 @@ if TYPE_CHECKING:
     from generalresearch.incite.mergers.foundations.user_id_product import (
         UserIdProductMerge,
     )
+    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
     from generalresearch.incite.mergers.ym_survey_wall import (
+        YMSurveyWallMerge,
         YMSurveyWallMergeCollectionItem,
+    )
+    from generalresearch.incite.mergers.ym_wall_summary import (
+        YMWallSummaryMerge,
+        YMWallSummaryMergeItem,
     )
 
 
@@ -38,11 +38,12 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(scope="function")
-def rm_pop_ledger_merge(pop_ledger_merge) -> Callable:
-    def _rm_pop_ledger_merge():
+def rm_pop_ledger_merge(pop_ledger_merge) -> Callable[..., None]:
+
+    def _inner():
         clear_directory(pop_ledger_merge.archive_path)
 
-    return _rm_pop_ledger_merge
+    return _inner
 
 
 @pytest.fixture(scope="function")
@@ -52,8 +53,9 @@ def pop_ledger_merge(
     start: datetime,
     duration: timedelta,
 ) -> "PopLedgerMerge":
-    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
+
     from generalresearch.incite.mergers import MergeType
+    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 
     return PopLedgerMerge(
         start=start,
@@ -65,9 +67,10 @@ def pop_ledger_merge(
 
 @pytest.fixture(scope="function")
 def pop_ledger_merge_item(
-    start,
-    pop_ledger_merge,
+    start: datetime,
+    pop_ledger_merge: "PopLedgerMerge",
 ) -> "PopLedgerMergeItem":
+
     from generalresearch.incite.mergers.pop_ledger import PopLedgerMergeItem
 
     return PopLedgerMergeItem(
@@ -81,8 +84,8 @@ def ym_survey_wall_merge(
     mnt_filepath: "GRLDatasets",
     start: datetime,
 ) -> "YMSurveyWallMerge":
-    from generalresearch.incite.mergers.ym_survey_wall import YMSurveyWallMerge
     from generalresearch.incite.mergers import MergeType
+    from generalresearch.incite.mergers.ym_survey_wall import YMSurveyWallMerge
 
     return YMSurveyWallMerge(
         start=None,
@@ -93,7 +96,7 @@ def ym_survey_wall_merge(
 
 @pytest.fixture(scope="function")
 def ym_survey_wall_merge_item(
-    start, ym_survey_wall_merge
+    start: datetime, ym_survey_wall_merge: "YMSurveyWallMerge"
 ) -> "YMSurveyWallMergeCollectionItem":
     from generalresearch.incite.mergers.ym_survey_wall import (
         YMSurveyWallMergeCollectionItem,
@@ -112,8 +115,8 @@ def ym_wall_summary_merge(
     duration: timedelta,
     start: datetime,
 ) -> "YMWallSummaryMerge":
-    from generalresearch.incite.mergers.ym_wall_summary import YMWallSummaryMerge
     from generalresearch.incite.mergers import MergeType
+    from generalresearch.incite.mergers.ym_wall_summary import YMWallSummaryMerge
 
     return YMWallSummaryMerge(
         start=start,
@@ -124,7 +127,7 @@ def ym_wall_summary_merge(
 
 
 def ym_wall_summary_merge_item(
-    start, ym_wall_summary_merge
+    start: datetime, ym_wall_summary_merge: "YMWallSummaryMerge"
 ) -> "YMWallSummaryMergeItem":
     from generalresearch.incite.mergers.ym_wall_summary import (
         YMWallSummaryMergeItem,
@@ -148,10 +151,10 @@ def enriched_session_merge(
     duration: timedelta,
     start: datetime,
 ) -> "EnrichedSessionMerge":
+    from generalresearch.incite.mergers import MergeType
     from generalresearch.incite.mergers.foundations.enriched_session import (
         EnrichedSessionMerge,
     )
-    from generalresearch.incite.mergers import MergeType
 
     return EnrichedSessionMerge(
         start=start,
@@ -168,10 +171,10 @@ def enriched_task_adjust_merge(
     duration: timedelta,
     start: datetime,
 ) -> "EnrichedTaskAdjustMerge":
+    from generalresearch.incite.mergers import MergeType
     from generalresearch.incite.mergers.foundations.enriched_task_adjust import (
         EnrichedTaskAdjustMerge,
     )
-    from generalresearch.incite.mergers import MergeType
 
     return EnrichedTaskAdjustMerge(
         start=start,
@@ -207,13 +210,13 @@ def enriched_wall_merge(
 def user_id_product_merge(
     mnt_filepath: "GRLDatasets",
     duration: timedelta,
-    offset,
+    offset: str,
     start: datetime,
 ) -> "UserIdProductMerge":
+    from generalresearch.incite.mergers import MergeType
     from generalresearch.incite.mergers.foundations.user_id_product import (
         UserIdProductMerge,
     )
-    from generalresearch.incite.mergers import MergeType
 
     return UserIdProductMerge(
         start=start,
@@ -230,11 +233,11 @@ def user_id_product_merge(
 
 @pytest.fixture(scope="function")
 def merge_collection(
-    mnt_filepath,
+    mnt_filepath: "GRLDatasets",
     merge_type: "MergeType",
-    offset,
-    duration,
-    start,
+    offset: str,
+    duration: timedelta,
+    start: datetime,
 ):
     from generalresearch.incite.mergers import MergeCollection
 

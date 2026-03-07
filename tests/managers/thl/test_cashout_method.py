@@ -3,13 +3,11 @@ import pytest
 from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
     CashMailCashoutMethodData,
-    USDeliveryAddress,
     PaypalCashoutMethodData,
+    USDeliveryAddress,
 )
 from test_utils.managers.cashout_methods import (
     EXAMPLE_TANGO_CASHOUT_METHODS,
-    AMT_ASSIGNMENT_CASHOUT_METHOD,
-    AMT_BONUS_CASHOUT_METHOD,
 )
 
 
@@ -34,8 +32,10 @@ class TestAMTCashoutMethods:
     def test_create_and_get(self, cashout_method_manager, setup_cashoutmethod_db):
         res = cashout_method_manager.filter(payout_types=[PayoutType.AMT])
         assert len(res) == 2
+
         cm = [x for x in res if x.name == "AMT Assignment"][0]
         assert AMT_ASSIGNMENT_CASHOUT_METHOD == cm
+
         cm = [x for x in res if x.name == "AMT Bonus"][0]
         assert AMT_BONUS_CASHOUT_METHOD == cm
 

@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from typing import Optional
+from pathlib import Path
 
 from pydantic import RedisDsn, Field, MariaDBDsn, DirectoryPath, PostgresDsn
 from pydantic_settings import BaseSettings
@@ -36,24 +37,22 @@ def is_debug() -> bool:
 class GRLBaseSettings(BaseSettings):
     debug: bool = Field(default=True)
 
-    redis: Optional[RedisDsn] = Field(default="redis://127.0.0.1:6379")
+    redis: Optional[RedisDsn] = Field(default=None)
     redis_timeout: float = Field(default=0.10)
 
-    thl_redis: Optional[RedisDsn] = Field(default="redis://127.0.0.1:6379")
+    thl_redis: Optional[RedisDsn] = Field(default=None)
 
-    dask: Optional[DaskDsn] = Field(default="tcp://127.0.0.1:8786", description="")
+    dask: Optional[DaskDsn] = Field(default=None, description="")
 
     sentry: Optional[SentryDsn] = Field(
         default=None, description="The sentry.io DSN for connecting to a project"
     )
 
-    thl_mkpl_rw_db: Optional[MariaDBDsn] = Field(default="mariadb://root:@127.0.0.1/")
-    thl_mkpl_rr_db: Optional[MariaDBDsn] = Field(default="mariadb://root:@127.0.0.1/")
+    thl_mkpl_rw_db: Optional[MariaDBDsn] = Field(default=None)
+    thl_mkpl_rr_db: Optional[MariaDBDsn] = Field(default=None)
 
     # Primary DB, SELECT permissions
-    thl_web_ro_db: Optional[PostgresDsn] = Field(
-        default="postgres://postgres:password@localhost:5432/thl"
-    )
+    thl_web_ro_db: Optional[PostgresDsn] = Field(default=None)
     # Primary DB, SELECT, INSERT, UPDATE permissions
     thl_web_rw_db: Optional[PostgresDsn] = Field(default=None)
     # Primary DB, SELECT, INSERT, UPDATE, DELETE permissions
@@ -61,7 +60,7 @@ class GRLBaseSettings(BaseSettings):
     # Slave/secondary/read-replica SELECT permission only
     thl_web_rr_db: Optional[PostgresDsn] = Field(default=None)
 
-    tmp_dir: DirectoryPath = Field(default="/tmp")
+    tmp_dir: DirectoryPath = Field(default=Path("/tmp"))
 
     spectrum_rw_db: Optional[MariaDBDsn] = Field(default=None)
     spectrum_rr_db: Optional[MariaDBDsn] = Field(default=None)
@@ -71,7 +70,7 @@ class GRLBaseSettings(BaseSettings):
 
     # --- GR ----
     gr_db: Optional[PostgresDsn] = Field(default=None)
-    gr_redis: Optional[RedisDsn] = Field(default="redis://127.0.0.1:6379")
+    gr_redis: Optional[RedisDsn] = Field(default=None)
 
     # --- GRL IQ ---
     grliq_db: Optional[PostgresDsn] = Field(default=None)
@@ -93,8 +92,8 @@ class GRLBaseSettings(BaseSettings):
     tango_customer_id: Optional[str] = Field(default=None)
 
     # --- Keeping this here as we use these ids regardless of the AMT account
-    amt_bonus_cashout_method: Optional[str] = Field(default=None)
-    amt_assignment_cashout_method: Optional[str] = Field(default=None)
+    amt_bonus_cashout_method_id: Optional[str] = Field(default=None)
+    amt_assignment_cashout_method_id: Optional[str] = Field(default=None)
 
     # --- Maxmind Configuration ---
     maxmind_account_id: Optional[str] = Field(default=None)
