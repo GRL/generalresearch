@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Optional, Collection, List
+from typing import Collection, List, Optional
 from uuid import uuid4
 
 import psycopg
@@ -41,7 +41,7 @@ class MysqlUserManager:
         product_user_id: Optional[str] = None,
         user_id: Optional[int] = None,
         user_uuid: Optional[UUIDStr] = None,
-        can_use_read_replica=True,
+        can_use_read_replica: bool = True,
     ) -> Optional[User]:
 
         logger.info(
@@ -64,7 +64,7 @@ class MysqlUserManager:
 
         if product_id:
             res = self.pg_config.execute_sql_query(
-                query=f"""
+                query="""
                 SELECT id AS user_id, product_id, product_user_id, 
                         uuid, blocked, created, last_seen
                 FROM thl_user
@@ -77,7 +77,7 @@ class MysqlUserManager:
 
         elif user_id:
             res = self.pg_config.execute_sql_query(
-                query=f"""
+                query="""
                 SELECT  id AS user_id, product_id, product_user_id, 
                         uuid, blocked, created, last_seen
                 FROM thl_user
@@ -89,7 +89,7 @@ class MysqlUserManager:
 
         else:
             res = self.pg_config.execute_sql_query(
-                query=f"""
+                query="""
                 SELECT  id AS user_id, product_id, product_user_id, 
                         uuid, blocked, created, last_seen
                 FROM thl_user
@@ -205,7 +205,7 @@ class MysqlUserManager:
 
     def is_whitelisted(self, user: User):
         res = self.pg_config.execute_sql_query(
-            f"""
+            """
             SELECT value
             FROM userprofile_userstat
             WHERE user_id = %s
@@ -260,7 +260,7 @@ class MysqlUserManager:
             ), "must pass a collection of user_ids"
 
             res = self.pg_config.execute_sql_query(
-                query=f"""
+                query="""
                 SELECT id AS user_id, product_id, product_user_id, 
                         uuid, blocked, created, last_seen
                 FROM thl_user
@@ -275,7 +275,7 @@ class MysqlUserManager:
                 user_uuids, (list, set)
             ), "must pass a collection of user_uuids"
             res = self.pg_config.execute_sql_query(
-                query=f"""
+                query="""
                 SELECT id AS user_id, product_id, product_user_id, 
                         uuid, blocked, created, last_seen
                 FROM thl_user

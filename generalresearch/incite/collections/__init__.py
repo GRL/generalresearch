@@ -5,7 +5,7 @@ import time
 from datetime import datetime
 from enum import Enum
 from sys import platform
-from typing import Optional, List
+from typing import Any, Dict, List, Optional
 
 import dask
 import dask.dataframe as dd
@@ -16,13 +16,13 @@ from distributed import Client, as_completed
 from more_itertools import chunked
 from pandera import DataFrameSchema
 from psycopg import Cursor
-from pydantic import Field, FilePath, field_validator, ValidationInfo
+from pydantic import Field, FilePath, ValidationInfo, field_validator
 from sentry_sdk import capture_exception
 
 from generalresearch.incite.base import CollectionBase, CollectionItemBase
 from generalresearch.incite.schemas import (
-    ORDER_KEY,
     ARCHIVE_AFTER,
+    ORDER_KEY,
     PARTITION_ON,
     empty_dataframe_from_schema,
 )
@@ -33,18 +33,18 @@ from generalresearch.incite.schemas.thl_marketplaces import (
     SpectrumSurveyTimeseriesSchema,
 )
 from generalresearch.incite.schemas.thl_web import (
-    TxSchema,
-    TxMetaSchema,
-    THLUserSchema,
-    THLTaskAdjustmentSchema,
-    THLWallSchema,
-    THLSessionSchema,
-    THLIPInfoSchema,
-    TransactionMetadataColumns,
-    UserHealthIPHistorySchema,
-    UserHealthAuditLogSchema,
-    UserHealthIPHistoryWSSchema,
     LedgerSchema,
+    THLIPInfoSchema,
+    THLSessionSchema,
+    THLTaskAdjustmentSchema,
+    THLUserSchema,
+    THLWallSchema,
+    TransactionMetadataColumns,
+    TxMetaSchema,
+    TxSchema,
+    UserHealthAuditLogSchema,
+    UserHealthIPHistorySchema,
+    UserHealthIPHistoryWSSchema,
 )
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.sql_helper import SqlHelper
@@ -167,7 +167,7 @@ class DFCollectionItem(CollectionItemBase):
         return self.to_archive(ddf=dd.from_pandas(_df, npartitions=1), is_partial=True)
 
     # --- ORM / Data handlers---
-    def to_dict(self, *args, **kwargs) -> dict:
+    def to_dict(self, *args, **kwargs) -> Dict[str, Any]:
         return self._to_dict()
 
     def from_mysql(self, since: Optional[datetime] = None) -> Optional[pd.DataFrame]:
@@ -503,7 +503,7 @@ class DFCollectionItem(CollectionItemBase):
                 subprocess.call(["mv", "-T", tmp_path.as_posix(), self.path.as_posix()])
         return True
 
-    def to_archive_numbered_partial(self, ddf: dd.DataFrame) -> bool:
+    def to_archive_numbered_partial(self, ddf: Optional[dd.DataFrame] = None) -> bool:
         """
         For partial files/dirs only. Writes the .partial file with a number
         at the end (.partial.####) and then creates a symlink
@@ -513,13 +513,14 @@ class DFCollectionItem(CollectionItemBase):
         """
         if ddf is None:
             return False
+
         collection = self._collection
         schema = collection._schema
         client: Optional[Client] = collection._client
 
         next_numbered_path = self.next_numbered_path(self.partial_path)
         partial_path = self.partial_path
-        finish = self.finish
+        # finish = self.finish
 
         # Make sure these are in the same dir. b/c the symlink has to be
         # relative, not an absolute path
@@ -571,7 +572,7 @@ class DFCollectionItem(CollectionItemBase):
 
         assert self.should_archive(), "not ready to archive!"
 
-        df: pd.DataFrame = self.from_mysql()
+        df: Optional[pd.DataFrame] = self.from_mysql()
 
         if df is None:
             self.set_empty()
@@ -648,9 +649,9 @@ class DFCollection(CollectionBase):
     def initial_load(
         self,
         client: Optional[Client] = None,
-        sync=True,
+        sync: bool = True,
         since: Optional[datetime] = None,
-        client_resources=None,
+        client_resources: Optional[Dict[str, Any]] = None,
         timeout: Optional[float] = None,
     ) -> List[Future]:
         # This can be used to just build all local archive files
@@ -733,10 +734,15 @@ class DFCollection(CollectionBase):
         return sources
 
     def force_rr_latest(
-        self, client: Client, client_resources=None, sync: bool = True
+        self,
+        client: Client,
+        client_resources: Optional[Dict[str, Any]] = None,
+        sync: bool = True,
     ) -> List[Future]:
+
         # For forcing update of any partials asynchronously if desired
         LOG.info(f"{self.data_type.value}.force_rr_latest({client=})")
+
         rr_items = [
             i for i in self.items if not i.should_archive() and not i.is_empty()
         ]

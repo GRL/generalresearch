@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 from uuid import uuid4
 
 from psycopg import sql
@@ -13,13 +13,13 @@ from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.gr.team import Membership, MembershipPrivilege
 
 if TYPE_CHECKING:
-    from generalresearch.models.gr.team import (
-        Membership,
-        Team,
-        MembershipPrivilege,
-    )
     from generalresearch.models.gr.authentication import GRUser
     from generalresearch.models.gr.business import Business
+    from generalresearch.models.gr.team import (
+        Membership,
+        MembershipPrivilege,
+        Team,
+    )
 
 
 class MembershipManager(PostgresManager):
@@ -77,7 +77,7 @@ class MembershipManager(PostgresManager):
                     ),
                     params=data,
                 )
-                membership_id: int = c.fetchone()["id"]
+                membership_id: int = c.fetchone()["id"]  # type: ignore
             conn.commit()
 
         membership.id = membership_id
@@ -205,7 +205,7 @@ class TeamManager(PostgresManagerWithRedis):
                     ),
                     params=[team.uuid, team.name],
                 )
-                team_id = c.fetchone()["id"]
+                team_id = c.fetchone()["id"]  # type: ignore
             conn.commit()
             team.id = team_id
 

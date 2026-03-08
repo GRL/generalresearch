@@ -1,11 +1,11 @@
 import json
 import logging
 import operator
-from datetime import timezone, datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from threading import Lock
-from typing import Collection, Optional, List, TYPE_CHECKING, Union
-from uuid import uuid4, UUID
+from typing import TYPE_CHECKING, Collection, List, Optional, Union
+from uuid import UUID, uuid4
 
 from cachetools import TTLCache, cachedmethod, keys
 from more_itertools import chunked
@@ -24,16 +24,16 @@ from generalresearch.pg_helper import PostgresConfig
 logger = logging.getLogger()
 
 if TYPE_CHECKING:
-    from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.product import (
-        UserCreateConfig,
         PayoutConfig,
-        SessionConfig,
-        UserWalletConfig,
-        SourcesConfig,
-        UserHealthConfig,
+        Product,
         ProfilingConfig,
+        SessionConfig,
+        SourcesConfig,
         SupplyConfigs,
+        UserCreateConfig,
+        UserHealthConfig,
+        UserWalletConfig,
     )
 
 
@@ -113,7 +113,7 @@ class ProductManager(PostgresManager):
 
         if rand_limit:
             res = self.pg_config.execute_sql_query(
-                query=f"""
+                query="""
                     SELECT p.id::uuid
                     FROM userprofile_brokerageproduct AS p
                     ORDER BY RANDOM()
@@ -124,7 +124,7 @@ class ProductManager(PostgresManager):
 
         else:
             res = self.pg_config.execute_sql_query(
-                query=f"""
+                query="""
                     SELECT p.id::uuid
                     FROM userprofile_brokerageproduct AS p
                 """
@@ -322,14 +322,14 @@ class ProductManager(PostgresManager):
     ) -> "Product":
         """Create a Product with all the basic defaults and return the instance"""
         from generalresearch.models.thl.product import (
-            UserCreateConfig,
             PayoutConfig,
-            SessionConfig,
-            UserWalletConfig,
-            SourcesConfig,
-            UserHealthConfig,
-            ProfilingConfig,
             Product,
+            ProfilingConfig,
+            SessionConfig,
+            SourcesConfig,
+            UserCreateConfig,
+            UserHealthConfig,
+            UserWalletConfig,
         )
 
         now = datetime.now(tz=timezone.utc)
@@ -402,7 +402,7 @@ class ProductManager(PostgresManager):
         try:
             insert_data["id_int"] = list(
                 self.pg_config.execute_sql_query(
-                    f"""
+                    query="""
             SELECT COALESCE(MAX(id_int), 0) + 1 as id_int
             FROM userprofile_brokerageproduct
             """

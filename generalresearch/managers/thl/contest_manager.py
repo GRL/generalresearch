@@ -1,9 +1,9 @@
-from datetime import timezone, datetime
-from typing import List, Optional, Literal, cast, Collection, Tuple, Dict
+from datetime import datetime, timezone
+from typing import Any, Collection, Dict, List, Literal, Optional, Tuple, cast
 from uuid import UUID
 
 import redis
-from pydantic import PositiveInt, NonNegativeInt
+from pydantic import NonNegativeInt, PositiveInt
 from redis import Redis
 
 from generalresearch.managers.base import PostgresManager
@@ -15,8 +15,8 @@ from generalresearch.managers.thl.user_manager.user_manager import (
 )
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.contest import (
-    ContestWinner,
     ContestPrize,
+    ContestWinner,
 )
 from generalresearch.models.thl.contest.contest import (
     Contest,
@@ -34,20 +34,20 @@ from generalresearch.models.thl.contest.io import (
     user_model_cls,
 )
 from generalresearch.models.thl.contest.leaderboard import (
-    LeaderboardContestUserView,
     LeaderboardContest,
+    LeaderboardContestUserView,
 )
 from generalresearch.models.thl.contest.milestone import (
-    MilestoneUserView,
-    MilestoneEntry,
     ContestEntryTrigger,
     MilestoneContest,
+    MilestoneEntry,
+    MilestoneUserView,
 )
 from generalresearch.models.thl.contest.raffle import (
     ContestEntry,
     ContestEntryType,
-    RaffleUserView,
     RaffleContest,
+    RaffleUserView,
 )
 from generalresearch.models.thl.user import User
 
@@ -139,7 +139,7 @@ class ContestBaseManager(PostgresManager):
                     query=query,
                     params=data,
                 )
-                pk = c.fetchone()["id"]
+                pk = c.fetchone()["id"]  # type: ignore
             conn.commit()
 
         contest.id = pk
@@ -182,9 +182,10 @@ class ContestBaseManager(PostgresManager):
         name_contains: Optional[str] = None,
         uuids: Optional[Collection[str]] = None,
         has_participants: Optional[bool] = None,
-    ) -> Tuple[str, Dict]:
+    ) -> Tuple[str, Dict[str, Any]]:
         filters = []
         params = dict()
+
         if product_id:
             params["product_id"] = product_id
             filters.append("product_id = %(product_id)s")
@@ -207,6 +208,7 @@ class ContestBaseManager(PostgresManager):
         if name_contains is not None:
             params["name_contains"] = f"%{name_contains}%"
             filters.append("name ILIKE %(name_contains)s")
+
         if uuids is not None:
             if len(uuids) == 0:
                 # If we pass an empty list, the sql query will have a syntax error. Make it
@@ -214,6 +216,7 @@ class ContestBaseManager(PostgresManager):
                 uuids = ["0" * 32]
             params["uuids"] = uuids
             filters.append("uuid = ANY(%(uuids)s)")
+
         if has_participants:
             filters.append("current_participants > 0")
 
@@ -711,7 +714,7 @@ class RaffleContestManager(ContestBaseManager):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=f"""
+                    query="""
                         INSERT INTO contest_contestentry
                                 (uuid, amount, user_id, 
                                 created_at, updated_at, contest_id) 
@@ -721,7 +724,7 @@ class RaffleContestManager(ContestBaseManager):
                     params=data,
                 )
                 c.execute(
-                    query=f"""
+                    query="""
                         UPDATE contest_contest
                         SET current_amount = %(current_amount)s, 
                             current_participants = %(current_participants)s
@@ -985,10 +988,13 @@ class LeaderboardContestManager(ContestBaseManager):
     def end_contest_if_over(
         self, contest: Contest, ledger_manager: ThlLedgerManager
     ) -> None:
-        decision, reason = contest.should_end()
+        decision, _ = contest.should_end()
+
         if decision:
             contest.end_contest()
             return self.end_contest_with_winners(contest, ledger_manager)
+
+        return None
 
 
 class ContestManager(

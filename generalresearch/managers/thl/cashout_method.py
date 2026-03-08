@@ -1,14 +1,16 @@
 from copy import copy
-from datetime import timezone, datetime
-from typing import List, Optional, Collection, Dict
-from uuid import uuid4, UUID
+from datetime import datetime, timezone
+from typing import Any, Collection, Dict, List, Optional
+from uuid import UUID, uuid4
+
+from pydantic import NonNegativeInt
 
 from generalresearch.managers.base import PostgresManager
 from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
-    CashoutMethod,
     CashMailCashoutMethodData,
+    CashoutMethod,
     PaypalCashoutMethodData,
 )
 
@@ -43,24 +45,25 @@ class CashoutMethodManager(PostgresManager):
 
     def delete_cashout_method(self, cm_id: str):
         db_res = self.pg_config.execute_sql_query(
-            f"""
+            query="""
         SELECT id::uuid, user_id
         FROM accounting_cashoutmethod
         WHERE id = %s AND is_live
         LIMIT 1;""",
-            [cm_id],
+            params=[cm_id],
         )
         res = next(iter(db_res), None)
         assert res, f"cashout method id {cm_id} not found"
         # Don't let anyone delete a non-user-scoped cashout method
         assert (
             res["user_id"] is not None
-        ), f"error trying to delete non user-scoped cashout method"
+        ), "error trying to delete non user-scoped cashout method"
+
         self.pg_config.execute_write(
-            f"""
-        UPDATE accounting_cashoutmethod SET is_live = FALSE
-        WHERE id = %s;""",
-            [cm_id],
+            query="""
+                UPDATE accounting_cashoutmethod SET is_live = FALSE
+                WHERE id = %s;""",
+            params=[cm_id],
         )
 
     def create_cash_in_mail_cashout_method(
@@ -185,7 +188,7 @@ class CashoutMethodManager(PostgresManager):
         ext_id: Optional[str] = None,
         payout_types: Optional[Collection[PayoutType]] = None,
         is_live: Optional[bool] = True,
-    ) -> int:
+    ) -> NonNegativeInt:
         filter_str, params = self.make_filter_str(
             uuid=uuid,
             user=user,
@@ -201,7 +204,7 @@ class CashoutMethodManager(PostgresManager):
             """,
             params=params,
         )
-        return res[0]["cnt"]
+        return int(res[0]["cnt"])  # type: ignore
 
     def filter(
         self,
@@ -248,7 +251,7 @@ class CashoutMethodManager(PostgresManager):
             "supported_payout_types": [x.value for x in supported_payout_types],
             "user_id": user.user_id,
         }
-        query = f"""
+        query = """
         SELECT id::uuid, provider, ext_id, data::jsonb as _data_, user_id
         FROM accounting_cashoutmethod
         WHERE is_live 
@@ -276,14 +279,16 @@ class CashoutMethodManager(PostgresManager):
         return cms
 
     @staticmethod
-    def format_from_db(x: Dict, user: Optional[User] = None) -> CashoutMethod:
+    def format_from_db(x: Dict[str, Any], user: Optional[User] = None) -> CashoutMethod:
         x["id"] = UUID(x["id"]).hex
+
         # The data column here is inconsistent. Pulling keys from the mysql 'data' col
         #   and putting them into the base level. Renamed so that we don't overwrite
         #   a col called "data" within the "_data_" field.
         for k in list(x["_data_"].keys()):
             if k in CashoutMethod.model_fields:
                 x[k] = x["_data_"].pop(k)
+
         x["type"] = PayoutType(x["provider"].upper())
         if "data" not in x:
             x["data"] = dict()

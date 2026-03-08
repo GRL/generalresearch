@@ -1,6 +1,6 @@
 import logging
 from datetime import timedelta
-from typing import Literal, Optional, TYPE_CHECKING, List
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
 
 import dask.dataframe as dd
 import pandas as pd
@@ -40,7 +40,7 @@ class EnrichedWallMergeItem(MergeCollectionItem):
         session_coll: SessionDFCollection,
         pg_config: PostgresConfig,
         client: Optional[Client] = None,
-        client_resources=None,
+        client_resources: Optional[Dict[str, Any]] = None,
     ) -> None:
 
         ir: pd.Interval = self.interval

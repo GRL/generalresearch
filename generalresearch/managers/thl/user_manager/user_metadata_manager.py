@@ -1,4 +1,4 @@
-from typing import List, Optional, Collection
+from typing import Collection, List, Optional
 
 from generalresearch.managers.base import PostgresManager
 from generalresearch.models.thl.user_profile import UserMetadata
@@ -23,8 +23,10 @@ class UserMetadataManager(PostgresManager):
             assert arg is None or isinstance(
                 arg, (set, list)
             ), "must pass a collection of objects"
+
         filters = []
         params = {}
+
         if user_ids:
             params["user_id"] = list(set(user_ids))
             filters.append("user_id = ANY(%(user_id)s)")
@@ -50,6 +52,7 @@ class UserMetadataManager(PostgresManager):
         """,
             params,
         )
+
         return [UserMetadata.from_db(**x) for x in res]
 
     def get_if_exists(
@@ -104,8 +107,9 @@ class UserMetadataManager(PostgresManager):
 
     def update(self, user_metadata: UserMetadata) -> int:
         """
-        The row in the thl_usermetadata might not exist. We'll implicitly create it
-        if it doesn't yet exist. The caller does not need to know this detail.
+        The row in the thl_usermetadata might not exist. We'll
+        implicitly create it if it doesn't yet exist. The caller
+        does not need to know this detail.
         """
         res = self.get_if_exists(user_id=user_metadata.user_id)
 
@@ -132,10 +136,11 @@ class UserMetadataManager(PostgresManager):
 
     def _create(self, user_metadata: UserMetadata) -> int:
         return self.pg_config.execute_write(
-            """
+            query="""
             INSERT INTO thl_usermetadata
             (user_id, email_address, email_sha256, email_sha1, email_md5)
-            VALUES (%(user_id)s, %(email_address)s, %(email_sha256)s, %(email_sha1)s, %(email_md5)s);
+            VALUES (%(user_id)s, %(email_address)s, %(email_sha256)s, 
+                    %(email_sha1)s, %(email_md5)s);
         """,
             params=user_metadata.to_db(),
         )

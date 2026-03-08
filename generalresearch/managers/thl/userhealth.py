@@ -1,11 +1,12 @@
 import ipaddress
-from datetime import timezone, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from itertools import zip_longest
-from random import choice as rchoice, random
-from typing import List, Collection, Optional, Dict, Tuple
+from random import choice as rchoice
+from random import random
+from typing import Any, Collection, Dict, List, Optional, Tuple
 
 import faker
-from pydantic import PositiveInt, NonNegativeInt
+from pydantic import NonNegativeInt, PositiveInt
 
 from generalresearch.decorators import LOG
 from generalresearch.managers.base import (
@@ -19,8 +20,8 @@ from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
 from generalresearch.models.thl.user_iphistory import (
     IPRecord,
-    UserIPRecord,
     UserIPHistory,
+    UserIPRecord,
 )
 from generalresearch.models.thl.userhealth import AuditLog, AuditLogLevel
 from generalresearch.pg_helper import PostgresConfig
@@ -56,7 +57,7 @@ class UserIpHistoryManager(PostgresManagerWithRedis):
         # The IP metadata is ONLY for the 'ip', NOT for any forwarded ips.
         # This might get called immediately after a write, so use the non-rr
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
                 SELECT iph.ip, iph.created, iph.user_id,
                     geo.subdivision_1_iso,
                     ipinfo.country_iso,
@@ -263,7 +264,7 @@ class IPRecordManager(PostgresManagerWithRedis):
             data[col] = ipaddress.ip_address(ip).exploded if ip else ip
 
         self.pg_config.execute_write(
-            query=f"""
+            query="""
                 INSERT INTO userhealth_iphistory (
                     user_id, ip, created,
                     forwarded_ip1, forwarded_ip2, forwarded_ip3,
@@ -396,16 +397,17 @@ class AuditLogManager(PostgresManager):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=f"""
+                    query="""
                         INSERT INTO userhealth_auditlog
-                        (user_id, created, level, event_type, event_msg, event_value)
-                        VALUES ( %(user_id)s , %(created)s, %(level)s, %(event_type)s, 
-                                 %(event_msg)s, %(event_value)s)
+                        (user_id, created, level, 
+                         event_type, event_msg, event_value)
+                        VALUES ( %(user_id)s , %(created)s, %(level)s, 
+                                 %(event_type)s, %(event_msg)s, %(event_value)s)
                         RETURNING id;
                     """,
                     params=al.model_dump_mysql(),
                 )
-                pk = c.fetchone()["id"]
+                pk = c.fetchone()["id"]  # type: ignore
                 conn.commit()
 
         al.id = pk
@@ -414,7 +416,7 @@ class AuditLogManager(PostgresManager):
     def get_by_id(self, auditlog_id: PositiveInt) -> AuditLog:
 
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
                 SELECT al.*
                 FROM userhealth_auditlog AS al
                 WHERE al.id = %s
@@ -434,7 +436,7 @@ class AuditLogManager(PostgresManager):
     def filter_by_product(self, product: Product) -> List[AuditLog]:
 
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
                 SELECT al.* 
                 FROM userhealth_auditlog AS al
                 INNER JOIN thl_user AS u
@@ -450,7 +452,7 @@ class AuditLogManager(PostgresManager):
 
     def filter_by_user_id(self, user_id: PositiveInt) -> List[AuditLog]:
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
                 SELECT * 
                 FROM userhealth_auditlog AS al
                 WHERE al.user_id = %s
@@ -527,7 +529,7 @@ class AuditLogManager(PostgresManager):
 
         assert len(res) == 1
 
-        return int(res[0]["c"])
+        return int(res[0]["c"])  # type: ignore
 
     @staticmethod
     def make_filter_str(
@@ -538,7 +540,7 @@ class AuditLogManager(PostgresManager):
         event_type_like: Optional[str] = None,
         event_msg: Optional[str] = None,
         created_after: Optional[datetime] = None,
-    ) -> Tuple[str, Dict]:
+    ) -> Tuple[str, Dict[str, Any]]:
         assert user_ids, "must pass at least 1 user_id"
         assert all(
             [isinstance(uid, int) for uid in user_ids]

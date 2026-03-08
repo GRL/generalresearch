@@ -2,9 +2,9 @@ import copy
 from datetime import timedelta
 
 import pandas as pd
-from pandera import Column, Check, Index, DataFrameSchema
+from pandera import Check, Column, DataFrameSchema, Index
 
-from generalresearch.incite.schemas import ORDER_KEY, ARCHIVE_AFTER
+from generalresearch.incite.schemas import ARCHIVE_AFTER, ORDER_KEY
 
 BIGINT = 9223372036854775807
 

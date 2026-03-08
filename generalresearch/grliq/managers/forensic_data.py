@@ -1,16 +1,16 @@
 from datetime import datetime, timezone
-from typing import Optional, List, Collection, Dict, Tuple, Any
+from typing import Any, Collection, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 from psycopg import sql
-from pydantic import PositiveInt, NonNegativeInt
+from pydantic import NonNegativeInt, PositiveInt
 
 from generalresearch.grliq.managers import DUMMY_GRLIQ_DATA
 from generalresearch.grliq.models.events import PointerMove, TimingData
 from generalresearch.grliq.models.forensic_data import GrlIqData
 from generalresearch.grliq.models.forensic_result import (
-    GrlIqForensicCategoryResult,
     GrlIqCheckerResults,
+    GrlIqForensicCategoryResult,
     Phase,
 )
 from generalresearch.models.custom_types import UUIDStr
@@ -25,7 +25,7 @@ class GrlIqDataManager:
 
     def create_dummy(
         self,
-        is_attempt_allowed: True,
+        is_attempt_allowed: bool = True,
         product_id: Optional[str] = None,
         product_user_id: Optional[str] = None,
         uuid: Optional[str] = None,
@@ -118,7 +118,7 @@ class GrlIqDataManager:
         with self.postgres_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query, data)
-                pk = c.fetchone()["id"]
+                pk = c.fetchone()["id"]  # type: ignore
                 conn.commit()
 
         iq_data.id = pk
@@ -316,16 +316,22 @@ class GrlIqDataManager:
 
     def filter_timing_data(
         self,
-        created_between: Optional[Tuple[datetime, datetime]] = None,
+        created_between: Tuple[datetime, datetime],
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
+
+        # TODO! created_between used to be marked as Optional, but it would
+        #   break the query. Evaluate it's use to determine best behavior.
+
         limit_str = f"LIMIT {limit}" if limit is not None else ""
         offset_str = f"OFFSET {offset}" if offset is not None else ""
+
         params = {
             "created_after": created_between[0],
             "created_before": created_between[1],
         }
+
         query = f"""
         SELECT
             d.id, d.session_uuid, d.client_ip, d.country_iso,
@@ -342,10 +348,12 @@ class GrlIqDataManager:
         WHERE d.created_at BETWEEN %(created_after)s AND %(created_before)s
         {limit_str} {offset_str};
         """
+
         with self.postgres_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query, params)
-                res: List[Dict] = c.fetchall()
+                res: List[Dict[str, Any]] = c.fetchall()  # type: ignore
+
         for x in res:
             x["timing_data"] = TimingData.model_validate(x["timing_data"])
 
@@ -353,12 +361,14 @@ class GrlIqDataManager:
 
     def get_unique_user_count_by_fingerprint(
         self,
-        product_id: str,
+        product_id: UUIDStr,
         fingerprint: str,
         product_user_id_not: str,
     ) -> NonNegativeInt:
+
         # This is used for filtering for other forensic posts with a certain
         #   fingerprint, in this product_id, but NOT for this user.
+
         query = sql.SQL(
             """
         SELECT COUNT(DISTINCT product_user_id) as user_count
@@ -378,7 +388,8 @@ class GrlIqDataManager:
         with self.postgres_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query, params)
-                user_count = c.fetchone()["user_count"]
+                user_count = c.fetchone()["user_count"]  # type: ignore
+
         return int(user_count)
 
     def filter_data(
@@ -695,7 +706,7 @@ class GrlIqDataManager:
         order_by: str = "created_at DESC",
         limit: Optional[int] = None,
         offset: Optional[int] = None,
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """
         Accepts lots of optional filters.
         """
@@ -738,7 +749,7 @@ class GrlIqDataManager:
         with self.postgres_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query=query, params=params)
-                res: List = c.fetchall()
+                res: List[Dict[str, Any]] = c.fetchall()  # type: ignore
 
         for x in res:
 
@@ -766,7 +777,7 @@ class GrlIqDataManager:
         return res
 
     @staticmethod
-    def temporary_add_missing_fields(d: Dict):
+    def temporary_add_missing_fields(d: Dict[str, Any]) -> None:
         # The following fields were added recently, and so we must give them
         #   a value or old db rows won't be parseable. Once logs are backfilled
         #   then this can be removed
@@ -785,8 +796,9 @@ class GrlIqDataManager:
             if k not in d:
                 d[k] = v
 
-        # We made a mistake once and saved the grliq data object with the events fields set.
-        #   Make sure they are not set here. We load them from the events table, not here!
+        # We made a mistake once and saved the grliq data object with the
+        #  events fields set. Make sure they are not set here. We load them
+        # from the events table, not here!
         d.pop("events", None)
         d.pop("pointer_move_events", None)
         d.pop("mouse_events", None)

@@ -3,15 +3,15 @@ from __future__ import annotations
 from collections import namedtuple
 from dataclasses import dataclass, fields
 from functools import cached_property
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    NonNegativeInt,
     NonNegativeFloat,
+    NonNegativeInt,
     PositiveFloat,
 )
 from typing_extensions import Self
@@ -44,7 +44,7 @@ class Event:
     _elementBounds: Optional[Bounds] = None
 
     @classmethod
-    def from_dict(cls, data: dict) -> Self:
+    def from_dict(cls, data: Dict[str, Any]) -> Self:
         data = {k: v for k, v in data.items() if k in cls.__dataclass_fields__}
         bounds = data.get("_elementBounds")
         if bounds is not None and not isinstance(bounds, Bounds):
@@ -56,16 +56,21 @@ class Event:
 class PointerMove(Event):
     # should always be 'pointermove'
     type: str
+
     # (mouse, touch, pen)
     pointerType: str
-    # coordinate relative to the screen
+
+    # Coordinate relative to the screen
     screenX: float
     screenY: float
-    # coordinate relative to the document (unaffected by scrolling)
+
+    # Coordinate relative to the document (unaffected by scrolling)
     pageX: float
     pageY: float
-    # pageX/Y divided by the document Width/Height. This is calculated in JS and sent, which
-    # it must be b/c we don't know the document width/height at each time otherwise.
+
+    # PageX/Y divided by the document Width/Height. This is calculated in JS
+    # and sent, which it must be b/c we don't know the document width/height
+    # at each time otherwise.
     normalizedX: float
     normalizedY: float
 
@@ -82,8 +87,10 @@ class MouseEvent(Event):
 
     # should be {'pointerdown', 'pointerup', 'pointermove', 'click'}
     type: str
+
     # Type of input (mouse, touch, pen)
     pointerType: str
+
     # coordinate relative to the document (unaffected by scrolling)
     pageX: float
     pageY: float
@@ -91,15 +98,17 @@ class MouseEvent(Event):
 
 @dataclass
 class KeyboardEvent(Event):
-    """ """
 
     # should be {'keydown', 'input'}
     type: str
+
     # "insertText", "insertCompositionText", "deleteCompositionText",
     #   "insertFromComposition", "deleteContentBackward"
     inputType: Optional[str]
+
     # e.g., 'Enter', 'a', 'Backspace'
     key: Optional[str] = None
+
     # This is the actual text, if applicable
     data: Optional[str] = None
 
@@ -180,7 +189,7 @@ class TimingData(BaseModel):
     def has_data(self):
         return len(self.client_rtts) > 0 and len(self.server_rtts) > 0
 
-    def filter_rtts(self, rtts):
+    def filter_rtts(self, rtts: List[float]) -> List[float]:
         # Skip the first 5 pings, unless we have <10 pings, then get the last
         #   5 instead.
         # The first couple pings are usually outliers as they are running
@@ -189,6 +198,7 @@ class TimingData(BaseModel):
             rtts = rtts[5:]
         else:
             rtts = rtts[-5:]
+
         return rtts
 
     @cached_property

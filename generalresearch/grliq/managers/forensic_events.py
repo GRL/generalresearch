@@ -1,16 +1,17 @@
 import json
 from datetime import datetime
-from typing import Optional, List, Collection, Dict
+from typing import Any, Collection, Dict, List, Optional
 from uuid import uuid4
 
 from psycopg import sql
+from pydantic import PositiveInt
 
 from generalresearch.grliq.models.events import (
-    TimingData,
-    PointerMove,
-    MouseEvent,
-    KeyboardEvent,
     Bounds,
+    KeyboardEvent,
+    MouseEvent,
+    PointerMove,
+    TimingData,
 )
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.pg_helper import PostgresConfig
@@ -24,8 +25,8 @@ class GrlIqEventManager:
     def update_or_create_timing(
         self,
         session_uuid: UUIDStr,
-        timing_data: TimingData,
-    ):
+        timing_data: Optional[TimingData] = None,
+    ) -> PositiveInt:
         data = {
             "session_uuid": session_uuid,
             "timing_data": (
@@ -69,7 +70,7 @@ class GrlIqEventManager:
                 pk = c.fetchone()["id"]
                 conn.commit()
 
-        return pk
+        return int(pk)
 
     def update_or_create_events(
         self,
@@ -78,7 +79,7 @@ class GrlIqEventManager:
         event_end: datetime,
         events: Optional[List[Dict]] = None,
         mouse_events: Optional[List[Dict]] = None,
-    ):
+    ) -> PositiveInt:
         data = {
             "uuid": uuid4().hex,
             "session_uuid": session_uuid,
@@ -130,7 +131,7 @@ class GrlIqEventManager:
                 pk = c.fetchone()["id"]
                 conn.commit()
 
-        return pk
+        return int(pk)
 
     def filter(
         self,
@@ -141,14 +142,16 @@ class GrlIqEventManager:
         started_since: Optional[datetime] = None,
         limit: Optional[int] = None,
         order_by: str = "event_start DESC",
-    ) -> List[Dict]:
-        """ """
+    ) -> List[Dict[str, Any]]:
+
         if not limit:
             limit = 100
         if not select_str:
             select_str = "*"
+
         filters = []
         params = {}
+
         if session_uuid:
             params["session_uuid"] = session_uuid
             filters.append("session_uuid = %(session_uuid)s")
@@ -164,6 +167,7 @@ class GrlIqEventManager:
 
         filter_str = " AND ".join(filters)
         filter_str = "WHERE " + filter_str if filter_str else ""
+
         query = f"""
         SELECT {select_str}
         FROM grliq_forensicevents
@@ -189,12 +193,13 @@ class GrlIqEventManager:
                 events=events, pointer_moves=pointer_moves
             )
             x["keyboard_events"] = self.process_keyboard_events(events=events)
+
         return res
 
     def filter_distinct_timing(
         self,
         session_uuids: Collection[str],
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         params = {"session_uuids": list(session_uuids)}
         query = sql.SQL(
             """
@@ -226,9 +231,10 @@ class GrlIqEventManager:
     @staticmethod
     def process_mouse_events(pointer_moves: List[PointerMove], events: List[Dict]):
         """
-        In the db column 'mouse_events' we put all 'pointermove' events. Pull those
-        out, and then any 'pointerdown' and 'pointerup' events from the 'events' column,
-        and merge them all together into a list of MouseEvent objects
+        In the db column 'mouse_events' we put all 'pointermove' events. Pull
+        those out, and then any 'pointerdown' and 'pointerup' events from the
+        'events' column, and merge them all together into a list of MouseEvent
+        objects
         """
         mouse_events = [
             # these contain only pointermove events

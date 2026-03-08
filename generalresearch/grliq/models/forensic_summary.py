@@ -2,15 +2,15 @@ from __future__ import annotations
 
 import random
 from typing import (
+    Dict,
     List,
     Literal,
     Optional,
     Tuple,
-    Dict,
-    get_type_hints,
-    get_origin,
     Union,
     get_args,
+    get_origin,
+    get_type_hints,
 )
 
 import numpy as np
@@ -19,17 +19,17 @@ from pydantic import (
     ConfigDict,
     Field,
     NonNegativeInt,
-    create_model,
     computed_field,
+    create_model,
 )
 from scipy.stats import lognorm
 
 from generalresearch.grliq.models.custom_types import GrlIqAvgScore, GrlIqRate
 from generalresearch.grliq.models.forensic_result import (
-    GrlIqCheckerResults,
     GrlIqCheckerResult,
+    GrlIqCheckerResults,
 )
-from generalresearch.models.custom_types import IPvAnyAddressStr, AwareDatetimeISO
+from generalresearch.models.custom_types import AwareDatetimeISO, IPvAnyAddressStr
 from generalresearch.models.thl.locales import CountryISO
 from generalresearch.models.thl.maxmind.definitions import UserType
 

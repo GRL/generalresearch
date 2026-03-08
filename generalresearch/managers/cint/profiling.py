@@ -1,5 +1,5 @@
 import json
-from typing import List, Collection, Optional, Tuple
+from typing import Collection, List, Optional, Tuple
 
 from generalresearch.models.cint.question import CintQuestion
 from generalresearch.sql_helper import SqlHelper
@@ -24,10 +24,13 @@ def get_profiling_library(
     :param is_live: filters on is_live field
     :param pks: The pk is (question_key, country_iso, language_iso). pks accepts a collection of
         len(3) tuples. e.g. [('CORE_AUTOMOTIVE_0002', 'us', 'eng'), ('AGE', 'us', 'spa')]
+
     :return:
     """
+
     filters = []
     params = {}
+
     if country_iso:
         params["country_iso"] = country_iso
         filters.append("`country_iso` = %(country_iso)s")
@@ -46,8 +49,10 @@ def get_profiling_library(
     if pks:
         params["pks"] = pks
         filters.append("(question_id, country_iso, language_iso) IN %(pks)s")
+
     filter_str = " AND ".join(filters)
     filter_str = "WHERE " + filter_str if filter_str else ""
+
     res = sql_helper.execute_sql_query(
         f"""
     SELECT *
@@ -56,7 +61,9 @@ def get_profiling_library(
     """,
         params,
     )
+
     for x in res:
         x["options"] = json.loads(x["options"]) if x["options"] else None
+
     qs = [CintQuestion.from_db(x) for x in res]
     return qs

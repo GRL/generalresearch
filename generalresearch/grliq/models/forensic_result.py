@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional, List, Set
+from typing import List, Optional, Set
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from generalresearch.grliq.models.custom_types import GrlIqScore
 from generalresearch.grliq.models.decider import (
-    Decider,
     AttemptDecision,
+    Decider,
     GrlIqAttemptResult,
 )
-from generalresearch.models.custom_types import UUIDStr, AwareDatetimeISO
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 
 
 class Phase(str, Enum):
@@ -21,10 +21,13 @@ class Phase(str, Enum):
 
     # Within a custom offerwall. Very optional, as most BPs won't be running our code
     OFFERWALL = "offerwall"
+
     # When a user clicks on a bucket. Each session should go through this
     OFFERWALL_ENTER = "offerwall-enter"
+
     # Running in GRS. Not every session will have this.
     PROFILING = "profiling"
+
     # We could run grl-iq again when a user continues a session
     SESSION_CONTINUE = "session-continue"
 
@@ -33,8 +36,9 @@ class GrlIqForensicCategoryResult(BaseModel):
     """
     This is for reporting external to GRL.
 
-    There is a balance between exposing enough to answer "why did this user get blocked?" without
-    giving away technical knowledge that could be used to bypass.
+    There is a balance between exposing enough to answer "why did this user
+    get blocked?" without giving away technical knowledge that could be
+    used to bypass.
     """
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)

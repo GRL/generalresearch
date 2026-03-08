@@ -1,7 +1,7 @@
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Optional, Callable, Collection, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Collection, List, Optional
 from uuid import UUID
 
 import numpy as np
@@ -15,13 +15,13 @@ from generalresearch.config import (
 from generalresearch.currency import USDCent
 from generalresearch.managers.base import Permission
 from generalresearch.managers.thl.ledger_manager.conditions import (
-    generate_condition_mp_payment,
     generate_condition_bp_payment,
     generate_condition_bp_payout,
-    generate_condition_user_payout_request,
-    generate_condition_user_payout_action,
-    generate_condition_tag_exists,
     generate_condition_enter_contest,
+    generate_condition_mp_payment,
+    generate_condition_tag_exists,
+    generate_condition_user_payout_action,
+    generate_condition_user_payout_request,
 )
 from generalresearch.managers.thl.ledger_manager.ledger import (
     LedgerManager,
@@ -39,18 +39,20 @@ from generalresearch.models.thl.contest.raffle import (
     RaffleContest,
 )
 from generalresearch.models.thl.ledger import (
-    LedgerAccount,
-    Direction,
-    LedgerTransaction,
-    LedgerEntry,
     AccountType,
+    Direction,
+    LedgerAccount,
+    LedgerEntry,
+    LedgerTransaction,
     TransactionType,
-    TransactionMetadataColumns as tmc,
     UserLedgerTransactions,
+)
+from generalresearch.models.thl.ledger import (
+    TransactionMetadataColumns as tmc,
 )
 from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.session import Status, Session, Wall
+from generalresearch.models.thl.session import Session, Status, Wall
 from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet import PayoutType
 
@@ -207,12 +209,18 @@ class ThlLedgerManager(LedgerManager):
         return self.get_account_or_create(account=account)
 
     def get_account_task_complete_revenue(self) -> "LedgerAccount":
-        return self.get_account(
+        res = self.get_account(
             qualified_name=f"{self.currency.value}:revenue:task_complete"
         )
+        assert res is not None, "Revenue account for task complete does not exist"
+
+        return res
 
     def get_account_cash(self) -> "LedgerAccount":
-        return self.get_account(qualified_name=f"{self.currency.value}:cash")
+        res = self.get_account(qualified_name=f"{self.currency.value}:cash")
+        assert res is not None, "Cash account does not exist"
+
+        return res
 
     def get_accounts_bp_wallet_for_products(
         self, product_uuids: Collection[UUIDStr]
@@ -263,7 +271,7 @@ class ThlLedgerManager(LedgerManager):
         wall: Wall,
         user: User,
         created: Optional[datetime] = None,
-        force=False,
+        force: bool = False,
     ) -> PositiveInt:
         """
         Create a transaction when we complete a task from a marketplace,
@@ -302,7 +310,10 @@ class ThlLedgerManager(LedgerManager):
         }
         # This tag should uniquely identify this transaction (which should only happen once!)
         tag = f"{self.currency.value}:mp_payment:{wall.uuid}"
+
+        assert wall.cpi is not None
         amount = round(wall.cpi * 100)
+
         entries = [
             LedgerEntry(
                 direction=Direction.CREDIT,
@@ -327,7 +338,7 @@ class ThlLedgerManager(LedgerManager):
         return t
 
     def create_tx_bp_payment(
-        self, session: Session, created: Optional[datetime] = None, force=False
+        self, session: Session, created: Optional[datetime] = None, force: bool = False
     ) -> LedgerTransaction:
         """
             Create a transaction when we decide to report a session as complete
@@ -750,9 +761,9 @@ class ThlLedgerManager(LedgerManager):
         amount: USDCent,
         payoutevent_uuid: UUIDStr,
         created: AwareDatetime,
-        skip_wallet_balance_check=False,
-        skip_one_per_day_check=False,
-        skip_flag_check=False,
+        skip_wallet_balance_check: bool = False,
+        skip_one_per_day_check: bool = False,
+        skip_flag_check: bool = False,
     ) -> LedgerTransaction:
         """This is when we pay "OUT" a BP their wallet balance. (Not a
             payment for a task complete)
@@ -859,7 +870,7 @@ class ThlLedgerManager(LedgerManager):
         created: AwareDatetime,
         direction: Direction = Direction.DEBIT,
         description: Optional[str] = None,
-        skip_flag_check=False,
+        skip_flag_check: bool = False,
     ) -> LedgerTransaction:
         """https://en.wikipedia.org/wiki/Plug_(accounting)
 
@@ -1869,6 +1880,7 @@ class ThlLedgerManager(LedgerManager):
             ),
             columns=["finished", "user_payout"],
         )
+
         if wall.empty:
             reserve = 0
         else:
@@ -1878,16 +1890,17 @@ class ThlLedgerManager(LedgerManager):
             wall["pct_rdm"] = wall["days_since_complete"].apply(self.get_redeemable_pct)
             wall.loc[wall["pct_rdm"] > 0.95, "pct_rdm"] = 1
             wall["redeemable"] = wall["pct_rdm"] * wall["user_payout_int"]
-            # Calculate money needed to save in reserve to cover the difference between
-            #   money earned from completes and $ redeemable, subtract that from the
-            #   wall balance.
+            # Calculate money needed to save in reserve to cover the difference
+            #   between money earned from completes and $ redeemable, subtract
+            #   that from the wall balance.
             reserve = round(wall["user_payout_int"].sum() - wall["redeemable"].sum())
+
         redeemable_balance = user_wallet_balance - reserve
         redeemable_balance = 0 if redeemable_balance < 0 else redeemable_balance
 
         if redeemable_balance > 0:
-            # it is possible the user_wallet_balance is negative, in which case the redeemable
-            #   balance is 0. Don't fail assertion if that happens.
+            # it is possible the user_wallet_balance is negative, in which case
+            #   the redeemable balance is 0. Don't fail assertion if that happens.
             assert redeemable_balance <= user_wallet_balance
         return redeemable_balance
 

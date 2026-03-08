@@ -1,4 +1,4 @@
-def parse_order_by(order_by_str: str):
+def parse_order_by(order_by_str: str) -> str:
     """
     Converts django-rest-framework ordering str to mysql clause
     :param order_by_str: e.g. 'created,-name'

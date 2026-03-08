@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import timezone, datetime
-from typing import List, Collection, Optional
+from datetime import datetime, timezone
+from typing import Collection, List, Optional
 
 import pymysql
 from pymysql import IntegrityError
@@ -10,8 +10,8 @@ from pymysql import IntegrityError
 from generalresearch.managers.criteria import CriteriaManager
 from generalresearch.managers.survey import SurveyManager
 from generalresearch.models.spectrum.survey import (
-    SpectrumSurvey,
     SpectrumCondition,
+    SpectrumSurvey,
 )
 
 logger = logging.getLogger()
@@ -61,7 +61,7 @@ class SpectrumSurveyManager(SurveyManager):
         survey_ids: Optional[Collection[str]] = None,
         is_live: Optional[bool] = None,
         updated_since: Optional[datetime] = None,
-        fields=None,
+        fields: List[str] = None,
     ) -> List[SpectrumSurvey]:
         """
         Accepts lots of optional filters.
@@ -93,6 +93,7 @@ class SpectrumSurveyManager(SurveyManager):
         fields_str = "*"
         if fields:
             fields_str = ",".join(fields)
+
         filter_str = " AND ".join(filters)
         filter_str = "WHERE " + filter_str if filter_str else ""
 

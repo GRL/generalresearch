@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import timezone, datetime
-from typing import List, Collection, Optional
+from datetime import datetime, timezone
+from typing import Collection, List, Optional
 
 import pymysql
 from pymysql import IntegrityError
@@ -184,7 +184,7 @@ class MorningSurveyManager(SurveyManager):
         for survey in surveys:
             self.update_one(survey, now=now)
 
-    def update_one(self, bid: MorningBid, now=None) -> bool:
+    def update_one(self, bid: MorningBid, now: Optional[datetime] = None) -> bool:
         if now is None:
             now = datetime.now(tz=timezone.utc)
         d = bid.to_mysql()

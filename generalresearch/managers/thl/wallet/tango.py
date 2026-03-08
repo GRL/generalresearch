@@ -1,7 +1,5 @@
 from typing import Any, Dict
 
-import slack
-
 from generalresearch.config import (
     is_debug,
 )
@@ -92,7 +90,7 @@ def get_tango_order(ref_id: str):
     #     return json.loads(APIHelper.json_serialize(orders[0]))
 
 
-def create_tango_order(request_data: Dict, ref_id: str) -> Dict[str, Any]:
+def create_tango_order(request_data: Dict[str, Any], ref_id: str) -> Dict[str, Any]:
     """
     Create a tango gift card order.
     Throws exception if anything is not right.

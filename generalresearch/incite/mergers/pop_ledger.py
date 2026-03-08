@@ -1,5 +1,5 @@
 import logging
-from typing import Literal, Optional
+from typing import Any, Dict, Literal, Optional
 
 import dask.dataframe as dd
 import pandas as pd
@@ -24,7 +24,7 @@ class PopLedgerMergeItem(MergeCollectionItem):
         self,
         ledger_coll: LedgerDFCollection,
         client: Optional[Client] = None,
-        client_resources=None,
+        client_resources: Optional[Dict[str, Any]] = None,
     ) -> None:
         ir: pd.Interval = self.interval
 

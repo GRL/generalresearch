@@ -1,11 +1,11 @@
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional, Union
 from uuid import UUID
 
 # from generalresearch.config import
 from generalresearch.models.custom_types import UUIDStr
-from pathlib import Path
 
 
 def get_screenshot_fp(

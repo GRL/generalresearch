@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Literal, List
+from typing import List, Literal
 from urllib.parse import parse_qs, urlsplit
 
 import dask.bag as db

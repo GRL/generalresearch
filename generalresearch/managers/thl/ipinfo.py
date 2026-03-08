@@ -1,7 +1,7 @@
 import ipaddress
 from decimal import Decimal
 from random import randint
-from typing import List, Optional, Dict, Collection
+from typing import Collection, Dict, List, Optional
 
 import faker
 import pymysql
@@ -14,12 +14,12 @@ from generalresearch.managers.base import (
     PostgresManagerWithRedis,
 )
 from generalresearch.models.custom_types import (
-    IPvAnyAddressStr,
     CountryISOLike,
+    IPvAnyAddressStr,
 )
 from generalresearch.models.thl.ipinfo import (
-    IPGeoname,
     GeoIPInformation,
+    IPGeoname,
     IPInformation,
     normalize_ip,
 )
@@ -83,14 +83,15 @@ class IPGeonameManager(PostgresManager):
             }
         )
         self.pg_config.execute_write(
-            query=f"""
+            query="""
             INSERT INTO thl_geoname (
                 geoname_id, country_iso, is_in_european_union, country_name,
                 continent_code, continent_name, updated
             )
             VALUES (
-                %(geoname_id)s, %(country_iso)s, %(is_in_european_union)s, %(country_name)s,
-                %(continent_code)s, %(continent_name)s, %(updated)s
+                %(geoname_id)s, %(country_iso)s, %(is_in_european_union)s, 
+                %(country_name)s, %(continent_code)s, %(continent_name)s, 
+                %(updated)s
              )
             ON CONFLICT (geoname_id) DO NOTHING;
             """,
@@ -151,7 +152,7 @@ class IPGeonameManager(PostgresManager):
         )
 
         self.pg_config.execute_write(
-            query=f"""
+            query="""
             INSERT INTO thl_geoname
                 (   geoname_id, continent_code, continent_name, 
                     country_iso, country_name,
@@ -165,8 +166,8 @@ class IPGeonameManager(PostgresManager):
                     %(country_iso)s, %(country_name)s, 
                     %(subdivision_1_iso)s, %(subdivision_1_name)s, 
                     %(subdivision_2_iso)s, %(subdivision_2_name)s,
-                    %(city_name)s, %(metro_code)s, %(time_zone)s, %(is_in_european_union)s,
-                    %(updated)s
+                    %(city_name)s, %(metro_code)s, %(time_zone)s, 
+                    %(is_in_european_union)s, %(updated)s
                 )
             ON CONFLICT (geoname_id) DO NOTHING;
             """,
@@ -208,7 +209,7 @@ class IPGeonameManager(PostgresManager):
         assert len(filter_ids) <= 500, "chunk me"
 
         c.execute(
-            query=f"""
+            query="""
                 SELECT  g.geoname_id,
                         g.continent_code, g.continent_name,
                         g.country_iso, g.country_name,
@@ -298,10 +299,11 @@ class IPInformationManager(PostgresManager):
         )
         instance.normalize_ip()
         self.pg_config.execute_write(
-            query=f"""
+            query="""
             INSERT INTO thl_ipinformation
-            (ip, country_iso, registered_country_iso, geoname_id, updated)
-            VALUES (%(ip)s, %(country_iso)s, %(registered_country_iso)s, %(geoname_id)s, %(updated)s)
+                (ip, country_iso, registered_country_iso, geoname_id, updated)
+            VALUES (%(ip)s, %(country_iso)s, %(registered_country_iso)s, 
+                    %(geoname_id)s, %(updated)s)
             ON CONFLICT (ip) DO NOTHING;
             """,
             params=instance.model_dump(mode="json"),
@@ -367,7 +369,7 @@ class IPInformationManager(PostgresManager):
         instance.normalize_ip()
 
         self.pg_config.execute_write(
-            query=f"""
+            query="""
             INSERT INTO thl_ipinformation
                 (   ip, geoname_id, 
                     country_iso, registered_country_iso, 
@@ -466,7 +468,7 @@ class IPInformationManager(PostgresManager):
         normalized_ips = set(normalized_ip_lookup.values())
 
         c.execute(
-            query=f"""
+            query="""
                 SELECT  i.ip, i.geoname_id,
                         i.country_iso, i.registered_country_iso,
                         i.is_anonymous, i.is_anonymous_vpn, i.is_hosting_provider,
@@ -500,9 +502,9 @@ class IPInformationManager(PostgresManager):
         WHERE updated >= NOW() - INTERVAL '12 hours'
           AND country_iso IS NULL;
         """
-        numerator = list(pg_config.execute_sql_query(query=query))[0]["numerator"]
+        # numerator = list(pg_config.execute_sql_query(query=query))[0]["numerator"]
 
-        query = f"""
+        query = """
         SELECT COUNT(1) AS denominator
         FROM thl_ipinformation
         WHERE updated >= NOW() - INTERVAL '12 hours'
@@ -510,10 +512,11 @@ class IPInformationManager(PostgresManager):
         denominator = list(pg_config.execute_sql_query(query=query))[0]["denominator"]
         if denominator == 0:
             pass
-        percent_empty = numerator / (denominator or 1)
+
+        # percent_empty = numerator / (denominator or 1)
         # TODO: Post to telegraf / grafana
 
-        return
+        return None
 
 
 class GeoIpInfoManager(PostgresManagerWithRedis):
@@ -748,7 +751,7 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
         normalized_ips.update({self.compress_ip(ip) for ip in ips})
 
         c.execute(
-            query=f"""
+            query="""
             SELECT
                 geo.geoname_id,
                 geo.continent_name,
@@ -801,9 +804,11 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
                 raise ValueError(
                     f'mismatch between ipinfo country {d["country_iso"]} and geoname country {d["geo_country_iso"]}'
                 )
+
         gs = [GeoIPInformation.from_mysql(i) for i in res]
         gs = {g.ip: g for g in gs}
         res2 = dict()
+
         for ip, (normalized_ip, lookup_prefix) in ip_norm_lookup.items():
             if normalized_ip not in gs:
                 # also can remove 28 days after 2025-11-15

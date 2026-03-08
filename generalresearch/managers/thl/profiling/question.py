@@ -1,15 +1,15 @@
 import random
 import threading
-from typing import Collection, List, Tuple
+from typing import Any, Collection, Dict, List, Tuple
 
-from cachetools import cached, TTLCache
+from cachetools import TTLCache, cached
 from pydantic import ValidationError
 
 from generalresearch.decorators import LOG
 from generalresearch.managers.base import PostgresManager
 from generalresearch.models.thl.profiling.upk_question import (
-    UpkQuestion,
     UPKImportance,
+    UpkQuestion,
 )
 
 
@@ -21,8 +21,8 @@ class QuestionManager(PostgresManager):
         FROM marketplace_question
         WHERE id = ANY(%(question_ids)s);
         """
-        res = self.pg_config.execute_sql_query(
-            query, {"question_ids": list(question_ids)}
+        res: List[Dict[str, Any]] = self.pg_config.execute_sql_query(
+            query=query, params={"question_ids": list(question_ids)}
         )
         for x in res:
             x["data"]["ext_question_id"] = x["property_code"]
@@ -31,6 +31,7 @@ class QuestionManager(PostgresManager):
                 "explanation_fragment_template"
             ]
             x["data"].pop("categories", None)
+
         return [UpkQuestion.model_validate(x["data"]) for x in res]
 
     @cached(
@@ -50,7 +51,7 @@ class QuestionManager(PostgresManager):
             AND property_code NOT LIKE 'g:%%'
             AND is_live
         """
-        res = self.pg_config.execute_sql_query(
+        res: List[Dict[str, Any]] = self.pg_config.execute_sql_query(
             query=query,
             params={"country_iso": country_iso, "language_iso": language_iso},
         )
@@ -94,9 +95,12 @@ class QuestionManager(PostgresManager):
             "country_iso": country_iso,
             "language_iso": language_iso,
         }
-        res = self.pg_config.execute_sql_query(query=query, params=params)
+        res: List[Dict[str, Any]] = self.pg_config.execute_sql_query(
+            query=query, params=params
+        )
         assert len(res) == 1, f"expected 1, got {len(res)} results"
         x = res[0]
+
         x["data"]["ext_question_id"] = x["property_code"]
         x["data"]["explanation_template"] = x["explanation_template"]
         x["data"]["explanation_fragment_template"] = x["explanation_fragment_template"]
@@ -119,7 +123,9 @@ class QuestionManager(PostgresManager):
         WHERE {where_str}
         """
         flat_params = [item for tup in lookup for item in tup]
-        res = self.pg_config.execute_sql_query(query, params=flat_params)
+        res: List[Dict[str, Any]] = self.pg_config.execute_sql_query(
+            query=query, params=flat_params
+        )
         for x in res:
             x["data"]["ext_question_id"] = x["property_code"]
             x["data"]["explanation_template"] = x["explanation_template"]

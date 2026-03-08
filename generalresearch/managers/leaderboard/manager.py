@@ -1,19 +1,19 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import Optional, TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 import pandas as pd
 from pandas import Period
-from pydantic import NaiveDatetime, AwareDatetime
+from pydantic import AwareDatetime, NaiveDatetime
 from redis import Redis
 
 from generalresearch.managers.leaderboard import country_timezone
 from generalresearch.models.thl.leaderboard import (
+    Leaderboard,
     LeaderboardCode,
     LeaderboardFrequency,
     LeaderboardRow,
-    Leaderboard,
 )
 
 if TYPE_CHECKING:
@@ -130,7 +130,7 @@ class LeaderboardManager:
     def get_leaderboard(
         self,
         limit: Optional[int] = None,
-        bp_user_id=None,
+        bp_user_id: Optional[str] = None,
     ) -> Leaderboard:
 
         if bp_user_id:

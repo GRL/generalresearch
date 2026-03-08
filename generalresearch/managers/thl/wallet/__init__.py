@@ -1,20 +1,20 @@
 from decimal import Decimal
-from typing import Optional, Dict
+from typing import Any, Dict, Optional, Union
 
 from generalresearch.managers.thl.ledger_manager.thl_ledger import (
     ThlLedgerManager,
 )
 from generalresearch.managers.thl.payout import (
-    UserPayoutEventManager,
     PayoutEventManager,
+    UserPayoutEventManager,
 )
 from generalresearch.managers.thl.user_manager.user_manager import (
     UserManager,
 )
 from generalresearch.managers.thl.userhealth import UserIpHistoryManager
 from generalresearch.managers.thl.wallet.approve import (
-    approve_paypal_order,
     approve_amt_cashout,
+    approve_paypal_order,
 )
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.payout import UserPayoutEvent
@@ -31,7 +31,7 @@ def manage_pending_cashout(
     user_ip_history_manager: UserIpHistoryManager,
     user_manager: UserManager,
     ledger_manager: ThlLedgerManager,
-    order_data: Optional[Dict | CashMailOrderData] = None,
+    order_data: Optional[Union[Dict[str, Any], CashMailOrderData]] = None,
 ) -> UserPayoutEvent:
     """
     Called by a UI actions performed by Todd. This rejects/approves/cancels

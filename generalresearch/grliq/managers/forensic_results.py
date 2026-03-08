@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, List, Collection, Dict, Tuple
+from typing import Any, Collection, Dict, List, Optional, Tuple
 
 from generalresearch.grliq.models.forensic_result import (
     GrlIqForensicCategoryResult,
@@ -25,9 +25,10 @@ class GrlIqCategoryResultsReader:
         created_between: Optional[Tuple[datetime, datetime]] = None,
         user: Optional[User] = None,
         limit: Optional[int] = None,
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """
         For retrieving GrlIqForensicCategoryResult objects from db.
+
         :return: List of Dict. Keys are below in the 'select_str'.
         """
         select_str = (
@@ -37,10 +38,11 @@ class GrlIqCategoryResultsReader:
             " category_result, is_attempt_allowed, fraud_score"
         )
         if not limit:
-            limit = 5000
+            limit = 5_000
 
         filters = []
         params = {}
+
         if session_uuid:
             params["session_uuid"] = session_uuid
             filters.append("d.session_uuid = %(session_uuid)s")
@@ -77,6 +79,7 @@ class GrlIqCategoryResultsReader:
             filters.append(
                 "(d.product_id = %(product_id)s AND d.product_user_id = %(product_user_id)s)"
             )
+
         filter_str = " AND ".join(filters)
         filter_str = "WHERE " + filter_str if filter_str else ""
         query = f"""
@@ -85,6 +88,7 @@ class GrlIqCategoryResultsReader:
         {filter_str}
         ORDER BY created_at DESC LIMIT {limit}
         """
+
         with self.postgres_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query, params)

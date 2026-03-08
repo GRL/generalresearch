@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import statistics
 from collections import defaultdict
-from datetime import datetime, timezone, timedelta
-from typing import List, Dict
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List
 
 import numpy as np
 
@@ -12,15 +12,15 @@ from generalresearch.grliq.managers.forensic_events import (
     GrlIqEventManager,
 )
 from generalresearch.grliq.models.forensic_result import (
-    GrlIqForensicCategoryResult,
     GrlIqCheckerResults,
+    GrlIqForensicCategoryResult,
 )
 from generalresearch.grliq.models.forensic_summary import (
-    GrlIqForensicCategorySummary,
-    GrlIqCheckerResultsSummary,
-    UserForensicSummary,
     CountryRTTDistribution,
+    GrlIqCheckerResultsSummary,
+    GrlIqForensicCategorySummary,
     TimingDataCountrySummary,
+    UserForensicSummary,
 )
 from generalresearch.models.thl.user import User
 from generalresearch.redis_helper import RedisConfig
@@ -85,8 +85,9 @@ def calculate_checker_summary(
 
 
 def calculate_timing_summary(
-    redis_config: RedisConfig, timing_res
+    redis_config: RedisConfig, timing_res: List[Dict[str, Any]]
 ) -> Dict[str, TimingDataCountrySummary]:
+
     country_median_rtts = defaultdict(list)
     for x in timing_res:
         s = x["timing_data"].summarize
@@ -135,6 +136,7 @@ def run_user_forensic_summary(
     redis_config: RedisConfig,
     user: User,
 ) -> UserForensicSummary:
+
     now = datetime.now(tz=timezone.utc)
     created_between = (now - timedelta(days=90), now)
     select_str = "id, session_uuid, product_id, product_user_id, created_at, result_data, category_result"

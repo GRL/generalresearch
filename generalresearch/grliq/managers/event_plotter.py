@@ -1,12 +1,13 @@
 import html
-from typing import List
 import webbrowser
+from typing import List
+
 import numpy as np
 from more_itertools import windowed
 from scipy.spatial.distance import euclidean
 
 from generalresearch.grliq.managers.colormap import turbo_colormap_data
-from generalresearch.grliq.models.events import MouseEvent, KeyboardEvent
+from generalresearch.grliq.models.events import KeyboardEvent, MouseEvent
 
 
 def make_events_svg(
@@ -30,6 +31,10 @@ def make_events_svg(
     for ee in windowed(move_events, 2):
         e1 = ee[0]
         e2 = ee[1]
+
+        assert e1 is not None
+        assert e2 is not None
+
         ts_idx = (e2.timeStamp - t.min()) / t_diff
         r, g, b = turbo_colormap_data[round(ts_idx * 255)]
         color = f"rgb({int(r*255)},{int(g*255)},{int(b*255)})"
@@ -115,7 +120,7 @@ def svg_multiline_text(
 
 def group_input_events_by_xy(
     mouse_events: List[MouseEvent], keyboard_events: List[KeyboardEvent]
-):
+) -> List[tuple[tuple[float, float], List[str]]]:
     """
     Each keypress is its own event. For plotting, we want to group together
     all keypresses that were made when the mouse was at the same position,

@@ -1,6 +1,6 @@
 import logging
 from datetime import timedelta
-from typing import Optional, Literal
+from typing import Any, Dict, Literal, Optional
 
 import dask.dataframe as dd
 import pandas as pd
@@ -10,8 +10,8 @@ from sentry_sdk import capture_exception
 from generalresearch.incite.collections.thl_web import WallDFCollection
 from generalresearch.incite.mergers import (
     MergeCollection,
-    MergeType,
     MergeCollectionItem,
+    MergeType,
 )
 from generalresearch.incite.mergers.foundations.enriched_session import (
     EnrichedSessionMerge,
@@ -31,7 +31,7 @@ class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
         wall_coll: WallDFCollection,
         enriched_session: EnrichedSessionMerge,
         client: Optional[Client] = None,
-        client_resources=None,
+        client_resources: Optional[Dict[str, Any]] = None,
     ) -> None:
         LOG.info(f"YMSurveyWallMerge.build({self.start=}, {self.finish=})")
         ir: pd.Interval = self.interval

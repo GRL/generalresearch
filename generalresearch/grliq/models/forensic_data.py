@@ -1,55 +1,55 @@
 import hashlib
 import re
 from collections import Counter
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from functools import cached_property
-from typing import Literal, Optional, Dict, List, Set, Any
+from typing import Any, Dict, List, Literal, Optional, Set
 from uuid import uuid4
 
 import pycountry
 from faker import Faker
 from pydantic import (
+    AfterValidator,
+    AwareDatetime,
     BaseModel,
     ConfigDict,
     Field,
-    field_validator,
-    StringConstraints,
-    AfterValidator,
-    AwareDatetime,
     NonNegativeInt,
+    StringConstraints,
+    field_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_extra_types.timezone_name import TimeZoneName
-from typing_extensions import Self, Annotated
+from typing_extensions import Annotated, Self
 
 from generalresearch.grliq.models import (
     AUDIO_CODEC_NAMES,
-    VIDEO_CODEC_NAMES,
     SUPPORTED_FONTS,
+    VIDEO_CODEC_NAMES,
 )
 from generalresearch.grliq.models.events import (
+    KeyboardEvent,
+    MouseEvent,
     PointerMove,
     TimingData,
-    MouseEvent,
-    KeyboardEvent,
 )
 from generalresearch.grliq.models.forensic_result import (
-    GrlIqForensicCategoryResult,
     GrlIqCheckerResults,
+    GrlIqForensicCategoryResult,
+    Phase,
 )
-from generalresearch.grliq.models.forensic_result import Phase
 from generalresearch.grliq.models.useragents import (
     GrlUserAgent,
     OSFamily,
     UserAgentHints,
 )
 from generalresearch.models.custom_types import (
-    UUIDStr,
-    IPvAnyAddressStr,
-    BigAutoInteger,
     AwareDatetimeISO,
+    BigAutoInteger,
     CountryISOLike,
+    IPvAnyAddressStr,
+    UUIDStr,
 )
 from generalresearch.models.thl.ipinfo import GeoIPInformation
 from generalresearch.models.thl.session import Session
@@ -265,6 +265,7 @@ class GrlIqData(BaseModel):
     navigator_java_enabled: bool = Field()
     do_not_track_enabled: str = Field(description="unspecified or '' ? ")
     mime_types_length: int = Field()
+
     # todo: some report actual values, some are (always) faked by the os/browser
     #  as anti-fingerprint 10737418240 (10gb) typical on firefox windows,
     #  2147483648 (20gb) chrome, iPhones typically only 8 different values
@@ -542,7 +543,7 @@ class GrlIqData(BaseModel):
         return hashlib.md5(s.encode()).hexdigest()
 
     @cached_property
-    def audio_codecs_named(self) -> Dict:
+    def audio_codecs_named(self) -> Dict[str, bool]:
         return dict(
             zip(
                 AUDIO_CODEC_NAMES,
@@ -551,7 +552,7 @@ class GrlIqData(BaseModel):
         )
 
     @cached_property
-    def video_codecs_named(self) -> Dict:
+    def video_codecs_named(self) -> Dict[str, bool]:
         return dict(
             zip(
                 VIDEO_CODEC_NAMES,
@@ -618,7 +619,7 @@ class GrlIqData(BaseModel):
         mode="before",
     )
     @classmethod
-    def str_to_float_or_null(cls, value: str) -> Optional[int]:
+    def str_to_float_or_null(cls, value: str) -> Optional[float]:
         return float(value) if value not in {None, ""} else None
 
     @field_validator(
@@ -787,7 +788,7 @@ class GrlIqData(BaseModel):
         return d
 
     @classmethod
-    def from_db(cls, d: Dict) -> Self:
+    def from_db(cls, d: Dict[str, Any]) -> Self:
         res = GrlIqData.model_validate(d["data"])
 
         if d.get("category_result"):

@@ -2,7 +2,7 @@ from threading import RLock
 from typing import List
 from uuid import UUID
 
-from cachetools import cached, TTLCache
+from cachetools import TTLCache, cached
 
 from generalresearch.managers.base import PostgresManager
 from generalresearch.models.thl.profiling.upk_property import (

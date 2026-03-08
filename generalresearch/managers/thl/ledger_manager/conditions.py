@@ -1,12 +1,12 @@
 import logging
-from datetime import datetime, timezone, timedelta
-from typing import Callable, Optional, Tuple, TYPE_CHECKING
+from datetime import datetime, timedelta, timezone
+from typing import TYPE_CHECKING, Callable, Optional, Tuple
 
-from generalresearch.config import JAMES_BILLINGS_TX_CUTOFF, JAMES_BILLINGS_BPID
+from generalresearch.config import JAMES_BILLINGS_BPID, JAMES_BILLINGS_TX_CUTOFF
 from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.session import Wall, Session
+from generalresearch.models.thl.session import Session, Wall
 from generalresearch.models.thl.user import User
 
 logging.basicConfig()
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     )
 
 
-def generate_condition_mp_payment(wall: "Wall") -> Callable:
+def generate_condition_mp_payment(wall: "Wall") -> Callable[..., bool]:
     """This returns a function that checks if the payment for this wall event
     exists already. This function gets run after we acquire a lock. It
     should return True if we want to continue (create a tx).
@@ -37,7 +37,7 @@ def generate_condition_mp_payment(wall: "Wall") -> Callable:
     return _condition
 
 
-def generate_condition_bp_payment(session: "Session") -> Callable:
+def generate_condition_bp_payment(session: "Session") -> Callable[..., bool]:
     """This returns a function that checks if the payment for this Session
     exists already. This function gets run after we acquire a lock. It
     should return True if we want to continue (create a tx).
@@ -52,7 +52,7 @@ def generate_condition_bp_payment(session: "Session") -> Callable:
     return _condition
 
 
-def generate_condition_tag_exists(tag: str) -> Callable:
+def generate_condition_tag_exists(tag: str) -> Callable[..., bool]:
     """This returns a function that checks if a tx with this tag already
     exists. It should return True if we want to continue (create a tx).
     """
@@ -70,7 +70,7 @@ def generate_condition_bp_payout(
     payoutevent_uuid: UUIDStr,
     skip_one_per_day_check: bool = False,
     skip_wallet_balance_check: bool = False,
-) -> Callable:
+) -> Callable[..., Tuple[bool, str]]:
     created = datetime.now(tz=timezone.utc)
 
     def _condition(
@@ -110,7 +110,7 @@ def generate_condition_bp_payout(
 
 def generate_condition_user_payout_request(
     user: User, payoutevent_uuid: UUIDStr, min_balance: Optional[int] = None
-) -> Callable:
+) -> Callable[..., bool]:
     """This returns a function that checks if `user` has at least
     `min_balance` in their wallet and that a payout request hasn't already
     been issued with this payoutevent_uuid.
@@ -150,7 +150,7 @@ def generate_condition_user_payout_request(
 
 def generate_condition_enter_contest(
     user: User, tag: str, min_balance: USDCent
-) -> Callable:
+) -> Callable[..., Tuple[bool, str]]:
     """This returns a function that checks if `user` has at least
     `min_balance` in their wallet and that a tx doesn't already exist
     with this tag
@@ -177,7 +177,7 @@ def generate_condition_enter_contest(
 
 def generate_condition_user_payout_action(
     payoutevent_uuid: UUIDStr, action: str
-) -> Callable:
+) -> Callable[..., bool]:
     """The balance has already been taken from the user's wallet, so there
     is no balance check. We only just check that the ledger transaction
     doesn't already exist.

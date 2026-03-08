@@ -2,22 +2,21 @@ import binascii
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Optional, List, TYPE_CHECKING, Dict, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from uuid import uuid4
 
 from psycopg import sql
-from pydantic import AnyHttpUrl
-from pydantic import PositiveInt
+from pydantic import AnyHttpUrl, PositiveInt
 
-from generalresearch.managers.base import PostgresManagerWithRedis, PostgresManager
+from generalresearch.managers.base import PostgresManager, PostgresManagerWithRedis
 from generalresearch.models.custom_types import UUIDStr
-from generalresearch.redis_helper import RedisConfig
 from generalresearch.pg_helper import PostgresConfig
+from generalresearch.redis_helper import RedisConfig
 
 LOG = logging.getLogger("gr")
 
 if TYPE_CHECKING:
-    from generalresearch.models.gr.authentication import GRUser, GRToken
+    from generalresearch.models.gr.authentication import GRToken, GRUser
 
 
 class GRUserManager(PostgresManagerWithRedis):
@@ -194,7 +193,7 @@ class GRTokenManager(PostgresManager):
     def get_by_key(
         self,
         api_key: str,
-        jwks: Optional[Dict] = None,
+        jwks: Optional[Dict[str, Any]] = None,
         audience: Optional[str] = None,
         issuer: Optional[Union[AnyHttpUrl, str]] = None,
         gr_redis_config: Optional[RedisConfig] = None,
@@ -210,7 +209,7 @@ class GRTokenManager(PostgresManager):
         :return GRToken instance (minified version, no relationships)
         :raises NotFoundException
         """
-        from generalresearch.models.gr.authentication import GRToken, Claims
+        from generalresearch.models.gr.authentication import Claims, GRToken
 
         # SSO Key
         if GRToken.is_sso(api_key):
@@ -324,7 +323,7 @@ class GRTokenManager(PostgresManager):
 
         res = result[0]
 
-        for k, v in res.items():
+        for k, _ in res.items():
             if isinstance(res[k], datetime):
                 res[k] = res[k].replace(tzinfo=timezone.utc)
 

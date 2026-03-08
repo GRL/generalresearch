@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from datetime import timezone, datetime
-from typing import List, Collection, Optional
+from datetime import datetime, timezone
+from typing import Collection, List, Optional
 
 import pymysql
 
 from generalresearch.managers.criteria import CriteriaManager
 from generalresearch.managers.survey import SurveyManager
-from generalresearch.models.prodege.survey import ProdegeSurvey, ProdegeCondition
+from generalresearch.models.prodege.survey import ProdegeCondition, ProdegeSurvey
 
 
 class ProdegeCriteriaManager(CriteriaManager):
@@ -57,8 +57,10 @@ class ProdegeSurveyManager(SurveyManager):
         :param is_live: filters on is_live field
         :param updated_since: filters on "> updated"
         """
+
         filters = []
         params = {}
+
         if country_iso:
             params["country_iso"] = country_iso
             filters.append("`country_iso` = %(country_iso)s")

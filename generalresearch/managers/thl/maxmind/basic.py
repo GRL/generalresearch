@@ -10,15 +10,14 @@ from uuid import uuid4
 import geoip2.database
 import geoip2.models
 import requests
-from cachetools import cached, TTLCache
+from cachetools import TTLCache, cached
 from geoip2.errors import AddressNotFoundError
 
 from generalresearch.managers.base import Manager
 from generalresearch.models.custom_types import (
-    IPvAnyAddressStr,
     CountryISOLike,
+    IPvAnyAddressStr,
 )
-
 
 logger = logging.getLogger()
 

@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Optional, Dict, Tuple, List, Any, Collection
-from uuid import uuid4, UUID
+from typing import Any, Collection, Dict, List, Optional, Tuple
+from uuid import UUID, uuid4
 
 from faker import Faker
 from psycopg import sql
-from pydantic import NonNegativeInt
+from pydantic import NonNegativeInt, PositiveInt
 
 from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
@@ -17,17 +17,17 @@ from generalresearch.models import DeviceType
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.legacy.bucket import Bucket
 from generalresearch.models.thl.definitions import (
+    SessionStatusCode2,
     Status,
     StatusCode1,
-    SessionStatusCode2,
 )
 from generalresearch.models.thl.session import (
     Session,
     Wall,
 )
 from generalresearch.models.thl.task_status import (
-    TaskStatusResponse,
     TasksStatusResponse,
+    TaskStatusResponse,
 )
 from generalresearch.models.thl.user import User
 
@@ -48,7 +48,7 @@ class SessionManager(PostgresManager):
         device_type: Optional[DeviceType] = None,
         ip: Optional[str] = None,
         bucket: Optional[Bucket] = None,
-        url_metadata: Optional[Dict] = None,
+        url_metadata: Optional[Dict[str, str]] = None,
         uuid_id: Optional[str] = None,
     ) -> Session:
         """Creates a Session. Prefer to use this rather than instantiating the
@@ -86,7 +86,7 @@ class SessionManager(PostgresManager):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query=query, params=d)
-                session.id = c.fetchone()["id"]
+                session.id = c.fetchone()["id"]  # type: ignore
             conn.commit()
         return session
 
@@ -100,7 +100,7 @@ class SessionManager(PostgresManager):
         device_type: Optional[DeviceType] = None,
         ip: Optional[str] = None,
         bucket: Optional[Bucket] = None,
-        url_metadata: Optional[Dict] = None,
+        url_metadata: Optional[Dict[str, str]] = None,
         uuid_id: Optional[str] = None,
     ) -> Session:
         """To be used in tests, where we don't care about certain fields"""
@@ -125,7 +125,7 @@ class SessionManager(PostgresManager):
         )
 
     def get_from_uuid(self, session_uuid: UUIDStr) -> Session:
-        query = f"""
+        query = """
         SELECT  
             s.id AS session_id, 
             s.uuid AS session_uuid, 
@@ -148,7 +148,7 @@ class SessionManager(PostgresManager):
         return self.session_from_mysql(res[0])
 
     def get_from_id(self, session_id: int) -> Session:
-        query = f"""
+        query = """
         SELECT  
             s.id AS session_id, 
             s.uuid AS session_uuid, 
@@ -234,7 +234,7 @@ class SessionManager(PostgresManager):
         )
         d = session.model_dump_mysql()
         self.pg_config.execute_write(
-            query=f"""
+            query="""
                 UPDATE thl_session
                 SET status = %(status)s, status_code_1 = %(status_code_1)s,
                     status_code_2 = %(status_code_2)s, finished = %(finished)s,
@@ -286,7 +286,7 @@ class SessionManager(PostgresManager):
 
     def filter_paginated(
         self,
-        user_id: Optional[int] = None,
+        user_id: Optional[PositiveInt] = None,
         session_uuids: Optional[List[UUIDStr]] = None,
         product_uuids: Optional[List[UUIDStr]] = None,
         started_after: Optional[datetime] = None,

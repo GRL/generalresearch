@@ -3,11 +3,11 @@ import logging
 from redis import Redis
 
 from generalresearch.managers.leaderboard.manager import LeaderboardManager
-from generalresearch.models.thl.session import Session
 from generalresearch.models.thl.leaderboard import (
-    LeaderboardFrequency,
     LeaderboardCode,
+    LeaderboardFrequency,
 )
+from generalresearch.models.thl.session import Session
 
 logger = logging.getLogger()
 

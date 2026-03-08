@@ -1,16 +1,16 @@
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone, timedelta
-from decimal import Decimal, ROUND_DOWN
+from datetime import datetime, timedelta, timezone
+from decimal import ROUND_DOWN, Decimal
 from functools import cached_property
 from random import choice as rchoice
-from typing import Optional, Collection, List
+from typing import Collection, List, Optional
 from uuid import uuid4
 
 from faker import Faker
 from psycopg import sql
 from psycopg.rows import dict_row
-from pydantic import AwareDatetime, PositiveInt, PostgresDsn, RedisDsn
+from pydantic import AwareDatetime, PositiveInt
 
 from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
@@ -19,23 +19,22 @@ from generalresearch.managers.base import (
     PostgresManagerWithRedis,
 )
 from generalresearch.models import Source
-from generalresearch.models.custom_types import UUIDStr, SurveyKey
+from generalresearch.models.custom_types import SurveyKey, UUIDStr
 from generalresearch.models.thl.definitions import (
+    ReportValue,
     Status,
     StatusCode1,
-    WallStatusCode2,
-    ReportValue,
     WallAdjustedStatus,
+    WallStatusCode2,
 )
 from generalresearch.models.thl.ledger import OrderBy
 from generalresearch.models.thl.session import (
-    check_adjusted_status_wall_consistent,
     Wall,
     WallAttempt,
+    check_adjusted_status_wall_consistent,
 )
 from generalresearch.models.thl.survey.model import TaskActivity
 from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
 
 logger = logging.getLogger("WallManager")
 fake = Faker()
@@ -379,7 +378,7 @@ class WallManager(PostgresManager):
         a "progress bar" for eligible, live, surveys they've
         already attempted.
         """
-        query = f"""
+        query = """
         SELECT
             COUNT(1) as cnt
         FROM thl_wall w
@@ -396,7 +395,7 @@ class WallManager(PostgresManager):
             query=query,
             params=params,
         )
-        return res[0]["cnt"]
+        return res[0]["cnt"]  # type: ignore[union-attr]
 
     def filter_wall_attempts_paginated(
         self,
@@ -628,6 +627,7 @@ class WallCacheManager(PostgresManagerWithRedis):
     def update_attempts_redis_(self, attempts: List[WallAttempt], user_id: int) -> None:
         if not attempts:
             return None
+
         redis_key = self.get_cache_key_(user_id=user_id)
         # Make sure attempts is ordered, so the most recent is last
         # "LPUSH mylist a b c will result into a list containing c as first element,
@@ -636,11 +636,12 @@ class WallCacheManager(PostgresManagerWithRedis):
         json_res = [attempt.model_dump_json() for attempt in attempts]
         res = self.redis_client.lpush(redis_key, *json_res)
         self.redis_client.expire(redis_key, time=60 * 60 * 24)
+
         # So this doesn't grow forever, keep only the most recent 5k
         self.redis_client.ltrim(redis_key, 0, 4999)
         return None
 
-    def get_attempts(self, user_id: int) -> List[WallAttempt]:
+    def get_attempts(self, user_id: PositiveInt) -> List[WallAttempt]:
         """
         This is used in the GetOpportunityIDs call to get a list of surveys
         (& surveygroups) which should be excluded for this user. We don't

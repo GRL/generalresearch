@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import logging
-from datetime import timezone, datetime
-from typing import List, Collection, Optional, Set
+from datetime import datetime, timezone
+from typing import Collection, List, Optional, Set
 
 import pymysql
 from pymysql import IntegrityError
 
 from generalresearch.managers.criteria import CriteriaManager
 from generalresearch.managers.survey import SurveyManager
-from generalresearch.models.sago.survey import SagoSurvey, SagoCondition
+from generalresearch.models.sago.survey import SagoCondition, SagoSurvey
 
 logger = logging.getLogger()
 

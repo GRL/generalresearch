@@ -1,12 +1,12 @@
 import logging
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Callable, Collection, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Collection, Dict, List, Optional, Set, Tuple, Union
 from uuid import UUID
 
 import redis
 from more_itertools import chunked, flatten
-from pydantic import AwareDatetime, PositiveInt
+from pydantic import AwareDatetime, NonNegativeInt, PositiveInt
 from redis.exceptions import LockError, LockNotOwnedError
 
 from generalresearch.currency import LedgerCurrency
@@ -206,10 +206,10 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
     def create_tx_protected(
         self,
         lock_key: str,
-        condition: Callable,
+        condition: Callable[..., Union[bool, Tuple[bool, str]]],
         create_tx_func: Callable,
         flag_key: Optional[str] = None,
-        skip_flag_check=False,
+        skip_flag_check: bool = False,
     ) -> LedgerTransaction:
         """
         The complexity here is that even we protect a transaction logic with
@@ -287,12 +287,15 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
                 #   taking a long time, this would allow the tx to get retried
                 #   over and over every 4 seconds, which is not good.
                 rc.set(name=flag_name, value=1, ex=3600 * 24)
+
                 # Condition returns either bool or Tuple[bool, str]
                 condition_res = condition(self)
+
                 if isinstance(condition_res, tuple):
                     condition_res, condition_msg = condition_res
                 else:
                     condition_msg = ""
+
                 if condition_res is False:
                     rc.delete(flag_name)
                     raise LedgerTransactionConditionFailedError(condition_msg)
@@ -404,7 +407,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
 
     @staticmethod
     def process_get_tx_mysql_rows_json(
-        rows: Collection[Dict],
+        rows: Collection[Dict[str, Any]],
     ) -> List[LedgerTransaction]:
         """Columns: transaction_id, created, ext_description, tag,
             key_value_pairs, entries_json
@@ -493,7 +496,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         account_uuid: UUIDStr,
         time_start: Optional[datetime] = None,
         time_end: Optional[datetime] = None,
-    ):
+    ) -> NonNegativeInt:
         filter_str, params = self.make_filter_str(
             time_start=time_start,
             time_end=time_end,
@@ -533,7 +536,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         account_uuid: str,
         oldest_created: datetime,
         exclude_txs_before: Optional[datetime] = None,
-    ):
+    ) -> NonNegativeInt:
         """
         In a paginated list of txs, if I want to calculate
         a running balance, I need the balance in that account
@@ -560,6 +563,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
           AND lt.created < %(oldest_created)s
           {exclude_str};"""
         res = self.pg_config.execute_sql_query(query, params=params)
+
         return res[0]["balance_before_page"]
 
     def include_running_balance(
@@ -735,7 +739,7 @@ class LedgerMetadataManager(LedgerManagerBasePostgres):
 
     def get_tx_metadata_by_txs(
         self, transactions: List[LedgerTransaction]
-    ) -> Dict[PositiveInt, Dict]:
+    ) -> Dict[PositiveInt, Dict[str, Any]]:
         """
         Each transaction can have 1 metadata dictionary. However, each
         metadata dictionary can have multiple key/value pairs that
@@ -847,7 +851,7 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
         return account
 
     def get_account(
-        self, qualified_name: str, raise_on_error=True
+        self, qualified_name: str, raise_on_error: bool = True
     ) -> Optional[LedgerAccount]:
         res = self.get_account_many(
             qualified_names=[qualified_name], raise_on_error=raise_on_error
@@ -855,8 +859,8 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
         return res[0] if len(res) == 1 else None
 
     def get_account_many_(
-        self, qualified_names: List[str], raise_on_error=True
-    ) -> List[Dict]:
+        self, qualified_names: List[str], raise_on_error: bool = True
+    ) -> List[Dict[str, Any]]:
         assert len(qualified_names) <= 500, "chunk me"
 
         # qualified_name has a unique index so there can only be 0 or 1 match.
@@ -878,7 +882,7 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
         return list(res)
 
     def get_account_many(
-        self, qualified_names: List[str], raise_on_error=True
+        self, qualified_names: List[str], raise_on_error: bool = True
     ) -> List[LedgerAccount]:
         res = flatten(
             [
@@ -1103,7 +1107,7 @@ class LedgerManager(
         self,
         time_start: Optional[AwareDatetime] = None,
         time_end: Optional[AwareDatetime] = None,
-    ) -> Dict:
+    ) -> Dict[str, Any]:
 
         filter_str, params = self.make_filter_str(
             time_end=time_end,

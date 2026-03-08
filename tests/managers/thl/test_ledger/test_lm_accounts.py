@@ -19,8 +19,18 @@ from generalresearch.models.thl.ledger import (
 )
 
 if TYPE_CHECKING:
+    from pydantic import PositiveInt
+
     from generalresearch.config import GRLSettings
     from generalresearch.currency import LedgerCurrency
+    from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
+    from generalresearch.models.custom_types import AccountType, Direction, UUIDStr
+    from generalresearch.models.thl import Direction
+    from generalresearch.models.thl.ledger import (
+        AccountType,
+        LedgerAccount,
+        LedgerTransaction,
+    )
     from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.session import Session
     from generalresearch.models.thl.user import User
@@ -40,7 +50,11 @@ if TYPE_CHECKING:
 class TestLedgerAccountManagerNoResults:
 
     def test_get_account_no_results(
-        self, currency: "LedgerCurrency", kind, acct_id, lm
+        self,
+        currency: "LedgerCurrency",
+        kind: str,
+        acct_id: "UUIDStr",
+        lm: "LedgerManager",
     ):
         """Try to query for accounts that we know don't exist and confirm that
         we either get the expected None result or it raises the correct
@@ -59,7 +73,11 @@ class TestLedgerAccountManagerNoResults:
         assert lm.get_account(qualified_name=qn, raise_on_error=False) is None
 
     def test_get_account_no_results_many(
-        self, currency: "LedgerCurrency", kind, acct_id, lm
+        self,
+        currency: "LedgerCurrency",
+        kind: str,
+        acct_id: "UUIDStr",
+        lm: "LedgerManager",
     ):
         qn = ":".join([currency, kind, acct_id])
 
@@ -95,7 +113,11 @@ class TestLedgerAccountManagerNoResults:
 class TestLedgerAccountManagerCreate:
 
     def test_create_account_error_permission(
-        self, currency: "LedgerCurrency", account_type, direction, lm
+        self,
+        currency: "LedgerCurrency",
+        account_type: "AccountType",
+        direction: "Direction",
+        lm: "LedgerManager",
     ):
         """Confirm that the Permission values that are set on the Ledger Manger
         allow the Creation action to occur.
@@ -140,7 +162,13 @@ class TestLedgerAccountManagerCreate:
             str(excinfo.value) == "LedgerManager does not have sufficient permissions"
         )
 
-    def test_create(self, currency: "LedgerCurrency", account_type, direction, lm):
+    def test_create(
+        self,
+        currency: "LedgerCurrency",
+        account_type: "AccountType",
+        direction: "Direction",
+        lm: "LedgerManager",
+    ):
         """Confirm that the Permission values that are set on the Ledger Manger
         allow the Creation action to occur.
         """
@@ -161,10 +189,15 @@ class TestLedgerAccountManagerCreate:
 
         # Query for, and make sure the Account was saved in the DB
         res = lm.get_account(qualified_name=qn, raise_on_error=True)
+        assert res is not None
         assert account.uuid == res.uuid
 
     def test_get_or_create(
-        self, currency: "LedgerCurrency", account_type, direction, lm
+        self,
+        currency: "LedgerCurrency",
+        account_type: "AccountType",
+        direction: "Direction",
+        lm: "LedgerManager",
     ):
         """Confirm that the Permission values that are set on the Ledger Manger
         allow the Creation action to occur.
@@ -186,13 +219,15 @@ class TestLedgerAccountManagerCreate:
 
         # Query for, and make sure the Account was saved in the DB
         res = lm.get_account(qualified_name=qn, raise_on_error=True)
+        assert res is not None
         assert account.uuid == res.uuid
 
 
 class TestLedgerAccountManagerGet:
 
-    def test_get(self, ledger_account, lm):
+    def test_get(self, ledger_account: "LedgerAccount", lm: "LedgerManager"):
         res = lm.get_account(qualified_name=ledger_account.qualified_name)
+        assert res is not None
         assert res.uuid == ledger_account.uuid
 
         res = lm.get_account_many(qualified_names=[ledger_account.qualified_name])
@@ -207,7 +242,12 @@ class TestLedgerAccountManagerGet:
     #   creation working
 
     def test_get_balance_empty(
-        self, ledger_account, ledger_account_credit, ledger_account_debit, ledger_tx, lm
+        self,
+        ledger_account: "LedgerAccount",
+        ledger_account_credit: "LedgerAccount",
+        ledger_account_debit: "LedgerAccount",
+        ledger_tx: "LedgerTransaction",
+        lm: "LedgerManager",
     ):
         res = lm.get_account_balance(account=ledger_account)
         assert res == 0
@@ -221,12 +261,12 @@ class TestLedgerAccountManagerGet:
     @pytest.mark.parametrize("n_times", range(5))
     def test_get_account_filtered_balance(
         self,
-        ledger_account,
-        ledger_account_credit,
-        ledger_account_debit,
-        ledger_tx,
-        n_times,
-        lm,
+        ledger_account: "LedgerAccount",
+        ledger_account_credit: "LedgerAccount",
+        ledger_account_debit: "LedgerAccount",
+        ledger_tx: "LedgerTransaction",
+        n_times: "PositiveInt",
+        lm: "LedgerManager",
     ):
         """Try searching for random metadata and confirm it's always 0 because
         Tx can be found.
@@ -279,6 +319,8 @@ class TestLedgerAccountManagerGet:
             == rand_amount
         )
 
-    def test_get_balance_timerange_empty(self, ledger_account, lm):
+    def test_get_balance_timerange_empty(
+        self, ledger_account: "LedgerAccount", lm: "LedgerManager"
+    ):
         res = lm.get_account_balance_timerange(account=ledger_account)
         assert res == 0

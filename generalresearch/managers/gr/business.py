@@ -1,4 +1,4 @@
-from typing import Optional, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional
 from uuid import UUID, uuid4
 
 from psycopg import sql
@@ -6,20 +6,20 @@ from pydantic import PositiveInt
 from pydantic_extra_types.phone_numbers import PhoneNumber
 
 from generalresearch.managers.base import (
-    PostgresManagerWithRedis,
     PostgresManager,
+    PostgresManagerWithRedis,
 )
 from generalresearch.models.custom_types import UUIDStr
 
 if TYPE_CHECKING:
-    from generalresearch.models.gr.team import Team
     from generalresearch.models.gr.business import (
         Business,
-        BusinessType,
         BusinessAddress,
         BusinessBankAccount,
+        BusinessType,
         TransferMethod,
     )
+    from generalresearch.models.gr.team import Team
 
 
 class BusinessBankAccountManager(PostgresManager):
@@ -27,7 +27,7 @@ class BusinessBankAccountManager(PostgresManager):
     def create_dummy(
         self,
         business_id: PositiveInt,
-        uuid: Optional[UUID] = None,
+        uuid: Optional[UUIDStr] = None,
         transfer_method: Optional["TransferMethod"] = None,
         account_number: Optional[str] = None,
         routing_number: Optional[str] = None,
@@ -36,21 +36,14 @@ class BusinessBankAccountManager(PostgresManager):
     ):
         from generalresearch.models.gr.business import TransferMethod
 
-        uuid = uuid or uuid4().hex
-        transfer_method = transfer_method or TransferMethod.ACH
-        account_number = account_number or uuid4().hex[:6]
-        routing_number = routing_number or uuid4().hex[:6]
-        iban = iban or uuid4().hex[:6]
-        swift = swift or uuid4().hex[:6]
-
         return self.create(
             business_id=business_id,
-            uuid=uuid,
-            transfer_method=transfer_method,
-            account_number=account_number,
-            routing_number=routing_number,
-            iban=iban,
-            swift=swift,
+            uuid=uuid or uuid4().hex,
+            transfer_method=transfer_method or TransferMethod.ACH,
+            account_number=account_number or uuid4().hex[:6],
+            routing_number=routing_number or uuid4().hex[:6],
+            iban=iban or uuid4().hex[:6],
+            swift=swift or uuid4().hex[:6],
         )
 
     def create(
@@ -95,7 +88,7 @@ class BusinessBankAccountManager(PostgresManager):
                     ),
                     params=data,
                 )
-                ba_id = c.fetchone()["id"]
+                ba_id = c.fetchone()["id"]  # type: ignore
             conn.commit()
 
         ba.id = ba_id
@@ -194,14 +187,15 @@ class BusinessAddressManager(PostgresManager):
                         (uuid, line_1, line_2, city, country, state, 
                          postal_code, phone_number, business_id) 
                     VALUES 
-                        (%(uuid)s, %(line_1)s, %(line_2)s, %(city)s, %(country)s, %(state)s, 
-                         %(postal_code)s, %(phone_number)s, %(business_id)s)
+                        (%(uuid)s, %(line_1)s, %(line_2)s, %(city)s, 
+                         %(country)s, %(state)s, %(postal_code)s, 
+                         %(phone_number)s, %(business_id)s)
                     RETURNING id
                     """
                     ),
                     params=data,
                 )
-                ba_id = c.fetchone()["id"]
+                ba_id = c.fetchone()["id"]  # type: ignore
             conn.commit()
 
         ba.id = ba_id
@@ -304,7 +298,7 @@ class BusinessManager(PostgresManagerWithRedis):
                     ),
                     params=data,
                 )
-                business_id = c.fetchone()["id"]
+                business_id = c.fetchone()["id"]  # type: ignore
             conn.commit()
         business.id = business_id
 

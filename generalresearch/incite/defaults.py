@@ -9,11 +9,11 @@ from generalresearch.incite.collections.thl_marketplaces import (
     SpectrumSurveyTimeseriesCollection,
 )
 from generalresearch.incite.collections.thl_web import (
-    SessionDFCollection,
-    WallDFCollection,
-    UserDFCollection,
-    TaskAdjustmentDFCollection,
     LedgerDFCollection,
+    SessionDFCollection,
+    TaskAdjustmentDFCollection,
+    UserDFCollection,
+    WallDFCollection,
 )
 from generalresearch.incite.mergers import MergeType
 from generalresearch.incite.mergers.foundations.enriched_session import (
@@ -32,7 +32,6 @@ from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 from generalresearch.incite.mergers.ym_survey_wall import YMSurveyWallMerge
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.sql_helper import SqlHelper
-
 
 # --- THL Web --- #
 

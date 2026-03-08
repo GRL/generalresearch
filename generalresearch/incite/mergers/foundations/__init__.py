@@ -1,8 +1,9 @@
 import logging
-from typing import Collection, List, Dict
+from typing import Any, Collection, Dict, List
 
 import pandas as pd
 from more_itertools import chunked
+from pydantic import PositiveInt
 
 from generalresearch.pg_helper import PostgresConfig
 
@@ -10,7 +11,7 @@ LOG = logging.getLogger("incite")
 
 
 def annotate_product_id(
-    df: pd.DataFrame, pg_config: PostgresConfig, chunksize=500
+    df: pd.DataFrame, pg_config: PostgresConfig, chunksize: PositiveInt = 500
 ) -> pd.DataFrame:
     """
     Dask map_partitions is being called on a dask df. However, the function
@@ -27,7 +28,7 @@ def annotate_product_id(
     assert len(user_ids) >= 1, "must have user_ids"
     LOG.warning(f"annotate_product_id.len(user_ids): {len(user_ids)}")
 
-    res: List[Dict] = []
+    res: List[Dict[str, Any]] = []
     with pg_config.make_connection() as conn:
         for chunk in chunked(user_ids, chunksize):
             try:
@@ -53,15 +54,17 @@ def annotate_product_id(
 def lookup_product_and_team_id(
     user_ids: Collection[int],
     pg_config: PostgresConfig,
-) -> List[Dict]:
+) -> List[Dict[str, Any]]:
+
     user_ids = set(user_ids)
     LOG.info(f"lookup_product_and_team_id: {len(user_ids)}")
     LOG.info({type(x) for x in user_ids})
+
     assert all(type(x) is int for x in user_ids), "must pass all integers"
     assert len(user_ids) >= 1, "must have user_ids"
     assert len(user_ids) <= 1000, "you should chunk this bro"
 
-    res: List[Dict] = []
+    res: List[Dict[str, Any]] = []
     with pg_config.make_connection() as conn:
         try:
             with conn.cursor() as c:
@@ -87,7 +90,7 @@ def lookup_product_and_team_id(
 
 
 def annotate_product_and_team_id(
-    df: pd.DataFrame, pg_config: PostgresConfig, chunksize=500
+    df: pd.DataFrame, pg_config: PostgresConfig, chunksize: PositiveInt = 500
 ) -> pd.DataFrame:
     """
     Dask map_partitions is being called on a dask df. However, the function
@@ -95,8 +98,8 @@ def annotate_product_and_team_id(
     df AS a pandas df.
 
     expects column 'user_id', adds column 'product_id' and team_id
-
     """
+
     LOG.info(f"annotate_product_and_team_id.chunk: {df.shape}")
     assert "user_id" in df.columns, "must have a user_id column to join on"
 
@@ -105,7 +108,7 @@ def annotate_product_and_team_id(
     assert len(user_ids) >= 1, "must have user_ids"
     LOG.warning(f"annotate_product_and_team_id.len(user_ids): {len(user_ids)}")
 
-    res: List[Dict] = []
+    res: List[Dict[str, Any]] = []
     with pg_config.make_connection() as conn:
         for chunk in chunked(user_ids, chunksize):
             try:
@@ -133,7 +136,7 @@ def annotate_product_and_team_id(
 
 
 def annotate_product_user(
-    df: pd.DataFrame, pg_config: PostgresConfig, chunksize=500
+    df: pd.DataFrame, pg_config: PostgresConfig, chunksize: PositiveInt = 500
 ) -> pd.DataFrame:
     LOG.info(f"annotate_product_user.chunk: {df.shape}")
     assert "user_id" in df.columns, "must have a user_id column to join on"
@@ -143,7 +146,7 @@ def annotate_product_user(
     assert len(user_ids) >= 1, "must have user_ids"
     LOG.warning(f"annotate_product_user.len(user_ids): {len(user_ids)}")
 
-    res: List[Dict] = []
+    res: List[Dict[str, Any]] = []
     with pg_config.make_connection() as conn:
         for chunk in chunked(user_ids, chunksize):
             try:

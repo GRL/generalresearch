@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Set
 
-from pandera import DataFrameSchema, Column, Check, Index
+from pandera import Check, Column, DataFrameSchema, Index
 
 from generalresearch.incite.schemas import ARCHIVE_AFTER
 from generalresearch.locales import Localelator

@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Collection, Optional, List, Dict
+from typing import Collection, Dict, List, Optional
 from uuid import UUID
 
 from generalresearch.managers.base import SqlManager
@@ -12,7 +12,7 @@ class UserPidManager(SqlManager, ABC):
     For getting user pids across marketplaces
     """
 
-    SOURCE: Source = None
+    SOURCE: Optional[Source] = None
     TABLE_NAME = None
 
     def filter(

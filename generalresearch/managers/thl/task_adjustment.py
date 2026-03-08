@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import Optional
+from typing import List, Optional
 
 from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
@@ -13,9 +13,10 @@ from generalresearch.managers.thl.ledger_manager.thl_ledger import (
 )
 from generalresearch.managers.thl.session import SessionManager
 from generalresearch.managers.thl.wall import WallManager
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.definitions import (
-    WallAdjustedStatus,
     Status,
+    WallAdjustedStatus,
 )
 from generalresearch.models.thl.session import (
     _check_adjusted_status_wall_consistent,
@@ -35,11 +36,11 @@ class TaskAdjustmentManager(PostgresManager):
 
     def filter_by_wall_uuid(
         self,
-        wall_uuid,
+        wall_uuid: UUIDStr,
         page: int = 1,
         size: int = 100,
         order_by: Optional[str] = "-created",
-    ):
+    ) -> List[TaskAdjustmentEvent]:
         params = {"wall_uuid": wall_uuid}
         order_by_str = parse_order_by(order_by)
         paginated_filter_str = "LIMIT %(limit)s OFFSET %(offset)s"
@@ -67,26 +68,34 @@ class TaskAdjustmentManager(PostgresManager):
         )
         return [TaskAdjustmentEvent.model_validate(x) for x in res]
 
-    def create_task_adjustment_event(self, event: TaskAdjustmentEvent):
-        # Only insert a new record into thl_taskadjustment if the status for this wall_uuid
-        #   is different from the last one. Don't need the same thing twice
+    def create_task_adjustment_event(
+        self, event: TaskAdjustmentEvent
+    ) -> TaskAdjustmentEvent:
+
+        # Only insert a new record into thl_taskadjustment if the status
+        #   for this wall_uuid is different from the last one. Don't
+        #   need the same thing twice
         res = self.filter_by_wall_uuid(
             wall_uuid=event.wall_uuid, page=1, size=1, order_by="-created"
         )
 
         if res and event.adjusted_status == res[0].adjusted_status:
-            # We already have this and it's the same change. Still call the wall_manager.adjust_status
-            #   and ledger code b/c 1) it also won't do the same thing twice, and 2) we could be out of sync
-            #   so check anyway.
+            # We already have this and it's the same change. Still call
+            #   the wall_manager.adjust_status and ledger code b/c 1) it
+            #   also won't do the same thing twice, and 2) we could be out
+            #   of sync so check anyway.
             return res[0]
 
         self.pg_config.execute_write(
-            """
+            query="""
         INSERT INTO thl_taskadjustment
-        (uuid, adjusted_status, ext_status_code, amount, alerted,
-        created, user_id, wall_uuid, started, source, survey_id)
-        VALUES (%(uuid)s, %(adjusted_status)s, %(ext_status_code)s, %(amount)s, %(alerted)s,
-        %(created)s, %(user_id)s, %(wall_uuid)s, %(started)s, %(source)s, %(survey_id)s)
+            (uuid, adjusted_status, ext_status_code, 
+            amount, alerted, created, user_id, 
+            wall_uuid, started, source, survey_id)
+        VALUES (
+            %(uuid)s, %(adjusted_status)s, %(ext_status_code)s, 
+            %(amount)s, %(alerted)s, %(created)s, %(user_id)s, 
+            %(wall_uuid)s, %(started)s, %(source)s, %(survey_id)s)
         """,
             params=event.model_dump(mode="json"),
         )
@@ -100,13 +109,15 @@ class TaskAdjustmentManager(PostgresManager):
         alert_time: Optional[datetime] = None,
         ext_status_code: Optional[str] = None,
         adjusted_cpi: Optional[Decimal] = None,
-    ):
+    ) -> None:
         """
         We just got an adjustment notification from a marketplace.
 
         See note on TaskAdjustmentEvent.adjusted_status.
-        These fields (specifically adjusted_status and adjusted_cpi) are CHANGES/DELTAS
-            as just communicated by the marketplace, not what the Wall's final adjusted_* will be.
+
+        These fields (specifically adjusted_status and adjusted_cpi) are
+            CHANGES/DELTAS as just communicated by the marketplace, not
+            what the Wall's final adjusted_* will be.
         """
         alert_time = alert_time or datetime.now(tz=timezone.utc)
         assert alert_time.tzinfo == timezone.utc
@@ -129,9 +140,10 @@ class TaskAdjustmentManager(PostgresManager):
         else:
             raise ValueError
 
-        # If the wall event is a complete -> fail -> complete, we are going to
-        #   receive an adjusted_status.adjust_to_complete, but internally,
-        #   this is going to set the adjusted_status to None (b/c it was already a complete)
+        # If the wall event is a complete -> fail -> complete, we are going
+        #   to receive an adjusted_status.adjust_to_complete, but internally,
+        #   this is going to set the adjusted_status to None (b/c it was
+        #   already a complete)
         if (
             wall.status == Status.COMPLETE
             and adjusted_status == WallAdjustedStatus.ADJUSTED_TO_COMPLETE
@@ -185,3 +197,5 @@ class TaskAdjustmentManager(PostgresManager):
         session.wall_events = self.wall_manager.get_wall_events(session.id)
         self.session_manager.adjust_status(session)
         ledger_manager.create_tx_bp_adjustment(session, created=alert_time)
+
+        return None

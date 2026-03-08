@@ -1,5 +1,5 @@
 import logging
-from typing import Literal
+from typing import Any, Dict, Literal, Optional
 
 import dask.dataframe as dd
 import pandas as pd
@@ -11,8 +11,8 @@ from generalresearch.incite.collections.thl_web import (
 )
 from generalresearch.incite.mergers import (
     MergeCollection,
-    MergeType,
     MergeCollectionItem,
+    MergeType,
 )
 from generalresearch.incite.mergers.foundations import (
     annotate_product_and_team_id,
@@ -40,7 +40,7 @@ class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
         enriched_wall: EnrichedWallMerge,
         pg_config: PostgresConfig,
         client: Client,
-        client_resources=None,
+        client_resources: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         TaskAdjustments are always partial because they could be revoked
@@ -61,7 +61,7 @@ class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
         if len(task_adj_coll_items) == 0:
             raise Exception("TaskAdjColl item collection failed")
 
-        ddf: dd.DataFrame = task_adj_coll.ddf(
+        ddf: Optional[dd.DataFrame] = task_adj_coll.ddf(
             items=task_adj_coll_items,
             include_partial=True,
             force_rr_latest=False,
@@ -114,6 +114,7 @@ class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
 
         assert str(ddf.wall_uuid.dtype) == "string"
         assert str(wall_ddf.index.dtype) == "string"
+
         ddf = ddf.merge(
             wall_ddf,
             left_on="wall_uuid",

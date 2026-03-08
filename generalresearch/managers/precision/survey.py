@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import timezone, datetime
-from typing import List, Collection, Optional
+from datetime import datetime, timezone
+from typing import Collection, List, Optional
 
 import pymysql
 from pymysql import IntegrityError
@@ -10,8 +10,8 @@ from pymysql import IntegrityError
 from generalresearch.managers.criteria import CriteriaManager
 from generalresearch.managers.survey import SurveyManager
 from generalresearch.models.precision.survey import (
-    PrecisionSurvey,
     PrecisionCondition,
+    PrecisionSurvey,
 )
 
 logger = logging.getLogger()
@@ -62,8 +62,10 @@ class PrecisionSurveyManager(SurveyManager):
         :param is_live: filters on is_live field
         :param updated_since: filters on "> last_updated"
         """
+
         filters = []
         params = {}
+
         if country_iso:
             params["country_iso"] = country_iso
             filters.append("`country_iso` = %(country_iso)s")
@@ -186,12 +188,12 @@ class PrecisionSurveyManager(SurveyManager):
         country_data = [(survey.survey_id, c) for c in survey.country_isos]
         # Turn ON countries in this survey's list of countries, insert row, if already exists, set active.
         c.executemany(
-            f"""
+            query=f"""
         INSERT INTO `thl-precision`.`precision_survey_country`
         (survey_id, country_iso, is_active) VALUES
         (%s, %s, TRUE) ON DUPLICATE KEY UPDATE is_active = TRUE;
         """,
-            country_data,
+            args=country_data,
         )
 
         # Same thing with languages
@@ -205,12 +207,12 @@ class PrecisionSurveyManager(SurveyManager):
         )
         language_data = [(survey.survey_id, c) for c in survey.language_isos]
         c.executemany(
-            f"""
+            query=f"""
         INSERT INTO `thl-precision`.`precision_survey_language`
         (survey_id, language_iso, is_active) VALUES
         (%s, %s, TRUE) ON DUPLICATE KEY UPDATE is_active = TRUE;
         """,
-            language_data,
+            args=language_data,
         )
         conn.commit()
 

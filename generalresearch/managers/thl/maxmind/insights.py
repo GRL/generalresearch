@@ -1,10 +1,8 @@
 import logging
 from typing import Optional
 
-import geoip2.database
 import geoip2.models
 import geoip2.webservice
-import slack
 from geoip2.errors import (
     AddressNotFoundError,
     AuthenticationError,

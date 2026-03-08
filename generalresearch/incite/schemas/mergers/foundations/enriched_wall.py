@@ -1,15 +1,15 @@
 from datetime import timedelta
 
 import pandas as pd
-from pandera import DataFrameSchema, Column, Check, Index
+from pandera import Check, Column, DataFrameSchema, Index
 
-from generalresearch.incite.schemas import PARTITION_ON, ARCHIVE_AFTER
+from generalresearch.incite.schemas import ARCHIVE_AFTER, PARTITION_ON
 from generalresearch.locales import Localelator
 from generalresearch.models import DeviceType, Source
 from generalresearch.models.thl.definitions import (
+    ReportValue,
     Status,
     StatusCode1,
-    ReportValue,
     WallStatusCode2,
 )
 

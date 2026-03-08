@@ -1,12 +1,12 @@
 from datetime import datetime
 
 from pandera import (
-    DataFrameSchema,
-    Column,
     Check,
-    Parser,
-    MultiIndex,
+    Column,
+    DataFrameSchema,
     Index,
+    MultiIndex,
+    Parser,
     Timestamp,
 )
 

@@ -7,9 +7,9 @@ from generalresearch.managers.base import (
     PostgresManagerWithRedis,
 )
 from generalresearch.managers.thl.ipinfo import (
-    IPInformationManager,
-    IPGeonameManager,
     GeoIpInfoManager,
+    IPGeonameManager,
+    IPInformationManager,
 )
 from generalresearch.managers.thl.maxmind.basic import MaxmindBasicManager
 from generalresearch.managers.thl.maxmind.insights import (
@@ -18,9 +18,9 @@ from generalresearch.managers.thl.maxmind.insights import (
 )
 from generalresearch.models.custom_types import IPvAnyAddressStr
 from generalresearch.models.thl.ipinfo import (
-    IPInformation,
-    IPGeoname,
     GeoIPInformation,
+    IPGeoname,
+    IPInformation,
     normalize_ip,
 )
 from generalresearch.pg_helper import PostgresConfig

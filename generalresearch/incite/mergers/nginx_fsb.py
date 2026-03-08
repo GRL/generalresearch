@@ -1,14 +1,13 @@
 import json
 import logging
-
-from sentry_sdk import capture_exception
 import re
 from datetime import datetime, timedelta
-from typing import Literal, List
+from typing import List, Literal
 from urllib.parse import parse_qs, urlsplit
 
 import dask.bag as db
 import pandas as pd
+from sentry_sdk import capture_exception
 
 from generalresearch.incite.mergers import (
     MergeCollection,

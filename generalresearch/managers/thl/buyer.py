@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
-from typing import Collection, Dict, Optional
+from typing import Collection, Dict, List, Optional
 
-from generalresearch.managers.base import PostgresManager, Permission
+from generalresearch.managers.base import Permission, PostgresManager
 from generalresearch.models import Source
 from generalresearch.models.thl.survey.buyer import Buyer
 from generalresearch.pg_helper import PostgresConfig
@@ -42,10 +42,11 @@ class BuyerManager(PostgresManager):
         except KeyError:
             return None
 
-    def bulk_get_or_create(self, source: Source, codes: Collection[str]):
+    def bulk_get_or_create(self, source: Source, codes: Collection[str]) -> List[Buyer]:
         now = datetime.now(tz=timezone.utc)
         buyers = []
         params_seq = []
+
         for code in codes:
             source_code = f"{source.value}:{code}"
             if source_code in self.source_code_buyer:
@@ -83,9 +84,10 @@ class BuyerManager(PostgresManager):
         # Not required, just for ease of testing/deterministic
         buyers = sorted(buyers, key=lambda x: (x.source, x.code))
         assert len(buyers) == len(codes), "something went wrong"
+
         return buyers
 
-    def update(self, buyer: Buyer):
+    def update(self, buyer: Buyer) -> None:
         # label is the only thing that can be updated
         query = """
         UPDATE marketplace_buyer
@@ -103,7 +105,7 @@ class BuyerManager(PostgresManager):
             with conn.cursor() as c:
                 c.execute(query, params=params)
                 assert c.rowcount == 1
-                pk = c.fetchone()["id"]
+                pk = c.fetchone()["id"]  # type: ignore
             if buyer.id is not None:
                 assert buyer.id == pk
             else:

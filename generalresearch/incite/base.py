@@ -8,20 +8,21 @@ import shutil
 import subprocess
 import warnings
 from concurrent.futures import Future
-from datetime import datetime, timezone, timedelta
-from os import access, R_OK, listdir
-from os.path import join as pjoin, isdir
+from datetime import datetime, timedelta, timezone
+from os import R_OK, access, listdir
+from os.path import isdir
+from os.path import join as pjoin
 from pathlib import Path
 from sys import platform
 from typing import (
-    Optional,
-    Tuple,
-    List,
-    Sequence,
-    Any,
-    Union,
-    Callable,
     TYPE_CHECKING,
+    Any,
+    Callable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
 )
 from uuid import uuid4
 
@@ -35,12 +36,12 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     DirectoryPath,
-    PrivateAttr,
     Field,
-    model_validator,
     FilePath,
-    field_validator,
+    PrivateAttr,
     ValidationInfo,
+    field_validator,
+    model_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
 from sentry_sdk import capture_exception
@@ -54,11 +55,11 @@ from generalresearch.incite.schemas import (
 from generalresearch.models.custom_types import AwareDatetimeISO
 
 if TYPE_CHECKING:
-    from generalresearch.incite.mergers import MergeType, MergeCollection
+    from generalresearch.incite.collections import DFCollection
     from generalresearch.incite.collections.thl_marketplaces import (
         DFCollectionType,
     )
-    from generalresearch.incite.collections import DFCollection
+    from generalresearch.incite.mergers import MergeCollection, MergeType
 
     Collection = Union[DFCollection, MergeCollection]
 
@@ -93,10 +94,10 @@ class GRLDatasets(BaseModel):
 
     @model_validator(mode="after")
     def check_data_src_and_et_path(self) -> Self:
-        from generalresearch.incite.mergers import MergeType
         from generalresearch.incite.collections.thl_marketplaces import (
             DFCollectionType,
         )
+        from generalresearch.incite.mergers import MergeType
 
         # Create the base folders and confirm we have read access
         self.data_src.mkdir(parents=True, exist_ok=True)

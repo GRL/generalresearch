@@ -1,10 +1,11 @@
 import json
 from collections import defaultdict
-from datetime import timedelta, datetime, timezone
-from typing import Dict, Union, Set, List, Collection, Optional, Tuple
+from datetime import datetime, timedelta, timezone
+from typing import Any, Collection, Dict, List, Optional, Set, Tuple, Union
 from uuid import UUID
 
 from psycopg import Cursor
+from pydantic import PositiveInt
 
 from generalresearch.managers.base import (
     Permission,
@@ -117,8 +118,9 @@ class UserUpkManager(PostgresManagerWithRedis):
         return [UpkQuestionAnswer.model_validate(x) for x in res]
 
     def get_user_upk_simple(
-        self, user_id, country_iso="us"
+        self, user_id: PositiveInt, country_iso: str = "us"
     ) -> Dict[str, Union[Set[str], str, float]]:
+
         res = self.get_user_upk(user_id=user_id)
         res = [x for x in res if x.country_iso == country_iso]
         d: Dict[str, Union[Set[str], str, float]] = defaultdict(set)
@@ -127,16 +129,19 @@ class UserUpkManager(PostgresManagerWithRedis):
                 d[x.property_label] = x.value
             else:
                 d[x.property_label].add(x.value)
+
         return dict(d)
 
     def get_age_gender(
-        self, user_id, country_iso="us"
+        self, user_id: PositiveInt, country_iso: str = "us"
     ) -> Tuple[Optional[int], Optional[str]]:
+
         # Returns an integer year for age, and {'male', 'female', 'other_gender'}
         d = self.get_user_upk_simple(user_id, country_iso)
         age = d.get("age_in_years")
         if age is not None:
             age = int(age)
+
         gender = d.get("gender")
         return age, gender
 
@@ -145,7 +150,9 @@ class UserUpkManager(PostgresManagerWithRedis):
             country_iso=country_iso
         )
 
-    def populate_user_upk_from_dict(self, upk_ans_dict):
+    def populate_user_upk_from_dict(
+        self, upk_ans_dict: List[Dict[str, Any]]
+    ) -> List[UpkQuestionAnswer]:
 
         country_isos = {x["country_iso"] for x in upk_ans_dict}
         assert len(country_isos) == 1

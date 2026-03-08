@@ -2,11 +2,11 @@ from datetime import timedelta
 
 import pandas as pd
 from more_itertools import flatten
-from pandera import DataFrameSchema, Column, Check, Index
+from pandera import Check, Column, DataFrameSchema, Index
 
 from generalresearch.incite.schemas import ARCHIVE_AFTER, ORDER_KEY, PARTITION_ON
 from generalresearch.incite.schemas.thl_web import TxSchema
-from generalresearch.models.thl.ledger import TransactionType, Direction
+from generalresearch.models.thl.ledger import Direction, TransactionType
 
 """
 - In reality, a multi-index would be appropriate here, but dask does not support this, so we're keeping it flat.

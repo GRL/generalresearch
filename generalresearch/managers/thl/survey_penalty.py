@@ -2,7 +2,9 @@ import json
 import threading
 from collections import defaultdict
 from datetime import timedelta
-from typing import Optional, List, Tuple, Dict
+from typing import Dict, List, Optional, Tuple
+
+from cachetools import TTLCache, cachedmethod
 
 from generalresearch.decorators import LOG
 from generalresearch.managers.base import RedisManager
@@ -11,12 +13,11 @@ from generalresearch.models.custom_types import (
 )
 from generalresearch.models.thl.survey.penalty import (
     BPSurveyPenalty,
-    TeamSurveyPenalty,
-    PenaltyListAdapter,
     Penalty,
+    PenaltyListAdapter,
+    TeamSurveyPenalty,
 )
 from generalresearch.redis_helper import RedisConfig
-from cachetools import cachedmethod, TTLCache
 
 
 class SurveyPenaltyManager(RedisManager):

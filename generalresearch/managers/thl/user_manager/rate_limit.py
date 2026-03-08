@@ -1,6 +1,6 @@
 import logging
 
-from limits import storage, strategies, RateLimitItemPerHour, RateLimitItem
+from limits import RateLimitItem, RateLimitItemPerHour, storage, strategies
 from limits.limits import TIME_TYPES, safe_string
 from pydantic import RedisDsn
 

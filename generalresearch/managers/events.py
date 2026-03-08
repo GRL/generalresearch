@@ -1,34 +1,34 @@
 import logging
+import math
 import socket
 import threading
 import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Set, Optional, TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
 
-import math
 from redis.client import PubSub, Redis
 
 from generalresearch.managers.base import RedisManager
 from generalresearch.models import Source
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.events import (
-    StatsMessage,
-    EventMessage,
+    AggregateBySource,
     EventEnvelope,
+    EventMessage,
     EventType,
-    TaskEnterPayload,
-    ServerToClientMessageAdapter,
+    MaxGaugeBySource,
     ServerToClientMessage,
-    TaskFinishPayload,
+    ServerToClientMessageAdapter,
     SessionEnterPayload,
     SessionFinishPayload,
-    AggregateBySource,
-    MaxGaugeBySource,
+    StatsMessage,
+    TaskEnterPayload,
+    TaskFinishPayload,
     TaskStatsSnapshot,
 )
 from generalresearch.models.thl.definitions import Status
-from generalresearch.models.thl.session import Wall, Session
+from generalresearch.models.thl.session import Session, Wall
 from generalresearch.models.thl.user import User
 
 if TYPE_CHECKING:
@@ -309,7 +309,9 @@ class TaskStatsManager(RedisManager):
     def get_active_sources(self) -> List[Source]:
         return [Source(x) for x in self.redis_client.hkeys("live_task_count")]
 
-    def get_task_stats_raw(self):
+    def get_task_stats_raw(
+        self,
+    ) -> Dict[str, Union[AggregateBySource, MaxGaugeBySource]]:
         sources = self.get_active_sources()
 
         pipe = self.redis_client.pipeline(transaction=False)
@@ -365,13 +367,15 @@ class TaskStatsManager(RedisManager):
             "live_tasks_max_payout": live_tasks_max_payout,
         }
 
-    def clear_task_stats(self):
+    def clear_task_stats(self) -> None:
         keys = self.task_stats.copy()
         keys.extend([f"task_created_count_last_1h:{source.value}" for source in Source])
         keys.extend(
             [f"task_created_count_last_24h:{source.value}" for source in Source]
         )
         self.redis_client.delete(*keys)
+
+        return None
 
 
 class SessionStatsManager(RedisManager):
@@ -633,9 +637,6 @@ class EventManager(StatsManager):
     def get_active_subscribers(self) -> Set[UUIDStr]:
         res = self.redis_client.pubsub_channels(f"{self.cache_prefix}:event-channel:*")
         product_ids = {x.rsplit(":", 1)[-1] for x in res}
-        # product_ids.update(
-        #     {"fc14e741b5004581b30e6478363414df", "888dbc589987425fa846d6e2a8daed04"}
-        # )
         return product_ids
 
     def stats_worker(self):
@@ -647,7 +648,7 @@ class EventManager(StatsManager):
             finally:
                 time.sleep(60)
 
-    def stats_worker_task(self):
+    def stats_worker_task(self) -> None:
         """
         Only a single worker will be running. It'll be responsible
         for periodic publication of summary/stats messages.
@@ -681,6 +682,8 @@ class EventManager(StatsManager):
                 self.influx_client.write_points([point])
 
         self.redis_client.delete(lock_key)
+
+        return None
 
     def make_influx_point(self, channel: str, numsub: int):
         return {

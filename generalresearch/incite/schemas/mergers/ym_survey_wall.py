@@ -1,9 +1,9 @@
 from datetime import timedelta
 
-from pandera import DataFrameSchema, Column, Check, Index
+from pandera import Check, Column, DataFrameSchema, Index
 
-from generalresearch.incite.schemas import ORDER_KEY, ARCHIVE_AFTER
-from generalresearch.incite.schemas.thl_web import THLWallSchema, THLSessionSchema
+from generalresearch.incite.schemas import ARCHIVE_AFTER, ORDER_KEY
+from generalresearch.incite.schemas.thl_web import THLSessionSchema, THLWallSchema
 
 thl_wall_columns = THLWallSchema.columns.copy()
 

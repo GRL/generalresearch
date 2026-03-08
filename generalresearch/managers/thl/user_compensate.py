@@ -3,6 +3,8 @@ from decimal import Decimal
 from typing import Optional
 from uuid import uuid4
 
+from pydantic import NonNegativeInt
+
 from generalresearch.managers.thl.ledger_manager.thl_ledger import (
     ThlLedgerManager,
 )
@@ -13,14 +15,14 @@ from generalresearch.models.thl.user import User
 def user_compensate(
     ledger_manager: ThlLedgerManager,
     user: User,
-    amount_int: int,
-    ext_ref=None,
-    description=None,
+    amount_int: NonNegativeInt,
+    ext_ref: Optional[str] = None,
+    description: Optional[str] = None,
     skip_flag_check: Optional[bool] = False,
 ) -> UUIDStr:
     """
-    Compensate a user. aka "bribe". The money is paid out of the BP's wallet balance.
-    Amount is in USD cents.
+    Compensate a user. aka "bribe". The money is paid out of the BP's
+    wallet balance. Amount is in USD cents.
     """
     pg_config = ledger_manager.pg_config
     redis_client = ledger_manager.redis_client
@@ -44,7 +46,7 @@ def user_compensate(
     # If there is an external reference ID, don't allow it to be used twice
     if ext_ref:
         res = pg_config.execute_sql_query(
-            query=f"""
+            query="""
                 SELECT 1 
                 FROM event_bribe
                 WHERE ext_ref_id = %s
@@ -59,9 +61,10 @@ def user_compensate(
     # Create a new bribe instance
     account = ledger_manager.get_account_or_create_user_wallet(user)
     pg_config.execute_write(
-        query=f"""
+        query="""
         INSERT INTO event_bribe
-            (uuid, credit_account_uuid, created, amount, ext_ref_id, description, data) 
+            (uuid, credit_account_uuid, created, 
+            amount, ext_ref_id, description, data) 
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
         params=[

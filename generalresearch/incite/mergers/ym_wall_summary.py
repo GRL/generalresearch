@@ -1,5 +1,5 @@
-from datetime import timedelta, datetime, time
-from typing import Literal, List, Optional, Type
+from datetime import datetime, time, timedelta
+from typing import List, Literal, Optional, Type
 
 import dask.dataframe as dd
 import pandas as pd
@@ -12,8 +12,8 @@ from generalresearch.incite.collections.thl_web import (
 )
 from generalresearch.incite.mergers import (
     MergeCollection,
-    MergeType,
     MergeCollectionItem,
+    MergeType,
 )
 from generalresearch.incite.mergers.foundations.user_id_product import (
     UserIdProductMerge,

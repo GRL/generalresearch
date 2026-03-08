@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from functools import lru_cache
-from typing import Collection, Optional, List
+from typing import Collection, List, Optional
 from uuid import uuid4
 
 from pydantic import RedisDsn
@@ -35,7 +35,7 @@ class UserManager:
         redis: Optional[RedisDsn] = None,
         pg_config: Optional[PostgresConfig] = None,
         pg_config_rr: Optional[PostgresConfig] = None,
-        sql_permissions: Collection[Permission] = None,
+        sql_permissions: Optional[Collection[Permission]] = None,
         cache_prefix: Optional[str] = None,
         redis_timeout: Optional[float] = None,
     ):

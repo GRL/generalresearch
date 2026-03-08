@@ -1,5 +1,5 @@
 import json
-from typing import List, Collection, Optional, Tuple
+from typing import Collection, List, Optional, Tuple
 
 from generalresearch.models.repdata.question import RepDataQuestion
 from generalresearch.sql_helper import SqlHelper

@@ -1,16 +1,16 @@
 from datetime import date, datetime
-from typing import Optional, List, Tuple
+from typing import List, Optional, Tuple
 
 import pandas as pd
 
 from generalresearch.managers.base import PostgresManager
 from generalresearch.managers.leaderboard import country_timezone
 from generalresearch.models.thl.user_streak import (
-    UserStreak,
-    StreakPeriod,
-    StreakFulfillment,
-    StreakState,
     PERIOD_TO_PD_FREQ,
+    StreakFulfillment,
+    StreakPeriod,
+    StreakState,
+    UserStreak,
 )
 
 
@@ -30,7 +30,7 @@ class UserStreakManager(PostgresManager):
             {"user_id": user_id},
         )
         if res:
-            return res[0]["country_iso"]
+            return res[0]["country_iso"]  # type: ignore
 
         return None
 

@@ -36,7 +36,7 @@ class RedisUserManager:
         product_user_id: Optional[str] = None,
         user_id: Optional[int] = None,
         user_uuid: Optional[str] = None,
-    ) -> User:
+    ) -> Optional[User]:
         # assume we did input validation in user_manager.get_user() function
         if user_uuid:
             d = self.client.get(f"{self.cache_prefix}:uuid:{user_uuid}")
@@ -51,6 +51,8 @@ class RedisUserManager:
 
         if d:
             return User.model_validate_json(d)
+
+        return None
 
     def set_user(self, user: User) -> None:
         d = user.to_json()

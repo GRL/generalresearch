@@ -1,12 +1,12 @@
 import logging
-from typing import Literal
+from typing import Any, Dict, Literal, Optional
 
 from distributed import Client
 
 from generalresearch.incite.collections.thl_web import UserDFCollection
 from generalresearch.incite.mergers import (
-    MergeCollectionItem,
     MergeCollection,
+    MergeCollectionItem,
     MergeType,
 )
 
@@ -16,7 +16,10 @@ LOG = logging.getLogger("incite")
 class UserIdProductMergeItem(MergeCollectionItem):
 
     def build(
-        self, client: Client, user_coll: UserDFCollection, client_resources=None
+        self,
+        client: Client,
+        user_coll: UserDFCollection,
+        client_resources: Optional[Dict[str, Any]] = None,
     ) -> None:
         LOG.warning(f"UserIdProductMergeItem.build({self.interval})")
 
@@ -34,10 +37,13 @@ class UserIdProductMergeItem(MergeCollectionItem):
 class UserIdProductMerge(MergeCollection):
     merge_type: Literal[MergeType.USER_ID_PRODUCT] = MergeType.USER_ID_PRODUCT
     collection_item_class: Literal[UserIdProductMergeItem] = UserIdProductMergeItem
-    offset: None = None
+    offset: Optional[str] = None
 
     def build(
-        self, client: Client, user_coll: UserDFCollection, client_resources=None
+        self,
+        client: Client,
+        user_coll: UserDFCollection,
+        client_resources: Optional[Dict[str, Any]] = None,
     ) -> None:
         LOG.info(f"UserIdProductMerge.build(user_coll={user_coll.signature()})")
 

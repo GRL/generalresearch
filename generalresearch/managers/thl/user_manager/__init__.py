@@ -5,11 +5,10 @@ import threading
 import time
 from pathlib import Path
 from threading import RLock
-from typing import Dict
+from typing import Any, Dict, Union
 
-from cachetools import cached, TTLCache
+from cachetools import TTLCache, cached
 
-from generalresearch.managers.thl.user_manager import mysql_user_manager
 from generalresearch.models.thl.product import Product
 
 logger = logging.getLogger()
@@ -54,7 +53,7 @@ def get_bp_trust_df():
 convert_int = lambda x: int(float(x))
 
 
-def parse_bp_trust_df(fp) -> Dict:
+def parse_bp_trust_df(fp: Union[str, Path]) -> Dict[str, Any]:
     dtype = {
         "bp_trust": float,
         "team_trust": float,
@@ -67,6 +66,7 @@ def parse_bp_trust_df(fp) -> Dict:
     with open(fp, newline="") as csvfile:
         reader = csv.reader(csvfile)
         header = next(reader)
+
         for row in reader:
             d = dict(zip(header, row))
             for k, v in dtype.items():

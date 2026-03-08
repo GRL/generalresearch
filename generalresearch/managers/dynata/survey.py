@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import logging
-from datetime import timezone, datetime
-from typing import List, Collection, Optional
+from datetime import datetime, timezone
+from typing import Collection, List, Optional
 
 import pymysql
 from pymysql import IntegrityError
 
 from generalresearch.managers.criteria import CriteriaManager
 from generalresearch.managers.survey import SurveyManager
-from generalresearch.models.dynata.survey import DynataSurvey, DynataCondition
+from generalresearch.models.dynata.survey import DynataCondition, DynataSurvey
 
 logger = logging.getLogger()
 
@@ -64,8 +64,10 @@ class DynataSurveyManager(SurveyManager):
         :param is_live: filters on is_live field
         :param updated_since: filters on "> last_updated"
         """
+
         filters = []
         params = {}
+
         if country_iso:
             params["country_iso"] = country_iso
             filters.append("`country_iso` = %(country_iso)s")
@@ -81,6 +83,7 @@ class DynataSurveyManager(SurveyManager):
         if updated_since is not None:
             params["updated_since"] = updated_since
             filters.append("last_updated > %(updated_since)s")
+
         assert filters, "Must set at least 1 filter"
         filter_str = " AND ".join(filters)
         filter_str = "WHERE " + filter_str if filter_str else ""

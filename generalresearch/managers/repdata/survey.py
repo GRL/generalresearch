@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import json
-from datetime import timezone, datetime
-from typing import List, Collection, Optional
+from datetime import datetime, timezone
+from typing import Collection, List, Optional
 
 import pymysql
 
 from generalresearch.managers.criteria import CriteriaManager
 from generalresearch.managers.survey import SurveyManager
 from generalresearch.models.repdata.survey import (
+    RepDataCondition,
+    RepDataStreamHashed,
     RepDataSurvey,
     RepDataSurveyHashed,
-    RepDataStreamHashed,
-    RepDataCondition,
 )
 
 

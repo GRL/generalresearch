@@ -1,14 +1,15 @@
 from collections import defaultdict
-from datetime import timezone, datetime, timedelta
-from random import randint, choice as rand_choice
+from datetime import datetime, timedelta, timezone
+from random import choice as rand_choice
+from random import randint
 from time import sleep
-from typing import Collection, Optional, Dict, List, Union
+from typing import Any, Collection, Dict, List, Optional, Union
 from uuid import UUID, uuid4
 
 import numpy as np
 import pandas as pd
 from psycopg import sql
-from pydantic import AwareDatetime, PositiveInt, NonNegativeInt
+from pydantic import AwareDatetime, NonNegativeInt, PositiveInt
 
 from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
@@ -23,21 +24,21 @@ from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.gr.business import Business
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.ledger import (
-    LedgerAccount,
     Direction,
+    LedgerAccount,
     OrderBy,
 )
 from generalresearch.models.thl.payout import (
-    PayoutEvent,
-    UserPayoutEvent,
     BrokerageProductPayoutEvent,
     BusinessPayoutEvent,
+    PayoutEvent,
+    UserPayoutEvent,
 )
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
-    CashoutRequestInfo,
     CashMailOrderData,
+    CashoutRequestInfo,
 )
 
 
@@ -93,7 +94,7 @@ class PayoutEventManager(PostgresManagerWithRedis):
         payout_event: Union[UserPayoutEvent, BrokerageProductPayoutEvent],
         status: PayoutStatus,
         ext_ref_id: Optional[str] = None,
-        order_data: Optional[Dict] = None,
+        order_data: Optional[Dict[str, Any]] = None,
     ) -> None:
         # These 3 things are the only modifiable attributes
         ext_ref_id = ext_ref_id if ext_ref_id is not None else payout_event.ext_ref_id
@@ -126,7 +127,7 @@ class UserPayoutEventManager(PayoutEventManager):
     def get_by_uuid(self, pe_uuid: UUIDStr) -> UserPayoutEvent:
 
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
             SELECT  ep.uuid,
                     ep.debit_account_uuid, 
                     ep.cashout_method_uuid, 
@@ -162,7 +163,7 @@ class UserPayoutEventManager(PayoutEventManager):
         pe = self.get_by_uuid(pe_uuid=pe_uuid)
 
         transaction_info = dict()
-        order: Dict = pe.order_data
+        order: Dict[str, Any] = pe.order_data
         if pe.payout_type == PayoutType.TANGO and pe.status == PayoutStatus.COMPLETE:
             reward = order["reward"]
             if "credentialList" in reward:
@@ -215,10 +216,12 @@ class UserPayoutEventManager(PayoutEventManager):
         """
         args = []
         filters = []
+
         if reference_uuid:
             # This could be a product_id or a user_uuid
             filters.append("la.reference_uuid = %s")
             args.append(reference_uuid)
+
         if debit_account_uuids:
             # Or we could use the bp_wallet or user_wallet's account uuid
             # instead of looking up by the product/user
@@ -290,13 +293,13 @@ class UserPayoutEventManager(PayoutEventManager):
         uuid: Optional[UUIDStr] = None,
         status: Optional[PayoutStatus] = None,
         created: Optional[AwareDatetimeISO] = None,
-        request_data: Optional[Dict] = None,
+        request_data: Optional[Dict[str, Any]] = None,
         # --- Optional: None  ---
         account_reference_type: Optional[str] = None,
         account_reference_uuid: Optional[UUIDStr] = None,
         description: Optional[str] = None,
         ext_ref_id: Optional[str] = None,
-        order_data: Optional[Dict | CashMailOrderData] = None,
+        order_data: Optional[Union[Dict[str, Any], CashMailOrderData]] = None,
     ) -> UserPayoutEvent:
 
         payout_event = UserPayoutEvent(
@@ -319,10 +322,12 @@ class UserPayoutEventManager(PayoutEventManager):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=f"""
+                    query="""
                     INSERT INTO event_payout (
-                        uuid, debit_account_uuid, created, cashout_method_uuid, amount,
-                        status, ext_ref_id, payout_type, order_data, request_data
+                        uuid, debit_account_uuid, created, 
+                        cashout_method_uuid, amount, status, 
+                        ext_ref_id, payout_type, order_data, 
+                        request_data
                     ) VALUES (
                         %(uuid)s, %(debit_account_uuid)s, %(created)s, 
                         %(cashout_method_uuid)s, %(amount)s, %(status)s, 
@@ -350,9 +355,10 @@ class UserPayoutEventManager(PayoutEventManager):
         status: Optional[PayoutStatus] = None,
         ext_ref_id: Optional[str] = None,
         payout_type: Optional[PayoutType] = None,
-        request_data: Optional[Dict] = None,
-        order_data: Optional[Dict | CashMailOrderData] = None,
+        request_data: Optional[Dict[str, Any]] = None,
+        order_data: Optional[Union[Dict[str, Any], CashMailOrderData]] = None,
     ) -> UserPayoutEvent:
+
         debit_account_uuid = debit_account_uuid or uuid4().hex
         cashout_method_uuid = cashout_method_uuid or uuid4().hex
         # account_reference_type = account_reference_type or f"acct-ref-{uuid4().hex}"
@@ -396,7 +402,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
     ) -> BrokerageProductPayoutEvent:
 
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
             SELECT  ep.uuid,
                     ep.debit_account_uuid,
                     ep.cashout_method_uuid, 
@@ -418,6 +424,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
             rc = self.redis_client
             account_product_mapping: Dict = rc.hgetall(name="pem:account_to_product")
             assert isinstance(account_product_mapping, dict)
+
         d["product_id"] = account_product_mapping[d["debit_account_uuid"]]
 
         return BrokerageProductPayoutEvent.model_validate(d)
@@ -477,11 +484,12 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         status: Optional[PayoutStatus] = None,
         ext_ref_id: Optional[str] = None,
         payout_type: PayoutType = None,
-        request_data: Dict = None,
-        order_data: Optional[Dict | CashMailOrderData] = None,
+        request_data: Optional[Dict[str, Any]] = None,
+        order_data: Optional[Union[Dict[str, Any], CashMailOrderData]] = None,
         # --- Support resources ---
         account_product_mapping: Optional[Dict[UUIDStr, UUIDStr]] = None,
     ) -> BrokerageProductPayoutEvent:
+
         if request_data is None:
             request_data = dict()
 
@@ -509,7 +517,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         d = bp_payout_event.model_dump_mysql()
 
         self.pg_config.execute_write(
-            query=f"""
+            query="""
             INSERT INTO event_payout (
                 uuid, debit_account_uuid, created, cashout_method_uuid, amount,
                 status, ext_ref_id, payout_type, order_data, request_data
@@ -685,7 +693,8 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         skip_wallet_balance_check: bool = False,
         skip_one_per_day_check: bool = False,
     ) -> BrokerageProductPayoutEvent:
-        """If a create_bp_payout_event call fails, this can be called with
+        """
+        If a create_bp_payout_event call fails, this can be called with
         the associated payoutevent.
         """
         bp_pe: BrokerageProductPayoutEvent = self.get_by_uuid(payout_event_uuid)
@@ -1005,7 +1014,7 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
             grouped[bp_pe.ext_ref_id].append(bp_pe)
 
         res = []
-        for ex_ref_id, members in grouped.items():
+        for _, members in grouped.items():
             res.append(BusinessPayoutEvent.model_validate({"bp_payouts": members}))
 
         return res
@@ -1077,8 +1086,8 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
     def distribute_amount(
         df: pd.DataFrame,
         amount: USDCent,
-        weight_col="weight",
-        balance_col="remaining_balance",
+        weight_col: str = "weight",
+        balance_col: str = "remaining_balance",
     ) -> pd.Series:
         """
         Distributes an integer amount across dataframe rows proportionally,
@@ -1129,7 +1138,7 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
             from itertools import islice
 
             # Add 1 cent to the top 'shortage' rows
-            for idx, value in islice(remainders.items(), shortage):
+            for idx, _ in islice(remainders.items(), shortage):
                 # Only add if it doesn't exceed the balance
                 if allocation.loc[idx] < df[balance_col].loc[idx]:
                     allocation.loc[idx] += 1

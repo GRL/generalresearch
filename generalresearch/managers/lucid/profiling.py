@@ -1,8 +1,9 @@
 import json
-from typing import List, Collection, Optional, Tuple
-from generalresearch.decorators import LOG
+from typing import Collection, List, Optional, Tuple
+
 from pydantic import ValidationError
 
+from generalresearch.decorators import LOG
 from generalresearch.models.lucid.question import LucidQuestion, LucidQuestionType
 from generalresearch.sql_helper import SqlHelper
 
@@ -24,8 +25,10 @@ def get_profiling_library(
         len(3) tuples. e.g. [('123', 'us', 'eng'), ('123', 'us', 'spa')]
     :return:
     """
+
     filters = ["`q`.question_type != 'o'"]
     params = {}
+
     if country_iso:
         params["country_iso"] = country_iso
         filters.append("`q`.`country_iso` = %(country_iso)s")
@@ -40,8 +43,10 @@ def get_profiling_library(
         pks = [(int(x[0]), x[1], x[2]) for x in pks]
         params["pks"] = pks
         filters.append("(q.question_id, q.country_iso, q.language_iso) IN %(pks)s")
+
     filter_str = " AND ".join(filters)
     filter_str = "WHERE " + filter_str if filter_str else ""
+
     db_name = sql_helper.db_name
     res = sql_helper.execute_sql_query(
         query=f"""
@@ -74,6 +79,7 @@ def get_profiling_library(
         if x["question_id"] in {"116", "120", "121"}:
             x["question_type"] = LucidQuestionType.TEXT_ENTRY
     qs = []
+
     for x in res:
         try:
             qs.append(LucidQuestion.from_db(x))

@@ -132,7 +132,7 @@ class UQAManager(PostgresManagerWithRedis):
         #   1) the cache expired and the user hasn't sent an answer recently
         #   or 2) The user just sent an answer, so we'll make sure it gets put into the results
         #       after this query runs.
-        query = f"""
+        query = """
         WITH ranked AS (
             SELECT
                 uqa.*,
