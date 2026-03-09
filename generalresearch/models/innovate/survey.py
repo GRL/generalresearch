@@ -2,47 +2,47 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import timezone, date
+from datetime import date, timezone
 from decimal import Decimal
 from functools import cached_property
 from typing import (
-    Optional,
-    Dict,
+    Annotated,
     Any,
+    Dict,
     List,
     Literal,
+    Optional,
     Set,
     Tuple,
-    Annotated,
     Type,
 )
 
 from more_itertools import flatten
 from pydantic import (
-    Field,
-    ConfigDict,
     BaseModel,
-    model_validator,
+    ConfigDict,
+    Field,
     computed_field,
+    model_validator,
 )
 from typing_extensions import Self
 
 from generalresearch.locales import Localelator
 from generalresearch.models import (
-    Source,
     LogicalOperator,
+    Source,
     TaskCalculationType,
 )
 from generalresearch.models.custom_types import (
-    CoercedStr,
-    AwareDatetimeISO,
     AlphaNumStrSet,
+    AwareDatetimeISO,
+    CoercedStr,
     DeviceTypes,
 )
 from generalresearch.models.innovate import (
-    InnovateStatus,
-    InnovateQuotaStatus,
     InnovateDuplicateCheckLevel,
+    InnovateQuotaStatus,
+    InnovateStatus,
 )
 from generalresearch.models.innovate.question import InnovateQuestionID
 from generalresearch.models.thl.demographics import Gender
@@ -266,7 +266,7 @@ class InnovateSurvey(MarketplaceTask):
         return data
 
     @classmethod
-    def from_api(cls, d: Dict) -> Optional["InnovateSurvey"]:
+    def from_api(cls, d: Dict[str, Any]) -> Optional["InnovateSurvey"]:
         try:
             return cls._from_api(d)
         except Exception as e:
@@ -274,7 +274,7 @@ class InnovateSurvey(MarketplaceTask):
             return None
 
     @classmethod
-    def _from_api(cls, d: Dict):
+    def _from_api(cls, d: Dict[str, Any]) -> "InnovateSurvey":
         d["conditions"] = dict()
 
         # If we haven't hit the "detail" endpoint, we won't get this
@@ -334,7 +334,7 @@ class InnovateSurvey(MarketplaceTask):
         )
         return f"{self.__repr_name__()}({repr_str})"
 
-    def is_unchanged(self, other) -> bool:
+    def is_unchanged(self, other: "InnovateSurvey") -> bool:
         # Avoiding overloading __eq__ because it looks kind of complicated? I
         # want to be explicit that this is not testing object equivalence,
         # just that the objects don't require any db updates. We also exclude
@@ -465,6 +465,7 @@ class InnovateSurvey(MarketplaceTask):
             return None, set(
                 flatten([m[1] for q, m in quota_eval.items() if m[0] is None])
             )
+
         return False, set()
 
     def determine_eligibility(

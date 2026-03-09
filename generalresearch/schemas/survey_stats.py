@@ -1,5 +1,5 @@
 import pandas as pd
-from pandera import DataFrameSchema, Column, Check, Index
+from pandera import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
 from generalresearch.models import Source

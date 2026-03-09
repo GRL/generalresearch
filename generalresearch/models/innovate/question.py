@@ -4,9 +4,9 @@ from __future__ import annotations
 import json
 import logging
 from enum import Enum
-from typing import List, Optional, Literal, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from generalresearch.models import Source
 from generalresearch.models.innovate import InnovateQuestionID
@@ -14,6 +14,11 @@ from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
     MarketplaceUserQuestionAnswer,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.profiling.upk_question import (
+        UpkQuestion,
+    )
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -47,8 +52,9 @@ class InnovateQuestionOption(BaseModel):
 
 class InnovateQuestionType(str, Enum):
     # API response: {'Multipunch', 'Numeric Open Ended', 'Single Punch'}
-    # "Numeric Open Ended" must be wrong... It can't be numeric, as UK's postcode question is marked
-    #   as this, but it wants alphanumeric answers. So this is just text_entry.
+    # "Numeric Open Ended" must be wrong... It can't be numeric, as UK's
+    #   postcode question is marked as this, but it wants alphanumeric
+    #   answers. So this is just text_entry.
 
     SINGLE_SELECT = "s"
     MULTI_SELECT = "m"
@@ -135,7 +141,7 @@ class InnovateQuestion(MarketplaceQuestion):
 
     @classmethod
     def from_api(
-        cls, d: dict, country_iso: str, language_iso: str
+        cls, d: Dict, country_iso: str, language_iso: str
     ) -> Optional["InnovateQuestion"]:
         """
         :param d: Raw response from API
@@ -179,13 +185,15 @@ class InnovateQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: dict) -> "InnovateQuestion":
+    def from_db(cls, d: Dict[str, Any]) -> "InnovateQuestion":
+
         options = None
         if d["options"]:
             options = [
                 InnovateQuestionOption(id=r["id"], text=r["text"], order=r["order"])
                 for r in d["options"]
             ]
+
         return cls(
             question_id=d["question_id"],
             question_key=d["question_key"],
@@ -204,13 +212,13 @@ class InnovateQuestion(MarketplaceQuestion):
         d["options"] = json.dumps(d["options"])
         return d
 
-    def to_upk_question(self):
+    def to_upk_question(self) -> "UpkQuestion":
         from generalresearch.models.thl.profiling.upk_question import (
+            UpkQuestion,
             UpkQuestionChoice,
-            UpkQuestionType,
             UpkQuestionSelectorMC,
             UpkQuestionSelectorTE,
-            UpkQuestion,
+            UpkQuestionType,
         )
 
         upk_type_selector_map = {

@@ -4,31 +4,31 @@ import hashlib
 import logging
 from datetime import datetime, timezone
 from enum import Enum
-from typing import List, Dict, Any, Optional, Literal, Union
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import (
     BaseModel,
-    Field,
     ConfigDict,
+    EmailStr,
+    Field,
     NonNegativeInt,
     PositiveInt,
-    EmailStr,
-    model_validator,
     field_validator,
+    model_validator,
 )
 from typing_extensions import Self
 
 from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import (
-    UUIDStr,
-    HttpsUrlStr,
     AwareDatetimeISO,
+    HttpsUrlStr,
+    UUIDStr,
 )
 from generalresearch.models.legacy.api_status import StatusResponse
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.locales import CountryISO
 from generalresearch.models.thl.user import BPUIDStr, User
-from generalresearch.models.thl.wallet import PayoutType, Currency
+from generalresearch.models.thl.wallet import Currency, PayoutType
 from generalresearch.utils.enum import ReprEnumMeta
 
 logger = logging.getLogger()

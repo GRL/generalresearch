@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 
@@ -17,7 +17,7 @@ timeout: The respondent completed the survey after the timeout period had expire
 in_progress: The respondent interview session is still in progress, such as in the prescreener or survey.
 """
 
-short_code_to_status_codes_morning = {
+short_code_to_status_codes_morning: Dict[str, str] = {
     "att_che": "attention_check",
     "banned": "banned",
     "bid_clo": "bid_closed",
@@ -53,7 +53,8 @@ short_code_to_status_codes_morning = {
     "tem_ban": "temporarily_banned",
 }
 status_map = defaultdict(lambda: Status.FAIL, **{"complete": Status.COMPLETE})
-status_codes_ext_map = {
+
+status_codes_ext_map: Dict[StatusCode1, List[str]] = {
     StatusCode1.COMPLETE: ["complete"],
     StatusCode1.BUYER_FAIL: [
         "in_survey_failure",
@@ -96,9 +97,13 @@ status_codes_ext_map = {
         "quota_invalid_for_bid",
     ],
 }
-ext_status_code_map = dict()
+ext_status_code_map: Dict[str, StatusCode1] = dict()
 for k, v in status_codes_ext_map.items():
+    k: StatusCode1
+    v: List[str]
+
     for vv in v:
+        vv: str
         ext_status_code_map[status_codes_ext_map.get(vv, vv)] = k
 
 
@@ -106,7 +111,7 @@ def annotate_status_code(
     ext_status_code_1: str,
     ext_status_code_2: Optional[str] = None,
     ext_status_code_3: Optional[str] = None,
-) -> Tuple:
+) -> Tuple[Status, StatusCode1, Optional[Any]]:
     """
     :params ext_status_code_1: from callback url params: &sti={{status_id}}
     :params ext_status_code_2: from callback url params: &sdi={{status_detail_id}}

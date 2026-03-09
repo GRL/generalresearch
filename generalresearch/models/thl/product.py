@@ -125,16 +125,17 @@ class ProfilingConfig(BaseModel):
 
     enabled: bool = Field(
         default=True,
-        description="If False, the harmonizer/profiling system is not used at all. This should "
-        "never be False unless special circumstances",
+        description="If False, the harmonizer/profiling system is not used at "
+        "all. This should never be False unless special circumstances",
     )
 
     grs_enabled: bool = Field(
         default=True,
-        description="""If grs_enabled is False, and is_grs is passed in the profiling-questions call, 
-        then don't actually return any questions. This allows a client to hit the endpoint with no limit 
-        and still get questions. In effect, this means that we'll redirect the user through the GRS
-        system but won't present them any questions.""",
+        description="""If grs_enabled is False, and is_grs is passed in the 
+        profiling-questions call, then don't actually return any questions. 
+        This allows a client to hit the endpoint with no limit and still get 
+        questions. In effect, this means that we'll redirect the user through 
+        the GRS system but won't present them any questions.""",
     )
 
     n_questions: Optional[PositiveInt] = Field(
@@ -155,14 +156,16 @@ class ProfilingConfig(BaseModel):
     # Don't set this to 0, use enabled
     task_injection_freq_mult: PositiveFloat = Field(
         default=1,
-        description="Scale how frequently we inject profiling questions, relative to the default."
-        "1 is default, 2 is twice as often. 10 means always. 0.5 half as often",
+        description="""Scale how frequently we inject profiling questions, 
+        relative to the default. 1 is default, 2 is twice as often. 10 means 
+        always. 0.5 half as often""",
     )
 
     non_us_mult: PositiveFloat = Field(
         default=2,
-        description="Non-us multiplier, used to increase freq and length of profilers in all non-us countries."
-        "This value is multiplied by task_injection_freq_mult and avg_question_count.",
+        description="""Non-us multiplier, used to increase freq and length of 
+        profilers in all non-us countries. This value is multiplied by 
+        task_injection_freq_mult and avg_question_count.""",
     )
 
     hidden_questions_expiration_hours: PositiveInt = Field(
@@ -186,13 +189,13 @@ class UserHealthConfig(BaseModel):
     #   are blocked.
     banned_countries: List[CountryISOLike] = Field(default_factory=list)
 
-    # Decide if a user can be blocked for IP-related triggers such as sharing IPs
-    #   and location history. This should eventually be deprecated and replaced
-    #   with something with more specificity.
+    # Decide if a user can be blocked for IP-related triggers such as sharing
+    #   IPs and location history. This should eventually be deprecated and
+    #   replaced with something with more specificity.
     allow_ban_iphist: bool = Field(default=True)
 
-    # These are only checked by ym-user-predict, which I'm not sure even works properly.
-    # To be deprecated ... don't even use them.
+    # These are only checked by ym-user-predict, which I'm not sure even
+    #   works properly. To be deprecated ... don't even use them.
     userprofit_cutoff: Optional[Decimal] = Field(default=None, exclude=True)
     recon_cutoff: Optional[float] = Field(default=None, exclude=True)
     droprate_cutoff: Optional[float] = Field(default=None, exclude=True)
@@ -205,9 +208,11 @@ class UserHealthConfig(BaseModel):
 
 class OfferWallRequestYieldmanParams(BaseModel):
     # model_config = ConfigDict(extra='forbid')
-    # keys: use_stats, use_harmonizer, allow_pii, add_default_lang_eng, first_n_completes_easier_per_day are
+    # keys: use_stats, use_harmonizer, allow_pii, add_default_lang_eng,
+    #   first_n_completes_easier_per_day are
     # ignored/deprecated
-    # allow_pii: bool = Field(default=True, description="Allow tasks that request PII. This actually does nothing.")
+    # allow_pii: bool = Field(default=True, description="Allow tasks that
+    #   request PII. This actually does nothing.")
 
     # see thl-grpc:yield_management.scoring.score() for more info
     conversion_factor_adj: float = Field(

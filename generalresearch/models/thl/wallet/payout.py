@@ -1,6 +1,6 @@
 import json
 from datetime import datetime, timezone
-from typing import Dict, Optional, Collection, List
+from typing import Any, Collection, Dict, List, Optional, Union
 from uuid import uuid4
 
 from pydantic import (
@@ -12,7 +12,7 @@ from pydantic import (
 )
 
 from generalresearch.currency import USDCent
-from generalresearch.models.custom_types import UUIDStr, AwareDatetimeISO
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
@@ -74,11 +74,11 @@ class PayoutEvent(BaseModel, validate_assignment=True):
 
     # Stores payout-type-specific information that is used to request this
     #   payout from the external provider.
-    request_data: Dict = Field(default_factory=dict)
+    request_data: Dict[str, Any] = Field(default_factory=dict)
 
     # Stores payout-type-specific order information that is returned from
     #   the external payout provider.
-    order_data: Optional[Dict | CashMailOrderData] = Field(default=None)
+    order_data: Optional[Union[Dict[str, Any], CashMailOrderData]] = Field(default=None)
 
     @field_validator("payout_type", mode="before")
     @classmethod
@@ -94,7 +94,7 @@ class PayoutEvent(BaseModel, validate_assignment=True):
         self,
         status: PayoutStatus,
         ext_ref_id: Optional[str] = None,
-        order_data: Optional[Dict] = None,
+        order_data: Optional[Dict[str, Any]] = None,
     ) -> None:
         # These 3 things are the only modifiable attributes
         self.check_status_change_allowed(status)
@@ -128,7 +128,7 @@ class PayoutEvent(BaseModel, validate_assignment=True):
         else:
             raise ValueError("this shouldn't happen")
 
-    def model_dump_mysql(self, *args, **kwargs) -> dict:
+    def model_dump_mysql(self, *args, **kwargs) -> Dict[str, Any]:
         d = self.model_dump(mode="json", *args, **kwargs)
         if "created" in d:
             d["created"] = self.created.replace(tzinfo=None)

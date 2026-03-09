@@ -1,11 +1,11 @@
 from datetime import datetime, timezone
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
-from pydantic import RedisDsn, Field, MariaDBDsn, DirectoryPath, PostgresDsn
+from pydantic import DirectoryPath, Field, MariaDBDsn, PostgresDsn, RedisDsn
 from pydantic_settings import BaseSettings
 
-from generalresearch.models.custom_types import DaskDsn, SentryDsn, MySQLOrMariaDsn
+from generalresearch.models.custom_types import DaskDsn, SentryDsn
 
 
 def is_debug() -> bool:

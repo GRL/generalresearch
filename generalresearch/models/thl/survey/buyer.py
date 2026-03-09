@@ -1,16 +1,16 @@
-from datetime import timezone, datetime
+from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional, Annotated
-
 from math import log
+from typing import Annotated, Optional
+
 from pydantic import (
-    model_validator,
     BaseModel,
     ConfigDict,
     Field,
-    PositiveInt,
     NonNegativeInt,
+    PositiveInt,
     computed_field,
+    model_validator,
 )
 from scipy.stats import beta as beta_dist
 
@@ -24,7 +24,8 @@ from generalresearch.models.custom_types import (
 
 class Buyer(BaseModel):
     """
-    The entity that commissions and pays for a task and uses the resulting data or insights.
+    The entity that commissions and pays for a task and uses the
+    resulting data or insights.
     """
 
     model_config = ConfigDict(validate_assignment=True)
@@ -176,7 +177,6 @@ class BuyerCountryStat(BaseModel):
     # ---- Scoring ----
     score: float = Field(
         description="Composite score calculated from all of the individual features",
-        default=None,
         examples=[-5.329389837486194],
     )
 

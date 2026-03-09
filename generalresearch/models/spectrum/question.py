@@ -6,24 +6,29 @@ import logging
 from datetime import datetime, timezone
 from enum import Enum
 from functools import cached_property
-from typing import List, Optional, Literal, Any, Dict, Set
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Set
 from uuid import UUID
 
 from pydantic import (
     BaseModel,
     Field,
-    model_validator,
-    field_validator,
     PositiveInt,
+    field_validator,
+    model_validator,
 )
 from typing_extensions import Self
 
-from generalresearch.models import Source, string_utils, MAX_INT32
+from generalresearch.models import MAX_INT32, Source, string_utils
 from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.spectrum import SpectrumQuestionIdType
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.profiling.upk_question import (
+        UpkQuestion,
+    )
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -246,7 +251,7 @@ class SpectrumQuestion(MarketplaceQuestion):
 
     @classmethod
     def from_api(
-        cls, d: dict, country_iso: str, language_iso: str
+        cls, d: Dict[str, Any], country_iso: str, language_iso: str
     ) -> Optional["SpectrumQuestion"]:
         # To not pollute our logs, we know we are skipping any question that
         #   meets the following conditions:
@@ -263,7 +268,7 @@ class SpectrumQuestion(MarketplaceQuestion):
             return None
 
     @classmethod
-    def _from_api(cls, d: dict, country_iso: str, language_iso: str) -> Self:
+    def _from_api(cls, d: Dict[str, Any], country_iso: str, language_iso: str) -> Self:
         options = None
         if d.get("condition_codes"):
             # Sometimes they use the key "name" instead of "text" ... ?
@@ -296,7 +301,7 @@ class SpectrumQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: dict) -> Self:
+    def from_db(cls, d: Dict[str, Any]) -> Self:
         options = None
         if d["options"]:
             options = [
@@ -331,13 +336,13 @@ class SpectrumQuestion(MarketplaceQuestion):
             d["created"] = self.created.replace(tzinfo=None)
         return d
 
-    def to_upk_question(self):
+    def to_upk_question(self) -> "UpkQuestion":
         from generalresearch.models.thl.profiling.upk_question import (
+            UpkQuestion,
             UpkQuestionChoice,
-            UpkQuestionType,
             UpkQuestionSelectorMC,
             UpkQuestionSelectorTE,
-            UpkQuestion,
+            UpkQuestionType,
         )
 
         upk_type_selector_map = {

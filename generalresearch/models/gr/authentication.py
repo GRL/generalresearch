@@ -4,16 +4,16 @@ import binascii
 import json
 import os
 from datetime import datetime, timezone
-from typing import Optional, List, TYPE_CHECKING, Dict, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from pydantic import AnyHttpUrl
 from pydantic import (
+    AnyHttpUrl,
     BaseModel,
     ConfigDict,
     Field,
+    NonNegativeInt,
     PositiveInt,
     field_validator,
-    NonNegativeInt,
 )
 from typing_extensions import Self
 
@@ -119,7 +119,7 @@ class GRUser(BaseModel):
     claims: Optional["Claims"] = Field(default=None)
 
     def prefetch_claims(
-        self, token: str, key: Dict, audience: str, issuer: AnyHttpUrl
+        self, token: str, key: Dict[str, Any], audience: str, issuer: AnyHttpUrl
     ) -> None:
         from jose import jwt
 
@@ -220,7 +220,7 @@ class GRUser(BaseModel):
             LOG.warning("prefetch not run")
             return None
 
-        return [b.id for b in self.businesses]
+        return [b.id for b in self.businesses if b.id is not None]
 
     @property
     def team_uuids(self) -> Optional[List[UUIDStr]]:
@@ -236,7 +236,7 @@ class GRUser(BaseModel):
             LOG.warning("prefetch not run")
             return None
 
-        return [t.id for t in self.teams]
+        return [t.id for t in self.teams if t.id is not None]
 
     @property
     def product_uuids(self) -> Optional[List[UUIDStr]]:
@@ -294,7 +294,7 @@ class GRUser(BaseModel):
         return GRUser.model_validate(d)
 
     @classmethod
-    def from_redis(cls, d: Union[str, Dict]) -> Self:
+    def from_redis(cls, d: Union[str, Dict[str, Any]]) -> Self:
         if isinstance(d, str):
             d = json.loads(d)
         assert isinstance(d, dict)
@@ -359,13 +359,13 @@ class GRToken(BaseModel):
     # --- Properties ---
 
     @property
-    def auth_header(self, key_name="Authorization") -> Dict:
+    def auth_header(self, key_name: str = "Authorization") -> Dict[str, str]:
         return {key_name: self.key}
 
     # --- ORM ---
 
     @classmethod
-    def from_redis(cls, d: Union[str, Dict]) -> Self:
+    def from_redis(cls, d: Union[str, Dict[str, Any]]) -> Self:
         if isinstance(d, str):
             d = json.loads(d)
         assert isinstance(d, dict)

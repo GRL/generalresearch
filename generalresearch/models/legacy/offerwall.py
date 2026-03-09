@@ -1,22 +1,22 @@
 from __future__ import annotations
 
-from typing import List, Dict
+from typing import Dict, List
 
-from pydantic import BaseModel, Field, ConfigDict, NonNegativeInt
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.legacy.bucket import (
     BucketBase,
-    SoftPairBucket,
-    TopNBucket,
-    TimeBucksBucket,
     MarketplaceBucket,
-    TopNPlusBucket,
-    SingleEntryBucket,
-    WXETOfferwallBucket,
     OneShotOfferwallBucket,
     OneShotSoftPairOfferwallBucket,
+    SingleEntryBucket,
+    SoftPairBucket,
+    TimeBucksBucket,
+    TopNBucket,
+    TopNPlusBucket,
     TopNPlusRecontactBucket,
+    WXETOfferwallBucket,
 )
 from generalresearch.models.legacy.definitions import OfferwallReason
 from generalresearch.models.thl.payout_format import (

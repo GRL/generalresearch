@@ -1,16 +1,16 @@
 import hashlib
-from typing import Optional, Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 from pydantic import (
-    Field,
     BaseModel,
     ConfigDict,
     EmailStr,
+    Field,
     PositiveInt,
     computed_field,
 )
 from pydantic.json_schema import SkipJsonSchema
-from typing_extensions import Self, Annotated
+from typing_extensions import Annotated, Self
 
 from generalresearch.models import MAX_INT32, Source
 from generalresearch.models.custom_types import UUIDStr

@@ -7,8 +7,8 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field, PositiveInt
 
-from generalresearch.models import Source, MAX_INT32
-from generalresearch.models.custom_types import UUIDStr, AwareDatetimeISO
+from generalresearch.models import MAX_INT32, Source
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.definitions import WallAdjustedStatus
 from generalresearch.models.thl.user import BPUIDStr
 from generalresearch.utils.enum import ReprEnumMeta

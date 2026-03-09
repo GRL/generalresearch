@@ -1,19 +1,19 @@
 import json
 from datetime import datetime, timezone
-from typing import Dict, Optional, Collection, List
+from typing import Collection, Dict, List, Optional
 from uuid import uuid4
 
 from pydantic import (
     BaseModel,
     Field,
+    PositiveInt,
     computed_field,
     field_validator,
-    PositiveInt,
 )
 from typing_extensions import Self
 
 from generalresearch.currency import USDCent
-from generalresearch.models.custom_types import UUIDStr, AwareDatetimeISO
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.ledger import OrderBy
 from generalresearch.models.thl.wallet import PayoutType
@@ -229,6 +229,7 @@ class BrokerageProductPayoutEvent(PayoutEvent):
         account_product_mapping: Optional[Dict[UUIDStr, UUIDStr]] = None,
         redis_config: Optional[RedisConfig] = None,
     ) -> Self:
+        # TODO!: prevent re-assignment, rework this...
 
         if account_product_mapping is None:
             rc = redis_config.create_redis_client()
@@ -248,6 +249,7 @@ class BrokerageProductPayoutEvent(PayoutEvent):
         account_product_mapping: Optional[Dict[UUIDStr, UUIDStr]] = None,
         redis_config: Optional[RedisConfig] = None,
     ) -> List[Self]:
+        # TODO!: prevent re-assignment, rework this...
 
         if account_product_mapping is None:
             rc = redis_config.create_redis_client()

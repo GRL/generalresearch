@@ -39,10 +39,13 @@ class WXETStatus(str, Enum, metaclass=ReprEnumMeta):
 class WXETAdjustedStatus(str, Enum, metaclass=ReprEnumMeta):
     # Task was reconciled to complete
     ADJUSTED_TO_COMPLETE = "ac"
+
     # Task was reconciled to incomplete
     ADJUSTED_TO_FAIL = "af"
+
     # The cpi for a task was adjusted
     CPI_ADJUSTMENT = "ca"
+
     # The user was redirected without a Postback, but the postback was then "immediately"
     #   recieved. The supplier thinks this was a failure. This is distinct from an
     #   actual adjustment to complete.

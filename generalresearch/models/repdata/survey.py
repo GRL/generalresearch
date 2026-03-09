@@ -6,38 +6,38 @@ import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import List, Optional, Dict, Any, Set, Literal, Type
-from typing_extensions import Self
+from typing import Any, Dict, List, Literal, Optional, Set, Type
 from uuid import UUID
 
 from pydantic import (
     BaseModel,
-    Field,
-    field_validator,
     ConfigDict,
+    Field,
     computed_field,
+    field_validator,
     model_validator,
 )
+from typing_extensions import Self
 
 from generalresearch.grpc import timestamp_from_datetime
 from generalresearch.locales import Localelator
 from generalresearch.models import (
+    DeviceType,
     LogicalOperator,
     Source,
     TaskCalculationType,
-    DeviceType,
 )
 from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
     CoercedStr,
     UUIDStr,
-    AwareDatetimeISO,
 )
 from generalresearch.models.repdata import RepDataStatus
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.survey import MarketplaceTask
 from generalresearch.models.thl.survey.condition import (
-    MarketplaceCondition,
     ConditionValueType,
+    MarketplaceCondition,
 )
 
 logging.basicConfig()
@@ -328,7 +328,7 @@ class RepDataStream(MarketplaceTask):
         }
 
     @classmethod
-    def from_api(cls, stream_res, country_iso, language_iso):
+    def from_api(cls, stream_res, country_iso: str, language_iso: str):
         # qualifications and quotas need to be added to the stream_res manually
         d = stream_res.copy()
         d["CalculationType"] = TaskCalculationType.from_api(d["CalculationType"])
@@ -361,7 +361,9 @@ class RepDataStreamHashed(RepDataStream):
         return d
 
     @classmethod
-    def from_db(cls, res, survey: RepDataSurveyHashed):
+    def from_db(
+        cls, res: Dict[str, Any], survey: RepDataSurveyHashed
+    ) -> "RepDataStreamHashed":
         # We need certain fields copied over here so that a stream can exist
         # independent of the survey
         res["country_iso"] = survey.country_iso
@@ -531,7 +533,7 @@ class RepDataSurveyHashed(RepDataSurvey):
     streams: None = Field(default=None, exclude=True)
 
     @classmethod
-    def from_db(cls, res):
+    def from_db(cls, res: Dict[str, Any]) -> "RepDataSurveyHashed":
         res["allowed_devices"] = [
             DeviceType(int(x)) for x in res["allowed_devices"].split(",")
         ]
@@ -553,6 +555,7 @@ class RepDataSurveyHashed(RepDataSurvey):
     def to_grpc(self, repdata_pb2):
         now = datetime.now(tz=timezone.utc)
         timestamp = timestamp_from_datetime(now)
+
         return repdata_pb2.RepDataOpportunity(
             json_str=self.model_dump_json(),
             timestamp=timestamp,

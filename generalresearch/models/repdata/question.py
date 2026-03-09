@@ -4,21 +4,26 @@ import json
 import logging
 from enum import Enum
 from functools import cached_property
-from typing import List, Optional, Literal, Any, Dict, Set
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Set
 from uuid import UUID
 
 from pydantic import (
     BaseModel,
-    Field,
-    model_validator,
     ConfigDict,
-    field_validator,
+    Field,
     PositiveInt,
+    field_validator,
+    model_validator,
 )
 
-from generalresearch.models import Source, MAX_INT32
-from generalresearch.models.custom_types import UUIDStr, AwareDatetimeISO
+from generalresearch.models import MAX_INT32, Source
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.profiling.upk_question import (
+        UpkQuestion,
+    )
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -155,7 +160,7 @@ class RepDataQuestion(MarketplaceQuestion):
 
     @classmethod
     def from_api(
-        cls, d: dict, country_iso: str, language_iso: str
+        cls, d: Dict[str, Any], country_iso: str, language_iso: str
     ) -> Optional["RepDataQuestion"]:
         """
         :param d: Raw response from API
@@ -168,7 +173,7 @@ class RepDataQuestion(MarketplaceQuestion):
 
     @classmethod
     def _from_api(
-        cls, d: dict, country_iso: str, language_iso: str
+        cls, d: Dict[str, Any], country_iso: str, language_iso: str
     ) -> "RepDataQuestion":
         d["QualificationType"] = RepDataQuestionType.from_api(d["QualificationType"])
         # zip code/age has a placeholder invalid option for some reason
@@ -186,7 +191,7 @@ class RepDataQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: dict):
+    def from_db(cls, d: Dict[str, Any]) -> "RepDataQuestion":
         options = None
         if d["options"]:
             options = [
@@ -212,13 +217,13 @@ class RepDataQuestion(MarketplaceQuestion):
         d["options"] = json.dumps(d["options"])
         return d
 
-    def to_upk_question(self):
+    def to_upk_question(self) -> "UpkQuestion":
         from generalresearch.models.thl.profiling.upk_question import (
+            UpkQuestion,
             UpkQuestionChoice,
-            UpkQuestionType,
             UpkQuestionSelectorMC,
             UpkQuestionSelectorTE,
-            UpkQuestion,
+            UpkQuestionType,
             order_exclusive_options,
         )
 

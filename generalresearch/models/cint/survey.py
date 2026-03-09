@@ -4,32 +4,32 @@ import json
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional, Dict, Set, Tuple, List, Literal, Any, Type
+from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Type
 
 from more_itertools import flatten
 from pydantic import (
-    NonNegativeInt,
-    Field,
-    ConfigDict,
     BaseModel,
+    ConfigDict,
+    Field,
+    NonNegativeInt,
     computed_field,
     model_validator,
 )
-from typing_extensions import Self, Annotated
+from typing_extensions import Annotated, Self
 
 from generalresearch.locales import Localelator
 from generalresearch.models import Source, TaskCalculationType
 from generalresearch.models.cint import CintQuestionIdType
 from generalresearch.models.custom_types import (
+    AlphaNumStr,
     AwareDatetimeISO,
     CoercedStr,
-    AlphaNumStr,
 )
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.survey import MarketplaceTask
 from generalresearch.models.thl.survey.condition import (
-    MarketplaceCondition,
     ConditionValueType,
+    MarketplaceCondition,
 )
 
 logging.basicConfig()
@@ -95,7 +95,8 @@ class CintQuota(BaseModel):
 
     def matches(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
         # Matches means we meet all conditions.
-        # We can "match" a quota that is closed. In that case, we would not be eligible for the survey.
+        # We can "match" a quota that is closed. In that case, we would
+        # not be eligible for the survey.
         return all(criteria_evaluation.get(c) for c in self.condition_hashes)
 
     def matches_optional(
@@ -245,7 +246,7 @@ class CintSurvey(MarketplaceTask):
     def is_live(self) -> bool:
         return self.is_live_raw
 
-    def model_dump(self, **kwargs: Any) -> dict:
+    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
         data = super().model_dump(**kwargs)
         data["is_live"] = data.pop("is_live_raw", None)
         return data
@@ -314,7 +315,7 @@ class CintSurvey(MarketplaceTask):
         }
 
     @classmethod
-    def from_api(cls, d: Dict) -> Optional[Self]:
+    def from_api(cls, d: Dict[str, Any]) -> Optional[Self]:
         try:
             return cls._from_api(d)
         except Exception as e:
@@ -322,7 +323,7 @@ class CintSurvey(MarketplaceTask):
             return None
 
     @classmethod
-    def _from_api(cls, d: Dict) -> Self:
+    def _from_api(cls, d: Dict[str, Any]) -> Self:
         if "cpi" in d:
             d["gross_cpi"] = Decimal(d.pop("cpi"))
         if "revenue_per_interview" in d:

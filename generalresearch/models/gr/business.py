@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Optional, List, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 from uuid import uuid4
 
 import pandas as pd
@@ -24,12 +24,11 @@ from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 from generalresearch.incite.schemas.mergers.pop_ledger import (
     numerical_col_names,
 )
-from generalresearch.utils.enum import ReprEnumMeta
 from generalresearch.models.admin.request import ReportRequest, ReportType
 from generalresearch.models.custom_types import (
+    AwareDatetime,
     UUIDStr,
     UUIDStrCoerce,
-    AwareDatetime,
 )
 from generalresearch.models.thl.finance import POPFinancial
 from generalresearch.models.thl.ledger import LedgerAccount, OrderBy
@@ -37,12 +36,9 @@ from generalresearch.models.thl.payout import BusinessPayoutEvent
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
 from generalresearch.utils.aggregation import group_by_year
+from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:
-    from generalresearch.models.thl.finance import BusinessBalances
-
-    from generalresearch.models.thl.product import Product
-    from generalresearch.models.gr.team import Team
     from generalresearch.incite.base import GRLDatasets
     from generalresearch.incite.mergers.foundations.enriched_session import (
         EnrichedSessionMerge,
@@ -59,7 +55,9 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.payout import (
         BusinessPayoutEventManager,
     )
-    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.gr.team import Team
+    from generalresearch.models.thl.finance import BusinessBalances
+    from generalresearch.models.thl.product import Product
 
 
 class TransferMethod(Enum, metaclass=ReprEnumMeta):
@@ -248,7 +246,7 @@ class Business(BaseModel):
         with pg_config.make_connection() as conn:
             with conn.cursor(row_factory=dict_row) as c:
                 c.execute(
-                    query=f"""
+                    query="""
                         SELECT *
                         FROM common_businessaddress AS ba
                         WHERE ba.business_id = %s
@@ -271,7 +269,7 @@ class Business(BaseModel):
                 c: Cursor
 
                 c.execute(
-                    query=f"""
+                    query="""
                     SELECT t.* 
                     FROM common_team AS t
                     INNER JOIN common_team_businesses AS tb
@@ -359,9 +357,11 @@ class Business(BaseModel):
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
         accounts: List[LedgerAccount] = lm.get_accounts_if_exists(
-            qualified_names=[
-                f"{lm.currency.value}:bp_wallet:{bpid}" for bpid in self.product_uuids
-            ]
+            qualified_names=(
+                [f"{lm.currency.value}:bp_wallet:{bpid}" for bpid in self.product_uuids]
+                if self.product_uuids
+                else []
+            )
         )
 
         if len(accounts) != len(self.products):
@@ -711,7 +711,8 @@ class Business(BaseModel):
         fields: List[str],
         gr_redis_config: RedisConfig,
     ) -> Optional[Self]:
-        keys: List = Business.required_fields() + fields
+        keys: List[str] = Business.required_fields() + fields
+
         if "pop_financial" in keys:
             # We should explicitly pass the pop_financial years we want. By default,
             #   at least get this year.

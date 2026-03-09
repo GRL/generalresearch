@@ -3,14 +3,14 @@ from __future__ import annotations
 import json
 from datetime import timezone
 from functools import cached_property
-from typing import Optional, List, Literal, Set, Dict, Any, Tuple, Type
+from typing import Any, Dict, List, Literal, Optional, Self, Set, Tuple, Type
 
 from more_itertools import flatten
 from pydantic import (
+    BaseModel,
     ConfigDict,
     Field,
     PrivateAttr,
-    BaseModel,
     computed_field,
     model_validator,
 )
@@ -18,18 +18,18 @@ from typing_extensions import Annotated
 
 from generalresearch.models import Source
 from generalresearch.models.custom_types import (
-    CoercedStr,
-    UUIDStrCoerce,
-    AwareDatetimeISO,
     AlphaNumStrSet,
+    AwareDatetimeISO,
+    CoercedStr,
     DeviceTypes,
+    UUIDStrCoerce,
 )
 from generalresearch.models.precision import PrecisionQuestionID, PrecisionStatus
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.survey import MarketplaceTask
 from generalresearch.models.thl.survey.condition import (
-    MarketplaceCondition,
     ConditionValueType,
+    MarketplaceCondition,
 )
 
 
@@ -137,7 +137,7 @@ class PrecisionSurvey(MarketplaceTask):
     # complete_pct: float = Field(ge=0, le=1, validation_alias="cp")
     # Also skipping: ismultiple (allowing multiple entrances). How is that even possible? They are all False anyways.
 
-    bid_loi: int = Field(default=None, ge=59, le=120 * 60, validation_alias="loi")
+    bid_loi: int = Field(ge=59, le=120 * 60, validation_alias="loi")
     bid_ir: float = Field(ge=0, le=1, validation_alias="ir")
     # Be careful with this, it doesn't make any sense. See survey 452481, has 12 completes with a 100% live_ir,
     #   but the only quotas have 0 completes and 1052 terms. .... ??
@@ -257,12 +257,12 @@ class PrecisionSurvey(MarketplaceTask):
         )
         return f"{self.__repr_name__()}({repr_str})"
 
-    def is_unchanged(self, other):
+    def is_unchanged(self, other) -> bool:
         return self.model_dump(
             exclude={"updated", "conditions", "created"}
         ) == other.model_dump(exclude={"updated", "conditions", "created"})
 
-    def to_mysql(self):
+    def to_mysql(self) -> Dict[str, Any]:
         d = self.model_dump(
             mode="json",
             exclude={
@@ -283,7 +283,7 @@ class PrecisionSurvey(MarketplaceTask):
         return d
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]):
+    def from_db(cls, d: Dict[str, Any]) -> Self:
         d["created"] = d["created"].replace(tzinfo=timezone.utc)
         d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
         d["expected_end_date"] = (
@@ -334,13 +334,13 @@ class PrecisionSurvey(MarketplaceTask):
             else:
                 # we don't match any quotas, so everything is unknown
                 return None, set(
-                    flatten([m[1] for q, m in quota_eval.items() if m[0] is None])
+                    flatten([m[1] for _, m in quota_eval.items() if m[0] is None])
                 )
         if True in evals:
             return True, set()
         if None in evals:
             return None, set(
-                flatten([m[1] for q, m in quota_eval.items() if m[0] is None])
+                flatten([m[1] for _, m in quota_eval.items() if m[0] is None])
             )
         return False, set()
 

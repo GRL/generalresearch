@@ -5,11 +5,11 @@ https://support.lucidhq.com/s/article/Collecting-Data-From-Redirects
 """
 
 from collections import defaultdict
-from typing import Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 
-mp_codes = {
+mp_codes: Dict[str, str] = {
     "-6": "Pre-Client Intermediary Page Drop Off",
     "-5": "Failure in the Post Answer Behavior",
     "-1": "Failure to Load the Lucid Marketplace",
@@ -54,7 +54,7 @@ mp_codes = {
 }
 
 # todo: finish, there's a bunch more
-client_status_map = {
+client_status_map: Dict[str, StatusCode1] = {
     "30": StatusCode1.BUYER_QUALITY_FAIL,
     "33": StatusCode1.BUYER_QUALITY_FAIL,
     "34": StatusCode1.BUYER_QUALITY_FAIL,
@@ -62,7 +62,7 @@ client_status_map = {
 }
 
 status_map = defaultdict(lambda: Status.FAIL, **{"s": Status.COMPLETE})
-status_codes_ext_map = {
+status_codes_ext_map: Dict[StatusCode1, List[str]] = {
     StatusCode1.COMPLETE: [],
     StatusCode1.BUYER_FAIL: ["3"],
     StatusCode1.BUYER_QUALITY_FAIL: [],
@@ -101,9 +101,15 @@ status_codes_ext_map = {
     ],
     StatusCode1.PS_OVERQUOTA: ["40", "41", "42"],
 }
-ext_status_code_map = dict()
+
+ext_status_code_map: Dict[str, StatusCode1] = dict()
 for k, v in status_codes_ext_map.items():
+    k: StatusCode1
+    v: List[str]
+
     for vv in v:
+        vv: str
+
         ext_status_code_map[status_codes_ext_map.get(vv, vv)] = k
 
 
@@ -111,18 +117,27 @@ def annotate_status_code(
     ext_status_code_1: str,
     ext_status_code_2: Optional[str] = None,
     ext_status_code_3: Optional[str] = None,
-) -> Tuple:
+) -> Tuple[Status, StatusCode1, Optional[Any]]:
     """
     :params ext_status_code_1: this indicates which callback url was hit. possible values {'s', *anything else*}
     :params ext_status_code_2: this is from the callback url params: InitialStatus
     :params ext_status_code_3: this is from the callback url params: ClientStatus
+
     returns: (status, status_code_1, status_code_2)
     """
-    status = status_map[ext_status_code_1]
+    status: Status = status_map[ext_status_code_1]
+
     if ext_status_code_2 == "3":
-        status_code = client_status_map.get(ext_status_code_3, StatusCode1.BUYER_FAIL)
+        status_code = client_status_map.get(
+            key=ext_status_code_3, default=StatusCode1.BUYER_FAIL
+        )
+
     else:
-        status_code = ext_status_code_map.get(ext_status_code_2, StatusCode1.UNKNOWN)
+        status_code = ext_status_code_map.get(
+            key=ext_status_code_2, default=StatusCode1.UNKNOWN
+        )
+
     if status == Status.COMPLETE:
         status_code = StatusCode1.COMPLETE
+
     return status, status_code, None

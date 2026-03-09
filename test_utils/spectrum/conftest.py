@@ -34,21 +34,21 @@ def spectrum_rw(settings: "GRLBaseSettings") -> SqlHelper:
 
 
 @pytest.fixture(scope="session")
-def spectrum_criteria_manager(spectrum_rw) -> SpectrumCriteriaManager:
+def spectrum_criteria_manager(spectrum_rw: SqlHelper) -> SpectrumCriteriaManager:
     assert "/unittest-" in spectrum_rw.dsn.path
     return SpectrumCriteriaManager(spectrum_rw)
 
 
 @pytest.fixture(scope="session")
-def spectrum_survey_manager(spectrum_rw) -> SpectrumSurveyManager:
+def spectrum_survey_manager(spectrum_rw: SqlHelper) -> SpectrumSurveyManager:
     assert "/unittest-" in spectrum_rw.dsn.path
     return SpectrumSurveyManager(spectrum_rw)
 
 
 @pytest.fixture(scope="session")
 def setup_spectrum_surveys(
-    spectrum_rw, spectrum_survey_manager, spectrum_criteria_manager
-):
+    spectrum_rw: SqlHelper, spectrum_survey_manager, spectrum_criteria_manager
+) -> None:
     now = datetime.now(timezone.utc)
     # make sure these example surveys exist in db
     surveys = [SpectrumSurvey.model_validate_json(x) for x in SURVEYS_JSON]

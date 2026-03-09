@@ -5,28 +5,28 @@ import logging
 from datetime import timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import Optional, Dict, Any, List, Literal, Set, Tuple, Type
+from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Type
 
 from more_itertools import flatten
 from pydantic import (
-    Field,
-    ConfigDict,
     BaseModel,
-    model_validator,
-    field_validator,
+    ConfigDict,
+    Field,
     RootModel,
     computed_field,
+    field_validator,
+    model_validator,
 )
 from typing_extensions import Self
 
 from generalresearch.locales import Localelator
-from generalresearch.models import TaskCalculationType, Source
+from generalresearch.models import Source, TaskCalculationType
 from generalresearch.models.custom_types import (
-    CoercedStr,
-    AwareDatetimeISO,
-    AlphaNumStrSet,
-    DeviceTypes,
     AlphaNumStr,
+    AlphaNumStrSet,
+    AwareDatetimeISO,
+    CoercedStr,
+    DeviceTypes,
 )
 from generalresearch.models.dynata import DynataStatus
 from generalresearch.models.thl.demographics import (
@@ -48,20 +48,30 @@ locale_helper = Localelator()
 class DynataRequirements(BaseModel):
     # Requires inviting (recontacting) specific respondents to a follow up survey.
     requires_recontact: bool = Field(default=False)
-    # Requires respondents to provide personally identifiable information (PII) within client survey.
+
+    # Requires respondents to provide personally identifiable
+    # information (PII) within client survey.
     requires_pii_collection: bool = Field(default=False)
+
     # Requires respondents to utilize their webcam to participate.
     requires_webcam: bool = Field(default=False)
-    # Requires use of facial recognition technology with respondents, such as eye tracking.
+
+    # Requires use of facial recognition technology with
+    # respondents, such as eye tracking.
     requires_eye_tracking: bool = Field(default=False)
+
     # Requires partner to allow Dynata to drop a cookie on respondent.
     requires_cookie_drops: bool = Field(default=False)
-    # Requires partner-uploaded respondent PII to expand third-party matched data.
+
+    # Requires partner-uploaded respondent PII to expand
+    # third-party matched data.
     requires_sample_plus: bool = Field(default=False)
+
     # Requires respondents to download a software application.
     requires_app_vpn: bool = Field(default=False)
-    # Requires additional incentives to be manually awarded to respondent by partner outside of the typical online
-    # survey flow.
+
+    # Requires additional incentives to be manually awarded to
+    # respondent by partner outside of the typical online survey flow.
     requires_manual_rewards: bool = Field(default=False)
 
     def __repr__(self) -> str:

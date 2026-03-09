@@ -9,11 +9,11 @@ can map directly, and some we have to look at the category.
 """
 
 from collections import defaultdict
-from typing import Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 
-status_codes_innovate = {
+status_codes_innovate: Dict[str, str] = {
     "1": "Complete",
     "2": "Buyer Fail",
     "3": "Buyer Over Quota",
@@ -29,7 +29,7 @@ status_map = defaultdict(
     lambda: Status.FAIL,
     **{"1": Status.COMPLETE, "0": Status.ABANDON, "6": Status.ABANDON},
 )
-status_codes_ext_map = {
+status_codes_ext_map: Dict[StatusCode1, List[str]] = {
     StatusCode1.BUYER_FAIL: ["2", "3"],
     StatusCode1.BUYER_QUALITY_FAIL: ["4"],
     StatusCode1.PS_BLOCKED: [],
@@ -43,14 +43,14 @@ for k, v in status_codes_ext_map.items():
     for vv in v:
         ext_status_code_map[status_codes_ext_map.get(vv, vv)] = k
 
-category_innovate = {
+category_innovate: Dict[str, StatusCode1] = {
     "Selected threat potential score at joblevel not allow the survey": StatusCode1.PS_QUALITY,
     "OE Validation": StatusCode1.PS_QUALITY,
     "Unique IP": StatusCode1.PS_DUPLICATE,
     "Unique PID": StatusCode1.PS_DUPLICATE,
     # 'Duplicated to token {token} and Group {groupID}': StatusCode1.PS_DUPLICATE,
     # 'Duplicate Due to Multi Groups: Token {token} and Group {groupID}': StatusCode1.PS_DUPLICATE,
-    # todo: we should not send them into this marketplace for a day?
+    # TODO: we should not send them into this marketplace for a day?
     "User has attended {count} survey in 5 range": StatusCode1.PS_FAIL,
     "PII_OPT": StatusCode1.PS_QUALITY,
     "Recaptcha": StatusCode1.PS_QUALITY,
@@ -80,7 +80,7 @@ def annotate_status_code(
     ext_status_code_1: str,
     ext_status_code_2: Optional[str] = None,
     ext_status_code_3: Optional[str] = None,
-) -> Tuple:
+) -> Tuple[Status, StatusCode1, Optional[Any]]:
     """
     Only quality terminate (4 and 8), and PS term (5) return a term_reason (af=).
 
@@ -93,13 +93,16 @@ def annotate_status_code(
     status = status_map[ext_status_code_1]
     if status == Status.COMPLETE:
         return status, StatusCode1.COMPLETE, None
+
     # First use the 1 through 8 status code. Then, using the reason (af=), if available,
     #   try to maybe reclassify it.
     if ext_status_code_1 not in ext_status_code_map:
         return status, StatusCode1.UNKNOWN, None
+
     status_code = ext_status_code_map.get(ext_status_code_1, StatusCode1.UNKNOWN)
     if ext_status_code_2 in category_innovate:
         status_code = category_innovate[ext_status_code_2]
+
     if ext_status_code_2:
         # Some of these have ids in them... so we have to pattern match it
         if (

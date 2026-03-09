@@ -247,13 +247,16 @@ def utc_30days_ago() -> "datetime":
 
 
 @pytest.fixture(scope="function")
-def delete_df_collection(thl_web_rw, create_main_accounts) -> Callable:
+def delete_df_collection(
+    thl_web_rw: PostgresConfig, create_main_accounts: Callable[..., None]
+) -> Callable[..., None]:
+
     from generalresearch.incite.collections import (
         DFCollection,
         DFCollectionType,
     )
 
-    def _teardown_events(coll: "DFCollection"):
+    def _inner(coll: "DFCollection"):
         match coll.data_type:
             case DFCollectionType.LEDGER:
                 for table in [
@@ -290,7 +293,7 @@ def delete_df_collection(thl_web_rw, create_main_accounts) -> Callable:
                     query=f"DELETE FROM {coll.data_type.value};",
                 )
 
-    return _teardown_events
+    return _inner
 
 
 # === GR Related ===

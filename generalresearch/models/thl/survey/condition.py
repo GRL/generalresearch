@@ -2,19 +2,19 @@ import hashlib
 from abc import ABC
 from enum import Enum
 from functools import cached_property
-from typing import List, Dict, Set, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from pydantic import (
     BaseModel,
-    Field,
-    computed_field,
     ConfigDict,
+    Field,
+    PrivateAttr,
+    StringConstraints,
+    computed_field,
     field_validator,
     model_validator,
-    StringConstraints,
-    PrivateAttr,
 )
-from typing_extensions import Self, Annotated
+from typing_extensions import Annotated, Self
 
 from generalresearch.models import LogicalOperator
 

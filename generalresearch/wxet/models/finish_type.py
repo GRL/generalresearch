@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Set, Optional
+from typing import Optional, Set
 
 from generalresearch.utils.enum import ReprEnumMeta
 from generalresearch.wxet.models.definitions import WXETStatus, WXETStatusCode1

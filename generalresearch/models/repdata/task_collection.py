@@ -1,7 +1,7 @@
-from typing import List
+from typing import Any, Dict, List
 
 import pandas as pd
-from pandera import Column, DataFrameSchema, Check, Index
+from pandera import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
 from generalresearch.models import TaskCalculationType
@@ -81,7 +81,7 @@ class RepDataTaskCollection(TaskCollection):
     items: List[RepDataSurveyHashed]
     _schema = RepDataTaskCollectionSchema
 
-    def to_rows(self, s: RepDataSurveyHashed):
+    def to_rows(self, s: RepDataSurveyHashed) -> List[Dict[str, Any]]:
         survey_fields = [
             "survey_id",
             "survey_uuid",
@@ -122,7 +122,7 @@ class RepDataTaskCollection(TaskCollection):
             rows.append(ds)
         return rows
 
-    def to_df(self):
+    def to_df(self) -> pd.DataFrame:
         rows = []
         for s in self.items:
             rows.extend(self.to_rows(s))

@@ -1,28 +1,28 @@
-from datetime import timezone, datetime
+from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional, List, Tuple, Dict
-from typing_extensions import Annotated
+from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    PositiveInt,
-    model_validator,
-    computed_field,
-    NonNegativeInt,
     NonNegativeFloat,
+    NonNegativeInt,
+    PositiveInt,
+    computed_field,
     field_validator,
+    model_validator,
 )
+from typing_extensions import Annotated
 
 from generalresearch.managers.thl.buyer import Buyer
 from generalresearch.models import Source
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     CountryISOLike,
-    SurveyKey,
     EnumNameSerializer,
     PropertyCode,
+    SurveyKey,
 )
 from generalresearch.models.thl.category import Category
 from generalresearch.models.thl.definitions import Status, StatusCode1
@@ -273,7 +273,7 @@ class TaskActivityPublic(BaseModel):
     last_entrance: Optional[AwareDatetimeISO] = Field(default=None)
 
     @field_validator("status_code_1_percentages", mode="before")
-    def transform_enum_name_pct(cls, value: dict) -> dict:
+    def transform_enum_name_pct(cls, value: Dict[str, Any]) -> Dict[str, Any]:
         # If we are serializing+deserializing this model (i.e. when we cache
         # it), this fails because we've replaced the enum value with the
         # name. Put it back here ...
@@ -297,7 +297,7 @@ class TaskActivityPrivate(TaskActivityPublic):
     )
 
     @field_validator("status_code_1_counts", mode="before")
-    def transform_enum_name_cnt(cls, value: dict) -> dict:
+    def transform_enum_name_cnt(cls, value: Dict[str, Any]) -> Dict[str, Any]:
         # If we are serializing+deserializing this model (i.e. when we cache
         # it), this fails because we've replaced the enum value with the
         # name. Put it back here ...

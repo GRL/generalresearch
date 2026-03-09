@@ -1,7 +1,7 @@
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 import pandas as pd
-from pandera import Column, DataFrameSchema, Check, Index
+from pandera import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
 from generalresearch.models import TaskCalculationType

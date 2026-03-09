@@ -1,6 +1,6 @@
 from typing import Any, Dict, Literal
 
-from pydantic import Field, BaseModel
+from pydantic import BaseModel, Field
 
 
 class OfferWallBehavior(BaseModel):

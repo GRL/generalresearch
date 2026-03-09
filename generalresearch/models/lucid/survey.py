@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-from typing import Optional, Dict, Set, Tuple, List
+from typing import Any, Dict, List, Optional, Self, Set, Tuple
 
-from pydantic import NonNegativeInt, Field, ConfigDict, BaseModel
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from generalresearch.models import Source
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
-    UUIDStr,
-    CoercedStr,
     BigAutoInteger,
+    CoercedStr,
+    UUIDStr,
 )
 from generalresearch.models.thl.locales import CountryISO, LanguageISO
 from generalresearch.models.thl.survey.condition import (
-    MarketplaceCondition,
     ConditionValueType,
+    MarketplaceCondition,
 )
 
 
@@ -41,7 +41,7 @@ class LucidCondition(MarketplaceCondition):
         return hash(self.id)
 
     @classmethod
-    def from_mysql(cls, x):
+    def from_mysql(cls, x: Dict[str, Any]) -> Self:
         x["value_type"] = ConditionValueType.LIST
         x["negate"] = False
         x["values"] = x.pop("pre_codes").split("|")

@@ -1,6 +1,6 @@
 from generalresearch.grliq.models.decider import (
-    Decider,
     AttemptDecision,
+    Decider,
     GrlIqAttemptResult,
 )
 

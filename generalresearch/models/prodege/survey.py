@@ -4,34 +4,34 @@ from __future__ import annotations
 import json
 import logging
 from collections import defaultdict
-from datetime import timezone, datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import List, Optional, Dict, Any, Set, Literal, Tuple, Type
+from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Type
 
 from pydantic import (
     BaseModel,
-    Field,
     ConfigDict,
+    Field,
     computed_field,
-    model_validator,
     field_validator,
+    model_validator,
 )
 
 from generalresearch.locales import Localelator
 from generalresearch.models import LogicalOperator, Source, TaskCalculationType
 from generalresearch.models.custom_types import (
     AlphaNumStrSet,
+    AwareDatetimeISO,
+    CoercedStr,
     InclExcl,
     UUIDStr,
-    CoercedStr,
-    AwareDatetimeISO,
 )
 from generalresearch.models.prodege import (
-    ProdegeStatus,
-    ProdegeQuestionIdType,
-    ProdgeRedirectStatus,
     ProdegePastParticipationType,
+    ProdegeQuestionIdType,
+    ProdegeStatus,
+    ProdgeRedirectStatus,
 )
 from generalresearch.models.prodege.definitions import PG_COUNTRY_TO_ISO
 from generalresearch.models.thl.demographics import Gender
@@ -151,15 +151,18 @@ class ProdegeQuota(BaseModel):
         }
 
     @classmethod
-    def from_api(cls, d: Dict):
+    def from_api(cls, d: Dict[str, Any]) -> "ProdegeQuota":
         # the API doesn't handle None's correctly? idk
         if d["parent_quota_id"] == 0:
             d["parent_quota_id"] = None
+
         d["calculation_type"] = TaskCalculationType.prodege_from_api(
             d["calculation_type"]
         )
+
         if d.get("country_id"):
             d["country_iso"] = PG_COUNTRY_TO_ISO[d["country_id"]]
+
         return cls.model_validate(d)
 
     def passes(
@@ -174,12 +177,13 @@ class ProdegeQuota(BaseModel):
         self, criteria_evaluation: Dict[str, Optional[bool]], country_iso: str
     ) -> bool:
         # Match means we meet all conditions.
-        # We can "match" a quota that is closed. In that case, we would fail the parent quota
+        # We can "match" a quota that is closed. In that case, we would
+        #   fail the parent quota
         return self.matches_country(country_iso) and all(
             criteria_evaluation.get(c) for c in self.condition_hashes
         )
 
-    def matches_country(self, country_iso: str):
+    def matches_country(self, country_iso: str) -> bool:
         return self.country_iso is None or self.country_iso == country_iso
 
     def passes_verbose(
@@ -224,9 +228,12 @@ class ProdegeMaxClicksSetting(BaseModel):
 
     # The total number of clicks allowed before survey traffic is paused.
     cap: int = Field(validation_alias="max_clicks_cap")
+
     # The current remaining number of clicks before survey traffic is paused.
     allowed_clicks: int = Field(validation_alias="max_clicks_allowed_clicks")
-    # The refill rate id for clicks (1: every 30 min, 2: every 1 hour, 3: every 24 hours, 0: one-time setting).
+
+    # The refill rate id for clicks (1: every 30 min, 2: every 1 hour,
+    #   3: every 24 hours, 0: one-time setting).
     #  (not going to bother structuring this, we can't really use it...)
     max_click_rate_id: int = Field(validation_alias="max_clicks_max_click_rate_id")
 
@@ -243,23 +250,30 @@ class ProdegeUserPastParticipation(BaseModel):
 
     @property
     def participation_types(self) -> Set[ProdegePastParticipationType]:
-        # If the survey is filtering completes, then only a complete counts. But if the survey is filtering
-        #   on clicks, then a person who got a complete ALSO did click. And so, the logic here is that
+        # If the survey is filtering completes, then only a complete
+        #   counts. But if the survey is filtering on clicks, then a person
+        #   who got a complete ALSO did click. And so, the logic here is that
         #   participation_types should always include "click".
         if self.ext_status_code_1 is None:
             return {ProdegePastParticipationType.CLICK}
+
         elif self.ext_status_code_1 == "1":
             return {
                 ProdegePastParticipationType.CLICK,
                 ProdegePastParticipationType.COMPLETE,
             }
+
         elif self.ext_status_code_1 == "2":
             return {ProdegePastParticipationType.CLICK, ProdegePastParticipationType.OQ}
+
         elif self.ext_status_code_1 == "3":
             return {ProdegePastParticipationType.CLICK, ProdegePastParticipationType.DQ}
+
         elif self.ext_status_code_1 == "4":
             # 4 means "Quality Disqualification". unclear which participation type this is.
             return {ProdegePastParticipationType.CLICK, ProdegePastParticipationType.DQ}
+
+        raise ValueError(f"Unknown ext_status_code_1: {self.ext_status_code_1}")
 
     def days_ago(self) -> float:
         now = datetime.now(timezone.utc)
@@ -285,15 +299,18 @@ class ProdegePastParticipation(BaseModel):
     """
 
     @classmethod
-    def from_api(cls, d: Dict):
+    def from_api(cls, d: Dict[str, Any]) -> "ProdegePastParticipation":
         # the API doesn't handle None's correctly? idk
         if d["in_past_days"] == 0:
             d["in_past_days"] = None
+
         d["participation_project_ids"] = list(map(str, d["participation_project_ids"]))
         return cls.model_validate(d)
 
     def user_participated(self, user_participation: ProdegeUserPastParticipation):
-        # Given this user's participation event (1 single event), is it being filtered by this survey?
+        # Given this user's participation event (1 single event), is it
+        #   being filtered by this survey?
+
         return (
             user_participation.survey_id in self.survey_ids
             and (
@@ -493,7 +510,7 @@ class ProdegeSurvey(MarketplaceTask):
         return round(float(v), 2)
 
     @classmethod
-    def from_api(cls, d: Dict) -> Optional["ProdegeSurvey"]:
+    def from_api(cls, d: Dict[str, Any]) -> Optional["ProdegeSurvey"]:
         try:
             return cls._from_api(d)
         except Exception as e:
@@ -501,16 +518,19 @@ class ProdegeSurvey(MarketplaceTask):
             return None
 
     @classmethod
-    def _from_api(cls, d: Dict):
-        # handle phases. keys in api response are 'loi' and 'actual_ir'
+    def _from_api(cls, d: Dict[str, Any]) -> "ProdegeSurvey":
+
+        # Handle phases. keys in api response are 'loi' and 'actual_ir'
         if d["phases"]["loi_phase"] == "actual":
             d["actual_loi"] = d.pop("loi") * 60
         else:
             d["bid_loi"] = d.pop("loi") * 60
+
         if d["phases"]["actual_ir_phase"] == "actual":
             d["actual_ir"] = d.pop("actual_ir") / 100
         else:
             d["bid_ir"] = d.pop("actual_ir") / 100
+
         d["conversion_rate"] = (
             d["conversion_rate"] / 100 if d["conversion_rate"] else None
         )
@@ -576,7 +596,7 @@ class ProdegeSurvey(MarketplaceTask):
                 sub_res.append(q)
         return res
 
-    def is_unchanged(self, other):
+    def is_unchanged(self, other) -> bool:
         # Avoiding overloading __eq__ because it looks kind of complicated? I
         # want to be explicit that this is not testing object equivalence,
         # just that the objects don't require any db updates. We also exclude
@@ -593,7 +613,8 @@ class ProdegeSurvey(MarketplaceTask):
             exclude={"created", "updated", "conditions", "survey_name"}
         )
         if o1 == o2:
-            # We don't have to check bid/actual, b/c we already know it's not changed
+            # We don't have to check bid/actual, b/c we already know
+            # it's not changed
             return True
 
         # Ignore bid fields if either one is NULL
@@ -604,7 +625,7 @@ class ProdegeSurvey(MarketplaceTask):
 
         return o1 == o2
 
-    def to_mysql(self):
+    def to_mysql(self) -> Dict[str, Any]:
         d = self.model_dump(
             mode="json",
             exclude={
@@ -618,6 +639,7 @@ class ProdegeSurvey(MarketplaceTask):
             },
         )
         d["quotas"] = json.dumps(d["quotas"])
+
         for k in [
             "max_clicks_settings",
             "past_participation",
@@ -625,13 +647,15 @@ class ProdegeSurvey(MarketplaceTask):
             "exclude_psids",
         ]:
             d[k] = json.dumps(d[k]) if d[k] else None
+
         d["used_question_ids"] = json.dumps(d["used_question_ids"])
         d["created"] = self.created
         d["updated"] = self.updated
+
         return d
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]):
+    def from_db(cls, d: Dict[str, Any]) -> "ProdegeSurvey":
         d["created"] = d["created"].replace(tzinfo=timezone.utc)
         d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
         d["quotas"] = json.loads(d["quotas"])
@@ -653,7 +677,7 @@ class ProdegeSurvey(MarketplaceTask):
         self,
         criteria_evaluation: Dict[str, Optional[bool]],
         country_iso: str,
-        verbose=False,
+        verbose: bool = False,
     ) -> bool:
         # https://developer.prodege.com/surveys-feed/api-reference/survey-matching/quota-structure
         # https://developer.prodege.com/surveys-feed/api-reference/survey-matching/quota-matching-requirements
@@ -700,7 +724,7 @@ class ProdegeSurvey(MarketplaceTask):
         criteria_evaluation: Dict[str, Optional[bool]],
         child_quotas: List[ProdegeQuota],
         country_iso: str,
-        verbose=False,
+        verbose: bool = False,
     ) -> bool:
         if len(child_quotas) == 0:
             # If the parent has no children, we pass
@@ -745,3 +769,5 @@ class ProdegeSurvey(MarketplaceTask):
                 criteria_evaluation, country_iso=country_iso, verbose=True
             )
         )
+
+        return None

@@ -4,20 +4,20 @@ import json
 import logging
 from datetime import timezone
 from decimal import Decimal
-from typing import Optional, Dict, Any, List, Literal, Set, Tuple, Type
-from typing_extensions import Self
+from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Type
 
 from more_itertools import flatten
-from pydantic import Field, ConfigDict, BaseModel, model_validator, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+from typing_extensions import Self
 
 from generalresearch.locales import Localelator
-from generalresearch.models import TaskCalculationType, Source
+from generalresearch.models import Source, TaskCalculationType
 from generalresearch.models.custom_types import (
-    CoercedStr,
-    AwareDatetimeISO,
-    AlphaNumStrSet,
-    UUIDStrSet,
     AlphaNumStr,
+    AlphaNumStrSet,
+    AwareDatetimeISO,
+    CoercedStr,
+    UUIDStrSet,
 )
 from generalresearch.models.spectrum import SpectrumStatus
 from generalresearch.models.thl.demographics import Gender
@@ -321,7 +321,7 @@ class SpectrumSurvey(MarketplaceTask):
         }
 
     @classmethod
-    def from_api(cls, d: Dict) -> Optional["SpectrumSurvey"]:
+    def from_api(cls, d: Dict[str, Any]) -> Optional["SpectrumSurvey"]:
         try:
             return cls._from_api(d)
         except Exception as e:
@@ -329,7 +329,7 @@ class SpectrumSurvey(MarketplaceTask):
             return None
 
     @classmethod
-    def _from_api(cls, d: Dict) -> Self:
+    def _from_api(cls, d: Dict[str, Any]) -> Self:
         assert d["click_balancing"] in {0, 1}, "unknown click_balancing value"
         d["calculation_type"] = (
             TaskCalculationType.STARTS

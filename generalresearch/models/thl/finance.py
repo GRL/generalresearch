@@ -1,23 +1,23 @@
 import random
 from datetime import timezone
-from typing import Optional, TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 from uuid import uuid4
 
 import pandas as pd
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
     NonNegativeInt,
-    ConfigDict,
-    model_validator,
     computed_field,
     field_validator,
+    model_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
 
 from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
-from generalresearch.models.custom_types import UUIDStr, AwareDatetimeISO
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.definitions import SessionAdjustedStatus
 from generalresearch.pg_helper import PostgresConfig
 
@@ -25,9 +25,8 @@ payout_example = random.randint(150, 750 * 100)
 adjustment_example = random.randint(-1_000, 50 * 100)
 
 if TYPE_CHECKING:
-    from generalresearch.models.thl.ledger import LedgerAccount
     from generalresearch.managers.thl.product import ProductManager
-    from generalresearch.models.thl.ledger import AccountType, Direction
+    from generalresearch.models.thl.ledger import AccountType, Direction, LedgerAccount
 
 
 class AdjustmentType(BaseModel):
@@ -111,11 +110,10 @@ class POPFinancial(BaseModel):
         has a single Product.
 
         """
+        from generalresearch.config import is_debug
         from generalresearch.incite.schemas.mergers.pop_ledger import (
             numerical_col_names,
         )
-
-        from generalresearch.config import is_debug
 
         # Validate the input accounts
         assert len(accounts) > 0, "Must provide accounts"
@@ -504,7 +502,7 @@ class ProductBalances(BaseModel):
     @staticmethod
     def from_pandas(
         input_data: pd.DataFrame | pd.Series,
-    ):
+    ) -> "ProductBalances":
         LOG.debug(f"ProductBalances.from_pandas(input_data={input_data.shape})")
 
         if isinstance(input_data, pd.Series):
@@ -832,11 +830,11 @@ class BusinessBalances(BaseModel):
         from generalresearch.incite.schemas.mergers.pop_ledger import (
             numerical_col_names,
         )
-        from generalresearch.models.thl.product import Product
         from generalresearch.models.thl.ledger import (
             AccountType,
             Direction,
         )
+        from generalresearch.models.thl.product import Product
 
         # Validate the input accounts
         assert len(accounts) > 0, "Must provide accounts"

@@ -7,11 +7,11 @@ f - client approved the Preliminary complete as Final Complete
 """
 
 from collections import defaultdict
-from typing import Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 
-status_codes_precision = {
+status_codes_precision: Dict[str, str] = {
     "10": "Complete",
     "20": "Client Terminate",
     "21": "PS Terminate",
@@ -46,7 +46,7 @@ status_codes_precision = {
     "80": "Final Complete",
 }
 status_map = defaultdict(lambda: Status.FAIL, **{"s": Status.COMPLETE})
-status_codes_ext_map = {
+status_codes_ext_map: Dict[StatusCode1, List[str]] = {
     StatusCode1.COMPLETE: ["10"],
     StatusCode1.BUYER_FAIL: ["20", "30"],
     StatusCode1.BUYER_QUALITY_FAIL: ["60"],
@@ -75,7 +75,11 @@ status_codes_ext_map = {
 }
 ext_status_code_map = dict()
 for k, v in status_codes_ext_map.items():
+    k: StatusCode1
+    v: List[str]
+
     for vv in v:
+        vv: str
         ext_status_code_map[status_codes_ext_map.get(vv, vv)] = k
 
 
@@ -83,7 +87,7 @@ def annotate_status_code(
     ext_status_code_1: str,
     ext_status_code_2: Optional[str] = None,
     ext_status_code_3: Optional[str] = None,
-) -> Tuple:
+) -> Tuple[Status, StatusCode1, Optional[Any]]:
     """
     :params ext_status_code_1: from callback url params: status
     :params ext_status_code_2: from callback url params: code

@@ -1,26 +1,26 @@
 from abc import ABC, abstractmethod
 from decimal import Decimal
 from itertools import product
-from typing import Set, Optional, List, Dict, Type
+from typing import Dict, List, Optional, Set, Type
 
 from more_itertools import flatten
 from pydantic import BaseModel, Field
 
 from generalresearch.models import Source
 from generalresearch.models.thl.demographics import (
+    AgeGroup,
     DemographicTarget,
     Gender,
-    AgeGroup,
 )
 from generalresearch.models.thl.locales import (
-    CountryISOs,
-    LanguageISOs,
     CountryISO,
+    CountryISOs,
     LanguageISO,
+    LanguageISOs,
 )
 from generalresearch.models.thl.survey.condition import (
-    MarketplaceCondition,
     ConditionValueType,
+    MarketplaceCondition,
 )
 
 
@@ -68,8 +68,9 @@ class MarketplaceTask(BaseModel, ABC):
     @property
     @abstractmethod
     def internal_id(self) -> str:
-        """This is the value that is used for this survey within the marketplace. Typically,
-        this is survey_id/survey_number. Morning is quota_id, repdata: stream_id.
+        """This is the value that is used for this survey within the
+        marketplace. Typically, this is survey_id/survey_number. Morning
+        is quota_id, repdata: stream_id.
         """
         ...
 

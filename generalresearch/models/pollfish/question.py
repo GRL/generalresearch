@@ -2,12 +2,17 @@
 import json
 import logging
 from enum import Enum
-from typing import List, Optional, Literal, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Self
 
 from pydantic import BaseModel, Field, model_validator
 
 from generalresearch.models import Source
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.profiling.upk_question import (
+        UpkQuestion,
+    )
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -73,7 +78,7 @@ class PollfishQuestion(MarketplaceQuestion):
         return self
 
     @classmethod
-    def from_db(cls, d: dict):
+    def from_db(cls, d: Dict[str, Any]) -> Self:
         options = None
         if d["options"]:
             options = [
@@ -97,13 +102,13 @@ class PollfishQuestion(MarketplaceQuestion):
         d["options"] = json.dumps(d["options"])
         return d
 
-    def to_upk_question(self):
+    def to_upk_question(self) -> "UpkQuestion":
         from generalresearch.models.thl.profiling.upk_question import (
+            UpkQuestion,
             UpkQuestionChoice,
-            UpkQuestionType,
             UpkQuestionSelectorMC,
             UpkQuestionSelectorTE,
-            UpkQuestion,
+            UpkQuestionType,
             order_exclusive_options,
         )
 

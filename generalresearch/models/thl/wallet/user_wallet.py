@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import logging
 
-from pydantic import BaseModel, Field, ConfigDict, NonNegativeInt
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from generalresearch.models.legacy.api_status import StatusResponse
 from generalresearch.models.thl.payout_format import (
-    PayoutFormatType,
     PayoutFormatField,
+    PayoutFormatType,
 )
 
 logger = logging.getLogger()

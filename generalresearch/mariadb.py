@@ -25,7 +25,7 @@ def example():
     # actually we don't need the field flags. I didn't see, but there is an
     # extended field type returned also. Which explicitly tags uuid fields.
     conn = mariadb.connect(
-        host="127.0.0.1", user="root", password="", database="300large-morning"
+        host="127.0.0.1", user="root", password="", database="thl-morning"
     )
     c = conn.cursor()
     c.execute("SELECT user_id, pid as greg FROM morning_userpid limit 1")

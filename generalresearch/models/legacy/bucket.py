@@ -4,23 +4,23 @@ import logging
 import math
 from datetime import timedelta
 from decimal import Decimal
-from typing import Optional, Dict, List, Union, Literal, Tuple
-from typing_extensions import Self
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
+    NonNegativeInt,
     field_validator,
     model_validator,
-    ConfigDict,
-    NonNegativeInt,
 )
+from typing_extensions import Self
 
 from generalresearch.models import Source
 from generalresearch.models.custom_types import (
     HttpsUrl,
-    UUIDStr,
     PropertyCode,
+    UUIDStr,
 )
 from generalresearch.models.thl.stats import StatisticalSummary
 
@@ -181,8 +181,10 @@ class Bucket(BaseModel):
     loi_q1: Optional[timedelta] = Field(strict=True, default=None)
     loi_q2: Optional[timedelta] = Field(strict=True, default=None)
     loi_q3: Optional[timedelta] = Field(strict=True, default=None)
-    # decimal USD. This should not have more than 2 decimal places.
-    #     There is no way to make this "strict" and optional, so we have a separate pre-validator
+
+    # Decimal USD. This should not have more than 2 decimal places.
+    #   There is no way to make this "strict" and optional, so
+    #   we have a separate pre-validator
     user_payout_min: Optional[Decimal] = Field(default=None, lt=1000, gt=0)
     user_payout_max: Optional[Decimal] = Field(default=None, lt=1000, gt=0)
     user_payout_q1: Optional[Decimal] = Field(default=None, lt=1000, gt=0)
@@ -358,7 +360,7 @@ class Bucket(BaseModel):
         )
 
     @classmethod
-    def parse_from_offerwall_style2(cls, bucket: Dict):
+    def parse_from_offerwall_style2(cls, bucket: Dict[str, Any]):
         # {'payout': {'min': 123}}
         loi_min_sec = bucket.get("duration", {}).get("min")
         loi_max_sec = bucket.get("duration", {}).get("max")
@@ -383,7 +385,7 @@ class Bucket(BaseModel):
         )
 
     @classmethod
-    def parse_from_offerwall_style3(cls, bucket: Dict):
+    def parse_from_offerwall_style3(cls, bucket: Dict[str, Any]):
         # {'payout': 123, 'duration': 123}
         return cls(
             user_payout_min=cls.usd_cents_to_decimal(bucket["payout"]),
@@ -397,13 +399,13 @@ class Bucket(BaseModel):
         )
 
     @staticmethod
-    def usd_cents_to_decimal(v: int):
+    def usd_cents_to_decimal(v: Optional[int]) -> Optional[Decimal]:
         if v is None:
             return None
         return Decimal(Decimal(int(v)) / Decimal(100))
 
     @staticmethod
-    def decimal_to_usd_cents(d: Decimal):
+    def decimal_to_usd_cents(d: Optional[Decimal]) -> Optional[Decimal]:
         if d is None:
             return None
         return round(d * Decimal(100), 2)
@@ -437,7 +439,7 @@ class DurationSummary(StatisticalSummary):
     }
 
     @classmethod
-    def from_bucket(cls, bucket: Bucket):
+    def from_bucket(cls, bucket: Bucket) -> "DurationSummary":
         return cls(
             min=bucket.loi_min.total_seconds(),
             max=bucket.loi_max.total_seconds(),
@@ -610,18 +612,21 @@ class TopNPlusBucket(BucketBase):
     def eligibility_ranks(cls, criteria):
         criteria = list(criteria)
         ranks = [c.rank for c in criteria]
+
         if all(r is None for r in ranks):
             for i, c in enumerate(criteria):
                 c.rank = i
             return tuple(criteria)
+
         if any(r is None for r in ranks):
             raise ValueError("Set all or no ranks in eligibility_criteria")
         if len(ranks) != len(set(ranks)):
             raise ValueError("Duplicate ranks")
+
         return tuple(sorted(criteria, key=lambda c: c.rank))
 
     @classmethod
-    def from_bucket(cls, bucket: Bucket):
+    def from_bucket(cls, bucket: Bucket) -> "TopNPlusBucket":
         return cls.model_validate(
             {
                 "id": bucket.id,

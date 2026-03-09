@@ -6,15 +6,20 @@ import logging
 from datetime import datetime, timezone
 from enum import Enum
 from functools import cached_property
-from typing import List, Optional, Literal, Any, Dict, Set
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Self, Set
 
-from pydantic import BaseModel, Field, model_validator, ConfigDict, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 
 from generalresearch.locales import Localelator
-from generalresearch.models import Source, MAX_INT32
+from generalresearch.models import MAX_INT32, Source
 from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.prodege import ProdegeQuestionIdType
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.profiling.upk_question import (
+        UpkQuestion,
+    )
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -24,23 +29,29 @@ locale_helper = Localelator()
 
 
 class ProdegeUserQuestionAnswer(BaseModel):
-    # This is optional b/c this model can be used for eligibility checks for "anonymous" users, which are represented
-    #   by a list of question answers not associated with an actual user. No default b/c we must explicitly set
-    #   the field to None.
+    # This is optional b/c this model can be used for eligibility checks
+    #   for "anonymous" users, which are represented by a list of question
+    #   answers not associated with an actual user. No default b/c we must
+    #   explicitly set the field to None.
     user_id: Optional[PositiveInt] = Field(lt=MAX_INT32)
     question_id: ProdegeQuestionIdType = Field()
-    # This is optional b/c we do not need it when writing these to the db. When these are fetched from the db
-    #   for use in yield-management, we read this field from the prodege_question table.
+
+    # This is optional b/c we do not need it when writing these to the
+    #   db. When these are fetched from the db for use in yield-management,
+    #   we read this field from the prodege_question table.
     question_type: Optional[ProdegeQuestionType] = Field(default=None)
+
     # This may be a pipe-separated string if the question_type is multi. regex means any chars except capital letters
     option_id: str = Field(pattern=r"^[^A-Z]*$")
     created: AwareDatetimeISO = Field(
         default_factory=lambda: datetime.now(tz=timezone.utc)
     )
+
     # ISO 3166-1 alpha-2 (two-letter codes, lowercase)
     country_iso: str = Field(
         max_length=2, min_length=2, pattern=r"^[a-z]{2}$", frozen=True
     )
+
     # 3-char ISO 639-2/B, lowercase
     language_iso: str = Field(
         max_length=3, min_length=3, pattern=r"^[a-z]{3}$", frozen=True
@@ -72,10 +83,12 @@ class ProdegeQuestionOption(BaseModel):
         validation_alias="option_text",
         description="The response text shown to respondents",
     )
-    # Order does not come back explicitly in the API, but the responses seem to be ordered
+    # Order does not come back explicitly in the API, but the
+    #   responses seem to be ordered
     order: int = Field()
-    # Both is_exclusive and is_anchored are returned, but I don't see how they are different.
-    #   We are merging them both into is_exclusive.
+
+    # Both is_exclusive and is_anchored are returned, but I don't see how
+    #   they are different. We are merging them both into is_exclusive.
     is_exclusive: bool = Field(default=False)
 
 
@@ -126,7 +139,9 @@ class ProdegeQuestion(MarketplaceQuestion):
         return self
 
     @classmethod
-    def from_api(cls, d: dict, country_iso: str) -> Optional["ProdegeQuestion"]:
+    def from_api(
+        cls, d: Dict[str, Any], country_iso: str
+    ) -> Optional["ProdegeQuestion"]:
         """
         :param d: Raw response from API
         """
@@ -137,7 +152,7 @@ class ProdegeQuestion(MarketplaceQuestion):
             return None
 
     @classmethod
-    def _from_api(cls, d: dict, country_iso: str) -> "ProdegeQuestion":
+    def _from_api(cls, d: Dict[str, Any], country_iso: str) -> "ProdegeQuestion":
         # The API has no concept of language at all. Questions for a country
         # are returned both in english and other languages. Questions do have
         # a field 'country_specific', and if True, that generally means the
@@ -170,7 +185,7 @@ class ProdegeQuestion(MarketplaceQuestion):
         return cls.model_validate(d)
 
     @classmethod
-    def from_db(cls, d: dict):
+    def from_db(cls, d: Dict[str, Any]) -> "ProdegeQuestion":
         options = None
         if d["options"]:
             options = [
@@ -200,13 +215,13 @@ class ProdegeQuestion(MarketplaceQuestion):
         d["options"] = json.dumps(d["options"])
         return d
 
-    def to_upk_question(self):
+    def to_upk_question(self) -> "UpkQuestion":
         from generalresearch.models.thl.profiling.upk_question import (
+            UpkQuestion,
             UpkQuestionChoice,
-            UpkQuestionType,
             UpkQuestionSelectorMC,
             UpkQuestionSelectorTE,
-            UpkQuestion,
+            UpkQuestionType,
             order_exclusive_options,
         )
 

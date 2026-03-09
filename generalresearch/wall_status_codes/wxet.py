@@ -1,7 +1,7 @@
 from collections import defaultdict
-from typing import Optional, Dict, Tuple
+from typing import Dict, List, Optional, Tuple
 
-from generalresearch.models.thl.definitions import StatusCode1, Status
+from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.wxet.models.definitions import (
     WXETStatus,
     WXETStatusCode1,
@@ -11,7 +11,7 @@ from generalresearch.wxet.models.definitions import (
 status_map: Dict[WXETStatus, Status] = defaultdict(
     lambda: Status.FAIL, **{WXETStatus.COMPLETE: Status.COMPLETE}
 )
-status_codes_ext_map = {
+status_codes_ext_map: Dict[StatusCode1, List[WXETStatusCode1]] = {
     StatusCode1.COMPLETE: [WXETStatusCode1.COMPLETE],
     StatusCode1.BUYER_FAIL: [
         WXETStatusCode1.BUYER_DUPLICATE,
@@ -32,10 +32,14 @@ status_codes_ext_map = {
 }
 ext_status_code_map = dict()
 for k, v in status_codes_ext_map.items():
+    k: StatusCode1
+    v: List[WXETStatusCode1]
+
     for vv in v:
+        vv: WXETStatusCode1
         ext_status_code_map[vv] = k
 
-status_code2_map = {
+status_code2_map: Dict[StatusCode1, List[WXETStatusCode2]] = {
     StatusCode1.PS_QUALITY: [],
     StatusCode1.PS_DUPLICATE: [
         WXETStatusCode2.WORKER_INELIGIBLE,
@@ -65,11 +69,12 @@ def annotate_status_code(
     ext_status_code_1: str,
     ext_status_code_2: Optional[str] = None,
     ext_status_code_3: Optional[str] = None,
-) -> Tuple:
+) -> Tuple[Status, StatusCode1, Optional[WXETStatusCode2]]:
     """
     :params ext_status_code_1: WXETStatus
     :params ext_status_code_2: WXETStatusCode1
     :params ext_status_code_3: WXETStatusCode2
+
     returns: (status, status_code_1, status_code_2)
     """
     ext_status_code_1 = WXETStatus(ext_status_code_1)

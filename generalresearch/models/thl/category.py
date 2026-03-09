@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import Any, Dict, Optional
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, model_validator, PositiveInt
+from pydantic import BaseModel, Field, PositiveInt, model_validator
 from typing_extensions import Self
 
 from generalresearch.models.custom_types import UUIDStr
@@ -53,7 +53,7 @@ class Category(BaseModel, frozen=True):
     def is_root(self) -> bool:
         return self.parent_path is None
 
-    def to_offerwall_api(self) -> dict:
+    def to_offerwall_api(self) -> Dict[str, Any]:
         return {
             "id": self.uuid,
             "label": self.label,

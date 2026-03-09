@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import List, Optional, Dict, Literal, Collection
+from typing import Collection, Dict, List, Literal, Optional
 
 import numpy as np
-from pydantic import BaseModel, Field, computed_field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing_extensions import Self
 
 from generalresearch.models.thl.stats import StatisticalSummary

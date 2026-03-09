@@ -13,7 +13,7 @@ class PayoutType(str, Enum, metaclass=ReprEnumMeta):
 
     # User is paid out to their personal PayPal email address
     PAYPAL = "PAYPAL"
-    # User is paid uut via a Tango Gift Card
+    # User is paid out via a Tango Gift Card
     TANGO = "TANGO"
     # DWOLLA
     DWOLLA = "DWOLLA"

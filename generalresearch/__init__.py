@@ -1,12 +1,19 @@
 import threading
 import time
 from functools import wraps
+from typing import Any, Callable, Optional
 
 from decorator import decorator
 from wrapt import FunctionWrapper, ObjectProxy
 
 
-def retry(exceptions, tries=4, delay=0.5, backoff=2, logger=None):
+def retry(
+    exceptions,
+    tries: int = 4,
+    delay: float = 0.5,
+    backoff: int = 2,
+    logger: Optional[Any] = None,
+) -> Callable:
     """
     https://www.calazan.com/retry-decorator-for-python-3/
     Retry calling the decorated function using an exponential backoff.

@@ -1,19 +1,19 @@
 import json
-from datetime import datetime, timezone, timedelta
-from typing import Dict, Tuple, Iterator, Optional, Literal, Union, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, Iterator, Literal, Optional, Tuple, Union
 
 from pydantic import (
-    PositiveInt,
-    Field,
-    field_validator,
-    model_validator,
     BaseModel,
     ConfigDict,
+    Field,
+    PositiveInt,
+    field_validator,
+    model_validator,
 )
 from typing_extensions import Self
 
 from generalresearch.grpc import timestamp_to_datetime
-from generalresearch.models import Source, MAX_INT32
+from generalresearch.models import MAX_INT32, Source
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.locales import CountryISO, LanguageISO
 from generalresearch.models.thl.profiling.upk_question import UpkQuestion

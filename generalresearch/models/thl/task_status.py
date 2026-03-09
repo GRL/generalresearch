@@ -1,39 +1,39 @@
 from datetime import datetime
-from typing import Dict, Optional, Any, Literal, Annotated, List
+from typing import Annotated, Any, Dict, List, Literal, Optional
 
 from pydantic import (
     BaseModel,
     Field,
-    model_validator,
     NonNegativeInt,
     computed_field,
-    field_validator,
     field_serializer,
+    field_validator,
+    model_validator,
 )
 from typing_extensions import Self
 
 from generalresearch.models.custom_types import (
-    UUIDStr,
     AwareDatetimeISO,
     EnumNameSerializer,
+    UUIDStr,
 )
 from generalresearch.models.thl import decimal_to_int_cents
 from generalresearch.models.thl.definitions import (
-    StatusCode1,
+    SessionAdjustedStatus,
     SessionStatusCode2,
     Status,
-    SessionAdjustedStatus,
+    StatusCode1,
 )
 from generalresearch.models.thl.pagination import Page
 from generalresearch.models.thl.payout_format import (
-    PayoutFormatType,
     PayoutFormatOptionalField,
+    PayoutFormatType,
 )
 from generalresearch.models.thl.product import (
     PayoutTransformation,
     Product,
 )
-from generalresearch.models.thl.session import WallOut, Session
+from generalresearch.models.thl.session import Session, WallOut
 
 # API uses the ints, b/c this is what the grpc returned originally ...
 STATUS_MAP = {

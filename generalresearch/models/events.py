@@ -1,30 +1,30 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import StrEnum
-from typing import Union, Literal, Optional, Dict
+from typing import Dict, Literal, Optional, Union
 from uuid import uuid4
 
 from pydantic import (
     BaseModel,
-    Field,
-    PositiveFloat,
-    NonNegativeInt,
-    model_validator,
-    TypeAdapter,
     ConfigDict,
+    Field,
+    NonNegativeInt,
+    PositiveFloat,
+    TypeAdapter,
+    model_validator,
 )
 from typing_extensions import Annotated
 
 from generalresearch.models import Source
 from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
     CountryISOLike,
     UUIDStr,
-    AwareDatetimeISO,
 )
 from generalresearch.models.thl.definitions import (
+    SessionStatusCode2,
     Status,
     StatusCode1,
     WallStatusCode2,
-    SessionStatusCode2,
 )
 
 

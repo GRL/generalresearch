@@ -8,9 +8,9 @@ def generate_offerwall_entry_url(
     bp_user_id: str,
     request_id: Optional[str] = None,
     nudge_id: Optional[str] = None,
-):
-    # for an offerwall entry link, we need the clicked bucket_id and the request hash (so we know
-    #   which GetOfferwall cache to get
+) -> str:
+    # For an offerwall entry link, we need the clicked bucket_id and the
+    #   request hash (so we know which GetOfferwall cache to get
     query_dict = {"i": obj_id, "b": bp_user_id}
     if request_id:
         query_dict["66482fb"] = request_id

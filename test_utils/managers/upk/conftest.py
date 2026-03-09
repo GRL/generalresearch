@@ -1,12 +1,15 @@
 import os
 import time
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
 import pandas as pd
 import pytest
 
 from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.category import CategoryManager
 
 
 def insert_data_from_csv(
@@ -39,7 +42,9 @@ def insert_data_from_csv(
 
 
 @pytest.fixture(scope="session")
-def category_data(thl_web_rw, category_manager) -> None:
+def category_data(
+    thl_web_rw: PostgresConfig, category_manager: "CategoryManager"
+) -> None:
     fp = os.path.join(os.path.dirname(__file__), "marketplace_category.csv.gz")
     insert_data_from_csv(
         thl_web_rw,
@@ -66,20 +71,23 @@ def category_data(thl_web_rw, category_manager) -> None:
 
 
 @pytest.fixture(scope="session")
-def property_data(thl_web_rw) -> None:
+def property_data(thl_web_rw: PostgresConfig) -> None:
     fp = os.path.join(os.path.dirname(__file__), "marketplace_property.csv.gz")
     insert_data_from_csv(thl_web_rw, fp=fp, table_name="marketplace_property")
 
 
 @pytest.fixture(scope="session")
-def item_data(thl_web_rw) -> None:
+def item_data(thl_web_rw: PostgresConfig) -> None:
     fp = os.path.join(os.path.dirname(__file__), "marketplace_item.csv.gz")
     insert_data_from_csv(thl_web_rw, fp=fp, table_name="marketplace_item")
 
 
 @pytest.fixture(scope="session")
 def propertycategoryassociation_data(
-    thl_web_rw, category_data, property_data, category_manager
+    thl_web_rw: PostgresConfig,
+    category_data,
+    property_data,
+    category_manager: "CategoryManager",
 ) -> None:
     table_name = "marketplace_propertycategoryassociation"
     fp = os.path.join(os.path.dirname(__file__), f"{table_name}.csv.gz")
@@ -93,27 +101,31 @@ def propertycategoryassociation_data(
 
 
 @pytest.fixture(scope="session")
-def propertycountry_data(thl_web_rw, property_data) -> None:
+def propertycountry_data(thl_web_rw: PostgresConfig, property_data) -> None:
     fp = os.path.join(os.path.dirname(__file__), "marketplace_propertycountry.csv.gz")
     insert_data_from_csv(thl_web_rw, fp=fp, table_name="marketplace_propertycountry")
 
 
 @pytest.fixture(scope="session")
-def propertymarketplaceassociation_data(thl_web_rw, property_data) -> None:
+def propertymarketplaceassociation_data(
+    thl_web_rw: PostgresConfig, property_data
+) -> None:
     table_name = "marketplace_propertymarketplaceassociation"
     fp = os.path.join(os.path.dirname(__file__), f"{table_name}.csv.gz")
     insert_data_from_csv(thl_web_rw, fp=fp, table_name=table_name)
 
 
 @pytest.fixture(scope="session")
-def propertyitemrange_data(thl_web_rw, property_data, item_data) -> None:
+def propertyitemrange_data(
+    thl_web_rw: PostgresConfig, property_data, item_data
+) -> None:
     table_name = "marketplace_propertyitemrange"
     fp = os.path.join(os.path.dirname(__file__), f"{table_name}.csv.gz")
     insert_data_from_csv(thl_web_rw, fp=fp, table_name=table_name)
 
 
 @pytest.fixture(scope="session")
-def question_data(thl_web_rw) -> None:
+def question_data(thl_web_rw: PostgresConfig) -> None:
     table_name = "marketplace_question"
     fp = os.path.join(os.path.dirname(__file__), f"{table_name}.csv.gz")
     insert_data_from_csv(
@@ -122,7 +134,7 @@ def question_data(thl_web_rw) -> None:
 
 
 @pytest.fixture(scope="session")
-def clear_upk_tables(thl_web_rw):
+def clear_upk_tables(thl_web_rw: PostgresConfig):
     tables = [
         "marketplace_propertyitemrange",
         "marketplace_propertymarketplaceassociation",

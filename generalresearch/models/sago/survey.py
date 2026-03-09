@@ -5,19 +5,19 @@ import logging
 from datetime import timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import Optional, Dict, Any, List, Literal, Set, Tuple, Annotated, Type
-from typing_extensions import Self
+from typing import Annotated, Any, Dict, List, Literal, Optional, Set, Tuple, Type
 
 from more_itertools import flatten
-from pydantic import Field, ConfigDict, BaseModel, model_validator, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+from typing_extensions import Self
 
 from generalresearch.locales import Localelator
-from generalresearch.models import Source, LogicalOperator
+from generalresearch.models import LogicalOperator, Source
 from generalresearch.models.custom_types import (
-    CoercedStr,
-    AwareDatetimeISO,
-    AlphaNumStrSet,
     AlphaNumStr,
+    AlphaNumStrSet,
+    AwareDatetimeISO,
+    CoercedStr,
     DeviceTypes,
     IPLikeStrSet,
 )
@@ -80,7 +80,7 @@ class SagoQuota(BaseModel):
         return self.remaining_count >= min_open_spots
 
     @classmethod
-    def from_api(cls, d: Dict) -> Self:
+    def from_api(cls, d: Dict[str, Any]) -> Self:
         return cls.model_validate(d)
 
     def passes(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
@@ -259,7 +259,7 @@ class SagoSurvey(MarketplaceTask):
         }
 
     @classmethod
-    def from_api(cls, d: Dict) -> Optional["SagoSurvey"]:
+    def from_api(cls, d: Dict[str, Any]) -> Optional["SagoSurvey"]:
         try:
             return cls._from_api(d)
         except Exception as e:
@@ -267,7 +267,7 @@ class SagoSurvey(MarketplaceTask):
             return None
 
     @classmethod
-    def _from_api(cls, d: Dict):
+    def _from_api(cls, d: Dict[str, Any]) -> "SagoSurvey":
         return cls.model_validate(d)
 
     def __repr__(self) -> str:
@@ -285,7 +285,7 @@ class SagoSurvey(MarketplaceTask):
         )
         return f"{self.__repr_name__()}({repr_str})"
 
-    def is_unchanged(self, other):
+    def is_unchanged(self, other) -> bool:
         # Avoiding overloading __eq__ because it looks kind of complicated? I
         # want to be explicit that this is not testing object equivalence, just
         # that the objects don't require any db updates. We also exclude
@@ -294,7 +294,7 @@ class SagoSurvey(MarketplaceTask):
             exclude={"updated", "conditions", "created"}
         ) == other.model_dump(exclude={"updated", "conditions", "created"})
 
-    def to_mysql(self):
+    def to_mysql(self) -> Dict[str, Any]:
         d = self.model_dump(
             mode="json",
             exclude={

@@ -1,10 +1,10 @@
 import json
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, List, Literal, Dict, Any
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
 from uuid import UUID
 
-from pydantic import Field, BaseModel, model_validator, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing_extensions import Self
 
 from generalresearch.models import Source, string_utils
@@ -14,6 +14,11 @@ from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
     MarketplaceUserQuestionAnswer,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.profiling.upk_question import (
+        UpkQuestion,
+    )
 
 
 class CintQuestionType(str, Enum):
@@ -118,27 +123,34 @@ class CintQuestion(MarketplaceQuestion):
 
     @field_validator("options")
     @classmethod
-    def order_options(cls, options):
+    def order_options(
+        cls, options: Optional[List[CintQuestionOption]]
+    ) -> Optional[List[CintQuestionOption]]:
         if options:
             options.sort(key=lambda x: x.order)
+
         return options
 
     @field_validator("options")
     @classmethod
-    def validate_options(cls, options):
+    def validate_options(
+        cls, options: Optional[List[CintQuestionOption]]
+    ) -> Optional[List[CintQuestionOption]]:
         if options:
             ids = {x.id for x in options}
             assert len(ids) == len(options), "options.id must be unique"
             orders = {x.order for x in options}
             assert len(orders) == len(options), "options.order must be unique"
+
         return options
 
     @classmethod
-    def from_api(cls, d: dict, country_iso: str, language_iso: str) -> Self:
+    def from_api(cls, d: Dict[str, Any], country_iso: str, language_iso: str) -> Self:
         options = None
         created_at = datetime.strptime(
             d["create_date"], "%Y-%m-%dT%H:%M:%S%z"
         ).astimezone(timezone.utc)
+
         if d.get("question_options"):
             options = [
                 CintQuestionOption(
@@ -166,15 +178,17 @@ class CintQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: dict) -> Self:
+    def from_db(cls, d: Dict[str, Any]) -> Self:
         options = None
         if d["options"]:
             options = [
                 CintQuestionOption(id=r["id"], text=r["text"], order=r["order"])
                 for r in d["options"]
             ]
+
         if d.get("created_at"):
             d["created_at"] = d["created_at"].replace(tzinfo=timezone.utc)
+
         return cls(
             question_id=d["question_id"],
             question_name=d["question_name"],
@@ -194,15 +208,16 @@ class CintQuestion(MarketplaceQuestion):
         d["options"] = json.dumps(d["options"])
         if self.created_at:
             d["created_at"] = self.created_at.replace(tzinfo=None)
+
         return d
 
-    def to_upk_question(self):
+    def to_upk_question(self) -> "UpkQuestion":
         from generalresearch.models.thl.profiling.upk_question import (
+            UpkQuestion,
             UpkQuestionChoice,
-            UpkQuestionType,
             UpkQuestionSelectorMC,
             UpkQuestionSelectorTE,
-            UpkQuestion,
+            UpkQuestionType,
         )
 
         upk_type_selector_map = {

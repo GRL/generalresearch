@@ -3,20 +3,20 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import timezone, datetime
-from typing import Optional, Dict, List, TYPE_CHECKING
-from uuid import uuid4, UUID
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Dict, List, Optional
+from uuid import UUID, uuid4
 
 from pydantic import (
+    AfterValidator,
     AwareDatetime,
-    Field,
     BaseModel,
+    ConfigDict,
+    Field,
+    PositiveInt,
+    StringConstraints,
     field_validator,
     model_validator,
-    PositiveInt,
-    ConfigDict,
-    StringConstraints,
-    AfterValidator,
 )
 from sentry_sdk import set_tag, set_user
 from typing_extensions import Annotated, Self
@@ -30,10 +30,10 @@ from generalresearch.models.thl.userhealth import AuditLog
 from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
-    from generalresearch.managers.thl.userhealth import AuditLogManager
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
+    from generalresearch.managers.thl.userhealth import AuditLogManager
 
     # from generalresearch.managers.thl.userhealth import UserIpHistoryManager
 

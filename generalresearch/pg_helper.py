@@ -1,15 +1,14 @@
+from datetime import timezone
 from typing import Optional
 
-from psycopg.adapt import Buffer
-from psycopg.types.net import InetLoader, Address, Interface
-from psycopg.types.string import TextLoader
-from pydantic import PostgresDsn
-
 import psycopg
-from psycopg.rows import dict_row, RowFactory
-from psycopg.types.uuid import UUIDLoader
+from psycopg.adapt import Buffer
+from psycopg.rows import RowFactory, dict_row
 from psycopg.types.datetime import TimestampLoader
-from datetime import timezone
+from psycopg.types.net import Address, InetLoader, Interface
+from psycopg.types.string import TextLoader
+from psycopg.types.uuid import UUIDLoader
+from pydantic import PostgresDsn
 
 
 class UUIDHexLoader(UUIDLoader):

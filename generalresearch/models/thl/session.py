@@ -1,29 +1,28 @@
 import json
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Optional, Dict, Any, Tuple, Union, List, Annotated
+from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
-from typing import TYPE_CHECKING
 
 from pydantic import (
-    BaseModel,
     AwareDatetime,
-    Field,
-    model_validator,
-    field_validator,
-    computed_field,
+    BaseModel,
     ConfigDict,
+    Field,
+    computed_field,
     field_serializer,
+    field_validator,
+    model_validator,
 )
 from typing_extensions import Self
 
 from generalresearch.models import DeviceType, Source
 from generalresearch.models.custom_types import (
-    UUIDStr,
     AwareDatetimeISO,
-    IPvAnyAddressStr,
     EnumNameSerializer,
+    IPvAnyAddressStr,
+    UUIDStr,
 )
 from generalresearch.models.legacy.bucket import Bucket
 from generalresearch.models.thl import (
@@ -32,15 +31,15 @@ from generalresearch.models.thl import (
     int_cents_to_decimal,
 )
 from generalresearch.models.thl.definitions import (
-    Status,
-    SessionAdjustedStatus,
-    WallAdjustedStatus,
-    StatusCode1,
-    ReportValue,
-    WallStatusCode2,
-    SessionStatusCode2,
     WALL_ALLOWED_STATUS_CODE_1_2,
     WALL_ALLOWED_STATUS_STATUS_CODE,
+    ReportValue,
+    SessionAdjustedStatus,
+    SessionStatusCode2,
+    Status,
+    StatusCode1,
+    WallAdjustedStatus,
+    WallStatusCode2,
 )
 from generalresearch.models.thl.user import User
 

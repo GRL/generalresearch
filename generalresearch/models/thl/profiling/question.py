@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-from typing import Optional, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from pydantic import (
     BaseModel,
-    Field,
     ConfigDict,
+    Field,
     computed_field,
 )
 
 from generalresearch.models.custom_types import (
-    UUIDStr,
     AwareDatetimeISO,
     CountryISOLike,
     LanguageISOLike,
+    UUIDStr,
 )
 from generalresearch.models.thl.profiling.upk_question import UpkQuestion
 
@@ -34,7 +34,7 @@ class Question(BaseModel):
     )
     data: UpkQuestion = Field()
     is_live: bool = Field()
-    custom: Dict = Field(default_factory=dict)
+    custom: Dict[str, Any] = Field(default_factory=dict)
     last_updated: AwareDatetimeISO = Field()
 
     @computed_field

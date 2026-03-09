@@ -1,5 +1,5 @@
 import abc
-from datetime import timezone, datetime
+from datetime import datetime, timezone
 from typing import List, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
@@ -7,8 +7,8 @@ from typing_extensions import Annotated
 
 from generalresearch.models import Source
 from generalresearch.models.custom_types import (
-    UUIDStr,
     AwareDatetimeISO,
+    UUIDStr,
 )
 
 

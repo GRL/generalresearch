@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, model_validator, computed_field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 
 class StatisticalSummary(BaseModel):

@@ -4,14 +4,14 @@ import logging
 import random
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Literal, List, Dict, Tuple, Optional, Union
+from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 from pydantic import (
+    ConfigDict,
     Field,
-    model_validator,
     computed_field,
     field_validator,
-    ConfigDict,
+    model_validator,
 )
 from scipy.stats import hypergeom
 from typing_extensions import Self
@@ -28,14 +28,14 @@ from generalresearch.models.thl.contest.contest import (
 )
 from generalresearch.models.thl.contest.contest_entry import ContestEntry
 from generalresearch.models.thl.contest.definitions import (
+    ContestEndReason,
     ContestEntryType,
     ContestStatus,
     ContestType,
-    ContestEndReason,
 )
 from generalresearch.models.thl.contest.examples import (
-    _example_raffle_create,
     _example_raffle,
+    _example_raffle_create,
     _example_raffle_user_view,
 )
 
@@ -186,10 +186,10 @@ class RaffleContest(RaffleContestCreate, Contest):
     def get_current_participants(self) -> int:
         return len({entry.user.user_id for entry in self.entries})
 
-    def get_current_amount(self) -> Union[int | USDCent]:
+    def get_current_amount(self) -> Union[int, USDCent]:
         return sum([x.amount for x in self.entries])
 
-    def get_user_amount(self, product_user_id: str) -> Union[int | USDCent]:
+    def get_user_amount(self, product_user_id: str) -> Union[int, USDCent]:
         # Sum of this user's amounts
         return sum(
             e.amount for e in self.entries if e.user.product_user_id == product_user_id
@@ -206,7 +206,7 @@ class RaffleContest(RaffleContestCreate, Contest):
             return True
         return False
 
-    def model_dump_mysql(self):
+    def model_dump_mysql(self) -> Dict[str, Any]:
         d = super().model_dump_mysql()
         d["entry_rule"] = self.entry_rule.model_dump_json()
         return d
@@ -309,9 +309,10 @@ class RaffleUserView(RaffleContest, ContestUserView):
                 return False, "Reached max amount today."
 
         # This would indicate something is wrong, as something else should have done this
-        e, reason = self.should_end()
+        e, _ = self.should_end()
         if e:
             LOG.warning("contest should be over")
             return False, "contest is over"
+
         # todo: others in self.entry_rule ... min_completes, id_verified, etc.
         return True, ""

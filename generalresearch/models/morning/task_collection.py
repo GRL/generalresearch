@@ -1,14 +1,14 @@
 from typing import List, Set
 
 import pandas as pd
-from pandera import Column, DataFrameSchema, Check, Index
+from pandera import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
 from generalresearch.models.morning import MorningStatus
 from generalresearch.models.morning.survey import MorningBid
 from generalresearch.models.thl.survey.task_collection import (
-    create_empty_df_from_schema,
     TaskCollection,
+    create_empty_df_from_schema,
 )
 
 COUNTRY_ISOS: Set[str] = Localelator().get_all_countries()
@@ -130,10 +130,11 @@ class MorningTaskCollection(TaskCollection):
             rows.append(d)
         return rows
 
-    def to_df(self):
+    def to_df(self) -> pd.DataFrame:
         rows = []
         for s in self.items:
             rows.extend(self.to_rows(s))
+
         if rows:
             return pd.DataFrame.from_records(rows, index="quota_id")
         else:

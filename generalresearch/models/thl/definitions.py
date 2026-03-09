@@ -67,7 +67,8 @@ class THLPaths(str, Enum, metaclass=ReprEnumMeta):
 
 class Status(str, Enum, metaclass=ReprEnumMeta):
     """
-    The outcome of a session or wall event. If the session is still in progress, the status will be NULL.
+    The outcome of a session or wall event. If the session is still in
+    progress, the status will be NULL.
     """
 
     # User completed the job successfully and should be paid something

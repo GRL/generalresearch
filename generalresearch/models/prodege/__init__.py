@@ -30,8 +30,10 @@ class ProdegePastParticipationType(str, Enum):
 
 # This is the value of the 'status' url param in the redirect
 # https://developer.prodege.com/surveys-feed/redirects
-# Note: there is no status for ProdegePastParticipationType.CLICK b/c that would be an abandonent
+# Note: there is no status for ProdegePastParticipationType.CLICK b/c
+#   that would be an abandonent
 # Note: there is no ProdegePastParticipationType for quality (status 4)
 ProdgeRedirectStatus = Literal["1", "2", "3", "4"]
-# I'm not using the ProdegePastParticipationType for the values here b/c there is not a 1-to-1 mapping.
+# I'm not using the ProdegePastParticipationType for the values here
+#   b/c there is not a 1-to-1 mapping.
 ProdgeRedirectStatusNameMap = {"1": "complete", "2": "oq", "3": "dq", "4": "quality"}

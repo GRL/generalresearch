@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 from uuid import uuid4
 
 from pydantic import (
     BaseModel,
     Field,
-    model_validator,
-    computed_field,
     PositiveInt,
+    computed_field,
+    model_validator,
 )
 from typing_extensions import Self
 
 from generalresearch.currency import USDCent
-from generalresearch.models.custom_types import UUIDStr, AwareDatetimeISO
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.contest.definitions import ContestPrizeKind
 from generalresearch.models.thl.user import User
 
@@ -34,17 +34,18 @@ class ContestEntryRule(BaseModel):
         default=None,
     )
 
-    # TODO: Only allow entries if user meets some criteria: gold-membership status,
-    #   ID/phone verified, min_completes etc...
-    # Maybe these get put in a separate model b/c the could apply if the ContestType is not ENTRY
+    # TODO: Only allow entries if user meets some criteria: gold-membership
+    #   status, ID/phone verified, min_completes etc... Maybe these get put
+    #   in a separate model b/c the could apply if the ContestType is not ENTRY
     min_completes: Optional[int] = None
     min_membership_level: Optional[int] = None
     id_verified: Optional[bool] = None
 
 
 class ContestEndCondition(BaseModel):
-    """Defines the conditions to evaluate to determine when the contest is over.
-    Multiple conditions can be set. The contest is over once ANY conditions are met.
+    """Defines the conditions to evaluate to determine when the contest
+    is over. Multiple conditions can be set. The contest is over
+    once ANY conditions are met.
     """
 
     target_entry_amount: USDCent | PositiveInt | None = Field(

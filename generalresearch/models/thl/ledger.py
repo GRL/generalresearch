@@ -1,31 +1,31 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Dict, Optional, List, Literal, Annotated, Union
+from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 from uuid import uuid4
 
 from pydantic import (
     BaseModel,
-    Field,
-    field_validator,
-    model_validator,
     ConfigDict,
+    Field,
+    NonNegativeInt,
     PositiveInt,
     computed_field,
-    NonNegativeInt,
+    field_validator,
+    model_validator,
 )
 from typing_extensions import Self
 
 from generalresearch.models.custom_types import (
-    UUIDStr,
     AwareDatetimeISO,
-    check_valid_uuid,
     HttpsUrlStr,
+    UUIDStr,
+    check_valid_uuid,
 )
 from generalresearch.models.thl.ledger_example import (
-    _example_user_tx_payout,
+    _example_user_tx_adjustment,
     _example_user_tx_bonus,
     _example_user_tx_complete,
-    _example_user_tx_adjustment,
+    _example_user_tx_payout,
 )
 from generalresearch.models.thl.pagination import Page
 from generalresearch.models.thl.payout_format import (
@@ -300,7 +300,7 @@ class LedgerTransaction(BaseModel):
             ), "ledger entries must balance"
         return entries
 
-    def model_dump_mysql(self, *args, **kwargs) -> dict:
+    def model_dump_mysql(self, *args, **kwargs) -> Dict[str, Any]:
         d = self.model_dump(mode="json", *args, **kwargs)
         if "created" in d:
             d["created"] = self.created.replace(tzinfo=None)

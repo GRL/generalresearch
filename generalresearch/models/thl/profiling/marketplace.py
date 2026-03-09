@@ -1,16 +1,16 @@
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from functools import cached_property
-from typing import Any, Dict, Set, Optional, Tuple
+from typing import Any, Dict, Optional, Set, Tuple
 
-from pydantic import PositiveInt, BaseModel, Field, computed_field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, computed_field
 
 from generalresearch.models import MAX_INT32, Source
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
-    UUIDStr,
     CountryISOLike,
     LanguageISOLike,
+    UUIDStr,
 )
 from generalresearch.models.thl.locales import CountryISO, LanguageISO
 
@@ -48,8 +48,9 @@ class MarketplaceQuestion(BaseModel, ABC):
     @property
     @abstractmethod
     def internal_id(self) -> str:
-        """This is the value that is used for this question within the marketplace. Typically,
-        this is question_id. Innovate uses question_key."""
+        """This is the value that is used for this question within the
+        marketplace. Typically, this is question_id. Innovate uses question_key.
+        """
         ...
 
     @property
@@ -58,8 +59,9 @@ class MarketplaceQuestion(BaseModel, ABC):
 
     @property
     def _key(self) -> Tuple[str, CountryISOLike, LanguageISOLike]:
-        """This uniquely identifies a question in a locale. There is a unique index
-        on this in the db. e.g. (question_id, country_iso, language_iso)"""
+        """This uniquely identifies a question in a locale. There is a unique
+        index on this in the db. e.g. (question_id, country_iso, language_iso)
+        """
         return self.internal_id, self.country_iso, self.language_iso
 
     @abstractmethod

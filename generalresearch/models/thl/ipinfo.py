@@ -1,23 +1,23 @@
 import ipaddress
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any, Literal, Tuple
+from typing import Any, Dict, Literal, Optional, Tuple
 
 import geoip2.models
 from faker import Faker
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
     PositiveInt,
-    field_validator,
     PrivateAttr,
-    ConfigDict,
+    field_validator,
 )
 from typing_extensions import Self
 
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
-    IPvAnyAddressStr,
     CountryISOLike,
+    IPvAnyAddressStr,
 )
 from generalresearch.models.thl.maxmind.definitions import UserType
 from generalresearch.pg_helper import PostgresConfig
@@ -104,9 +104,10 @@ class IPGeoname(BaseModel):
         "subdivision_2_iso",
         mode="before",
     )
-    def make_lower(cls, value: str):
+    def make_lower(cls, value: Optional[str]) -> Optional[str]:
         if value is not None:
             return value.lower()
+
         return value
 
     # --- ORM ---
@@ -116,7 +117,7 @@ class IPGeoname(BaseModel):
         return d
 
     @classmethod
-    def from_mysql(cls, d: Dict) -> Self:
+    def from_mysql(cls, d: Dict[str, Any]) -> Self:
         d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
 
         return cls.model_validate(d)
@@ -250,9 +251,10 @@ class IPInformation(BaseModel):
     _geoname: Optional[IPGeoname] = PrivateAttr(default=None)
 
     @field_validator("country_iso", "registered_country_iso", mode="before")
-    def make_lower(cls, value: str):
+    def make_lower(cls, value: Optional[str]) -> Optional[str]:
         if value is not None:
             return value.lower()
+
         return value
 
     @property

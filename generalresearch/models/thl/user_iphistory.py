@@ -1,12 +1,12 @@
 import ipaddress
-from datetime import timezone, datetime, timedelta
-from typing import List, Optional, Dict
+from datetime import datetime, timedelta, timezone
+from typing import Dict, List, Optional
 
 from faker import Faker
 from pydantic import (
     BaseModel,
-    Field,
     ConfigDict,
+    Field,
     PositiveInt,
     field_validator,
 )
@@ -14,8 +14,8 @@ from typing_extensions import Self
 
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
-    IPvAnyAddressStr,
     CountryISOLike,
+    IPvAnyAddressStr,
 )
 from generalresearch.models.thl.ipinfo import (
     GeoIPInformation,

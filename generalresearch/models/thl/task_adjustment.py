@@ -5,8 +5,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 
-from generalresearch.models import Source, MAX_INT32
-from generalresearch.models.custom_types import UUIDStr, AwareDatetimeISO
+from generalresearch.models import MAX_INT32, Source
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.definitions import (
     WallAdjustedStatus,
 )

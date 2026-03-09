@@ -5,7 +5,6 @@ from random import randint
 from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 from uuid import uuid4
 
-import pytest
 from pydantic import AwareDatetime, PositiveInt
 
 from generalresearch.models import Source
@@ -14,6 +13,7 @@ from generalresearch.models.thl.definitions import (
     Status,
 )
 from generalresearch.models.thl.survey.model import Buyer, Survey
+from generalresearch.pg_helper import PostgresConfig
 from test_utils.managers.conftest import (
     business_address_manager,
     business_manager,
@@ -28,6 +28,7 @@ from test_utils.managers.conftest import (
 
 if TYPE_CHECKING:
     from generalresearch.currency import USDCent
+    from generalresearch.managers.thl.session import SessionManager
     from generalresearch.models.gr.authentication import GRToken, GRUser
     from generalresearch.models.gr.business import (
         Business,
@@ -53,7 +54,7 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(scope="function")
-def user(request, product_manager, user_manager, thl_web_rr) -> "User":
+def user(request, product_manager, user_manager, thl_web_rr: PostgresConfig) -> "User":
     product = getattr(request, "product", None)
 
     if product is None:
@@ -74,25 +75,29 @@ def user_with_wallet(
 
 
 @pytest.fixture
-def user_with_wallet_amt(request, user_factory, product_amt_true: "Product") -> "User":
+def user_with_wallet_amt(
+    request, user_factory: Callable[..., "User"], product_amt_true: "Product"
+) -> "User":
     # A user on a product with user wallet enabled, on AMT, but they have no money
     return user_factory(product=product_amt_true)
 
 
 @pytest.fixture(scope="function")
-def user_factory(user_manager, thl_web_rr) -> Callable:
-    def _create_user(product: "Product", created: Optional[datetime] = None):
+def user_factory(user_manager, thl_web_rr: PostgresConfig) -> Callable[..., "User"]:
+
+    def _inner(product: "Product", created: Optional[datetime] = None):
         u = user_manager.create_dummy(product=product, created=created)
         u.prefetch_product(pg_config=thl_web_rr)
 
         return u
 
-    return _create_user
+    return _inner
 
 
 @pytest.fixture(scope="function")
-def wall_factory(wall_manager) -> Callable:
-    def _create_wall(
+def wall_factory(wall_manager) -> Callable[..., "Wall"]:
+
+    def _inner(
         session: "Session", wall_status: "Status", req_cpi: Optional[Decimal] = None
     ):
 
@@ -126,10 +131,10 @@ def wall_factory(wall_manager) -> Callable:
 
         return wall
 
-    return _create_wall
+    return _inner
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def wall(session, user, wall_manager) -> Optional["Wall"]:
     from generalresearch.models.thl.task_status import StatusCode1
 
@@ -143,9 +148,12 @@ def wall(session, user, wall_manager) -> Optional["Wall"]:
     return wall
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def session_factory(
-    wall_factory, session_manager, wall_manager, utc_hour_ago
+    wall_factory,
+    session_manager: "SessionManager",
+    wall_manager,
+    utc_hour_ago: datetime,
 ) -> Callable[..., "Session"]:
     from generalresearch.models.thl.session import Source
 
@@ -208,11 +216,13 @@ def session_factory(
 
 @pytest.fixture(scope="function")
 def finished_session_factory(
-    session_factory, session_manager, utc_hour_ago
-) -> Callable:
+    session_factory: Callable[..., "Session"],
+    session_manager: "SessionManager",
+    utc_hour_ago: datetime,
+) -> Callable[..., "Session"]:
     from generalresearch.models.thl.session import Source
 
-    def _create_finished_session(
+    def _inner(
         user: "User",
         # Wall details
         wall_count: int = 5,
@@ -246,11 +256,11 @@ def finished_session_factory(
         )
         return s
 
-    return _create_finished_session
+    return _inner
 
 
 @pytest.fixture(scope="function")
-def session(user, session_manager, wall_manager) -> "Session":
+def session(user, session_manager: "SessionManager", wall_manager) -> "Session":
     from generalresearch.models.thl.session import Session, Wall
 
     session: Session = session_manager.create_dummy(user=user, country_iso="us")
@@ -294,7 +304,7 @@ def product_factory(product_manager) -> Callable:
     return _create_product
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def payout_config(request) -> "PayoutConfig":
     from generalresearch.models.thl.product import (
         PayoutConfig,
@@ -315,7 +325,7 @@ def payout_config(request) -> "PayoutConfig":
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def product_user_wallet_yes(payout_config, product_manager) -> "Product":
     from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.thl.product import UserWalletConfig
@@ -326,7 +336,7 @@ def product_user_wallet_yes(payout_config, product_manager) -> "Product":
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def product_user_wallet_no(product_manager) -> "Product":
     from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.thl.product import UserWalletConfig
@@ -337,7 +347,7 @@ def product_user_wallet_no(product_manager) -> "Product":
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def product_amt_true(product_manager, payout_config) -> "Product":
     from generalresearch.models.thl.product import UserWalletConfig
 
@@ -347,7 +357,7 @@ def product_amt_true(product_manager, payout_config) -> "Product":
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def bp_payout_factory(
     thl_lm, product_manager, business_payout_event_manager
 ) -> Callable:
@@ -380,7 +390,7 @@ def bp_payout_factory(
 # === GR ===
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def business(request, business_manager) -> "Business":
     from generalresearch.managers.gr.business import BusinessManager
 
@@ -388,7 +398,7 @@ def business(request, business_manager) -> "Business":
     return business_manager.create_dummy()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def business_address(request, business, business_address_manager) -> "BusinessAddress":
     from generalresearch.managers.gr.business import BusinessAddressManager
 
@@ -396,7 +406,7 @@ def business_address(request, business, business_address_manager) -> "BusinessAd
     return business_address_manager.create_dummy(business_id=business.id)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def business_bank_account(
     request, business, business_bank_account_manager
 ) -> "BusinessBankAccount":
@@ -406,7 +416,7 @@ def business_bank_account(
     return business_bank_account_manager.create_dummy(business_id=business.id)
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def team(request, team_manager) -> "Team":
     from generalresearch.managers.gr.team import TeamManager
 
@@ -414,7 +424,7 @@ def team(request, team_manager) -> "Team":
     return team_manager.create_dummy()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def gr_user(gr_um) -> "GRUser":
     from generalresearch.managers.gr.authentication import GRUserManager
 
@@ -422,7 +432,7 @@ def gr_user(gr_um) -> "GRUser":
     return gr_um.create_dummy()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def gr_user_cache(gr_user, gr_db, thl_web_rr, gr_redis_config):
     gr_user.set_cache(
         pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
@@ -430,12 +440,12 @@ def gr_user_cache(gr_user, gr_db, thl_web_rr, gr_redis_config):
     return gr_user
 
 
-@pytest.fixture(scope="function")
-def gr_user_factory(gr_um) -> Callable:
-    def _create_gr_user():
+@pytest.fixture
+def gr_user_factory(gr_um) -> Callable[..., "GRUser"]:
+    def _inner():
         return gr_um.create_dummy()
 
-    return _create_gr_user
+    return _inner
 
 
 @pytest.fixture()
@@ -447,7 +457,7 @@ def gr_user_token(gr_user, gr_tm, gr_db) -> "GRToken":
 
 
 @pytest.fixture()
-def gr_user_token_header(gr_user_token) -> Dict:
+def gr_user_token_header(gr_user_token: "GRToken") -> Dict[str, str]:
     return gr_user_token.auth_header
 
 
@@ -461,41 +471,41 @@ def membership(request, team, gr_user, team_manager) -> "Membership":
 @pytest.fixture(scope="function")
 def membership_factory(
     team: "Team", gr_user: "GRUser", membership_manager, team_manager, gr_um
-) -> Callable:
+) -> Callable[..., "Membership"]:
     from generalresearch.managers.gr.team import MembershipManager
 
     membership_manager: MembershipManager
 
-    def _create_membership(**kwargs):
+    def _inner(**kwargs) -> "Membership":
         _team = kwargs.get("team", team_manager.create_dummy())
         _gr_user = kwargs.get("gr_user", gr_um.create_dummy())
 
         return membership_manager.create(team=_team, gr_user=_gr_user)
 
-    return _create_membership
+    return _inner
 
 
-@pytest.fixture(scope="function")
-def audit_log(audit_log_manager, user) -> "AuditLog":
+@pytest.fixture
+def audit_log(audit_log_manager, user: "User") -> "AuditLog":
     from generalresearch.managers.thl.userhealth import AuditLogManager
 
     audit_log_manager: AuditLogManager
     return audit_log_manager.create_dummy(user_id=user.user_id)
 
 
-@pytest.fixture(scope="function")
-def audit_log_factory(audit_log_manager) -> Callable:
+@pytest.fixture
+def audit_log_factory(audit_log_manager) -> Callable[..., "AuditLog"]:
     from generalresearch.managers.thl.userhealth import AuditLogManager
 
     audit_log_manager: AuditLogManager
 
-    def _create_audit_log(
+    def _inner(
         user_id: PositiveInt,
         level: Optional["AuditLogLevel"] = None,
         event_type: Optional[str] = None,
         event_msg: Optional[str] = None,
         event_value: Optional[float] = None,
-    ):
+    ) -> "AuditLog":
         return audit_log_manager.create_dummy(
             user_id=user_id,
             level=level,
@@ -504,10 +514,10 @@ def audit_log_factory(audit_log_manager) -> Callable:
             event_value=event_value,
         )
 
-    return _create_audit_log
+    return _inner
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def ip_geoname(ip_geoname_manager) -> "IPGeoname":
     from generalresearch.managers.thl.ipinfo import IPGeonameManager
 
@@ -515,7 +525,7 @@ def ip_geoname(ip_geoname_manager) -> "IPGeoname":
     return ip_geoname_manager.create_dummy()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def ip_information(ip_information_manager, ip_geoname) -> "IPInformation":
     from generalresearch.managers.thl.ipinfo import IPInformationManager
 
@@ -525,7 +535,7 @@ def ip_information(ip_information_manager, ip_geoname) -> "IPInformation":
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def ip_information_factory(ip_information_manager) -> Callable:
     from generalresearch.managers.thl.ipinfo import IPInformationManager
 
@@ -542,8 +552,8 @@ def ip_information_factory(ip_information_manager) -> Callable:
     return _create_ip_info
 
 
-@pytest.fixture(scope="function")
-def ip_record(ip_record_manager, ip_geoname, user) -> "IPRecord":
+@pytest.fixture
+def ip_record(ip_record_manager, ip_geoname, user: "User") -> "IPRecord":
     from generalresearch.managers.thl.userhealth import IPRecordManager
 
     ip_record_manager: IPRecordManager
@@ -551,8 +561,8 @@ def ip_record(ip_record_manager, ip_geoname, user) -> "IPRecord":
     return ip_record_manager.create_dummy(user_id=user.user_id)
 
 
-@pytest.fixture(scope="function")
-def ip_record_factory(ip_record_manager, user) -> Callable:
+@pytest.fixture
+def ip_record_factory(ip_record_manager, user: "User") -> Callable:
     from generalresearch.managers.thl.userhealth import IPRecordManager
 
     ip_record_manager: IPRecordManager

@@ -1,7 +1,7 @@
-from typing import List, Set
+from typing import Any, Dict, List, Set
 
 import pandas as pd
-from pandera import Column, DataFrameSchema, Check, Index
+from pandera import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
 from generalresearch.models.sago import SagoStatus
@@ -51,7 +51,7 @@ class SagoTaskCollection(TaskCollection):
     items: List[SagoSurvey]
     _schema = SagoTaskCollectionSchema
 
-    def to_row(self, s: SagoSurvey):
+    def to_row(self, s: SagoSurvey) -> Dict[str, Any]:
         d = s.model_dump(
             mode="json",
             exclude={
@@ -71,7 +71,7 @@ class SagoTaskCollection(TaskCollection):
         d["cpi"] = float(s.cpi)
         return d
 
-    def to_df(self):
+    def to_df(self) -> pd.DataFrame:
         rows = []
         for s in self.items:
             rows.append(self.to_row(s))

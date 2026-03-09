@@ -1,16 +1,16 @@
 import json
-from datetime import datetime, timezone, timedelta
-from typing import Any, Optional, Set, Literal
+from datetime import datetime, timedelta, timezone
+from typing import Any, Literal, Optional, Set
 from uuid import UUID
 
 from pydantic import (
+    AnyUrl,
     AwareDatetime,
-    StringConstraints,
-    TypeAdapter,
+    Field,
     HttpUrl,
     IPvAnyAddress,
-    Field,
-    AnyUrl,
+    StringConstraints,
+    TypeAdapter,
 )
 from pydantic.functional_serializers import PlainSerializer
 from pydantic.functional_validators import AfterValidator, BeforeValidator
@@ -19,7 +19,6 @@ from pydantic_core import Url
 from typing_extensions import Annotated
 
 from generalresearch.models import DeviceType, Source
-
 
 # if TYPE_CHECKING:
 #     from generalresearch.models import DeviceType

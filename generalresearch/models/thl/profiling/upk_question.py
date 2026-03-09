@@ -5,16 +5,16 @@ import json
 import re
 from enum import Enum
 from functools import cached_property
-from typing import List, Optional, Union, Literal, Dict, Tuple, Set
+from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Union
 
 from pydantic import (
     BaseModel,
-    Field,
-    model_validator,
-    field_validator,
     ConfigDict,
+    Field,
     NonNegativeInt,
     PositiveInt,
+    field_validator,
+    model_validator,
 )
 from typing_extensions import Annotated
 
@@ -302,7 +302,7 @@ class UpkQuestion(BaseModel):
     # Don't set a min_length=1 here. We'll allow this to be created, but it
     #   won't be askable with empty choices.
     choices: Optional[List[UpkQuestionChoice]] = Field(default=None)
-    selector: SelectorType = Field(default=None)
+    selector: SelectorType = Field()
     configuration: Optional[Configuration] = Field(default=None)
     validation: Optional[UpkQuestionValidation] = Field(default=None)
     importance: Optional[UPKImportance] = Field(default=None)
@@ -348,7 +348,7 @@ class UpkQuestion(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def check_configuration_type(cls, data: Dict):
+    def check_configuration_type(cls, data: Dict[str, Any]) -> Dict[str, Any]:
         # The model knows what the type of Configuration to grab depending on
         # the key 'type' which it expects inside the configuration object.
         # Here, we grab the type from the top-level model instead.
@@ -433,19 +433,23 @@ class UpkQuestion(BaseModel):
 
     @field_validator("choices")
     @classmethod
-    def order_choices(cls, choices):
+    def order_choices(cls, choices: List):
         if choices:
             choices.sort(key=lambda x: x.order)
         return choices
 
     @field_validator("choices")
     @classmethod
-    def validate_choices(cls, choices):
+    def validate_choices(
+        cls, choices: Optional[List[UpkQuestionChoice]]
+    ) -> Optional[List[UpkQuestionChoice]]:
         if choices:
             ids = {x.id for x in choices}
             assert len(ids) == len(choices), "choices.id must be unique"
+
             orders = {x.order for x in choices}
             assert len(orders) == len(choices), "choices.order must be unique"
+
         return choices
 
     @field_validator("explanation_template", "explanation_fragment_template")

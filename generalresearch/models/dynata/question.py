@@ -5,11 +5,11 @@ import re
 from datetime import timedelta
 from enum import Enum
 from functools import cached_property
-from typing import List, Optional, Literal, Any, Dict, Set
+from typing import Any, Dict, List, Literal, Optional, Set
 
-from pydantic import BaseModel, Field, model_validator, field_validator, PositiveInt
+from pydantic import BaseModel, Field, PositiveInt, field_validator, model_validator
 
-from generalresearch.models import Source, MAX_INT32
+from generalresearch.models import MAX_INT32, Source
 from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
 
@@ -228,11 +228,11 @@ class DynataQuestion(MarketplaceQuestion):
 
     def to_upk_question(self):
         from generalresearch.models.thl.profiling.upk_question import (
+            UpkQuestion,
             UpkQuestionChoice,
-            UpkQuestionType,
             UpkQuestionSelectorMC,
             UpkQuestionSelectorTE,
-            UpkQuestion,
+            UpkQuestionType,
             order_exclusive_options,
         )
 

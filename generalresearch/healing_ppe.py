@@ -5,6 +5,7 @@ import time
 from collections import defaultdict
 from concurrent import futures
 from concurrent.futures.process import BrokenProcessPool
+from typing import Optional
 
 logger = logging.getLogger()
 
@@ -15,7 +16,9 @@ signal_int_name = defaultdict(
 
 class HealingProcessPoolExecutor:
     def __init__(
-        self, max_workers=None, name=None, slack_token=None, slack_channel=None
+        self,
+        max_workers: Optional[int] = None,
+        name: Optional[str] = None,
     ):
         if not name:
             try:

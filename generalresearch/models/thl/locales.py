@@ -4,8 +4,8 @@ from pydantic import AfterValidator
 
 from generalresearch.locales import Localelator
 from generalresearch.models.custom_types import (
-    to_comma_sep_str,
     from_comma_sep_str,
+    to_comma_sep_str,
 )
 
 locale_helper = Localelator()

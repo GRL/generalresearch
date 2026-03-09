@@ -1,7 +1,7 @@
-from typing import List
+from typing import Any, Dict, List
 
 import pandas as pd
-from pandera import Column, DataFrameSchema, Check, Index
+from pandera import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
 from generalresearch.models.precision import PrecisionStatus
@@ -56,7 +56,7 @@ class PrecisionTaskCollection(TaskCollection):
     items: List[PrecisionSurvey]
     _schema = PrecisionTaskCollectionSchema
 
-    def to_row(self, s: PrecisionSurvey):
+    def to_row(self, s: PrecisionSurvey) -> Dict[str, Any]:
         d = s.model_dump(
             mode="json",
             exclude={

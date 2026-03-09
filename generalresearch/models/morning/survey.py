@@ -6,26 +6,26 @@ from datetime import timezone
 from decimal import Decimal
 from functools import cached_property
 from typing import (
-    Optional,
-    Dict,
-    Any,
-    List,
-    Set,
     Annotated,
-    Tuple,
+    Any,
+    Dict,
+    List,
     Literal,
+    Optional,
+    Set,
+    Tuple,
     Type,
 )
 
 from pydantic import (
-    Field,
-    ConfigDict,
     BaseModel,
-    computed_field,
+    ConfigDict,
+    Field,
     NonNegativeInt,
-    model_validator,
     PositiveInt,
     PrivateAttr,
+    computed_field,
+    model_validator,
 )
 from typing_extensions import Self
 
@@ -35,7 +35,7 @@ from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     UUIDStrCoerce,
 )
-from generalresearch.models.morning import MorningStatus, MorningQuestionID
+from generalresearch.models.morning import MorningQuestionID, MorningStatus
 from generalresearch.models.morning.question import MorningQuestion
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.locales import (
@@ -387,7 +387,7 @@ class MorningBid(MorningTaskStatistics):
 
     @model_validator(mode="before")
     @classmethod
-    def setup_quota_fields(cls, data: dict) -> dict:
+    def setup_quota_fields(cls, data: Dict[str, Any]) -> Dict[str, Any]:
         # These fields get "inherited" by each quota from its bid.
         quota_fields = [
             "country_iso",
@@ -396,10 +396,12 @@ class MorningBid(MorningTaskStatistics):
             "bid_loi",
             "used_question_ids",
         ]
+
         for quota in data["quotas"]:
             for field in quota_fields:
                 if field not in quota:
                     quota[field] = data[field]
+
         return data
 
     @model_validator(mode="before")
@@ -417,9 +419,10 @@ class MorningBid(MorningTaskStatistics):
 
     @model_validator(mode="before")
     @classmethod
-    def setup_conditions(cls, data: dict) -> dict:
+    def setup_conditions(cls, data: Dict[str, Any]) -> Dict[str, Any]:
         if "conditions" in data:
             return data
+
         data["conditions"] = dict()
         for quota in data["quotas"]:
             if "qualifications" in quota:
@@ -445,7 +448,7 @@ class MorningBid(MorningTaskStatistics):
 
     @model_validator(mode="before")
     @classmethod
-    def clean_alias(cls, data: Dict) -> Dict:
+    def clean_alias(cls, data: Dict[str, Any]) -> Dict[str, Any]:
         # Make sure fields are named certain ways, so we don't have to check
         # aliases within other validators
         if "estimated_length_of_interview" in data:
@@ -500,7 +503,7 @@ class MorningBid(MorningTaskStatistics):
         return d
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]):
+    def from_db(cls, d: Dict[str, Any]) -> Self:
         d["created"] = d["created"].replace(tzinfo=timezone.utc)
         d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
         d["expected_end"] = d["expected_end"].replace(tzinfo=timezone.utc)
@@ -522,10 +525,12 @@ class MorningBid(MorningTaskStatistics):
         self, criteria_evaluation: Dict[str, Optional[bool]]
     ) -> Tuple[Optional[bool], Optional[List[str]], Optional[Set[str]]]:
         """
-        Quotas are mutually-exclusive. A user can only possibly match 1 quota. As such, all unknown
-          questions on any quota will be the same unknowns on all.
-        Returns (the eligibility (True/False/None), passing quota ID or None (if eligibility is not True),
-          unknown_hashes (or None))
+        Quotas are mutually-exclusive. A user can only possibly match 1
+            quota. As such, all unknown questions on any quota will be
+            the same unknowns on all.
+
+        Returns (the eligibility (True/False/None), passing quota ID or
+            None (if eligibility is not True), unknown_hashes (or None))
         """
         unknown_quotas = []
         unknown_hashes = set()

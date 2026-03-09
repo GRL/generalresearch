@@ -1,7 +1,7 @@
 import json
 import logging
-from logging.handlers import TimedRotatingFileHandler
 import time
+from logging.handlers import TimedRotatingFileHandler
 
 handler = TimedRotatingFileHandler(
     "grpc_access.log", when="midnight", backupCount=3, encoding="utf-8"

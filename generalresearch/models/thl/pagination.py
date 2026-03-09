@@ -1,6 +1,6 @@
+from math import ceil
 from typing import Optional
 
-from math import ceil
 from pydantic import BaseModel, Field, computed_field
 
 

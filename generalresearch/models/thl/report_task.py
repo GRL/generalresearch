@@ -1,6 +1,6 @@
 import random
 from collections import defaultdict
-from typing import List, Collection, Optional
+from typing import Collection, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 

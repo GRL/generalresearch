@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import List, Optional, Literal, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing_extensions import Self
 
 from generalresearch.models import Source
@@ -94,7 +94,7 @@ class LucidQuestion(MarketplaceQuestion):
         return options
 
     @classmethod
-    def from_db(cls, d: dict) -> Self:
+    def from_db(cls, d: Dict[str, Any]) -> Self:
         options = None
         if d["options"]:
             options = [
@@ -112,11 +112,11 @@ class LucidQuestion(MarketplaceQuestion):
 
     def to_upk_question(self) -> "UpkQuestion":
         from generalresearch.models.thl.profiling.upk_question import (
+            UpkQuestion,
             UpkQuestionChoice,
-            UpkQuestionType,
             UpkQuestionSelectorMC,
             UpkQuestionSelectorTE,
-            UpkQuestion,
+            UpkQuestionType,
         )
 
         upk_type_selector_map = {

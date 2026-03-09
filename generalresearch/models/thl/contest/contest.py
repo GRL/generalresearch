@@ -1,31 +1,31 @@
 from __future__ import annotations
 
 import json
-from abc import abstractmethod, ABC
-from datetime import timezone, datetime
-from typing import List, Tuple, Optional, Dict
+from abc import ABC, abstractmethod
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
     HttpUrl,
-    ConfigDict,
-    model_validator,
     NonNegativeInt,
+    model_validator,
 )
 from typing_extensions import Self
 
-from generalresearch.models.custom_types import UUIDStr, AwareDatetimeISO
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.contest import (
     ContestEndCondition,
     ContestPrize,
     ContestWinner,
 )
 from generalresearch.models.thl.contest.definitions import (
+    ContestEndReason,
     ContestStatus,
     ContestType,
-    ContestEndReason,
 )
 from generalresearch.models.thl.locales import CountryISOs
 
@@ -169,7 +169,7 @@ class Contest(ContestBase):
             )
         return None
 
-    def model_dump_mysql(self, **kwargs) -> Dict:
+    def model_dump_mysql(self, **kwargs) -> Dict[str, Any]:
         d = self.model_dump(mode="json", **kwargs)
 
         d["created_at"] = self.created_at
@@ -183,7 +183,7 @@ class Contest(ContestBase):
         return d
 
     @classmethod
-    def model_validate_mysql(cls, data) -> Self:
+    def model_validate_mysql(cls, data: Dict[str, Any]) -> Self:
         data = {k: v for k, v in data.items() if k in cls.model_fields.keys()}
         if isinstance(data["end_condition"], dict):
             data["end_condition"] = ContestEndCondition.model_validate(

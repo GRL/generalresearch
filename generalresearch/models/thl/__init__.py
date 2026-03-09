@@ -2,8 +2,8 @@ from decimal import Decimal
 from typing import Optional
 
 from generalresearch.models.thl.finance import (
-    ProductBalances,
     POPFinancial,
+    ProductBalances,
 )
 from generalresearch.models.thl.payout import (
     BrokerageProductPayoutEvent,

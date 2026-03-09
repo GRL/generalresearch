@@ -4,20 +4,25 @@ import json
 import logging
 from enum import Enum
 from functools import cached_property
-from typing import List, Optional, Literal, Any, Dict, Set
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Set
 
 from pydantic import (
     BaseModel,
-    Field,
-    model_validator,
-    field_validator,
-    PositiveInt,
     ConfigDict,
+    Field,
+    PositiveInt,
+    field_validator,
+    model_validator,
 )
 
-from generalresearch.models import Source, string_utils, MAX_INT32
+from generalresearch.models import MAX_INT32, Source, string_utils
 from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.profiling.upk_question import (
+        UpkQuestion,
+    )
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -165,7 +170,7 @@ class SagoQuestion(MarketplaceQuestion):
 
     @classmethod
     def from_api(
-        cls, d: dict, country_iso: str, language_iso: str
+        cls, d: Dict[str, Any], country_iso: str, language_iso: str
     ) -> Optional["SagoQuestion"]:
         """
         :param d: Raw response from API
@@ -180,7 +185,9 @@ class SagoQuestion(MarketplaceQuestion):
             return None
 
     @classmethod
-    def _from_api(cls, d: dict, country_iso, language_iso) -> "SagoQuestion":
+    def _from_api(
+        cls, d: Dict[str, Any], country_iso: str, language_iso: str
+    ) -> "SagoQuestion":
         sago_category_to_tags = {
             1: "Standard",
             2: "Custom",
@@ -214,7 +221,7 @@ class SagoQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: dict):
+    def from_db(cls, d: Dict[str, Any]) -> "SagoQuestion":
         options = None
         if d["options"]:
             options = [
@@ -241,13 +248,13 @@ class SagoQuestion(MarketplaceQuestion):
         d["options"] = json.dumps(d["options"])
         return d
 
-    def to_upk_question(self):
+    def to_upk_question(self) -> "UpkQuestion":
         from generalresearch.models.thl.profiling.upk_question import (
+            UpkQuestion,
             UpkQuestionChoice,
-            UpkQuestionType,
             UpkQuestionSelectorMC,
             UpkQuestionSelectorTE,
-            UpkQuestion,
+            UpkQuestionType,
             order_exclusive_options,
         )
 

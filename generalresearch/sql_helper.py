@@ -1,8 +1,8 @@
 import logging
-from typing import Any, Dict, List, Tuple, Union, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import UUID
 
-from pydantic import MySQLDsn, PostgresDsn, MariaDBDsn
+from pydantic import MariaDBDsn, MySQLDsn, PostgresDsn
 from pymysql import Connection
 
 ListOrTupleOfStrings = Union[List[str], Tuple[str, ...]]
@@ -119,7 +119,7 @@ def is_uuid4(s: Any) -> bool:
         return False
 
 
-def decode_uuids(row: Dict) -> Dict:
+def decode_uuids(row: Dict[str, Any]) -> Dict[str, Any]:
     return {
         key: (UUID(value, version=4).hex if is_uuid4(value) else value)
         for key, value in row.items()
@@ -131,7 +131,9 @@ class SqlHelper(SqlConnector):
     def __init__(self, dsn: Optional[DataBaseDsn] = None, **kwargs):
         super(SqlHelper, self).__init__(dsn, **kwargs)
 
-    def execute_sql_query(self, query, params=None, commit=False) -> List[Dict]:
+    def execute_sql_query(
+        self, query: str, params: Optional[Dict[str, Any]] = None, commit: bool = False
+    ) -> List[Dict[str, Any]]:
         for param in params if params else []:
             if isinstance(param, (tuple, list, set)) and len(param) == 0:
                 logging.warning("param is empty. not executing query")
@@ -157,7 +159,7 @@ class SqlHelper(SqlConnector):
         field_names: ListOrTupleOfStrings,
         values_to_insert: ListOrTupleOfListOrTuple,
         cursor=None,
-        ignore_existing=False,
+        ignore_existing: bool = False,
     ) -> None:
         """
         :param table_name: name of table

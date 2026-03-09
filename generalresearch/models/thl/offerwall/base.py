@@ -2,29 +2,31 @@ import statistics
 from datetime import timedelta
 from decimal import Decimal
 from string import Formatter
-from typing import Optional, List, Any, Set, Dict, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 from uuid import uuid4
 
 import numpy as np
 import pandas as pd
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
     NonNegativeFloat,
     NonNegativeInt,
-    ConfigDict,
     field_validator,
     model_validator,
 )
-from typing_extensions import Self, Annotated
+from typing_extensions import Annotated, Self
 
 from generalresearch.models import Source
-from generalresearch.models.custom_types import UUIDStr, HttpsUrl
+from generalresearch.models.custom_types import HttpsUrl, UUIDStr
 from generalresearch.models.legacy.bucket import (
     Bucket as LegacyBucket,
-    Eligibility,
+)
+from generalresearch.models.legacy.bucket import (
     CategoryAssociation,
     DurationSummary,
+    Eligibility,
     PayoutSummary,
     PayoutSummaryDecimal,
     SurveyEligibilityCriterion,
@@ -32,9 +34,9 @@ from generalresearch.models.legacy.bucket import (
 from generalresearch.models.legacy.definitions import OfferwallReason
 from generalresearch.models.thl.locales import CountryISO
 from generalresearch.models.thl.offerwall import (
+    OFFERWALL_TYPE_CLASS,
     OfferWallType,
     OfferWallTypeClass,
-    OFFERWALL_TYPE_CLASS,
 )
 from generalresearch.models.thl.offerwall.bucket import (
     generate_offerwall_entry_url,

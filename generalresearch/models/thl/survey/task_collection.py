@@ -6,7 +6,7 @@ from typing import List
 import pandas as pd
 import pandera
 from pandera import DataFrameSchema
-from pydantic import Field, ConfigDict, BaseModel, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from generalresearch.models.thl.survey import MarketplaceTask
 

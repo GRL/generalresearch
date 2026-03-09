@@ -3,7 +3,7 @@ import os
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Optional, Union
 from uuid import uuid4
 
 import pandas as pd
@@ -25,7 +25,6 @@ from generalresearch.incite.mergers.foundations.enriched_session import (
 from generalresearch.incite.mergers.foundations.enriched_wall import (
     EnrichedWallMerge,
 )
-from generalresearch.utils.enum import ReprEnumMeta
 from generalresearch.models.admin.request import ReportRequest, ReportType
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
@@ -34,11 +33,12 @@ from generalresearch.models.custom_types import (
 )
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
+from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
-    from generalresearch.models.gr.business import Business
     from generalresearch.models.gr.authentication import GRUser
+    from generalresearch.models.gr.business import Business
     from generalresearch.models.thl.product import Product
 
 
@@ -77,7 +77,7 @@ class Membership(BaseModel):
         "account was created."
     )
 
-    user_id: SkipJsonSchema[PositiveInt] = Field(default=None)
+    user_id: SkipJsonSchema[PositiveInt] = Field()
 
     team_id: SkipJsonSchema[PositiveInt] = Field()
 
@@ -189,7 +189,7 @@ class Team(BaseModel):
         )
 
         try:
-            test = pd.read_parquet(path, engine="pyarrow")
+            _ = pd.read_parquet(path, engine="pyarrow")
         except Exception as e:
             raise IOError(f"Parquet verification failed: {e}")
 
@@ -234,7 +234,7 @@ class Team(BaseModel):
         )
 
         try:
-            test = pd.read_parquet(path, engine="pyarrow")
+            _ = pd.read_parquet(path, engine="pyarrow")
         except Exception as e:
             raise IOError(f"Parquet verification failed: {e}")
 
@@ -342,5 +342,6 @@ class Team(BaseModel):
             res: List = rc.hmget(name=f"team:{uuid}", keys=keys)
             d = {val: json.loads(res[idx]) for idx, val in enumerate(keys)}
             return Team.model_validate(d)
+
         except (Exception,) as e:
             return None

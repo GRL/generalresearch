@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Any, Dict
 
 from pydantic import HttpUrl
 
@@ -6,21 +6,21 @@ from generalresearch.config import EXAMPLE_PRODUCT_ID
 from generalresearch.currency import USDCent
 
 
-def _example_raffle_create(schema: Dict) -> None:
-    from generalresearch.models.thl.contest.raffle import (
-        RaffleContestCreate,
-    )
+def _example_raffle_create(schema: Dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestEndCondition,
-        ContestPrize,
         ContestEntryRule,
-    )
-    from generalresearch.models.thl.contest.definitions import (
-        ContestType,
-        ContestPrizeKind,
+        ContestPrize,
     )
     from generalresearch.models.thl.contest.contest_entry import (
         ContestEntryType,
+    )
+    from generalresearch.models.thl.contest.definitions import (
+        ContestPrizeKind,
+        ContestType,
+    )
+    from generalresearch.models.thl.contest.raffle import (
+        RaffleContestCreate,
     )
 
     schema["example"] = RaffleContestCreate(
@@ -47,20 +47,20 @@ def _example_raffle_create(schema: Dict) -> None:
 
 
 def _example_raffle(schema: Dict) -> None:
-    from generalresearch.models.thl.contest.raffle import RaffleContest
     from generalresearch.models.thl.contest import (
         ContestEndCondition,
-        ContestPrize,
         ContestEntryRule,
-    )
-    from generalresearch.models.thl.contest.definitions import (
-        ContestStatus,
-        ContestPrizeKind,
-        ContestType,
+        ContestPrize,
     )
     from generalresearch.models.thl.contest.contest_entry import (
         ContestEntryType,
     )
+    from generalresearch.models.thl.contest.definitions import (
+        ContestPrizeKind,
+        ContestStatus,
+        ContestType,
+    )
+    from generalresearch.models.thl.contest.raffle import RaffleContest
 
     schema["example"] = RaffleContest(
         name="Win an iPhone",
@@ -91,22 +91,24 @@ def _example_raffle(schema: Dict) -> None:
         product_id=EXAMPLE_PRODUCT_ID,
     ).model_dump(mode="json")
 
+    return None
 
-def _example_raffle_user_view(schema: Dict) -> None:
-    from generalresearch.models.thl.contest.raffle import RaffleUserView
+
+def _example_raffle_user_view(schema: Dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestEndCondition,
-        ContestPrize,
         ContestEntryRule,
-    )
-    from generalresearch.models.thl.contest.definitions import (
-        ContestStatus,
-        ContestPrizeKind,
-        ContestType,
+        ContestPrize,
     )
     from generalresearch.models.thl.contest.contest_entry import (
         ContestEntryType,
     )
+    from generalresearch.models.thl.contest.definitions import (
+        ContestPrizeKind,
+        ContestStatus,
+        ContestType,
+    )
+    from generalresearch.models.thl.contest.raffle import RaffleUserView
 
     schema["example"] = RaffleUserView(
         name="Win an iPhone",
@@ -140,19 +142,21 @@ def _example_raffle_user_view(schema: Dict) -> None:
         product_user_id="test-user",
     ).model_dump(mode="json")
 
+    return None
 
-def _example_milestone_create(schema: Dict) -> None:
-    from generalresearch.models.thl.contest.milestone import (
-        MilestoneContestCreate,
-        MilestoneContestEndCondition,
-        ContestEntryTrigger,
-    )
+
+def _example_milestone_create(schema: Dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestPrize,
     )
     from generalresearch.models.thl.contest.definitions import (
-        ContestType,
         ContestPrizeKind,
+        ContestType,
+    )
+    from generalresearch.models.thl.contest.milestone import (
+        ContestEntryTrigger,
+        MilestoneContestCreate,
+        MilestoneContestEndCondition,
     )
 
     schema["example"] = MilestoneContestCreate(
@@ -179,19 +183,21 @@ def _example_milestone_create(schema: Dict) -> None:
         terms_and_conditions=HttpUrl("https://www.example.com"),
     ).model_dump(mode="json")
 
+    return None
 
-def _example_milestone(schema: Dict) -> None:
-    from generalresearch.models.thl.contest.milestone import (
-        MilestoneContest,
-        MilestoneContestEndCondition,
-        ContestEntryTrigger,
-    )
+
+def _example_milestone(schema: Dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestPrize,
     )
     from generalresearch.models.thl.contest.definitions import (
-        ContestType,
         ContestPrizeKind,
+        ContestType,
+    )
+    from generalresearch.models.thl.contest.milestone import (
+        ContestEntryTrigger,
+        MilestoneContest,
+        MilestoneContestEndCondition,
     )
 
     schema["example"] = MilestoneContest(
@@ -223,17 +229,19 @@ def _example_milestone(schema: Dict) -> None:
         win_count=12,
     ).model_dump(mode="json")
 
+    return None
 
-def _example_milestone_user_view(schema: Dict) -> None:
-    from generalresearch.models.thl.contest.milestone import (
-        MilestoneUserView,
-        MilestoneContestEndCondition,
-        ContestEntryTrigger,
-    )
+
+def _example_milestone_user_view(schema: Dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import ContestPrize
     from generalresearch.models.thl.contest.definitions import (
-        ContestType,
         ContestPrizeKind,
+        ContestType,
+    )
+    from generalresearch.models.thl.contest.milestone import (
+        ContestEntryTrigger,
+        MilestoneContestEndCondition,
+        MilestoneUserView,
     )
 
     schema["example"] = MilestoneUserView(
@@ -267,17 +275,19 @@ def _example_milestone_user_view(schema: Dict) -> None:
         product_user_id="test-user",
     ).model_dump(mode="json")
 
+    return None
 
-def _example_leaderboard_contest_create(schema: Dict) -> None:
-    from generalresearch.models.thl.contest.leaderboard import (
-        LeaderboardContestCreate,
-    )
+
+def _example_leaderboard_contest_create(schema: Dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestPrize,
     )
     from generalresearch.models.thl.contest.definitions import (
-        ContestType,
         ContestPrizeKind,
+        ContestType,
+    )
+    from generalresearch.models.thl.contest.leaderboard import (
+        LeaderboardContestCreate,
     )
 
     schema["example"] = LeaderboardContestCreate(
@@ -313,16 +323,16 @@ def _example_leaderboard_contest_create(schema: Dict) -> None:
     return None
 
 
-def _example_leaderboard_contest(schema: Dict) -> None:
-    from generalresearch.models.thl.contest.leaderboard import (
-        LeaderboardContest,
-    )
+def _example_leaderboard_contest(schema: Dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestPrize,
     )
     from generalresearch.models.thl.contest.definitions import (
-        ContestType,
         ContestPrizeKind,
+        ContestType,
+    )
+    from generalresearch.models.thl.contest.leaderboard import (
+        LeaderboardContest,
     )
 
     schema["example"] = LeaderboardContest(
@@ -359,16 +369,16 @@ def _example_leaderboard_contest(schema: Dict) -> None:
     return None
 
 
-def _example_leaderboard_contest_user_view(schema: Dict) -> None:
-    from generalresearch.models.thl.contest.leaderboard import (
-        LeaderboardContestUserView,
-    )
+def _example_leaderboard_contest_user_view(schema: Dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestPrize,
     )
     from generalresearch.models.thl.contest.definitions import (
         ContestPrizeKind,
         ContestType,
+    )
+    from generalresearch.models.thl.contest.leaderboard import (
+        LeaderboardContestUserView,
     )
 
     schema["example"] = LeaderboardContestUserView(
@@ -402,3 +412,5 @@ def _example_leaderboard_contest_user_view(schema: Dict) -> None:
         product_id=EXAMPLE_PRODUCT_ID,
         product_user_id="test-user",
     ).model_dump(mode="json")
+
+    return None

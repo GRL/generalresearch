@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Union, Dict, Any
+from typing import Any, Dict, Union
 from uuid import uuid4
 
 from pydantic import (
-    Field,
     BaseModel,
-    model_validator,
+    Field,
     computed_field,
+    model_validator,
 )
 
 from generalresearch.currency import USDCent
-from generalresearch.models.custom_types import UUIDStr, AwareDatetimeISO
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.contest.definitions import ContestEntryType
 from generalresearch.models.thl.user import User
 
@@ -23,8 +23,8 @@ class ContestEntryCreate(BaseModel):
     amount: Union[USDCent, int] = Field(
         description="The amount of the entry in integer counts or USD Cents",
         gt=0,
-        default=None,
     )
+
     # This is used in the Create Entry API. We'll look up the user and set
     # user_id. When we return this model in the API, user_id is excluded
     product_user_id: str = Field(
@@ -54,7 +54,6 @@ class ContestEntry(BaseModel):
     amount: Union[USDCent, int] = Field(
         description="The amount of the entry in integer counts or USD Cents",
         gt=0,
-        default=None,
     )
 
     # user_id used internally, for DB joins/index
@@ -77,6 +76,7 @@ class ContestEntry(BaseModel):
         elif entry_type == ContestEntryType.CASH:
             # This may be coming from the DB, in which case it is an int.
             data["amount"] = USDCent(data["amount"])
+
         return data
 
     @computed_field()
@@ -90,6 +90,8 @@ class ContestEntry(BaseModel):
 
         elif self.entry_type == ContestEntryType.CASH:
             return self.amount.to_usd_str()
+
+        raise ValueError(f"Unknown entry_type: {self.entry_type}")
 
     @computed_field()
     @property

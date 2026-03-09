@@ -1,15 +1,15 @@
-from typing import List, Set, Dict
+from typing import Dict, List, Set
 
 import pandas as pd
-from pandera import Column, DataFrameSchema, Check, Index
+from pandera import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
 from generalresearch.models import TaskCalculationType
 from generalresearch.models.spectrum import SpectrumStatus
 from generalresearch.models.spectrum.survey import SpectrumSurvey
 from generalresearch.models.thl.survey.task_collection import (
-    create_empty_df_from_schema,
     TaskCollection,
+    create_empty_df_from_schema,
 )
 
 COUNTRY_ISOS: Set[str] = Localelator().get_all_countries()
@@ -100,7 +100,7 @@ class SpectrumTaskCollection(TaskCollection):
         rows.append(d)
         return rows
 
-    def to_df(self):
+    def to_df(self) -> pd.DataFrame:
         rows = []
         for s in self.items:
             rows.extend(self.to_rows(s))

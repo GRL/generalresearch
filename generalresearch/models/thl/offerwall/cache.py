@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -8,8 +8,8 @@ from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.offerwall import OfferWallRequest
 from generalresearch.models.thl.offerwall.base import (
     OfferwallBase,
-    TaskResult,
     ScoredTaskResult,
+    TaskResult,
 )
 
 

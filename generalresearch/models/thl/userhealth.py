@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, Dict
+from typing import Dict, Optional
 
-from pydantic import Field, BaseModel, PositiveInt, NonNegativeFloat
+from pydantic import BaseModel, Field, NonNegativeFloat, PositiveInt
 from typing_extensions import Self
 
 from generalresearch.models.custom_types import AwareDatetimeISO

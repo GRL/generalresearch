@@ -2,33 +2,33 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-from typing import Literal, Optional, Tuple, Dict
+from typing import Any, Dict, Literal, Optional, Tuple
 
 from pydantic import (
-    Field,
-    ConfigDict,
     BaseModel,
+    ConfigDict,
+    Field,
     PositiveInt,
 )
 from typing_extensions import Self
 
 from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.thl.contest.contest import (
-    ContestBase,
     Contest,
+    ContestBase,
     ContestUserView,
 )
 from generalresearch.models.thl.contest.contest_entry import ContestEntry
 from generalresearch.models.thl.contest.definitions import (
+    ContestEndReason,
+    ContestEntryTrigger,
     ContestEntryType,
     ContestStatus,
     ContestType,
-    ContestEndReason,
-    ContestEntryTrigger,
 )
 from generalresearch.models.thl.contest.examples import (
-    _example_milestone_create,
     _example_milestone,
+    _example_milestone_create,
     _example_milestone_user_view,
 )
 
@@ -42,9 +42,7 @@ class MilestoneEntry(ContestEntry):
 
     entry_type: Literal[ContestEntryType.COUNT] = Field(default=ContestEntryType.COUNT)
 
-    # TODO: Must fix - how can the default be None if it's not Optional...
     amount: int = Field(
-        default=None,
         description="The amount of the entry in integer counts",
         gt=0,
     )
@@ -147,7 +145,7 @@ class MilestoneContest(MilestoneContestCreate, Contest):
         #   just does nothing
         return None
 
-    def model_dump_mysql(self):
+    def model_dump_mysql(self) -> Dict[str, Any]:
         d = super().model_dump_mysql(
             exclude={
                 "entry_trigger",
@@ -165,7 +163,7 @@ class MilestoneContest(MilestoneContestCreate, Contest):
         return d
 
     @classmethod
-    def model_validate_mysql(cls, data: Dict) -> Self:
+    def model_validate_mysql(cls, data: Dict[str, Any]) -> Self:
         data.update(
             MilestoneContestConfig.model_validate(data["milestone_config"]).model_dump()
         )
@@ -218,9 +216,10 @@ class MilestoneUserView(MilestoneContest, ContestUserView):
         # i.e. it hasn't been >24 hrs since user signed up, or whatever
 
         # This would indicate something is wrong, as something else should have done this
-        e, reason = self.should_end()
+        e, _ = self.should_end()
         if e:
             LOG.warning("contest should be over")
             return False, "contest is over"
+
         # TODO: others in self.entry_rule ... min_completes, id_verified, etc.
         return True, ""

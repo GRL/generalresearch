@@ -1,9 +1,9 @@
-from typing import TYPE_CHECKING, List, Dict
+from typing import TYPE_CHECKING, Dict, List
 
 if TYPE_CHECKING:
-    from generalresearch.models.thl.user import User
     from generalresearch.currency import USDCent
     from generalresearch.models.thl.leaderboard import LeaderboardRow
+    from generalresearch.models.thl.user import User
 
 
 def censor_product_user_id(user: "User") -> str:

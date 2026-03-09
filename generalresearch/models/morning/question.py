@@ -1,17 +1,17 @@
 import json
 from enum import Enum
-from typing import List, Optional, Dict, Literal, Any
+from typing import Any, Dict, List, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing_extensions import Self
 
 from generalresearch.locales import Localelator
 from generalresearch.models import Source
 from generalresearch.models.morning import MorningQuestionID
 from generalresearch.models.thl.profiling.marketplace import (
-    MarketplaceUserQuestionAnswer,
     MarketplaceQuestion,
+    MarketplaceUserQuestionAnswer,
 )
 
 # todo: we could validate that the country_iso / language_iso exists ...
@@ -119,13 +119,14 @@ class MorningQuestion(MarketplaceQuestion):
         return options
 
     @classmethod
-    def from_api(cls, d: dict, country_iso: str, language_iso: str):
+    def from_api(cls, d: Dict[str, Any], country_iso: str, language_iso: str):
         options = None
         if d.get("responses"):
             options = [
                 MorningQuestionOption(id=r["id"], text=r["text"], order=order)
                 for order, r in enumerate(d["responses"])
             ]
+
         return cls(
             id=d["id"],
             name=d["name"],
@@ -137,7 +138,7 @@ class MorningQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: dict):
+    def from_db(cls, d: Dict[str, Any]) -> Self:
         options = None
         if d["options"]:
             options = [
@@ -146,6 +147,7 @@ class MorningQuestion(MarketplaceQuestion):
                 )
                 for r in d["options"]
             ]
+
         return cls(
             id=d["question_id"],
             name=d["question_name"],
@@ -167,12 +169,12 @@ class MorningQuestion(MarketplaceQuestion):
 
     def to_upk_question(self):
         from generalresearch.models.thl.profiling.upk_question import (
+            UpkQuestion,
             UpkQuestionChoice,
-            UpkQuestionType,
+            UpkQuestionSelectorHIDDEN,
             UpkQuestionSelectorMC,
             UpkQuestionSelectorTE,
-            UpkQuestionSelectorHIDDEN,
-            UpkQuestion,
+            UpkQuestionType,
         )
 
         upk_type_selector_map = {

@@ -1,21 +1,21 @@
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 from generalresearch.models import Source
 from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.models.thl.session import Wall
 from generalresearch.wall_status_codes import (
+    cint,
     dynata,
     fullcircle,
     innovate,
+    lucid,
     morning,
     pollfish,
     precision,
-    spectrum,
-    sago,
-    cint,
-    lucid,
     prodege,
     repdata,
+    sago,
+    spectrum,
 )
 
 
@@ -36,6 +36,7 @@ def annotate_status_code(
         return Status.FAIL, StatusCode1.UNKNOWN, None
     if source == Source.PULLEY:
         return Status.FAIL, StatusCode1.UNKNOWN, None
+
     return {
         Source.CINT: cint.annotate_status_code,
         Source.DYNATA: dynata.annotate_status_code,

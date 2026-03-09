@@ -3,11 +3,11 @@ https://developer-beta.market-cube.com/api-details#api=definition-api&operation=
 """
 
 from collections import defaultdict
-from typing import Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 
-status_codes_schlesinger = {
+status_codes_schlesinger: Dict[str, str] = {
     "1": "Complete",
     "2": "Buyer Fail",
     "3": "Buyer Fail",
@@ -20,7 +20,7 @@ status_codes_schlesinger = {
     "11": "Abandon",  # really it is "Buyer Abandon"
 }
 
-status_reason_name = {
+status_reason_name: Dict[str, str] = {
     "1": "Not a Unique Sample Cube User",
     "4": "GeoIP - wrong country",
     "7": "Duplicate - not a unique IP",
@@ -121,7 +121,7 @@ status_map = defaultdict(
     lambda: Status.FAIL, **{"1": Status.COMPLETE, "0": Status.ABANDON}
 )
 
-status_codes_ext_map = {
+status_codes_ext_map: Dict[StatusCode1, List[str]] = {
     StatusCode1.COMPLETE: ["48"],
     StatusCode1.BUYER_FAIL: ["16", "29", "49", "50", "78", "114", "110", "114"],
     StatusCode1.BUYER_QUALITY_FAIL: ["26", "52", "68", "81", "84"],
@@ -167,9 +167,13 @@ status_codes_ext_map = {
     StatusCode1.PS_FAIL: ["7", "29", "36", "47", "56", "58", "64"],
     StatusCode1.PS_OVERQUOTA: ["29", "46", "33", "31"],
 }
-ext_status_code_map = dict()
+ext_status_code_map: Dict[str, StatusCode1] = dict()
 for k, v in status_codes_ext_map.items():
+    k: StatusCode1
+    v: List[str]
+
     for vv in v:
+        vv: str
         ext_status_code_map[status_codes_ext_map.get(vv, vv)] = k
 
 
@@ -177,17 +181,20 @@ def annotate_status_code(
     ext_status_code_1: str,
     ext_status_code_2: Optional[str] = None,
     ext_status_code_3: Optional[str] = None,
-) -> Tuple:
+) -> Tuple[Status, StatusCode1, Optional[Any]]:
     """
     :params ext_status_code_1: from callback url params: scstatus
     :params ext_status_code_2: from callback url params: scsecuritystatus
     :params ext_status_code_3: not used
+
     returns: (status, status_code_1, status_code_2)
     """
     status = status_map[ext_status_code_1]
     status_code = ext_status_code_map.get(ext_status_code_2, StatusCode1.UNKNOWN)
     # According to personal communication, scsecuritystatus may not always
     #   come back for completes. Going to ignore it if the status is complete
+
     if status == Status.COMPLETE:
         status_code = StatusCode1.COMPLETE
+
     return status, status_code, None

@@ -1,21 +1,20 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from pydantic import (
     BaseModel,
+    BeforeValidator,
+    ConfigDict,
     Field,
     NonNegativeInt,
-    model_validator,
     StringConstraints,
-    ConfigDict,
     ValidationError,
-    BeforeValidator,
     field_validator,
+    model_validator,
 )
 from sentry_sdk import capture_exception
-from typing_extensions import Annotated
-from typing_extensions import Self
+from typing_extensions import Annotated, Self
 
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.legacy.api_status import StatusResponse
@@ -34,10 +33,10 @@ if TYPE_CHECKING:
 
 class UpkQuestionResponse(StatusResponse):
     questions: List[UpkQuestionOut] = Field()
-    consent_questions: List[Dict] = Field(
+    consent_questions: List[Dict[str, Any]] = Field(
         description="For internal use", default_factory=list
     )
-    special_questions: List[Dict] = Field(
+    special_questions: List[Dict[str, Any]] = Field(
         description="For internal use", default_factory=list
     )
     count: NonNegativeInt = Field(description="The number of questions returned")
@@ -221,7 +220,7 @@ class UserQuestionAnswers(BaseModel):
     def prefetch_user(self, um: "UserManager") -> None:
         from generalresearch.models.thl.user import User
 
-        res: User = um.get_user_if_exists(
+        res: Optional[User] = um.get_user_if_exists(
             product_id=self.product_id, product_user_id=self.product_user_id
         )
 
@@ -229,10 +228,11 @@ class UserQuestionAnswers(BaseModel):
             raise ValidationError("Invalid user")
 
         self.user = res
+        return None
 
     def prefetch_wall(self, wm: "WallManager") -> None:
-        from generalresearch.models.thl.session import Wall
         from generalresearch.models import Source
+        from generalresearch.models.thl.session import Wall
 
         res: Optional[Wall] = wm.get_from_uuid_if_exists(wall_uuid=self.session_id)
 
@@ -252,3 +252,4 @@ class UserQuestionAnswers(BaseModel):
             raise ValueError("Not a valid GRS event status")
 
         self.wall = res
+        return None

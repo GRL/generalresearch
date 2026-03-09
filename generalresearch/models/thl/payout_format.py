@@ -20,7 +20,9 @@ def validate_payout_format(payout_format: str) -> str:
 
 def format_payout_format(payout_format: str, payout_int: int) -> str:
     """
-    Generate a str representation of a payout. Typically, this would be displayed to a user.
+    Generate a str representation of a payout. Typically, this would be
+        displayed to a user.
+
     :param payout_format: see BPC_DEFAULTS.payout_format
     :param payout_int: The actual value in integer usd cents.
     """

@@ -3,11 +3,11 @@ https://purespectrum.atlassian.net/wiki/spaces/PA/pages/33613201/Minimizing+Clic
 """
 
 from collections import defaultdict
-from typing import Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 
-status_codes_spectrum = {
+status_codes_spectrum: Dict[str, str] = {
     "11": "PS Drop",
     "12": "PS Quota Full Core",
     "13": "PS Termination Core",
@@ -80,7 +80,7 @@ status_codes_spectrum = {
     "88": "PS_Supplier_Allocation_Throttle",
 }
 status_map = defaultdict(lambda: Status.FAIL, **{"21": Status.COMPLETE})
-status_codes_ext_map = {
+status_codes_ext_map: Dict[StatusCode1, List[str]] = {
     StatusCode1.COMPLETE: ["21"],
     StatusCode1.BUYER_FAIL: ["16", "17", "18", "19", "30", "59", "84"],
     StatusCode1.BUYER_QUALITY_FAIL: ["20", "31"],
@@ -142,7 +142,11 @@ status_codes_ext_map = {
 }
 ext_status_code_map = dict()
 for k, v in status_codes_ext_map.items():
+    k: StatusCode1
+    v: List[str]
+
     for vv in v:
+        vv: str
         ext_status_code_map[status_codes_ext_map.get(vv, vv)] = k
 
 
@@ -150,7 +154,7 @@ def annotate_status_code(
     ext_status_code_1: str,
     ext_status_code_2: Optional[str] = None,
     ext_status_code_3: Optional[str] = None,
-) -> Tuple:
+) -> Tuple[Status, StatusCode1, Optional[Any]]:
     """
     :params ext_status_code_1: from url params: ps_rstatus
     https://purespectrum.atlassian.net/wiki/spaces/PA/pages/33613201/Minimizing+Clickwaste+with+ps+rstatus

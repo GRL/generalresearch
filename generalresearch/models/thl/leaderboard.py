@@ -1,25 +1,25 @@
 from __future__ import annotations
 
 import logging
+import math
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import List, Literal
 from uuid import UUID, uuid3
-from zoneinfo import ZoneInfo
 
-import math
 import pandas as pd
 from pydantic import (
+    AwareDatetime,
     BaseModel,
     Field,
     NonNegativeInt,
-    model_validator,
     computed_field,
-    AwareDatetime,
     field_validator,
+    model_validator,
 )
+from zoneinfo import ZoneInfo
 
-from generalresearch.models.custom_types import UUIDStr, AwareDatetimeISO
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.legacy.api_status import StatusResponse
 from generalresearch.models.thl.locales import CountryISO
 from generalresearch.utils.enum import ReprEnumMeta
@@ -81,13 +81,11 @@ class Leaderboard(BaseModel):
     id: UUIDStr = Field(
         description="Unique ID for this leaderboard",
         examples=["845b0074ad533df580ebb9c80cc3bce1"],
-        default=None,
     )
 
     name: str = Field(
         description="Descriptive name for the leaderboard based on the board_code",
         examples=["Number of Completes"],
-        default=None,
     )
 
     board_code: LeaderboardCode = Field(
@@ -111,7 +109,6 @@ class Leaderboard(BaseModel):
     timezone_name: str = Field(
         description="The timezone for the requested country",
         examples=["America/New_York"],
-        default=None,
     )
 
     sort_order: Literal["ascending", "descending"] = Field(default="descending")
@@ -155,7 +152,6 @@ class Leaderboard(BaseModel):
             )
         ],
         # exclude=True,
-        default=None,
     )
 
     @property

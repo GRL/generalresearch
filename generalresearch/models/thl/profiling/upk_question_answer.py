@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Optional, Union, Dict
+from typing import Any, Dict, Optional, Union
 from uuid import uuid4
 
 from pydantic import (
@@ -7,25 +7,24 @@ from pydantic import (
     ConfigDict,
     Field,
     PositiveInt,
-    model_validator,
     computed_field,
+    model_validator,
 )
 from typing_extensions import Self
 
 from generalresearch.models import MAX_INT32
 from generalresearch.models.custom_types import (
-    UUIDStr,
     AwareDatetimeISO,
     CountryISOLike,
+    UUIDStr,
 )
 from generalresearch.models.thl.profiling.upk_property import (
-    PropertyType,
     Cardinality,
+    PropertyType,
 )
 
 
 class UpkQuestionAnswer(BaseModel):
-    """ """
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -110,7 +109,7 @@ class UpkQuestionAnswer(BaseModel):
 
         return self
 
-    def model_dump_mysql(self) -> Dict:
+    def model_dump_mysql(self) -> Dict[str, Any]:
         d = self.model_dump(mode="json")
         d["created"] = self.created
         return d

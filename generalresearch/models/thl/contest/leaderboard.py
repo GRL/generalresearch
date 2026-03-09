@@ -1,12 +1,12 @@
-from datetime import datetime, timezone, timedelta
-from typing import Optional, Literal, List, Tuple, Dict, Any
+from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from pydantic import (
-    Field,
     ConfigDict,
+    Field,
+    PrivateAttr,
     computed_field,
     model_validator,
-    PrivateAttr,
 )
 from redis import Redis
 from typing_extensions import Self
@@ -18,8 +18,8 @@ from generalresearch.managers.thl.user_manager.user_manager import (
     UserManager,
 )
 from generalresearch.models.thl.contest import (
-    ContestWinner,
     ContestEndCondition,
+    ContestWinner,
 )
 from generalresearch.models.thl.contest.contest import (
     Contest,
@@ -27,16 +27,16 @@ from generalresearch.models.thl.contest.contest import (
     ContestUserView,
 )
 from generalresearch.models.thl.contest.definitions import (
+    ContestEndReason,
+    ContestPrizeKind,
     ContestStatus,
     ContestType,
-    ContestPrizeKind,
-    ContestEndReason,
     LeaderboardTieBreakStrategy,
 )
 from generalresearch.models.thl.contest.examples import (
-    _example_leaderboard_contest_user_view,
     _example_leaderboard_contest,
     _example_leaderboard_contest_create,
+    _example_leaderboard_contest_user_view,
 )
 from generalresearch.models.thl.leaderboard import (
     Leaderboard,
@@ -96,7 +96,7 @@ class LeaderboardContestCreate(ContestBase):
         return self
 
     @property
-    def leaderboard_key_parts(self) -> Dict:
+    def leaderboard_key_parts(self) -> Dict[str, Any]:
         assert self.leaderboard_key.count(":") == 5, "invalid leaderboard_key"
         parts = self.leaderboard_key.split(":")
         _, product_id, country_iso, freq_str, date_str, board_code_value = parts
@@ -281,7 +281,7 @@ class LeaderboardContestUserView(LeaderboardContest, ContestUserView):
             return False, "Contest hasn't started"
 
         # This would indicate something is wrong, as something else should have done this
-        e, reason = self.should_end()
+        e, _ = self.should_end()
         if e:
             LOG.warning("contest should be over")
             return False, "contest is over"

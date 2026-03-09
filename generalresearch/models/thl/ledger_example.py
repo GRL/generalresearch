@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
-from typing import Dict
+from typing import Any, Dict
 from uuid import uuid4
 
 
-def _example_user_tx_payout(schema: Dict) -> None:
+def _example_user_tx_payout(schema: Dict[str, Any]) -> None:
     from generalresearch.models.thl.ledger import (
         UserLedgerTransactionUserPayout,
     )
@@ -18,7 +18,7 @@ def _example_user_tx_payout(schema: Dict) -> None:
     ).model_dump(mode="json")
 
 
-def _example_user_tx_bonus(schema: Dict) -> None:
+def _example_user_tx_bonus(schema: Dict[str, Any]) -> None:
     from generalresearch.models.thl.ledger import (
         UserLedgerTransactionUserBonus,
     )
@@ -32,7 +32,7 @@ def _example_user_tx_bonus(schema: Dict) -> None:
     ).model_dump(mode="json")
 
 
-def _example_user_tx_complete(schema: Dict) -> None:
+def _example_user_tx_complete(schema: Dict[str, Any]) -> None:
     from generalresearch.models.thl.ledger import (
         UserLedgerTransactionTaskComplete,
     )
@@ -47,7 +47,7 @@ def _example_user_tx_complete(schema: Dict) -> None:
     ).model_dump(mode="json")
 
 
-def _example_user_tx_adjustment(schema: Dict) -> None:
+def _example_user_tx_adjustment(schema: Dict[str, Any]) -> None:
     from generalresearch.models.thl.ledger import (
         UserLedgerTransactionTaskAdjustment,
     )

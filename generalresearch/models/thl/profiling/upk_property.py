@@ -1,11 +1,11 @@
 from enum import Enum
 from functools import cached_property
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
-from generalresearch.models.custom_types import UUIDStr, CountryISOLike
+from generalresearch.models.custom_types import CountryISOLike, UUIDStr
 from generalresearch.models.thl.category import Category
 from generalresearch.utils.enum import ReprEnumMeta
 
