@@ -1,13 +1,17 @@
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 import pytest
 
 from generalresearch.incite.collections import (
-    DFCollectionType,
-    DFCollectionItem,
     DFCollection,
+    DFCollectionItem,
+    DFCollectionType,
 )
-from test_utils.incite.conftest import mnt_filepath
+from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
 
 df_collection_types = [e for e in DFCollectionType if e is not DFCollectionType.TEST]
 
@@ -15,7 +19,7 @@ df_collection_types = [e for e in DFCollectionType if e is not DFCollectionType.
 @pytest.mark.parametrize("df_coll_type", df_collection_types)
 class TestDFCollectionItemBase:
 
-    def test_init(self, mnt_filepath, df_coll_type):
+    def test_init(self, mnt_filepath: "GRLDatasets", df_coll_type):
         collection = DFCollection(
             data_type=df_coll_type,
             offset="100d",
@@ -41,7 +45,7 @@ class TestDFCollectionItemProperties:
 @pytest.mark.parametrize("df_coll_type", df_collection_types)
 class TestDFCollectionItemMethods:
 
-    def test_has_mysql_false(self, mnt_filepath, df_coll_type):
+    def test_has_mysql_false(self, mnt_filepath: "GRLDatasets", df_coll_type):
         collection = DFCollection(
             data_type=df_coll_type,
             offset="100d",
@@ -53,7 +57,9 @@ class TestDFCollectionItemMethods:
         instance1: DFCollectionItem = collection.items[0]
         assert not instance1.has_mysql()
 
-    def test_has_mysql_true(self, thl_web_rr, mnt_filepath, df_coll_type):
+    def test_has_mysql_true(
+        self, thl_web_rr: PostgresConfig, mnt_filepath: "GRLDatasets", df_coll_type
+    ):
         collection = DFCollection(
             data_type=df_coll_type,
             offset="100d",

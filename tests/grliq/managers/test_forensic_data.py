@@ -1,14 +1,21 @@
 from datetime import timedelta
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 
-from generalresearch.grliq.models.events import TimingData, MouseEvent
-from generalresearch.grliq.models.forensic_data import GrlIqData
-from generalresearch.grliq.models.forensic_result import (
-    GrlIqCheckerResults,
-    GrlIqForensicCategoryResult,
-)
+if TYPE_CHECKING:
+    from generalresearch.grliq.managers.forensic_data import (
+        GrlIqDataManager,
+        GrlIqEventManager,
+    )
+    from generalresearch.grliq.models.events import MouseEvent, TimingData
+    from generalresearch.grliq.models.forensic_data import GrlIqData
+    from generalresearch.grliq.models.forensic_result import (
+        GrlIqCheckerResults,
+        GrlIqForensicCategoryResult,
+    )
+    from generalresearch.models.thl.product import Product
 
 try:
     from psycopg.errors import UniqueViolation
@@ -18,18 +25,16 @@ except ImportError:
 
 class TestGrlIqDataManager:
 
-    def test_create_dummy(self, grliq_dm):
-        from generalresearch.grliq.managers.forensic_data import GrlIqDataManager
+    def test_create_dummy(self, grliq_dm: "GrlIqDataManager"):
         from generalresearch.grliq.models.forensic_data import GrlIqData
 
-        grliq_dm: GrlIqDataManager
         gd1: GrlIqData = grliq_dm.create_dummy(is_attempt_allowed=True)
 
         assert isinstance(gd1, GrlIqData)
         assert isinstance(gd1.results, GrlIqCheckerResults)
         assert isinstance(gd1.category_result, GrlIqForensicCategoryResult)
 
-    def test_create(self, grliq_data, grliq_dm):
+    def test_create(self, grliq_data: "GrlIqData", grliq_dm: "GrlIqDataManager"):
         grliq_dm.create(grliq_data)
         assert grliq_data.id is not None
 
@@ -45,20 +50,16 @@ class TestGrlIqDataManager:
         pass
 
     @pytest.mark.skip(reason="todo")
-    def test_update_fingerprint(self):
-        pass
-
-    @pytest.mark.skip(reason="todo")
     def test_update_data(self):
         pass
 
-    def test_get_id(self, grliq_data, grliq_dm):
+    def test_get_id(self, grliq_data: "GrlIqData", grliq_dm: "GrlIqDataManager"):
         grliq_dm.create(grliq_data)
 
         res = grliq_dm.get_data(forensic_id=grliq_data.id)
         assert res == grliq_data
 
-    def test_get_uuid(self, grliq_data, grliq_dm):
+    def test_get_uuid(self, grliq_data: "GrlIqData", grliq_dm: "GrlIqDataManager"):
         grliq_dm.create(grliq_data)
 
         res = grliq_dm.get_data(forensic_uuid=grliq_data.uuid)
@@ -72,7 +73,7 @@ class TestGrlIqDataManager:
     def test_get_unique_user_count_by_fingerprint(self):
         pass
 
-    def test_filter_data(self, grliq_data, grliq_dm):
+    def test_filter_data(self, grliq_data: "GrlIqData", grliq_dm: "GrlIqDataManager"):
         grliq_dm.create(grliq_data)
         res = grliq_dm.filter_data(uuids=[grliq_data.uuid])[0]
         assert res == grliq_data
@@ -99,7 +100,7 @@ class TestGrlIqDataManager:
     def test_make_filter_str(self):
         pass
 
-    def test_filter_count(self, grliq_dm, product):
+    def test_filter_count(self, grliq_dm: "GrlIqDataManager", product: "Product"):
         res = grliq_dm.filter_count(product_id=product.uuid)
 
         assert isinstance(res, int)
@@ -115,7 +116,7 @@ class TestGrlIqDataManager:
 
 class TestForensicDataGetAndFilter:
 
-    def test_events(self, grliq_dm, grliq_em):
+    def test_events(self, grliq_dm: "GrlIqDataManager"):
         """If load_events=True, the events and mouse_events attributes should
         be an array no matter what. An empty array means that the events were
         loaded, but there were no events available.
@@ -140,7 +141,7 @@ class TestForensicDataGetAndFilter:
         assert len(instance.events) == 0
         assert len(instance.mouse_events) == 0
 
-    def test_timing(self, grliq_dm, grliq_em):
+    def test_timing(self, grliq_dm: "GrlIqDataManager", grliq_em: "GrlIqEventManager"):
         forensic_uuid = uuid4().hex
         grliq_dm.create_dummy(is_attempt_allowed=True, uuid=forensic_uuid)
 
@@ -152,13 +153,16 @@ class TestForensicDataGetAndFilter:
                 client_rtts=[100, 200, 150], server_rtts=[150, 120, 120]
             ),
         )
+
         instance = grliq_dm.get_data(forensic_uuid=forensic_uuid, load_events=True)
         assert isinstance(instance, GrlIqData)
         assert isinstance(instance.events, list)
         assert isinstance(instance.mouse_events, list)
         assert isinstance(instance.timing_data, TimingData)
 
-    def test_events_events(self, grliq_dm, grliq_em):
+    def test_events_events(
+        self, grliq_dm: "GrlIqDataManager", grliq_em: "GrlIqEventManager"
+    ):
         forensic_uuid = uuid4().hex
         grliq_dm.create_dummy(is_attempt_allowed=True, uuid=forensic_uuid)
 
@@ -181,7 +185,9 @@ class TestForensicDataGetAndFilter:
         assert len(instance.pointer_move_events) == 0
         assert len(instance.keyboard_events) == 0
 
-    def test_events_click(self, grliq_dm, grliq_em):
+    def test_events_click(
+        self, grliq_dm: "GrlIqDataManager", grliq_em: "GrlIqEventManager"
+    ):
         forensic_uuid = uuid4().hex
         grliq_dm.create_dummy(is_attempt_allowed=True, uuid=forensic_uuid)
         instance = grliq_dm.get_data(forensic_uuid=forensic_uuid, load_events=True)

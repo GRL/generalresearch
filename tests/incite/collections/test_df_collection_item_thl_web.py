@@ -1,7 +1,8 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from itertools import product as iter_product
 from os.path import join as pjoin
-from pathlib import PurePath, Path
+from pathlib import Path, PurePath
+from typing import TYPE_CHECKING, Callable
 from uuid import uuid4
 
 import dask.dataframe as dd
@@ -11,13 +12,13 @@ from distributed import Client, Scheduler, Worker
 
 # noinspection PyUnresolvedReferences
 from distributed.utils_test import (
-    gen_cluster,
+    cleanup,
+    client,
     client_no_amm,
+    cluster_fixture,
+    gen_cluster,
     loop,
     loop_in_thread,
-    cleanup,
-    cluster_fixture,
-    client,
 )
 from faker import Faker
 from pandera import DataFrameSchema
@@ -29,10 +30,14 @@ from generalresearch.incite.collections import (
     DFCollectionType,
 )
 from generalresearch.incite.schemas import ARCHIVE_AFTER
+from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.sql_helper import PostgresDsn
-from test_utils.incite.conftest import mnt_filepath, incite_item_factory
+from test_utils.incite.conftest import incite_item_factory, mnt_filepath
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
 
 fake = Faker()
 
@@ -71,7 +76,7 @@ class TestDFCollectionItemBase:
 )
 class TestDFCollectionItemProperties:
 
-    def test_filename(self, df_collection_data_type, df_collection, offset):
+    def test_filename(self, df_collection_data_type, df_collection, offset: str):
         for i in df_collection.items:
             assert isinstance(i.filename, str)
 
@@ -88,35 +93,37 @@ class TestDFCollectionItemProperties:
 )
 class TestDFCollectionItemPropertiesBase:
 
-    def test_name(self, df_collection_data_type, offset, df_collection):
+    def test_name(self, df_collection_data_type, offset: str, df_collection):
         for i in df_collection.items:
             assert isinstance(i.name, str)
 
-    def test_finish(self, df_collection_data_type, offset, df_collection):
+    def test_finish(self, df_collection_data_type, offset: str, df_collection):
         for i in df_collection.items:
             assert isinstance(i.finish, datetime)
 
-    def test_interval(self, df_collection_data_type, offset, df_collection):
+    def test_interval(self, df_collection_data_type, offset: str, df_collection):
         for i in df_collection.items:
             assert isinstance(i.interval, pd.Interval)
 
-    def test_partial_filename(self, df_collection_data_type, offset, df_collection):
+    def test_partial_filename(
+        self, df_collection_data_type, offset: str, df_collection
+    ):
         for i in df_collection.items:
             assert isinstance(i.partial_filename, str)
 
-    def test_empty_filename(self, df_collection_data_type, offset, df_collection):
+    def test_empty_filename(self, df_collection_data_type, offset: str, df_collection):
         for i in df_collection.items:
             assert isinstance(i.empty_filename, str)
 
-    def test_path(self, df_collection_data_type, offset, df_collection):
+    def test_path(self, df_collection_data_type, offset: str, df_collection):
         for i in df_collection.items:
             assert isinstance(i.path, FilePath)
 
-    def test_partial_path(self, df_collection_data_type, offset, df_collection):
+    def test_partial_path(self, df_collection_data_type, offset: str, df_collection):
         for i in df_collection.items:
             assert isinstance(i.partial_path, FilePath)
 
-    def test_empty_path(self, df_collection_data_type, offset, df_collection):
+    def test_empty_path(self, df_collection_data_type, offset: str, df_collection):
         for i in df_collection.items:
             assert isinstance(i.empty_path, FilePath)
 
@@ -136,9 +143,9 @@ class TestDFCollectionItemMethod:
     def test_has_mysql(
         self,
         df_collection,
-        thl_web_rr,
-        offset,
-        duration,
+        thl_web_rr: PostgresConfig,
+        offset: str,
+        duration: timedelta,
         df_collection_data_type,
         delete_df_collection,
     ):
@@ -166,9 +173,9 @@ class TestDFCollectionItemMethod:
     def test_update_partial_archive(
         self,
         df_collection,
-        offset,
-        duration,
-        thl_web_rw,
+        offset: str,
+        duration: timedelta,
+        thl_web_rw: PostgresConfig,
         df_collection_data_type,
         delete_df_collection,
     ):
@@ -181,26 +188,26 @@ class TestDFCollectionItemMethod:
     def test_create_partial_archive(
         self,
         df_collection,
-        offset,
-        duration,
+        offset: str,
+        duration: str,
         create_main_accounts,
-        thl_web_rw,
+        thl_web_rw: PostgresConfig,
         thl_lm,
         df_collection_data_type,
-        user_factory,
-        product,
+        user_factory: Callable[..., User],
+        product: Product,
         client_no_amm,
         incite_item_factory,
         delete_df_collection,
-        mnt_filepath,
+        mnt_filepath: "GRLDatasets",
     ):
         assert 1 + 1 == 2
 
     def test_dict(
         self,
         df_collection_data_type,
-        offset,
-        duration,
+        offset: str,
+        duration: timedelta,
         df_collection,
         delete_df_collection,
     ):
@@ -224,12 +231,12 @@ class TestDFCollectionItemMethod:
         self,
         df_collection_data_type,
         df_collection,
-        offset,
-        duration,
+        offset: str,
+        duration: timedelta,
         create_main_accounts,
-        thl_web_rw,
-        user_factory,
-        product,
+        thl_web_rw: PostgresConfig,
+        user_factory: Callable[..., User],
+        product: Product,
         incite_item_factory,
         delete_df_collection,
     ):
@@ -270,10 +277,10 @@ class TestDFCollectionItemMethod:
         self,
         df_collection_data_type,
         df_collection,
-        offset,
-        duration,
-        user_factory,
-        product,
+        offset: str,
+        duration: timedelta,
+        user_factory: Callable[..., User],
+        product: Product,
         incite_item_factory,
         delete_df_collection,
     ):
@@ -316,15 +323,15 @@ class TestDFCollectionItemMethod:
     def test_from_mysql_ledger(
         self,
         df_collection,
-        user,
+        user: User,
         create_main_accounts,
-        offset,
-        duration,
-        thl_web_rw,
+        offset: str,
+        duration: timedelta,
+        thl_web_rw: PostgresConfig,
         thl_lm,
         df_collection_data_type,
-        user_factory,
-        product,
+        user_factory: Callable[..., User],
+        product: Product,
         client_no_amm,
         incite_item_factory,
         delete_df_collection,
@@ -371,12 +378,12 @@ class TestDFCollectionItemMethod:
     def test_to_archive(
         self,
         df_collection,
-        user,
-        offset,
-        duration,
+        user: User,
+        offset: str,
+        duration: timedelta,
         df_collection_data_type,
-        user_factory,
-        product,
+        user_factory: Callable[..., User],
+        product: Product,
         client_no_amm,
         incite_item_factory,
         delete_df_collection,
@@ -410,12 +417,12 @@ class TestDFCollectionItemMethod:
         self,
         df_collection_data_type,
         df_collection,
-        user_factory,
-        product,
-        offset,
-        duration,
+        user_factory: Callable[..., User],
+        product: Product,
+        offset: str,
+        duration: timedelta,
         client_no_amm,
-        user,
+        user: User,
         incite_item_factory,
         delete_df_collection,
         mnt_filepath,
@@ -481,19 +488,19 @@ class TestDFCollectionItemMethod:
 
     @pytest.mark.skip
     def test_to_archive_numbered_partial(
-        self, df_collection_data_type, df_collection, offset, duration
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
     ):
         pass
 
     @pytest.mark.skip
     def test_initial_load(
-        self, df_collection_data_type, df_collection, offset, duration
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
     ):
         pass
 
     @pytest.mark.skip
     def test_clear_corrupt_archive(
-        self, df_collection_data_type, df_collection, offset, duration
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
     ):
         pass
 
@@ -505,28 +512,36 @@ class TestDFCollectionItemMethod:
 class TestDFCollectionItemMethodBase:
 
     @pytest.mark.skip
-    def test_path_exists(self, df_collection_data_type, offset, duration):
-        pass
-
-    @pytest.mark.skip
-    def test_next_numbered_path(self, df_collection_data_type, offset, duration):
-        pass
-
-    @pytest.mark.skip
-    def test_search_highest_numbered_path(
-        self, df_collection_data_type, offset, duration
+    def test_path_exists(
+        self, df_collection_data_type, offset: str, duration: timedelta
     ):
         pass
 
     @pytest.mark.skip
-    def test_tmp_filename(self, df_collection_data_type, offset, duration):
+    def test_next_numbered_path(
+        self, df_collection_data_type, offset: str, duration: timedelta
+    ):
         pass
 
     @pytest.mark.skip
-    def test_tmp_path(self, df_collection_data_type, offset, duration):
+    def test_search_highest_numbered_path(
+        self, df_collection_data_type, offset: str, duration: timedelta
+    ):
         pass
 
-    def test_is_empty(self, df_collection_data_type, df_collection, offset, duration):
+    @pytest.mark.skip
+    def test_tmp_filename(
+        self, df_collection_data_type, offset: str, duration: timedelta
+    ):
+        pass
+
+    @pytest.mark.skip
+    def test_tmp_path(self, df_collection_data_type, offset: str, duration: timedelta):
+        pass
+
+    def test_is_empty(
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
+    ):
         """
         test_has_empty was merged into this because item.has_empty is
             an alias for is_empty.. or vis-versa
@@ -542,7 +557,7 @@ class TestDFCollectionItemMethodBase:
             assert item.has_empty()
 
     def test_has_partial_archive(
-        self, df_collection_data_type, df_collection, offset, duration
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
     ):
         for item in df_collection.items:
             assert not item.has_partial_archive()
@@ -550,7 +565,7 @@ class TestDFCollectionItemMethodBase:
             assert item.has_partial_archive()
 
     def test_has_archive(
-        self, df_collection_data_type, df_collection, offset, duration
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
     ):
         for item in df_collection.items:
             # (1) Originally, nothing exists... so let's just make a file and
@@ -587,7 +602,7 @@ class TestDFCollectionItemMethodBase:
             assert item.has_archive(include_empty=True)
 
     def test_delete_archive(
-        self, df_collection_data_type, df_collection, offset, duration
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
     ):
         for item in df_collection.items:
             item: DFCollectionItem
@@ -610,7 +625,7 @@ class TestDFCollectionItemMethodBase:
             assert not item.partial_path.exists()
 
     def test_should_archive(
-        self, df_collection_data_type, df_collection, offset, duration
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
     ):
         schema: DataFrameSchema = df_collection._schema
         aa = schema.metadata[ARCHIVE_AFTER]
@@ -627,11 +642,13 @@ class TestDFCollectionItemMethodBase:
                 assert not item.should_archive()
 
     @pytest.mark.skip
-    def test_set_empty(self, df_collection_data_type, df_collection, offset, duration):
+    def test_set_empty(
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
+    ):
         pass
 
     def test_valid_archive(
-        self, df_collection_data_type, df_collection, offset, duration
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
     ):
         # Originally, nothing has been saved or anything.. so confirm it
         #   always comes back as None
@@ -655,17 +672,19 @@ class TestDFCollectionItemMethodBase:
 
     @pytest.mark.skip
     def test_validate_df(
-        self, df_collection_data_type, df_collection, offset, duration
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
     ):
         pass
 
     @pytest.mark.skip
     def test_from_archive(
-        self, df_collection_data_type, df_collection, offset, duration
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
     ):
         pass
 
-    def test__to_dict(self, df_collection_data_type, df_collection, offset, duration):
+    def test__to_dict(
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
+    ):
 
         for item in df_collection.items:
             res = item._to_dict()
@@ -683,19 +702,19 @@ class TestDFCollectionItemMethodBase:
 
     @pytest.mark.skip
     def test_delete_partial(
-        self, df_collection_data_type, df_collection, offset, duration
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
     ):
         pass
 
     @pytest.mark.skip
     def test_cleanup_partials(
-        self, df_collection_data_type, df_collection, offset, duration
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
     ):
         pass
 
     @pytest.mark.skip
     def test_delete_dangling_partials(
-        self, df_collection_data_type, df_collection, offset, duration
+        self, df_collection_data_type, df_collection, offset: str, duration: timedelta
     ):
         pass
 
@@ -715,7 +734,7 @@ async def test_client(client, s, worker):
 )
 @gen_cluster(client=True, nthreads=[("127.0.0.1", 1)])
 @pytest.mark.anyio
-async def test_client_parametrize(c, s, w, df_collection_data_type, offset):
+async def test_client_parametrize(c, s, w, df_collection_data_type, offset: str):
     """c,s,a are all required - the secondary Worker (b) is not required"""
 
     assert isinstance(c, Client), f"c is not Client, it's {type(c)}"
@@ -740,16 +759,16 @@ class TestDFCollectionItemFunctionalTest:
     def test_to_archive_and_ddf(
         self,
         df_collection_data_type,
-        offset,
-        duration,
+        offset: str,
+        duration: timedelta,
         client_no_amm,
         df_collection,
-        user,
-        user_factory,
-        product,
+        user: User,
+        user_factory: Callable[..., User],
+        product: Product,
         incite_item_factory,
         delete_df_collection,
-        mnt_filepath,
+        mnt_filepath: "GRLDatasets",
     ):
         from generalresearch.models.thl.user import User
 
@@ -790,16 +809,16 @@ class TestDFCollectionItemFunctionalTest:
     def test_filesize_estimate(
         self,
         df_collection,
-        user,
-        offset,
-        duration,
+        user: User,
+        offset: str,
+        duration: timedelta,
         client_no_amm,
-        user_factory,
-        product,
+        user_factory: Callable[..., User],
+        product: Product,
         df_collection_data_type,
         incite_item_factory,
         delete_df_collection,
-        mnt_filepath,
+        mnt_filepath: "GRLDatasets",
     ):
         """A functional test to write some Parquet files for the
         DFCollection and then confirm that the files get written
@@ -809,9 +828,11 @@ class TestDFCollectionItemFunctionalTest:
             (1) Validating their passing the pandera schema
             (2) The file or dir has an expected size on disk
         """
-        import pyarrow.parquet as pq
-        from generalresearch.models.thl.user import User
         import os
+
+        import pyarrow.parquet as pq
+
+        from generalresearch.models.thl.user import User
 
         if df_collection.data_type in unsupported_mock_types:
             return
@@ -838,14 +859,14 @@ class TestDFCollectionItemFunctionalTest:
         self,
         client_no_amm,
         df_collection,
-        user_factory,
-        product,
-        offset,
-        duration,
+        user_factory: Callable[..., User],
+        product: Product,
+        offset: str,
+        duration: timedelta,
         df_collection_data_type,
         incite_item_factory,
         delete_df_collection,
-        mnt_filepath,
+        mnt_filepath: "GRLDatasets",
     ):
         from generalresearch.models.thl.user import User
 
@@ -875,7 +896,9 @@ class TestDFCollectionItemFunctionalTest:
             assert item.has_archive(include_empty=True)
 
     @pytest.mark.skip
-    def test_get_items(self, df_collection, product, offset, duration):
+    def test_get_items(
+        self, df_collection, product: Product, offset: str, duration: timedelta
+    ):
         with pytest.warns(expected_warning=ResourceWarning) as cm:
             df_collection.get_items_last365()
         assert "DFCollectionItem has missing archives" in str(
@@ -892,11 +915,11 @@ class TestDFCollectionItemFunctionalTest:
         df_collection,
         incite_item_factory,
         delete_df_collection,
-        user_factory,
-        product,
-        offset,
-        duration,
-        mnt_filepath,
+        user_factory: Callable[..., User],
+        product: Product,
+        offset: str,
+        duration: timedelta,
+        mnt_filepath: "GRLDatasets",
     ):
         """Don't allow creating an archive for data that will likely be
         overwritten or updated
@@ -934,10 +957,10 @@ class TestDFCollectionItemFunctionalTest:
         df_collection,
         incite_item_factory,
         delete_df_collection,
-        user,
-        offset,
-        duration,
-        mnt_filepath,
+        user: User,
+        offset: str,
+        duration: timedelta,
+        mnt_filepath: "GRLDatasets",
     ):
         delete_df_collection(coll=df_collection)
 
@@ -962,10 +985,10 @@ class TestDFCollectionItemFunctionalTest:
         df_collection,
         incite_item_factory,
         delete_df_collection,
-        user_factory,
-        product,
-        offset,
-        duration,
+        user_factory: Callable[..., User],
+        product: Product,
+        offset: str,
+        duration: timedelta,
         mnt_filepath,
     ):
         from generalresearch.models.thl.user import User

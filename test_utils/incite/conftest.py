@@ -14,17 +14,15 @@ from faker import Faker
 # from test_utils.models.conftest import session_factory
 
 if TYPE_CHECKING:
-    from generalresearch.config import GRLSettings
+    from generalresearch.config import GRLBaseSettings
     from generalresearch.incite.base import GRLDatasets
     from generalresearch.incite.collections import (
-        DFCollection,
         DFCollectionItem,
         DFCollectionType,
     )
     from generalresearch.incite.mergers import MergeType
     from generalresearch.models.admin.request import (
         ReportRequest,
-        ReportType,
     )
     from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.session import Session
@@ -35,7 +33,7 @@ fake = Faker()
 
 
 @pytest.fixture
-def mnt_gr_api_dir(request: SubRequest, settings: "GRLSettings") -> Path:
+def mnt_gr_api_dir(request: SubRequest, settings: "GRLBaseSettings") -> Path:
     p = Path(settings.mnt_gr_api_dir)
     p.mkdir(parents=True, exist_ok=True)
 

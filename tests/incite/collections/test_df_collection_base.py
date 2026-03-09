@@ -1,14 +1,18 @@
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 import pandas as pd
 import pytest
 from pandera import DataFrameSchema
 
 from generalresearch.incite.collections import (
-    DFCollectionType,
     DFCollection,
+    DFCollectionType,
 )
 from test_utils.incite.conftest import mnt_filepath
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
 
 df_collection_types = [e for e in DFCollectionType if e is not DFCollectionType.TEST]
 
@@ -20,7 +24,7 @@ class TestDFCollectionBase:
 
     """
 
-    def test_init(self, mnt_filepath, df_coll_type):
+    def test_init(self, mnt_filepath: "GRLDatasets", df_coll_type: DFCollectionType):
         """Try to initialize the DFCollection with various invalid parameters"""
         with pytest.raises(expected_exception=ValueError) as cm:
             DFCollection(archive_path=mnt_filepath.data_src)
@@ -42,7 +46,7 @@ class TestDFCollectionBase:
 class TestDFCollectionBaseProperties:
 
     @pytest.mark.skip
-    def test_df_collection_items(self, mnt_filepath, df_coll_type):
+    def test_df_collection_items(self, mnt_filepath: "GRLDatasets", df_coll_type):
         instance = DFCollection(
             data_type=df_coll_type,
             start=datetime(year=1800, month=1, day=1, tzinfo=timezone.utc),
@@ -54,7 +58,7 @@ class TestDFCollectionBaseProperties:
         assert len(instance.interval_range) == len(instance.items)
         assert len(instance.items) == 366
 
-    def test_df_collection_progress(self, mnt_filepath, df_coll_type):
+    def test_df_collection_progress(self, mnt_filepath: "GRLDatasets", df_coll_type):
         instance = DFCollection(
             data_type=df_coll_type,
             start=datetime(year=1800, month=1, day=1, tzinfo=timezone.utc),
@@ -67,7 +71,7 @@ class TestDFCollectionBaseProperties:
         assert isinstance(instance.progress, pd.DataFrame)
         assert instance.progress.shape == (366, 6)
 
-    def test_df_collection_schema(self, mnt_filepath, df_coll_type):
+    def test_df_collection_schema(self, mnt_filepath: "GRLDatasets", df_coll_type):
         instance1 = DFCollection(
             data_type=DFCollectionType.WALL, archive_path=mnt_filepath.data_src
         )
@@ -84,7 +88,7 @@ class TestDFCollectionBaseProperties:
 class TestDFCollectionBaseMethods:
 
     @pytest.mark.skip
-    def test_initial_load(self, mnt_filepath, thl_web_rr):
+    def test_initial_load(self, mnt_filepath: "GRLDatasets", thl_web_rr):
         instance = DFCollection(
             pg_config=thl_web_rr,
             data_type=DFCollectionType.USER,

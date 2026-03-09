@@ -1,10 +1,13 @@
+from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
 
 class TestUtils:
 
-    def test_get_screenshot_fp(self, mnt_grliq_archive_dir, utc_hour_ago):
+    def test_get_screenshot_fp(
+        self, mnt_grliq_archive_dir: str, utc_hour_ago: datetime
+    ):
         from generalresearch.grliq.utils import get_screenshot_fp
 
         fp1 = get_screenshot_fp(

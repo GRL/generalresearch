@@ -1,16 +1,16 @@
-from datetime import timedelta, timezone, datetime
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from itertools import product
 from typing import Optional
-
-from generalresearch.incite.schemas.admin_responses import (
-    AdminPOPSessionSchema,
-)
 
 import dask.dataframe as dd
 import pandas as pd
 import pytest
 
+from generalresearch.incite.schemas.admin_responses import (
+    AdminPOPSessionSchema,
+)
+from generalresearch.pg_helper import PostgresConfig
 from test_utils.incite.collections.conftest import (
     session_collection,
     wall_collection,
@@ -36,7 +36,7 @@ class TestEnrichedSession:
         wall_collection,
         session_collection,
         enriched_session_merge,
-        thl_web_rr,
+        thl_web_rr: PostgresConfig,
         delete_df_collection,
         incite_item_factory,
     ):
@@ -95,7 +95,7 @@ class TestEnrichedSessionAdmin:
         client_no_amm,
         wall_collection,
         session_collection,
-        thl_web_rr,
+        thl_web_rr: PostgresConfig,
         session_report_request,
         user_factory,
         start,

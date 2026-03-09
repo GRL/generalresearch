@@ -1,11 +1,11 @@
 from datetime import datetime, timezone
 from itertools import product
+from typing import TYPE_CHECKING
 
 import pytest
-from pandera import Column, Index, DataFrameSchema
+from pandera import Column, DataFrameSchema, Index
 
-from generalresearch.incite.collections import DFCollection
-from generalresearch.incite.collections import DFCollectionType
+from generalresearch.incite.collections import DFCollection, DFCollectionType
 from generalresearch.incite.collections.thl_marketplaces import (
     InnovateSurveyHistoryCollection,
     MorningSurveyTimeseriesCollection,
@@ -13,6 +13,9 @@ from generalresearch.incite.collections.thl_marketplaces import (
     SpectrumSurveyTimeseriesCollection,
 )
 from test_utils.incite.conftest import mnt_filepath
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
 
 
 def combo_object():

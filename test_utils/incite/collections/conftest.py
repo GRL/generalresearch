@@ -1,26 +1,25 @@
-from datetime import timedelta, datetime
-from typing import TYPE_CHECKING, Optional, Callable
-from generalresearch.pg_helper import PostgresConfig
+from datetime import datetime, timedelta
+from typing import TYPE_CHECKING, Callable, Optional
 
 import pytest
 
-from test_utils.incite.conftest import mnt_filepath
+from generalresearch.pg_helper import PostgresConfig
 from test_utils.conftest import clear_directory
 
 if TYPE_CHECKING:
+    from generalresearch.incite.base import DFCollectionType, GRLDatasets
     from generalresearch.incite.collections import DFCollection
-    from generalresearch.incite.base import GRLDatasets, DFCollectionType
-    from generalresearch.incite.collections.thl_web import LedgerDFCollection
     from generalresearch.incite.collections.thl_web import (
-        WallDFCollection,
+        AuditLogDFCollection,
+        LedgerDFCollection,
         SessionDFCollection,
         TaskAdjustmentDFCollection,
         UserDFCollection,
-        AuditLogDFCollection,
+        WallDFCollection,
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def user_collection(
     mnt_filepath: "GRLDatasets",
     offset: str,
@@ -29,8 +28,8 @@ def user_collection(
     thl_web_rr: PostgresConfig,
 ) -> "UserDFCollection":
     from generalresearch.incite.collections.thl_web import (
-        UserDFCollection,
         DFCollectionType,
+        UserDFCollection,
     )
 
     return UserDFCollection(
@@ -42,7 +41,7 @@ def user_collection(
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def wall_collection(
     mnt_filepath: "GRLDatasets",
     offset: str,
@@ -51,8 +50,8 @@ def wall_collection(
     thl_web_rr: PostgresConfig,
 ) -> "WallDFCollection":
     from generalresearch.incite.collections.thl_web import (
-        WallDFCollection,
         DFCollectionType,
+        WallDFCollection,
     )
 
     return WallDFCollection(
@@ -64,7 +63,7 @@ def wall_collection(
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def session_collection(
     mnt_filepath: "GRLDatasets",
     offset: str,
@@ -73,8 +72,8 @@ def session_collection(
     thl_web_rr: PostgresConfig,
 ) -> "SessionDFCollection":
     from generalresearch.incite.collections.thl_web import (
-        SessionDFCollection,
         DFCollectionType,
+        SessionDFCollection,
     )
 
     return SessionDFCollection(
@@ -102,17 +101,17 @@ def session_collection(
 #     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def task_adj_collection(
     mnt_filepath: "GRLDatasets",
     offset: str,
     duration: Optional[timedelta],
     start: datetime,
-    thl_web_rr,
+    thl_web_rr: PostgresConfig,
 ) -> "TaskAdjustmentDFCollection":
     from generalresearch.incite.collections.thl_web import (
-        TaskAdjustmentDFCollection,
         DFCollectionType,
+        TaskAdjustmentDFCollection,
     )
 
     return TaskAdjustmentDFCollection(
@@ -126,13 +125,13 @@ def task_adj_collection(
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def auditlog_collection(
     mnt_filepath: "GRLDatasets",
     offset: str,
     duration: timedelta,
     start: datetime,
-    thl_web_rr,
+    thl_web_rr: PostgresConfig,
 ) -> "AuditLogDFCollection":
     from generalresearch.incite.collections.thl_web import (
         AuditLogDFCollection,
@@ -148,7 +147,7 @@ def auditlog_collection(
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def ledger_collection(
     mnt_filepath: "GRLDatasets",
     offset: str,
@@ -157,8 +156,8 @@ def ledger_collection(
     thl_web_rr: PostgresConfig,
 ) -> "LedgerDFCollection":
     from generalresearch.incite.collections.thl_web import (
-        LedgerDFCollection,
         DFCollectionType,
+        LedgerDFCollection,
     )
 
     return LedgerDFCollection(
@@ -170,8 +169,10 @@ def ledger_collection(
     )
 
 
-@pytest.fixture(scope="function")
-def rm_ledger_collection(ledger_collection: "LedgerDFCollection") -> Callable:
+@pytest.fixture
+def rm_ledger_collection(
+    ledger_collection: "LedgerDFCollection",
+) -> Callable[..., None]:
 
     def _inner():
         clear_directory(ledger_collection.archive_path)
@@ -184,7 +185,7 @@ def rm_ledger_collection(ledger_collection: "LedgerDFCollection") -> Callable:
 # --------------------------
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def df_collection(
     mnt_filepath: "GRLDatasets",
     df_collection_data_type: "DFCollectionType",

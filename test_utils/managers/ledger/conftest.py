@@ -10,14 +10,11 @@ from generalresearch.currency import USDCent
 from generalresearch.managers.base import PostgresManager
 from test_utils.models.conftest import (
     payout_config,
-    product,
     product_amt_true,
-    product_factory,
     product_user_wallet_no,
     product_user_wallet_yes,
     session,
     session_factory,
-    user,
     user_factory,
     wall,
     wall_factory,
@@ -36,23 +33,24 @@ _ = (
 )
 
 if TYPE_CHECKING:
-    from datetime import datetime, timedelta
 
     from generalresearch.currency import LedgerCurrency
     from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
+    from generalresearch.managers.thl.payout import (
+        BrokerageProductPayoutEventManager,
+        BusinessPayoutEventManager,
+    )
+    from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.managers.thl.wall import WallManager
     from generalresearch.models.thl.ledger import (
-        AccountType,
-        Direction,
         LedgerAccount,
-        LedgerEntry,
         LedgerTransaction,
     )
     from generalresearch.models.thl.payout import (
         BrokerageProductPayoutEvent,
-        UserPayoutEvent,
     )
     from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.session import Session
@@ -185,10 +183,10 @@ def usd_cent(request) -> USDCent:
 @pytest.fixture
 def bp_payout_event(
     product: "Product",
-    usd_cent,
-    business_payout_event_manager,
+    usd_cent: "USDCent",
+    business_payout_event_manager: "BusinessPayoutEventManager",
     thl_lm: "ThlLedgerManager",
-) -> "UserPayoutEvent":
+) -> "BrokerageProductPayoutEvent":
 
     return business_payout_event_manager.create_bp_payout_event(
         thl_ledger_manager=thl_lm,
@@ -227,6 +225,7 @@ def bp_payout_event_factory(
 @pytest.fixture
 def currency(lm: "LedgerManager") -> "LedgerCurrency":
     # return request.param if hasattr(request, "currency") else LedgerCurrency.TEST
+    assert lm.currency, "LedgerManager must have a currency specified for these tests"
     return lm.currency
 
 
@@ -242,11 +241,11 @@ def tx_metadata(request) -> Optional[Dict[str, str]]:
 @pytest.fixture
 def ledger_tx(
     request,
-    ledger_account_credit,
-    ledger_account_debit,
-    tag,
+    ledger_account_credit: "LedgerAccount",
+    ledger_account_debit: "LedgerAccount",
+    tag: str,
     currency: "LedgerCurrency",
-    tx_metadata,
+    tx_metadata: Optional[Dict[str, str]],
     lm: "LedgerManager",
 ) -> "LedgerTransaction":
     from generalresearch.models.thl.ledger import Direction, LedgerEntry
@@ -455,7 +454,7 @@ def account_expense_tango(
 
 @pytest.fixture
 def user_account_user_wallet(
-    lm: "LedgerManager", user, currency: "LedgerCurrency"
+    lm: "LedgerManager", user: "User", currency: "LedgerCurrency"
 ) -> "LedgerAccount":
     from generalresearch.models.thl.ledger import (
         AccountType,
@@ -580,8 +579,8 @@ def session_with_tx_factory(
     user_factory: Callable[..., "User"],
     product: "Product",
     session_factory: Callable[..., "Session"],
-    session_manager,
-    wall_manager,
+    session_manager: "SessionManager",
+    wall_manager: "WallManager",
     utc_hour_ago: datetime,
     thl_lm: "ThlLedgerManager",
 ) -> Callable[..., "Session"]:
@@ -616,7 +615,7 @@ def session_with_tx_factory(
         )
 
         status, status_code_1 = s.determine_session_status()
-        thl_net, commission_amount, bp_pay, user_pay = s.determine_payments()
+        _, _, bp_pay, user_pay = s.determine_payments()
         session_manager.finish_with_status(
             session=s,
             finished=last_wall.finished,
@@ -642,7 +641,9 @@ def session_with_tx_factory(
 
 @pytest.fixture
 def adj_to_fail_with_tx_factory(
-    session_manager, wall_manager, thl_lm: "ThlLedgerManager"
+    session_manager: "SessionManager",
+    wall_manager: "WallManager",
+    thl_lm: "ThlLedgerManager",
 ) -> Callable[..., None]:
     from datetime import datetime, timedelta
 
@@ -698,7 +699,9 @@ def adj_to_fail_with_tx_factory(
 
 @pytest.fixture
 def adj_to_complete_with_tx_factory(
-    session_manager, wall_manager, thl_lm: "ThlLedgerManager"
+    session_manager: "SessionManager",
+    wall_manager: "WallManager",
+    thl_lm: "ThlLedgerManager",
 ) -> Callable[..., None]:
     from datetime import timedelta
 

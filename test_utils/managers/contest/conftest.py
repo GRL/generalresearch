@@ -9,26 +9,15 @@ from generalresearch.currency import USDCent
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.contest_manager import ContestManager
-    from generalresearch.models.thl.contest import (
-        ContestEndCondition,
-        ContestPrize,
-    )
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
     from generalresearch.models.thl.contest.contest import Contest
-    from generalresearch.models.thl.contest.definitions import (
-        ContestPrizeKind,
-        ContestType,
-    )
-    from generalresearch.models.thl.contest.io import contest_create_to_contest
     from generalresearch.models.thl.contest.leaderboard import (
         LeaderboardContestCreate,
     )
     from generalresearch.models.thl.contest.milestone import (
-        ContestEntryTrigger,
         MilestoneContestCreate,
-        MilestoneContestEndCondition,
     )
     from generalresearch.models.thl.contest.raffle import (
-        ContestEntryType,
         RaffleContestCreate,
     )
     from generalresearch.models.thl.product import Product
@@ -273,7 +262,7 @@ def user_with_money(
     request,
     user_factory: Callable[..., "User"],
     product_user_wallet_yes: "Product",
-    thl_lm,
+    thl_lm: "ThlLedgerManager",
 ) -> "User":
     from generalresearch.models.thl.user import User
 

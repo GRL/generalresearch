@@ -1,9 +1,20 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from generalresearch.grliq.managers.forensic_data import GrlIqDataManager
+    from generalresearch.grliq.managers.forensic_results import (
+        GrlIqCategoryResultsReader,
+    )
+
+
 class TestGrlIqCategoryResultsReader:
 
-    def test_filter_category_results(self, grliq_dm, grliq_crr):
+    def test_filter_category_results(
+        self, grliq_dm: "GrlIqDataManager", grliq_crr: "GrlIqCategoryResultsReader"
+    ):
         from generalresearch.grliq.models.forensic_result import (
-            Phase,
             GrlIqForensicCategoryResult,
+            Phase,
         )
 
         # this is just testing that it doesn't fail

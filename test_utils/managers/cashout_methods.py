@@ -1,12 +1,11 @@
-from generalresearch.models.thl.wallet import PayoutType, Currency
+import random
+from uuid import uuid4
+
+from generalresearch.models.thl.wallet import Currency, PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
     CashoutMethod,
     TangoCashoutMethodData,
-    AmtCashoutMethodData,
 )
-import random
-
-from uuid import uuid4
 
 
 def random_ext_id(base: str = "U02"):

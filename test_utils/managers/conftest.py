@@ -35,6 +35,7 @@ if TYPE_CHECKING:
         MembershipManager,
         TeamManager,
     )
+    from generalresearch.managers.thl.buyer import BuyerManager
     from generalresearch.managers.thl.category import CategoryManager
     from generalresearch.managers.thl.contest_manager import ContestManager
     from generalresearch.managers.thl.ipinfo import (
@@ -73,8 +74,6 @@ if TYPE_CHECKING:
     )
     from generalresearch.managers.thl.userhealth import (
         AuditLogManager,
-        IPGeonameManager,
-        IPInformationManager,
         IPRecordManager,
         UserIpHistoryManager,
     )
@@ -82,6 +81,7 @@ if TYPE_CHECKING:
         WallCacheManager,
         WallManager,
     )
+    from generalresearch.models.thl.user import User
 
 
 # === THL ===
@@ -98,7 +98,7 @@ def ltxm(
     )
 
     return LedgerTransactionManager(
-        sql_helper=thl_web_rw,
+        pg_config=thl_web_rw,
         permissions=[Permission.CREATE, Permission.READ],
         testing=True,
         redis_config=thl_redis_config,
@@ -335,7 +335,7 @@ def category_manager(thl_web_rw: PostgresConfig) -> "CategoryManager":
 
 
 @pytest.fixture(scope="session")
-def buyer_manager(thl_web_rw: PostgresConfig):
+def buyer_manager(thl_web_rw: PostgresConfig) -> "BuyerManager":
     # assert "/unittest-" in thl_web_rw.dsn.path
     from generalresearch.managers.thl.buyer import BuyerManager
 
@@ -359,7 +359,7 @@ def surveystat_manager(thl_web_rw: PostgresConfig):
 
 
 @pytest.fixture(scope="session")
-def surveypenalty_manager(thl_redis_config):
+def surveypenalty_manager(thl_redis_config: RedisConfig):
     from generalresearch.managers.thl.survey_penalty import SurveyPenaltyManager
 
     return SurveyPenaltyManager(redis_config=thl_redis_config)
@@ -404,7 +404,7 @@ def uqa_manager(thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig):
 
 
 @pytest.fixture(scope="function")
-def uqa_manager_clear_cache(uqa_manager, user):
+def uqa_manager_clear_cache(uqa_manager, user: "User"):
     # On successive py-test/jenkins runs, the cache may contain
     #   the previous run's info (keyed under the same user_id)
     uqa_manager.clear_cache(user)
@@ -484,23 +484,34 @@ def geoipinfo_manager(
 
 
 @pytest.fixture(scope="session")
-def maxmind_basic_manager() -> "MaxmindBasicManager":
+def maxmind_basic_manager(settings: "GRLBaseSettings") -> "MaxmindBasicManager":
     from generalresearch.managers.thl.maxmind.basic import (
         MaxmindBasicManager,
     )
 
-    return MaxmindBasicManager(data_dir="/tmp/")
+    return MaxmindBasicManager(
+        data_dir="/tmp/",
+        maxmind_account_id=settings.maxmind_account_id,
+        maxmind_license_key=settings.maxmind_license_key,
+    )
 
 
 @pytest.fixture(scope="session")
 def maxmind_manager(
-    thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
+    settings: "GRLBaseSettings",
+    thl_web_rw: PostgresConfig,
+    thl_redis_config: RedisConfig,
 ) -> "MaxmindManager":
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.maxmind import MaxmindManager
 
-    return MaxmindManager(pg_config=thl_web_rw, redis_config=thl_redis_config)
+    return MaxmindManager(
+        pg_config=thl_web_rw,
+        redis_config=thl_redis_config,
+        maxmind_account_id=settings.maxmind_account_id,
+        maxmind_license_key=settings.maxmind_license_key,
+    )
 
 
 @pytest.fixture(scope="session")
@@ -700,7 +711,7 @@ def grliq_crr(grliq_db: PostgresConfig) -> "GrlIqCategoryResultsReader":
 
 
 @pytest.fixture(scope="session")
-def delete_buyers_surveys(thl_web_rw: PostgresConfig, buyer_manager):
+def delete_buyers_surveys(thl_web_rw: PostgresConfig, buyer_manager: "BuyerManager"):
     # assert "/unittest-" in thl_web_rw.dsn.path
     thl_web_rw.execute_write(
         """

@@ -1,10 +1,9 @@
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable
 
 import pytest
 
 from test_utils.conftest import clear_directory
-from test_utils.incite.conftest import mnt_filepath
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
@@ -21,7 +20,10 @@ if TYPE_CHECKING:
     from generalresearch.incite.mergers.foundations.user_id_product import (
         UserIdProductMerge,
     )
-    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
+    from generalresearch.incite.mergers.pop_ledger import (
+        PopLedgerMerge,
+        PopLedgerMergeItem,
+    )
     from generalresearch.incite.mergers.ym_survey_wall import (
         YMSurveyWallMerge,
         YMSurveyWallMergeCollectionItem,
@@ -37,8 +39,8 @@ if TYPE_CHECKING:
 # --------------------------
 
 
-@pytest.fixture(scope="function")
-def rm_pop_ledger_merge(pop_ledger_merge) -> Callable[..., None]:
+@pytest.fixture
+def rm_pop_ledger_merge(pop_ledger_merge: "PopLedgerMerge") -> Callable[..., None]:
 
     def _inner():
         clear_directory(pop_ledger_merge.archive_path)
@@ -46,7 +48,7 @@ def rm_pop_ledger_merge(pop_ledger_merge) -> Callable[..., None]:
     return _inner
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def pop_ledger_merge(
     mnt_filepath: "GRLDatasets",
     offset: str,
@@ -65,7 +67,7 @@ def pop_ledger_merge(
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def pop_ledger_merge_item(
     start: datetime,
     pop_ledger_merge: "PopLedgerMerge",
@@ -79,7 +81,7 @@ def pop_ledger_merge_item(
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def ym_survey_wall_merge(
     mnt_filepath: "GRLDatasets",
     start: datetime,
@@ -94,7 +96,7 @@ def ym_survey_wall_merge(
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def ym_survey_wall_merge_item(
     start: datetime, ym_survey_wall_merge: "YMSurveyWallMerge"
 ) -> "YMSurveyWallMergeCollectionItem":
@@ -108,7 +110,7 @@ def ym_survey_wall_merge_item(
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def ym_wall_summary_merge(
     mnt_filepath: "GRLDatasets",
     offset: str,
@@ -144,7 +146,7 @@ def ym_wall_summary_merge_item(
 # --------------------------
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def enriched_session_merge(
     mnt_filepath: "GRLDatasets",
     offset: str,
@@ -164,7 +166,7 @@ def enriched_session_merge(
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def enriched_task_adjust_merge(
     mnt_filepath: "GRLDatasets",
     offset: str,
@@ -186,7 +188,7 @@ def enriched_task_adjust_merge(
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def enriched_wall_merge(
     mnt_filepath: "GRLDatasets",
     offset: str,
@@ -206,7 +208,7 @@ def enriched_wall_merge(
     )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def user_id_product_merge(
     mnt_filepath: "GRLDatasets",
     duration: timedelta,
@@ -231,7 +233,7 @@ def user_id_product_merge(
 # --------------------------
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def merge_collection(
     mnt_filepath: "GRLDatasets",
     merge_type: "MergeType",
