@@ -1,6 +1,7 @@
 import os
 
 INSTALLED_APPS = [
+    "django.contrib.postgres",
     "django.contrib.contenttypes",
     "generalresearch.thl_django",
 ]

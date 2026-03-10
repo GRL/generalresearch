@@ -11,5 +11,6 @@ class THLSchemaConfig(AppConfig):
         from .contest import models  # noqa: F401  # pycharm: keep
         from .event import models  # noqa: F401  # pycharm: keep
         from .marketplace import models  # noqa: F401  # pycharm: keep
+        from .network import models  # noqa: F401  # pycharm: keep
         from .userhealth import models  # noqa: F401  # pycharm: keep
         from .userprofile import models  # noqa: F401  # pycharm: keep

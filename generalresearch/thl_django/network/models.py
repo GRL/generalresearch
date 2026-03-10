@@ -1,0 +1,387 @@
+from uuid import uuid4
+from django.utils import timezone
+from django.contrib.postgres.indexes import GistIndex
+
+from django.db import models
+
+from generalresearch.thl_django.fields import CIDRField
+
+
+#######
+# ** Signals **
+# ToolRun
+# PortScan
+# PortScanPort
+# RDNSResult
+# Traceroute
+# TracerouteHop
+
+# ** Features **
+# IPFeatureSnapshot
+
+# ** Labels **
+# IPLabel
+
+# ** Predictions **
+# IPPrediction
+#######
+
+
+class ToolRun(models.Model):
+    """
+    Represents one execution of one tool against one target
+    """
+
+    # The *Target* IP.
+    # Should correspond to an IP we already have in the thl_ipinformation table
+    ip = models.GenericIPAddressField()
+
+    # Logical grouping of multiple scans (fast scan + deep scan + rdns + trace, etc.)
+    scan_group_id = models.UUIDField(default=uuid4)
+
+    class ToolClass(models.TextChoices):
+        PORT_SCAN = "port_scan"
+        RDNS = "rdns"
+        PING = "ping"
+        TRACEROUTE = "traceroute"
+
+    tool_class = models.CharField(
+        max_length=32,
+        choices=ToolClass.choices,
+    )
+
+    # Actual binary used (e.g. nmap vs rustmap)
+    tool_name = models.CharField(
+        max_length=64,
+    )
+
+    tool_version = models.CharField(
+        max_length=32,
+        null=True,
+    )
+
+    started_at = models.DateTimeField(auto_now_add=True)
+    finished_at = models.DateTimeField(null=True)
+
+    class Status(models.TextChoices):
+        SUCCESS = "success"
+        FAILED = "failed"
+        TIMEOUT = "timeout"
+        ERROR = "error"
+
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.SUCCESS,
+    )
+
+    # Raw CLI invocation
+    raw_command = models.TextField()
+    # Parsed arguments / normalized config
+    config = models.JSONField(null=True)
+
+    class Meta:
+        db_table = "network_toolrun"
+        indexes = [
+            models.Index(fields=["started_at"]),
+            models.Index(fields=["scan_group_id"]),
+            models.Index(fields=["ip", "-started_at"]),
+        ]
+
+
+class RDNSResult(models.Model):
+    run = models.OneToOneField(
+        ToolRun,
+        on_delete=models.CASCADE,
+        related_name="rdns",
+        primary_key=True,
+    )
+
+    primary_hostname = models.CharField(max_length=255, null=True)
+    primary_org = models.CharField(max_length=50, null=True)
+    hostname_count = models.PositiveIntegerField(default=0)
+    hostnames = models.JSONField(default=list)
+
+    class Meta:
+        db_table = "network_rdnsresult"
+        indexes = [
+            models.Index(fields=["primary_hostname"]),
+            models.Index(fields=["primary_org"]),
+        ]
+
+
+class PortScan(models.Model):
+    run = models.OneToOneField(
+        ToolRun,
+        on_delete=models.CASCADE,
+        related_name="port_scan",
+        primary_key=True,
+    )
+
+    # denormalized from ToolRun for query speed
+    ip = models.GenericIPAddressField()
+    started_at = models.DateTimeField()
+    scan_group_id = models.UUIDField()
+
+    xml_version = models.CharField(max_length=8)
+    host_state = models.CharField(max_length=16)
+    host_state_reason = models.CharField(max_length=32)
+
+    latency_ms = models.FloatField(null=True)
+    distance = models.IntegerField(null=True)
+
+    uptime_seconds = models.IntegerField(null=True)
+    last_boot = models.DateTimeField(null=True)
+
+    raw_xml = models.TextField(null=True)
+
+    # Full parsed output
+    parsed = models.JSONField()
+
+    # Can be inferred through a join, but will make common queries easier
+    open_tcp_ports = models.JSONField(default=list)
+
+    class Meta:
+        db_table = "network_portscan"
+        indexes = [
+            models.Index(fields=["started_at"]),
+            models.Index(fields=["scan_group_id"]),
+            models.Index(fields=["ip"]),
+        ]
+
+
+class PortScanPort(models.Model):
+    port_scan = models.ForeignKey(
+        PortScan,
+        on_delete=models.CASCADE,
+        related_name="ports",
+    )
+
+    # https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml
+    protocol = models.PositiveSmallIntegerField(default=6)
+    # nullable b/c ICMP doesn't use ports
+    port = models.PositiveIntegerField(null=True)
+
+    state = models.CharField(max_length=20)
+
+    reason = models.CharField(max_length=32, null=True)
+    reason_ttl = models.IntegerField(null=True)
+
+    service_name = models.CharField(max_length=64, null=True)
+
+    class Meta:
+        db_table = "network_portscanport"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["port_scan", "protocol", "port"],
+                name="unique_port_per_scan",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(protocol=1, port__isnull=True)  # ICMP
+                    | models.Q(protocol__in=[6, 17], port__isnull=False)
+                ),
+                name="port_required_for_tcp_udp",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["port", "protocol", "state"]),
+            models.Index(fields=["state"]),
+            models.Index(fields=["service_name"]),
+        ]
+
+
+class Traceroute(models.Model):
+    run = models.OneToOneField(
+        ToolRun,
+        on_delete=models.CASCADE,
+        related_name="traceroute",
+        primary_key=True,
+    )
+
+    # Source performing the trace
+    source_ip = models.GenericIPAddressField()
+    facility_id = models.PositiveIntegerField()
+
+    # IANA protocol numbers (1=ICMP, 6=TCP, 17=UDP)
+    protocol = models.PositiveSmallIntegerField(default=1)
+
+    max_hops = models.PositiveSmallIntegerField()
+
+    # High-level result summary
+    final_responded = models.BooleanField()
+    reached_hop = models.PositiveSmallIntegerField(null=True)
+    total_duration_ms = models.PositiveIntegerField(null=True)
+
+    class Meta:
+        db_table = "network_traceroute"
+
+
+class TracerouteHop(models.Model):
+    traceroute = models.ForeignKey(
+        Traceroute,
+        on_delete=models.CASCADE,
+        related_name="hops",
+    )
+
+    hop_number = models.PositiveSmallIntegerField()
+    probe_number = models.PositiveSmallIntegerField()
+
+    responder_ip = models.GenericIPAddressField(null=True)
+
+    rtt_ms = models.FloatField(null=True)
+
+    ttl = models.PositiveSmallIntegerField(null=True)
+
+    icmp_type = models.PositiveSmallIntegerField(null=True)
+    icmp_code = models.PositiveSmallIntegerField(null=True)
+
+    class Meta:
+        db_table = "network_traceroutehop"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["traceroute", "hop_number", "probe_number"],
+                name="unique_probe_per_hop",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["traceroute", "hop_number"]),
+            models.Index(fields=["responder_ip"]),
+        ]
+        ordering = ["traceroute_id", "hop_number", "probe_number"]
+
+    def __str__(self):
+        return f"{self.traceroute} hop {self.hop_number}.{self.probe_number}"
+
+
+# class TracerouteAnalysis(models.Model):
+#     traceroute = models.OneToOneField(
+#         Traceroute,
+#         on_delete=models.CASCADE,
+#         related_name="analysis",
+#         primary_key=True,
+#     )
+#
+#     reached_destination = models.BooleanField()
+#
+#     hop_count = models.PositiveSmallIntegerField()
+#
+#     latency_spike_detected = models.BooleanField(default=False)
+#
+#     max_rtt_ms = models.FloatField(null=True)
+#     rtt_stddev = models.FloatField(null=True)
+#
+#     last_hop_private = models.BooleanField(default=False)
+#     last_hop_asn = models.PositiveIntegerField(null=True)
+#
+#     # Deterministic hash of first N hops (binary SHA256 recommended)
+#     path_prefix_hash = models.BinaryField(max_length=32, null=True)
+#
+#     anomaly_score = models.FloatField(null=True)
+#
+#     class Meta:
+#         db_table = "network_tracerouteanalysis"
+#         indexes = [
+#             models.Index(fields=["path_prefix_hash"]),
+#             models.Index(fields=["anomaly_score"]),
+#         ]
+#
+
+
+class IPLabel(models.Model):
+    """
+    Stores *ground truth* about an IP at a specific time.
+    Used for model training and evaluation.
+    """
+    id = models.BigAutoField(primary_key=True, null=False)
+
+    ip = CIDRField()
+
+    labeled_at = models.DateTimeField(default=timezone.now)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    label_kind = models.CharField(max_length=32)
+
+    source = models.CharField(max_length=32)
+
+    confidence = models.FloatField(default=1.0)
+
+    provider = models.CharField(
+        max_length=128,
+        null=True,
+        help_text="Proxy/VPN provider if known (e.g. geonode, brightdata)",
+    )
+
+    metadata = models.JSONField(null=True)
+
+    class Meta:
+        db_table = "network_iplabel"
+        indexes = [
+            GistIndex(fields=["ip"]),
+            models.Index(fields=["-labeled_at"]),
+            models.Index(fields=["ip", "-labeled_at"]),
+            models.Index(fields=["label_kind"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["ip", "label_kind", "source", "labeled_at"],
+                name="unique_ip_label_event",
+            )
+        ]
+
+
+# #########
+# # Below here Copied/pasted from chatgpt, todo: evaluate this
+# #########
+#
+#
+# class IPFeatureSnapshot(models.Model):
+#     """
+#     Example features:
+#     open_proxy_port
+#     rdns_residential_score
+#     distance
+#     asn_type
+#     latency
+#     mobile_network_likelihood
+#     """
+#
+#     ip = models.GenericIPAddressField(db_index=True)
+#
+#     scan_group_id = models.UUIDField(db_index=True)
+#
+#     computed_at = models.DateTimeField(auto_now_add=True)
+#
+#     features = models.JSONField()
+#
+#     class Meta:
+#         db_table = "network_ip_feature_snapshot"
+#         indexes = [
+#             models.Index(fields=["ip", "-computed_at"]),
+#             models.Index(fields=["scan_group_id"]),
+#         ]
+#
+#
+# class IPPrediction(models.Model):
+#
+#     ip = models.GenericIPAddressField(db_index=True)
+#
+#     scan_group_id = models.UUIDField(db_index=True)
+#
+#     predicted_at = models.DateTimeField(auto_now_add=True)
+#
+#     model_version = models.CharField(max_length=32)
+#
+#     risk_score = models.FloatField()
+#
+#     feature_scores = models.JSONField()
+#
+#     metadata = models.JSONField(default=dict)
+#
+#     class Meta:
+#         db_table = "network_ip_prediction"
+#         indexes = [
+#             models.Index(fields=["ip", "-predicted_at"]),
+#             models.Index(fields=["scan_group_id"]),
+#             models.Index(fields=["risk_score"]),
+#         ]
