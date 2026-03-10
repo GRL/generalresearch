@@ -1,0 +1,206 @@
+{
+    "report": {
+        "mtr": {
+            "src": "gstupp-ThinkPad-X1-Carbon-Gen-11",
+            "dst": "167.150.6.80",
+            "tos": 0,
+            "tests": 10,
+            "psize": "64",
+            "bitpattern": "0x00"
+        },
+        "hubs": [
+            {
+                "count": 1,
+                "host": "_gateway (172.20.20.1)",
+                "ASN": "AS???",
+                "Loss%": 0.0,
+                "Snt": 10,
+                "Last": 2.408,
+                "Avg": 16.157,
+                "Best": 2.408,
+                "Wrst": 69.531,
+                "StDev": 20.69
+            },
+            {
+                "count": 2,
+                "host": "172.16.20.1",
+                "ASN": "AS???",
+                "Loss%": 0.0,
+                "Snt": 10,
+                "Last": 3.411,
+                "Avg": 16.906,
+                "Best": 2.613,
+                "Wrst": 90.7,
+                "StDev": 27.547
+            },
+            {
+                "count": 3,
+                "host": "192.168.1.254",
+                "ASN": "AS???",
+                "Loss%": 0.0,
+                "Snt": 10,
+                "Last": 17.012,
+                "Avg": 9.812,
+                "Best": 3.061,
+                "Wrst": 25.728,
+                "StDev": 8.908
+            },
+            {
+                "count": 4,
+                "host": "ipdsl-jal-ptovallarta-19-l0.uninet.net.mx (201.154.95.117)",
+                "ASN": "AS???",
+                "Loss%": 0.0,
+                "Snt": 10,
+                "Last": 6.954,
+                "Avg": 10.216,
+                "Best": 6.177,
+                "Wrst": 16.151,
+                "StDev": 3.343
+            },
+            {
+                "count": 5,
+                "host": "bb-la-onewilshire-29-ae32_0.uninet.net.mx (189.246.202.49)",
+                "ASN": "AS???",
+                "Loss%": 0.0,
+                "Snt": 10,
+                "Last": 52.557,
+                "Avg": 54.174,
+                "Best": 45.681,
+                "Wrst": 71.387,
+                "StDev": 8.011
+            },
+            {
+                "count": 6,
+                "host": "ae91.edge7.LosAngeles1.Level3.net (4.7.28.197)",
+                "ASN": "AS3356",
+                "Loss%": 0.0,
+                "Snt": 10,
+                "Last": 1079.2,
+                "Avg": 875.97,
+                "Best": 47.78,
+                "Wrst": 4150.5,
+                "StDev": 1345.7
+            },
+            {
+                "count": 7,
+                "host": "???",
+                "ASN": "AS???",
+                "Loss%": 100.0,
+                "Snt": 10,
+                "Last": 0.0,
+                "Avg": 0.0,
+                "Best": 0.0,
+                "Wrst": 0.0,
+                "StDev": 0.0
+            },
+            {
+                "count": 8,
+                "host": "ae10.cr1.lax10.us.zip.zayo.com (64.125.28.224)",
+                "ASN": "AS6461",
+                "Loss%": 70.0,
+                "Snt": 10,
+                "Last": 1186.5,
+                "Avg": 2189.8,
+                "Best": 1186.5,
+                "Wrst": 3202.8,
+                "StDev": 1008.2
+            },
+            {
+                "count": 9,
+                "host": "ae16.cr1.sjc1.us.zip.zayo.com (64.125.21.171)",
+                "ASN": "AS6461",
+                "Loss%": 0.0,
+                "Snt": 10,
+                "Last": 92.819,
+                "Avg": 414.75,
+                "Best": 90.799,
+                "Wrst": 2140.8,
+                "StDev": 690.96
+            },
+            {
+                "count": 10,
+                "host": "ae27.cs3.sjc7.us.zip.zayo.com (64.125.18.28)",
+                "ASN": "AS6461",
+                "Loss%": 90.0,
+                "Snt": 10,
+                "Last": 5234.8,
+                "Avg": 5234.8,
+                "Best": 5234.8,
+                "Wrst": 5234.8,
+                "StDev": 0.0
+            },
+            {
+                "count": 11,
+                "host": "???",
+                "ASN": "AS???",
+                "Loss%": 100.0,
+                "Snt": 10,
+                "Last": 0.0,
+                "Avg": 0.0,
+                "Best": 0.0,
+                "Wrst": 0.0,
+                "StDev": 0.0
+            },
+            {
+                "count": 12,
+                "host": "ae8.cr1.sea1.us.zip.zayo.com (64.125.28.193)",
+                "ASN": "AS6461",
+                "Loss%": 0.0,
+                "Snt": 10,
+                "Last": 93.389,
+                "Avg": 1238.6,
+                "Best": 91.537,
+                "Wrst": 5223.9,
+                "StDev": 1644.1
+            },
+            {
+                "count": 13,
+                "host": "ae7.ter2.sea1.us.zip.zayo.com (64.125.19.197)",
+                "ASN": "AS6461",
+                "Loss%": 0.0,
+                "Snt": 10,
+                "Last": 91.212,
+                "Avg": 112.17,
+                "Best": 90.979,
+                "Wrst": 178.26,
+                "StDev": 30.086
+            },
+            {
+                "count": 14,
+                "host": "208.185.33.178.IDIA-369396-ZYO.zip.zayo.com (208.185.33.178)",
+                "ASN": "AS6461",
+                "Loss%": 0.0,
+                "Snt": 10,
+                "Last": 103.95,
+                "Avg": 104.46,
+                "Best": 90.349,
+                "Wrst": 136.62,
+                "StDev": 15.726
+            },
+            {
+                "count": 15,
+                "host": "168.245.215.250",
+                "ASN": "AS55039",
+                "Loss%": 0.0,
+                "Snt": 10,
+                "Last": 85.672,
+                "Avg": 95.289,
+                "Best": 84.352,
+                "Wrst": 156.16,
+                "StDev": 21.621
+            },
+            {
+                "count": 16,
+                "host": "???",
+                "ASN": "AS???",
+                "Loss%": 100.0,
+                "Snt": 10,
+                "Last": 0.0,
+                "Avg": 0.0,
+                "Best": 0.0,
+                "Wrst": 0.0,
+                "StDev": 0.0
+            }
+        ]
+    }
+}

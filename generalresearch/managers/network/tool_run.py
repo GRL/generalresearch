@@ -4,9 +4,15 @@ from psycopg import Cursor, sql
 
 from generalresearch.managers.base import PostgresManager, Permission
 from generalresearch.models.network.rdns import RDNSResult
-from generalresearch.models.network.tool_run import ToolRun, PortScanRun, RDnsRun
+from generalresearch.models.network.tool_run import (
+    ToolRun,
+    PortScanRun,
+    RDnsRun,
+    MtrRun,
+)
 from generalresearch.managers.network.nmap import NmapManager
 from generalresearch.managers.network.rdns import RdnsManager
+from generalresearch.managers.network.mtr import MtrManager
 from generalresearch.pg_helper import PostgresConfig
 
 
@@ -19,8 +25,9 @@ class ToolRunManager(PostgresManager):
         super().__init__(pg_config=pg_config, permissions=permissions)
         self.nmap_manager = NmapManager(self.pg_config)
         self.rdns_manager = RdnsManager(self.pg_config)
+        self.mtr_manager = MtrManager(self.pg_config)
 
-    def create_tool_run(self, run: PortScanRun | RDnsRun, c: Cursor):
+    def create_tool_run(self, run: PortScanRun | RDnsRun | MtrRun, c: Cursor):
         query = sql.SQL(
             """
         INSERT INTO network_toolrun (
@@ -88,3 +95,21 @@ class ToolRunManager(PostgresManager):
         )
         res["parsed"] = parsed
         return RDnsRun.model_validate(res)
+
+    def create_mtr_run(self, run: MtrRun) -> MtrRun:
+        with self.pg_config.make_connection() as conn:
+            with conn.cursor() as c:
+                self.create_tool_run(run, c)
+                self.mtr_manager._create(run, c=c)
+        return run
+
+    def get_mtr_run(self, id: int) -> MtrRun:
+        query = """
+        SELECT tr.*, mtr.parsed, mtr.source_ip, mtr.facility_id
+        FROM network_toolrun tr
+        JOIN network_mtr mtr ON tr.id = mtr.run_id
+        WHERE id = %(id)s
+        """
+        params = {"id": id}
+        res = self.pg_config.execute_sql_query(query, params)[0]
+        return MtrRun.model_validate(res)

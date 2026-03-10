@@ -208,6 +208,9 @@ class MTR(models.Model):
     # nullable b/c ICMP doesn't use ports
     port = models.PositiveIntegerField(null=True)
 
+    # Full parsed output
+    parsed = models.JSONField()
+
     class Meta:
         db_table = "network_mtr"
 
@@ -219,9 +222,8 @@ class MTRHop(models.Model):
         related_name="hops",
     )
 
-    hop_number = models.PositiveSmallIntegerField()
-
-    responder_ip = models.GenericIPAddressField(null=True)
+    hop = models.PositiveSmallIntegerField()
+    ip = models.GenericIPAddressField(null=True)
 
     domain = models.CharField(max_length=50, null=True)
     asn = models.PositiveIntegerField(null=True)
@@ -230,13 +232,12 @@ class MTRHop(models.Model):
         db_table = "network_mtrhop"
         constraints = [
             models.UniqueConstraint(
-                fields=["mtr_run", "hop_number"],
+                fields=["mtr_run", "hop"],
                 name="unique_hop_per_run",
             )
         ]
         indexes = [
-            models.Index(fields=["mtr_run", "hop_number"]),
-            models.Index(fields=["responder_ip"]),
+            models.Index(fields=["ip"]),
             models.Index(fields=["asn"]),
             models.Index(fields=["domain"]),
         ]

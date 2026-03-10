@@ -38,6 +38,7 @@ def env_file_path(pytestconfig: Config) -> str:
 @pytest.fixture(scope="session")
 def settings(env_file_path: str) -> "GRLBaseSettings":
     from generalresearch.config import GRLBaseSettings
+    print(f"{env_file_path=}")
 
     s = GRLBaseSettings(_env_file=env_file_path)
 

@@ -6,7 +6,14 @@ from ipaddress import ip_address
 from typing import List, Optional, Dict
 
 import tldextract
-from pydantic import Field, field_validator, BaseModel, ConfigDict, model_validator
+from pydantic import (
+    Field,
+    field_validator,
+    BaseModel,
+    ConfigDict,
+    model_validator,
+    computed_field,
+)
 
 from generalresearch.models.network.definitions import IPProtocol, get_ip_kind, IPKind
 
@@ -16,7 +23,7 @@ class MTRHop(BaseModel):
 
     hop: int = Field(alias="count")
     host: str
-    asn: Optional[str] = Field(default=None, alias="ASN")
+    asn: Optional[int] = Field(default=None, alias="ASN")
 
     loss_pct: float = Field(alias="Loss%")
     sent: int = Field(alias="Snt")
@@ -27,15 +34,19 @@ class MTRHop(BaseModel):
     worst_ms: float = Field(alias="Wrst")
     stdev_ms: float = Field(alias="StDev")
 
-    hostname: Optional[str] = None
+    hostname: Optional[str] = Field(
+        default=None, examples=["fixed-187-191-8-145.totalplay.net"]
+    )
     ip: Optional[str] = None
 
-    @field_validator("asn")
+    @field_validator("asn", mode="before")
     @classmethod
-    def normalize_asn(cls, v):
-        if v == "AS???":
+    def normalize_asn(cls, v: str):
+        if v is None or v == "AS???":
             return None
-        return v
+        if type(v) is int:
+            return v
+        return int(v.replace("AS", ""))
 
     @model_validator(mode="after")
     def parse_host(self):
@@ -72,10 +83,26 @@ class MTRHop(BaseModel):
             return False
         return self.stdev_ms > self.avg_ms or self.worst_ms > self.best_ms * 10
 
+    @computed_field(examples=["totalplay.net"])
     @cached_property
     def domain(self) -> Optional[str]:
         if self.hostname:
             return tldextract.extract(self.hostname).top_domain_under_public_suffix
+
+    def model_dump_postgres(self, run_id: int):
+        # Writes for the network_mtrhop table
+        d = {"mtr_run_id": run_id}
+        data = self.model_dump(
+            mode="json",
+            include={
+                "hop",
+                "ip",
+                "domain",
+                "asn",
+            },
+        )
+        d.update(data)
+        return d
 
 
 class MTRReport(BaseModel):
@@ -97,8 +124,20 @@ class MTRReport(BaseModel):
 
     hops: List[MTRHop] = Field()
 
+    def model_dump_postgres(self):
+        # Writes for the network_mtr table
+        d = self.model_dump(
+            mode="json",
+            include={"port"},
+        )
+        d["protocol"] = self.protocol.to_number()
+        d["parsed"] = self.model_dump_json(indent=0)
+        return d
+
     def print_report(self) -> None:
-        print(f"MTR Report → {self.destination} {self.protocol.name} {self.port or ''}\n")
+        print(
+            f"MTR Report → {self.destination} {self.protocol.name} {self.port or ''}\n"
+        )
         host_max_len = max(len(h.host) for h in self.hops)
 
         header = (
@@ -198,8 +237,8 @@ def run_mtr(
     )
     raw = proc.stdout.strip()
     data = parse_raw_output(raw)
-    data['port'] = port
-    data['protocol'] = protocol
+    data["port"] = port
+    data["protocol"] = protocol
     return MTRReport.model_validate(data)
 
 
@@ -208,14 +247,3 @@ def parse_raw_output(raw: str) -> Dict:
     data.update(data.pop("mtr"))
     data["hops"] = data.pop("hubs")
     return data
-
-
-def load_example():
-    s = open(
-        "/home/gstupp/projects/generalresearch/generalresearch/models/network/mtr_fatbeam.json",
-        "r",
-    ).read()
-    data = parse_raw_output(s)
-    data['port'] = 443
-    data['protocol'] = IPProtocol.TCP
-    return MTRReport.model_validate(data)

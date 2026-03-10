@@ -40,7 +40,7 @@ class RDNSResult(BaseModel):
     def hostname_count(self) -> int:
         return len(self.hostnames)
 
-    @computed_field(examples=["totalplay"])
+    @computed_field(examples=["totalplay.net"])
     @cached_property
     def primary_domain(self) -> Optional[str]:
         if self.primary_hostname:

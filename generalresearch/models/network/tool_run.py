@@ -17,6 +17,12 @@ from generalresearch.models.network.rdns import (
     dig_rdns,
     get_dig_rdns_command,
 )
+from generalresearch.models.network.mtr import (
+    MTRReport,
+    get_mtr_version,
+    run_mtr,
+    get_mtr_command,
+)
 from generalresearch.models.network.tool_utils import ToolRunCommand
 
 
@@ -90,6 +96,20 @@ class RDnsRun(ToolRun):
         return d
 
 
+class MtrRun(ToolRun):
+    facility_id: int = Field(default=1)
+    source_ip: IPvAnyAddressStr = Field()
+    parsed: MTRReport = Field()
+
+    def model_dump_postgres(self):
+        d = super().model_dump_postgres()
+        d["run_id"] = self.id
+        d["source_ip"] = self.source_ip
+        d["facility_id"] = self.facility_id
+        d.update(self.parsed.model_dump_postgres())
+        return d
+
+
 def new_tool_run_from_nmap(
     nmap_run: NmapRun, scan_group_id: Optional[UUIDStr] = None
 ) -> PortScanRun:
@@ -128,4 +148,26 @@ def run_dig(ip: str, scan_group_id: Optional[UUIDStr] = None) -> RDnsRun:
         scan_group_id=scan_group_id or uuid4().hex,
         config=ToolRunCommand.from_raw_command(raw_command),
         parsed=rdns_result,
+    )
+
+
+def mtr_tool_run(ip: str, scan_group_id: Optional[UUIDStr] = None) -> MtrRun:
+    started_at = datetime.now(tz=timezone.utc)
+    tool_version = get_mtr_version()
+    result = run_mtr(ip)
+    finished_at = datetime.now(tz=timezone.utc)
+    raw_command = " ".join(get_mtr_command(ip))
+
+    return MtrRun(
+        tool_name=ToolName.MTR,
+        tool_class=ToolClass.TRACEROUTE,
+        tool_version=tool_version,
+        status=Status.SUCCESS,
+        ip=ip,
+        started_at=started_at,
+        finished_at=finished_at,
+        raw_command=raw_command,
+        scan_group_id=scan_group_id or uuid4().hex,
+        config=ToolRunCommand.from_raw_command(raw_command),
+        parsed=result,
     )
