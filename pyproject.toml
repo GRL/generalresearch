@@ -31,6 +31,7 @@ dependencies = [
     "scipy",
     "sentry-sdk",
     "slackclient",
+    "tldextract",
     "ua-parser",
     "user-agents",
     "wrapt",

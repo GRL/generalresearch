@@ -14,7 +14,7 @@ from pydantic import (
 )
 from pydantic.functional_serializers import PlainSerializer
 from pydantic.functional_validators import AfterValidator, BeforeValidator
-from pydantic.networks import UrlConstraints
+from pydantic.networks import UrlConstraints, IPvAnyNetwork
 from pydantic_core import Url
 from typing_extensions import Annotated
 
@@ -121,11 +121,17 @@ HttpsUrlStr = Annotated[
     BeforeValidator(lambda value: str(TypeAdapter(HttpsUrl).validate_python(value))),
 ]
 
-# Same thing as UUIDStr with IPvAnyAddress field. It is confusing that this is not a str
+# Same thing as UUIDStr with IPvAnyAddress field
 IPvAnyAddressStr = Annotated[
     str,
     BeforeValidator(
         lambda value: str(TypeAdapter(IPvAnyAddress).validate_python(value).exploded)
+    ),
+]
+IPvAnyNetworkStr = Annotated[
+    str,
+    BeforeValidator(
+        lambda value: str(TypeAdapter(IPvAnyNetwork).validate_python(value))
     ),
 ]
 
@@ -279,3 +285,7 @@ PropertyCode = Annotated[
         pattern=r"^[a-z]{1,2}\:.*",
     ),
 ]
+
+
+def now_utc_factory():
+    return datetime.now(tz=timezone.utc)
