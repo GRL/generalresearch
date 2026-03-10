@@ -2,6 +2,7 @@ import xml.etree.cElementTree as ET
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Tuple, Optional
 
+from generalresearch.models.network.definitions import IPProtocol
 from generalresearch.models.network.nmap import (
     NmapHostname,
     NmapRun,
@@ -12,7 +13,6 @@ from generalresearch.models.network.nmap import (
     NmapScript,
     NmapPortStats,
     NmapScanType,
-    NmapProtocol,
     NmapHostState,
     NmapHostStatusReason,
     NmapHostScript,
@@ -20,7 +20,6 @@ from generalresearch.models.network.nmap import (
     NmapOSClass,
     NmapTrace,
     NmapTraceHop,
-    NmapTraceProtocol,
     NmapScanInfo,
 )
 
@@ -103,7 +102,7 @@ class NmapXmlParser:
     def _parse_scaninfo(cls, scaninfo_el: ET.Element) -> NmapScanInfo:
         data = dict()
         data["type"] = NmapScanType(scaninfo_el.attrib["type"])
-        data["protocol"] = NmapProtocol(scaninfo_el.attrib["protocol"])
+        data["protocol"] = IPProtocol(scaninfo_el.attrib["protocol"])
         data["num_services"] = scaninfo_el.attrib["numservices"]
         data["services"] = scaninfo_el.attrib["services"]
         return NmapScanInfo.model_validate(data)
@@ -226,7 +225,9 @@ class NmapXmlParser:
                         osfamily=c.attrib.get("osfamily"),
                         osgen=c.attrib.get("osgen"),
                         accuracy=(
-                            int(c.attrib["accuracy"]) if "accuracy" in c.attrib else None
+                            int(c.attrib["accuracy"])
+                            if "accuracy" in c.attrib
+                            else None
                         ),
                         cpe=cpes or None,
                     )
@@ -250,7 +251,9 @@ class NmapXmlParser:
         <hostname name="108-171-53-1.aceips.com" type="PTR"/>
         </hostnames>
         """
-        return [cls._parse_hostname(hname) for hname in hostnames_el.findall("hostname")]
+        return [
+            cls._parse_hostname(hname) for hname in hostnames_el.findall("hostname")
+        ]
 
     @classmethod
     def _parse_hostname(cls, hostname_el: ET.Element) -> NmapHostname:
@@ -399,7 +402,6 @@ class NmapXmlParser:
 
         return NmapTrace(
             port=int(port_attr) if port_attr is not None else None,
-            protocol=NmapTraceProtocol(proto_attr) if proto_attr is not None else None,
+            protocol=IPProtocol(proto_attr) if proto_attr is not None else None,
             hops=hops,
         )
-

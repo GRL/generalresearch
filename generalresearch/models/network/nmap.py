@@ -7,12 +7,7 @@ from typing import Dict, Any, Literal, List, Optional, Tuple, Set
 from pydantic import computed_field, BaseModel, Field
 
 from generalresearch.models.custom_types import AwareDatetimeISO, IPvAnyAddressStr
-
-
-class NmapTraceProtocol(StrEnum):
-    TCP = "tcp"
-    UDP = "udp"
-    SCTP = "sctp"
+from generalresearch.models.network.definitions import IPProtocol
 
 
 class PortState(StrEnum):
@@ -45,21 +40,6 @@ class PortStateReason(StrEnum):
 
     ECHO_REPLY = "echo-reply"
     TIME_EXCEEDED = "time-exceeded"
-
-
-class NmapProtocol(StrEnum):
-    TCP = "tcp"
-    UDP = "udp"
-    SCTP = "sctp"
-    IP = "ip"
-
-    def to_number(self) -> int:
-        return {
-            self.TCP: 6,
-            self.UDP: 17,
-            self.SCTP: 132,
-            self.IP: 4,
-        }[self]
 
 
 class NmapScanType(StrEnum):
@@ -150,7 +130,7 @@ class NmapService(BaseModel):
 
 class NmapPort(BaseModel):
     port: int = Field()
-    protocol: NmapProtocol = Field()
+    protocol: IPProtocol = Field()
     # Closed ports will not have a NmapPort record
     state: PortState = Field()
     reason: Optional[PortStateReason] = Field(default=None)
@@ -227,7 +207,7 @@ class NmapTrace(BaseModel):
         default=None,
         description="Destination port used for traceroute probes (may be absent depending on scan type).",
     )
-    protocol: Optional[NmapTraceProtocol] = Field(
+    protocol: Optional[IPProtocol] = Field(
         default=None,
         description="Transport protocol used for the traceroute probes (tcp, udp, etc.).",
     )
@@ -269,7 +249,7 @@ class NmapScanInfo(BaseModel):
     """
 
     type: NmapScanType = Field()
-    protocol: NmapProtocol = Field()
+    protocol: IPProtocol = Field()
     num_services: int = Field()
     services: str = Field()
 
@@ -366,13 +346,13 @@ class NmapRun(BaseModel):
     @property
     def scan_info_tcp(self):
         return next(
-            filter(lambda x: x.protocol == NmapProtocol.TCP, self.scan_infos), None
+            filter(lambda x: x.protocol == IPProtocol.TCP, self.scan_infos), None
         )
 
     @property
     def scan_info_udp(self):
         return next(
-            filter(lambda x: x.protocol == NmapProtocol.UDP, self.scan_infos), None
+            filter(lambda x: x.protocol == IPProtocol.UDP, self.scan_infos), None
         )
 
     @property
@@ -385,7 +365,7 @@ class NmapRun(BaseModel):
             return None
         return max(self.os_matches, key=lambda m: m.accuracy)
 
-    def filter_ports(self, protocol: NmapProtocol, state: PortState) -> List[NmapPort]:
+    def filter_ports(self, protocol: IPProtocol, state: PortState) -> List[NmapPort]:
         return [p for p in self.ports if p.protocol == protocol and p.state == state]
 
     @property
@@ -395,7 +375,7 @@ class NmapRun(BaseModel):
         """
         return [
             p.port
-            for p in self.filter_ports(protocol=NmapProtocol.TCP, state=PortState.OPEN)
+            for p in self.filter_ports(protocol=IPProtocol.TCP, state=PortState.OPEN)
         ]
 
     @property
@@ -405,15 +385,15 @@ class NmapRun(BaseModel):
         """
         return [
             p.port
-            for p in self.filter_ports(protocol=NmapProtocol.UDP, state=PortState.OPEN)
+            for p in self.filter_ports(protocol=IPProtocol.UDP, state=PortState.OPEN)
         ]
 
     @cached_property
-    def _port_index(self) -> Dict[Tuple[NmapProtocol, int], NmapPort]:
+    def _port_index(self) -> Dict[Tuple[IPProtocol, int], NmapPort]:
         return {(p.protocol, p.port): p for p in self.ports}
 
     def get_port_state(
-        self, port: int, protocol: NmapProtocol = NmapProtocol.TCP
+        self, port: int, protocol: IPProtocol = IPProtocol.TCP
     ) -> PortState:
         # Explicit (only if scanned and not closed)
         if (protocol, port) in self._port_index:
