@@ -590,7 +590,7 @@ def ip_record_factory(
 
 
 @pytest.fixture(scope="session")
-def buyer(buyer_manager: "BuyerManager") -> Buyer:
+def buyer(buyer_manager: "BuyerManager") -> "Buyer":
     buyer_code = uuid4().hex
     buyer_manager.bulk_get_or_create(source=Source.TESTING, codes=[buyer_code])
     b = Buyer(
@@ -601,7 +601,7 @@ def buyer(buyer_manager: "BuyerManager") -> Buyer:
 
 
 @pytest.fixture(scope="session")
-def buyer_factory(buyer_manager: "BuyerManager") -> Callable[..., Buyer]:
+def buyer_factory(buyer_manager: "BuyerManager") -> Callable[..., "Buyer"]:
 
     def _inner() -> Buyer:
         return buyer_manager.bulk_get_or_create(
@@ -612,7 +612,7 @@ def buyer_factory(buyer_manager: "BuyerManager") -> Callable[..., Buyer]:
 
 
 @pytest.fixture(scope="session")
-def survey(survey_manager: "SurveyManager", buyer: "Buyer") -> Survey:
+def survey(survey_manager: "SurveyManager", buyer: "Buyer") -> "Survey":
     s = Survey(source=Source.TESTING, survey_id=uuid4().hex, buyer_code=buyer.code)
     survey_manager.create_bulk([s])
     return s
