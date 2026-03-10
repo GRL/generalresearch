@@ -2,7 +2,7 @@ from django.apps import AppConfig
 
 
 class THLSchemaConfig(AppConfig):
-    name = "generalresearchutils.thl_django"
+    name = "generalresearch.thl_django"
     label = "thl_django"
 
     def ready(self):
