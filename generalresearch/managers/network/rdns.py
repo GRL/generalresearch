@@ -14,11 +14,11 @@ class RdnsManager(PostgresManager):
         """
         query = """
         INSERT INTO network_rdnsresult (
-            run_id, primary_hostname, primary_org,
+            run_id, primary_hostname, primary_domain,
             hostname_count, hostnames
         )
         VALUES (
-            %(run_id)s, %(primary_hostname)s, %(primary_org)s,
+            %(run_id)s, %(primary_hostname)s, %(primary_domain)s,
             %(hostname_count)s, %(hostnames)s
         );
         """

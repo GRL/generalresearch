@@ -98,7 +98,7 @@ class RDNSResult(models.Model):
     )
 
     primary_hostname = models.CharField(max_length=255, null=True)
-    primary_org = models.CharField(max_length=50, null=True)
+    primary_domain = models.CharField(max_length=50, null=True)
     hostname_count = models.PositiveIntegerField(default=0)
     hostnames = models.JSONField(default=list)
 
@@ -106,7 +106,7 @@ class RDNSResult(models.Model):
         db_table = "network_rdnsresult"
         indexes = [
             models.Index(fields=["primary_hostname"]),
-            models.Index(fields=["primary_org"]),
+            models.Index(fields=["primary_domain"]),
         ]
 
 
@@ -191,11 +191,11 @@ class PortScanPort(models.Model):
         ]
 
 
-class Traceroute(models.Model):
+class MTR(models.Model):
     run = models.OneToOneField(
         ToolRun,
         on_delete=models.CASCADE,
-        related_name="traceroute",
+        related_name="mtr",
         primary_key=True,
     )
 
@@ -204,88 +204,42 @@ class Traceroute(models.Model):
     facility_id = models.PositiveIntegerField()
 
     # IANA protocol numbers (1=ICMP, 6=TCP, 17=UDP)
-    protocol = models.PositiveSmallIntegerField(default=1)
-
-    max_hops = models.PositiveSmallIntegerField()
-
-    # High-level result summary
-    final_responded = models.BooleanField()
-    reached_hop = models.PositiveSmallIntegerField(null=True)
-    total_duration_ms = models.PositiveIntegerField(null=True)
+    protocol = models.PositiveSmallIntegerField()
+    # nullable b/c ICMP doesn't use ports
+    port = models.PositiveIntegerField(null=True)
 
     class Meta:
-        db_table = "network_traceroute"
+        db_table = "network_mtr"
 
 
-class TracerouteHop(models.Model):
-    traceroute = models.ForeignKey(
-        Traceroute,
+class MTRHop(models.Model):
+    mtr_run = models.ForeignKey(
+        MTR,
         on_delete=models.CASCADE,
         related_name="hops",
     )
 
     hop_number = models.PositiveSmallIntegerField()
-    probe_number = models.PositiveSmallIntegerField()
 
     responder_ip = models.GenericIPAddressField(null=True)
 
-    rtt_ms = models.FloatField(null=True)
-
-    ttl = models.PositiveSmallIntegerField(null=True)
-
-    icmp_type = models.PositiveSmallIntegerField(null=True)
-    icmp_code = models.PositiveSmallIntegerField(null=True)
+    domain = models.CharField(max_length=50, null=True)
+    asn = models.PositiveIntegerField(null=True)
 
     class Meta:
-        db_table = "network_traceroutehop"
+        db_table = "network_mtrhop"
         constraints = [
             models.UniqueConstraint(
-                fields=["traceroute", "hop_number", "probe_number"],
-                name="unique_probe_per_hop",
+                fields=["mtr_run", "hop_number"],
+                name="unique_hop_per_run",
             )
         ]
         indexes = [
-            models.Index(fields=["traceroute", "hop_number"]),
+            models.Index(fields=["mtr_run", "hop_number"]),
             models.Index(fields=["responder_ip"]),
+            models.Index(fields=["asn"]),
+            models.Index(fields=["domain"]),
         ]
-        ordering = ["traceroute_id", "hop_number", "probe_number"]
-
-    def __str__(self):
-        return f"{self.traceroute} hop {self.hop_number}.{self.probe_number}"
-
-
-# class TracerouteAnalysis(models.Model):
-#     traceroute = models.OneToOneField(
-#         Traceroute,
-#         on_delete=models.CASCADE,
-#         related_name="analysis",
-#         primary_key=True,
-#     )
-#
-#     reached_destination = models.BooleanField()
-#
-#     hop_count = models.PositiveSmallIntegerField()
-#
-#     latency_spike_detected = models.BooleanField(default=False)
-#
-#     max_rtt_ms = models.FloatField(null=True)
-#     rtt_stddev = models.FloatField(null=True)
-#
-#     last_hop_private = models.BooleanField(default=False)
-#     last_hop_asn = models.PositiveIntegerField(null=True)
-#
-#     # Deterministic hash of first N hops (binary SHA256 recommended)
-#     path_prefix_hash = models.BinaryField(max_length=32, null=True)
-#
-#     anomaly_score = models.FloatField(null=True)
-#
-#     class Meta:
-#         db_table = "network_tracerouteanalysis"
-#         indexes = [
-#             models.Index(fields=["path_prefix_hash"]),
-#             models.Index(fields=["anomaly_score"]),
-#         ]
-#
 
 
 class IPLabel(models.Model):
@@ -293,6 +247,7 @@ class IPLabel(models.Model):
     Stores *ground truth* about an IP at a specific time.
     Used for model training and evaluation.
     """
+
     id = models.BigAutoField(primary_key=True, null=False)
 
     ip = CIDRField()

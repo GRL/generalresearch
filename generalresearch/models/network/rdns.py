@@ -26,7 +26,7 @@ class RDNSResult(BaseModel):
         assert len(self.hostnames) == self.hostname_count
         if self.hostnames:
             assert self.hostnames[0] == self.primary_hostname
-            assert self.primary_org in self.primary_hostname
+            assert self.primary_domain in self.primary_hostname
         return self
 
     @computed_field(examples=["fixed-187-191-8-145.totalplay.net"])
@@ -42,15 +42,15 @@ class RDNSResult(BaseModel):
 
     @computed_field(examples=["totalplay"])
     @cached_property
-    def primary_org(self) -> Optional[str]:
+    def primary_domain(self) -> Optional[str]:
         if self.primary_hostname:
-            return tldextract.extract(self.primary_hostname).domain
+            return tldextract.extract(self.primary_hostname).top_domain_under_public_suffix
 
     def model_dump_postgres(self):
         # Writes for the network_rdnsresult table
         d = self.model_dump(
             mode="json",
-            include={"primary_hostname", "primary_org", "hostname_count"},
+            include={"primary_hostname", "primary_domain", "hostname_count"},
         )
         d["hostnames"] = json.dumps(self.hostnames)
         return d

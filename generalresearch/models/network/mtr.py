@@ -1,9 +1,11 @@
 import json
 import re
 import subprocess
+from functools import cached_property
 from ipaddress import ip_address
 from typing import List, Optional, Dict
 
+import tldextract
 from pydantic import Field, field_validator, BaseModel, ConfigDict, model_validator
 
 from generalresearch.models.network.definitions import IPProtocol, get_ip_kind, IPKind
@@ -60,15 +62,20 @@ class MTRHop(BaseModel):
         self.ip = None
         return self
 
-    @property
+    @cached_property
     def ip_kind(self) -> Optional[IPKind]:
         return get_ip_kind(self.ip)
 
-    @property
+    @cached_property
     def icmp_rate_limited(self):
         if self.avg_ms == 0:
             return False
         return self.stdev_ms > self.avg_ms or self.worst_ms > self.best_ms * 10
+
+    @cached_property
+    def domain(self) -> Optional[str]:
+        if self.hostname:
+            return tldextract.extract(self.hostname).top_domain_under_public_suffix
 
 
 class MTRReport(BaseModel):
@@ -83,10 +90,15 @@ class MTRReport(BaseModel):
     psize: int = Field(description="Probe packet size in bytes.")
     bitpattern: str = Field(description="Payload byte pattern used in probes (hex).")
 
+    # Protocol used for the traceroute
+    protocol: IPProtocol = Field()
+    # The target port number for TCP/SCTP/UDP traces
+    port: Optional[int] = Field()
+
     hops: List[MTRHop] = Field()
 
     def print_report(self) -> None:
-        print(f"MTR Report → {self.destination}\n")
+        print(f"MTR Report → {self.destination} {self.protocol.name} {self.port or ''}\n")
         host_max_len = max(len(h.host) for h in self.hops)
 
         header = (
@@ -186,6 +198,8 @@ def run_mtr(
     )
     raw = proc.stdout.strip()
     data = parse_raw_output(raw)
+    data['port'] = port
+    data['protocol'] = protocol
     return MTRReport.model_validate(data)
 
 
@@ -202,4 +216,6 @@ def load_example():
         "r",
     ).read()
     data = parse_raw_output(s)
+    data['port'] = 443
+    data['protocol'] = IPProtocol.TCP
     return MTRReport.model_validate(data)
