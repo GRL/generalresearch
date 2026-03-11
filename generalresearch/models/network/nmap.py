@@ -1,4 +1,5 @@
 import json
+import subprocess
 from datetime import timedelta
 from enum import StrEnum
 from functools import cached_property
@@ -429,3 +430,28 @@ class NmapRun(BaseModel):
         d["parsed"] = self.model_dump_json(indent=0)
         d["open_tcp_ports"] = json.dumps(self.tcp_open_ports)
         return d
+
+
+def get_nmap_command(ip: str, top_ports: Optional[int] = 1000) -> List[str]:
+    # e.g. "nmap -Pn -T4 -A --top-ports 1000 -oX - scanme.nmap.org"
+    # https://linux.die.net/man/1/nmap
+    args = ["nmap", "-Pn", "-T4", "-A", "--top-ports", str(int(top_ports)), "-oX", "-"]
+    args.append(ip)
+    return args
+
+
+def run_nmap(ip: str, top_ports: Optional[int] = 1000) -> NmapRun:
+    from generalresearch.models.network.xml_parser import NmapXmlParser
+
+    p = NmapXmlParser()
+
+    args = get_nmap_command(ip=ip, top_ports=top_ports)
+    proc = subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    raw = proc.stdout.strip()
+    n = p.parse_xml(raw)
+    return n

@@ -89,6 +89,7 @@ class NmapXmlParser:
             "runstats",
             "verbose",
             "debugging",
+            "taskprogress",
         }
 
         found = {child.tag for child in root}
