@@ -118,9 +118,9 @@ class MTRResult(BaseModel):
     bitpattern: str = Field(description="Payload byte pattern used in probes (hex).")
 
     # Protocol used for the traceroute
-    protocol: IPProtocol = Field()
+    protocol: IPProtocol = Field(default=IPProtocol.ICMP)
     # The target port number for TCP/SCTP/UDP traces
-    port: Optional[int] = Field()
+    port: Optional[int] = Field(default=None)
 
     hops: List[MTRHop] = Field()
 

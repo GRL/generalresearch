@@ -12,7 +12,7 @@ def execute_nmap(
 ):
     result = run_nmap(ip=ip, top_ports=top_ports)
     assert result.exit_status == "success"
-    assert result.target_ip == ip
+    assert result.target_ip == ip, f"{result.target_ip=}, {ip=}"
 
     run = NmapRun(
         tool_name=ToolName.NMAP,

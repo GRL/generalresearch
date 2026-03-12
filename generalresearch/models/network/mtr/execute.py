@@ -29,8 +29,8 @@ def execute_mtr(
     config = ToolRunCommand(
         command="mtr",
         options={
-            "protocol": protocol,
-            "port": port,
+            "protocol": result.protocol,
+            "port": result.port,
             "report_cycles": report_cycles,
         },
     )
