@@ -3,12 +3,12 @@ from typing import Optional
 from psycopg import Cursor
 
 from generalresearch.managers.base import PostgresManager
-from generalresearch.models.network.tool_run import RDnsRun
+from generalresearch.models.network.tool_run import RDNSRun
 
 
-class RdnsManager(PostgresManager):
+class RDNSRunManager(PostgresManager):
 
-    def _create(self, run: RDnsRun, c: Optional[Cursor] = None) -> None:
+    def _create(self, run: RDNSRun, c: Optional[Cursor] = None) -> None:
         """
         Do not use this directly. Must only be used in the context of a toolrun
         """
@@ -23,4 +23,9 @@ class RdnsManager(PostgresManager):
         );
         """
         params = run.model_dump_postgres()
-        c.execute(query, params)
+        if c:
+            c.execute(query, params)
+        else:
+            with self.pg_config.make_connection() as conn:
+                with conn.cursor() as c:
+                    c.execute(query, params)

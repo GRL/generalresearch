@@ -3,9 +3,9 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any, Tuple, Optional
 
 from generalresearch.models.network.definitions import IPProtocol
-from generalresearch.models.network.nmap import (
+from generalresearch.models.network.nmap.result import (
     NmapHostname,
-    NmapRun,
+    NmapResult,
     NmapPort,
     PortState,
     PortStateReason,
@@ -39,7 +39,7 @@ class NmapXmlParser:
     """
 
     @classmethod
-    def parse_xml(cls, nmap_data: str) -> NmapRun:
+    def parse_xml(cls, nmap_data: str) -> NmapResult:
         """
         Expects a full nmap scan report.
         """
@@ -55,7 +55,7 @@ class NmapXmlParser:
         return cls._parse_xml_nmaprun(root)
 
     @classmethod
-    def _parse_xml_nmaprun(cls, root: ET.Element) -> NmapRun:
+    def _parse_xml_nmaprun(cls, root: ET.Element) -> NmapResult:
         """
         This method parses out a full nmap scan report from its XML root
         node: <nmaprun>. We expect there is only 1 host in this report!
@@ -79,7 +79,7 @@ class NmapXmlParser:
 
         nmap_data.update(cls._parse_xml_host(root.find(".//host")))
 
-        return NmapRun.model_validate(nmap_data)
+        return NmapResult.model_validate(nmap_data)
 
     @classmethod
     def _validate_nmap_root(cls, root: ET.Element) -> None:
@@ -406,3 +406,7 @@ class NmapXmlParser:
             protocol=IPProtocol(proto_attr) if proto_attr is not None else None,
             hops=hops,
         )
+
+
+def parse_nmap_xml(raw):
+    return NmapXmlParser.parse_xml(raw)

@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, timedelta
 from typing import Collection, Optional, List
 
+from psycopg import sql
 from pydantic import TypeAdapter, IPvAnyNetwork
 
 from generalresearch.managers.base import PostgresManager
@@ -14,7 +15,8 @@ from generalresearch.models.network.label import IPLabel, IPLabelKind, IPLabelSo
 
 class IPLabelManager(PostgresManager):
     def create(self, ip_label: IPLabel) -> IPLabel:
-        query = """
+        query = sql.SQL(
+            """
         INSERT INTO network_iplabel (
             ip, labeled_at, created_at,
             label_kind, source, confidence,
@@ -24,6 +26,7 @@ class IPLabelManager(PostgresManager):
             %(label_kind)s, %(source)s, %(confidence)s,
             %(provider)s, %(metadata)s
         ) RETURNING id;"""
+        )
         params = ip_label.model_dump_postgres()
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:

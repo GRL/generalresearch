@@ -1,9 +1,7 @@
-import json
 import re
-import subprocess
 from functools import cached_property
 from ipaddress import ip_address
-from typing import List, Optional, Dict
+from typing import List, Optional
 
 import tldextract
 from pydantic import (
@@ -16,6 +14,8 @@ from pydantic import (
 )
 
 from generalresearch.models.network.definitions import IPProtocol, get_ip_kind, IPKind
+
+HOST_RE = re.compile(r"^(?P<hostname>.+?) \((?P<ip>[^)]+)\)$")
 
 
 class MTRHop(BaseModel):
@@ -105,7 +105,7 @@ class MTRHop(BaseModel):
         return d
 
 
-class MTRReport(BaseModel):
+class MTRResult(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     source: str = Field(description="Hostname of the system running mtr.", alias="src")
@@ -165,85 +165,3 @@ class MTRReport(BaseModel):
                 f"{hop.worst_ms:7.1f} "
                 f"{hop.stdev_ms:7.1f}"
             )
-
-
-HOST_RE = re.compile(r"^(?P<hostname>.+?) \((?P<ip>[^)]+)\)$")
-
-SUPPORTED_PROTOCOLS = {
-    IPProtocol.TCP,
-    IPProtocol.UDP,
-    IPProtocol.SCTP,
-    IPProtocol.ICMP,
-}
-PROTOCOLS_W_PORT = {IPProtocol.TCP, IPProtocol.UDP, IPProtocol.SCTP}
-
-
-def get_mtr_command(
-    ip: str,
-    protocol: Optional[IPProtocol] = None,
-    port: Optional[int] = None,
-    report_cycles: int = 10,
-) -> List[str]:
-    # https://manpages.ubuntu.com/manpages/focal/man8/mtr.8.html
-    # e.g. "mtr -r -c 2 -b -z -j -T -P 443 74.139.70.149"
-    args = ["mtr", "--report", "--show-ips", "--aslookup", "--json"]
-    if report_cycles is not None:
-        args.extend(["-c", str(int(report_cycles))])
-    if port is not None:
-        if protocol is None:
-            protocol = IPProtocol.TCP
-        assert protocol in PROTOCOLS_W_PORT, "port only allowed for TCP/SCTP/UDP traces"
-        args.extend(["--port", str(int(port))])
-    if protocol:
-        assert protocol in SUPPORTED_PROTOCOLS, f"unsupported protocol: {protocol}"
-        # default is ICMP (no args)
-        arg_map = {
-            IPProtocol.TCP: "--tcp",
-            IPProtocol.UDP: "--udp",
-            IPProtocol.SCTP: "--sctp",
-        }
-        if protocol in arg_map:
-            args.append(arg_map[protocol])
-    args.append(ip)
-    return args
-
-
-def get_mtr_version() -> str:
-    proc = subprocess.run(
-        ["mtr", "-v"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    # e.g. mtr 0.95
-    ver_str = proc.stdout.strip()
-    return ver_str.split(" ", 1)[1]
-
-
-def run_mtr(
-    ip: str,
-    protocol: Optional[IPProtocol] = None,
-    port: Optional[int] = None,
-    report_cycles: int = 10,
-) -> MTRReport:
-    args = get_mtr_command(
-        ip=ip, protocol=protocol, port=port, report_cycles=report_cycles
-    )
-    proc = subprocess.run(
-        args,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    raw = proc.stdout.strip()
-    data = parse_raw_output(raw)
-    data["port"] = port
-    data["protocol"] = protocol
-    return MTRReport.model_validate(data)
-
-
-def parse_raw_output(raw: str) -> Dict:
-    data = json.loads(raw)["report"]
-    data.update(data.pop("mtr"))
-    data["hops"] = data.pop("hubs")
-    return data
