@@ -133,8 +133,6 @@ class PortScan(models.Model):
     uptime_seconds = models.IntegerField(null=True)
     last_boot = models.DateTimeField(null=True)
 
-    raw_xml = models.TextField(null=True)
-
     # Full parsed output
     parsed = models.JSONField()
 

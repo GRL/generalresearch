@@ -18,14 +18,14 @@ class NmapRunManager(PostgresManager):
         INSERT INTO network_portscan (
             run_id, xml_version, host_state,
             host_state_reason, latency_ms, distance,
-            uptime_seconds, last_boot, raw_xml,
+            uptime_seconds, last_boot,
             parsed, scan_group_id, open_tcp_ports,
             started_at, ip
         )
         VALUES (
             %(run_id)s, %(xml_version)s, %(host_state)s,
             %(host_state_reason)s, %(latency_ms)s, %(distance)s,
-            %(uptime_seconds)s, %(last_boot)s, %(raw_xml)s,
+            %(uptime_seconds)s, %(last_boot)s,
             %(parsed)s, %(scan_group_id)s, %(open_tcp_ports)s,
             %(started_at)s, %(ip)s
         );

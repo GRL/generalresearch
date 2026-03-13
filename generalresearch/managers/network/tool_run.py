@@ -1,4 +1,4 @@
-from typing import Collection
+from typing import Collection, List, Dict
 
 from psycopg import Cursor, sql
 
@@ -8,7 +8,13 @@ from generalresearch.managers.network.nmap import NmapRunManager
 from generalresearch.managers.network.rdns import RDNSRunManager
 from generalresearch.managers.network.mtr import MTRRunManager
 from generalresearch.models.network.rdns.result import RDNSResult
-from generalresearch.models.network.tool_run import NmapRun, RDNSRun, MTRRun
+from generalresearch.models.network.tool_run import (
+    NmapRun,
+    RDNSRun,
+    MTRRun,
+    ToolRun,
+    ToolName,
+)
 from generalresearch.pg_helper import PostgresConfig
 
 
@@ -23,7 +29,7 @@ class ToolRunManager(PostgresManager):
         self.rdns_manager = RDNSRunManager(self.pg_config)
         self.mtr_manager = MTRRunManager(self.pg_config)
 
-    def create_tool_run(self, run: NmapRun | RDNSRun | MTRRun, c: Cursor):
+    def _create_tool_run(self, run: NmapRun | RDNSRun | MTRRun, c: Cursor):
         query = sql.SQL(
             """
         INSERT INTO network_toolrun (
@@ -46,13 +52,35 @@ class ToolRunManager(PostgresManager):
         run.id = run_id
         return None
 
+    def create_tool_run(self, run: NmapRun | RDNSRun | MTRRun):
+        if type(run) is NmapRun:
+            return self.create_nmap_run(run)
+        elif type(run) is RDNSRun:
+            return self.create_rdns_run(run)
+        elif type(run) is MTRRun:
+            return self.create_mtr_run(run)
+        else:
+            raise ValueError("unrecognized run type")
+
+    def get_latest_runs_by_tool(self, ip: str) -> Dict[ToolName, ToolRun]:
+        query = """
+        SELECT DISTINCT ON (tool_name) *
+        FROM network_toolrun
+        WHERE ip = %(ip)s
+        ORDER BY tool_name, started_at DESC;
+        """
+        params = {"ip": ip}
+        res = self.pg_config.execute_sql_query(query, params=params)
+        runs = [ToolRun.model_validate(x) for x in res]
+        return {r.tool_name: r for r in runs}
+
     def create_nmap_run(self, run: NmapRun) -> NmapRun:
         """
         Insert a PortScan + PortScanPorts from a Pydantic NmapResult.
         """
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
-                self.create_tool_run(run, c)
+                self._create_tool_run(run, c)
                 self.nmap_manager._create(run, c=c)
         return run
 
@@ -73,7 +101,7 @@ class ToolRunManager(PostgresManager):
         """
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
-                self.create_tool_run(run, c)
+                self._create_tool_run(run, c)
                 self.rdns_manager._create(run, c=c)
         return run
 
@@ -95,7 +123,7 @@ class ToolRunManager(PostgresManager):
     def create_mtr_run(self, run: MTRRun) -> MTRRun:
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
-                self.create_tool_run(run, c)
+                self._create_tool_run(run, c)
                 self.mtr_manager._create(run, c=c)
         return run
 
