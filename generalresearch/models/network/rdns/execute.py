@@ -14,15 +14,18 @@ from generalresearch.models.network.tool_run import (
     Status,
     RDNSRun,
 )
-from generalresearch.models.network.tool_run_command import ToolRunCommand
+from generalresearch.models.network.tool_run_command import (
+    RDNSRunCommand,
+    RDNSRunCommandOptions,
+)
 
 
 def execute_rdns(ip: str, scan_group_id: Optional[UUIDStr] = None):
     started_at = datetime.now(tz=timezone.utc)
     tool_version = get_dig_version()
-    result = run_rdns(ip=ip)
+    config = RDNSRunCommand(options=RDNSRunCommandOptions(ip=ip))
+    result = run_rdns(config)
     finished_at = datetime.now(tz=timezone.utc)
-    raw_command = build_rdns_command(ip)
 
     run = RDNSRun(
         tool_name=ToolName.DIG,
@@ -32,9 +35,9 @@ def execute_rdns(ip: str, scan_group_id: Optional[UUIDStr] = None):
         ip=ip,
         started_at=started_at,
         finished_at=finished_at,
-        raw_command=raw_command,
+        raw_command=config.to_command_str(),
         scan_group_id=scan_group_id or uuid4().hex,
-        config=ToolRunCommand(command="dig", options={}),
+        config=config,
         parsed=result,
     )
 

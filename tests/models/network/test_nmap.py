@@ -17,7 +17,7 @@ def resolve(host):
 def test_execute_nmap_scanme(toolrun_manager):
     ip = resolve("scanme.nmap.org")
 
-    run = execute_nmap(ip=ip, top_ports=20)
+    run = execute_nmap(ip=ip, top_ports=None, ports="20-30", enable_advanced=False)
     assert run.tool_name == ToolName.NMAP
     assert run.tool_class == ToolClass.PORT_SCAN
     assert run.ip == ip

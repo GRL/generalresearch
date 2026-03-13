@@ -12,7 +12,12 @@ from generalresearch.models.custom_types import (
 from generalresearch.models.network.mtr.result import MTRResult
 from generalresearch.models.network.nmap.result import NmapResult
 from generalresearch.models.network.rdns.result import RDNSResult
-from generalresearch.models.network.tool_run_command import ToolRunCommand
+from generalresearch.models.network.tool_run_command import (
+    ToolRunCommand,
+    NmapRunCommand,
+    RDNSRunCommand,
+    MTRRunCommand,
+)
 
 
 class ToolClass(StrEnum):
@@ -68,6 +73,7 @@ class ToolRun(BaseModel):
 class NmapRun(ToolRun):
     tool_class: Literal[ToolClass.PORT_SCAN] = Field(default=ToolClass.PORT_SCAN)
     tool_name: Literal[ToolName.NMAP] = Field(default=ToolName.NMAP)
+    config: NmapRunCommand = Field()
 
     parsed: NmapResult = Field()
 
@@ -81,6 +87,7 @@ class NmapRun(ToolRun):
 class RDNSRun(ToolRun):
     tool_class: Literal[ToolClass.RDNS] = Field(default=ToolClass.RDNS)
     tool_name: Literal[ToolName.DIG] = Field(default=ToolName.DIG)
+    config: RDNSRunCommand = Field()
 
     parsed: RDNSResult = Field()
 
@@ -94,6 +101,7 @@ class RDNSRun(ToolRun):
 class MTRRun(ToolRun):
     tool_class: Literal[ToolClass.TRACEROUTE] = Field(default=ToolClass.TRACEROUTE)
     tool_name: Literal[ToolName.MTR] = Field(default=ToolName.MTR)
+    config: MTRRunCommand = Field()
 
     facility_id: int = Field(default=1)
     source_ip: IPvAnyAddressStr = Field()

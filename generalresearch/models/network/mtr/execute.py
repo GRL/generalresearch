@@ -10,30 +10,33 @@ from generalresearch.models.network.mtr.command import (
     build_mtr_command,
 )
 from generalresearch.models.network.tool_run import MTRRun, ToolName, ToolClass, Status
-from generalresearch.models.network.tool_run_command import ToolRunCommand
+from generalresearch.models.network.tool_run_command import (
+    MTRRunCommand,
+    MTRRunCommandOptions,
+)
 from generalresearch.models.network.utils import get_source_ip
 
 
 def execute_mtr(
     ip: str,
     scan_group_id: Optional[UUIDStr] = None,
-    protocol: Optional[IPProtocol] = None,
+    protocol: Optional[IPProtocol] = IPProtocol.ICMP,
     port: Optional[int] = None,
     report_cycles: int = 10,
 ) -> MTRRun:
+    config = MTRRunCommand(
+        options=MTRRunCommandOptions(
+            ip=ip,
+            report_cycles=report_cycles,
+            protocol=protocol,
+            port=port,
+        ),
+    )
+
     started_at = datetime.now(tz=timezone.utc)
     tool_version = get_mtr_version()
-    result = run_mtr(ip, protocol=protocol, port=port, report_cycles=report_cycles)
+    result = run_mtr(config)
     finished_at = datetime.now(tz=timezone.utc)
-    raw_command = build_mtr_command(ip)
-    config = ToolRunCommand(
-        command="mtr",
-        options={
-            "protocol": result.protocol,
-            "port": result.port,
-            "report_cycles": report_cycles,
-        },
-    )
 
     return MTRRun(
         tool_name=ToolName.MTR,
@@ -43,7 +46,7 @@ def execute_mtr(
         ip=ip,
         started_at=started_at,
         finished_at=finished_at,
-        raw_command=raw_command,
+        raw_command=config.to_command_str(),
         scan_group_id=scan_group_id or uuid4().hex,
         config=config,
         parsed=result,

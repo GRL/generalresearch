@@ -5,10 +5,10 @@ from generalresearch.models.network.definitions import IPProtocol
 from generalresearch.models.network.mtr.result import MTRResult
 
 
-def parse_mtr_output(raw: str, port, protocol) -> MTRResult:
+def parse_mtr_output(raw: str, port: int, protocol: IPProtocol) -> MTRResult:
     data = parse_mtr_raw_output(raw)
     data["port"] = port
-    data["protocol"] = protocol or IPProtocol.ICMP
+    data["protocol"] = protocol
     return MTRResult.model_validate(data)
 
 

@@ -2,10 +2,12 @@ import subprocess
 
 from generalresearch.models.network.rdns.parser import parse_rdns_output
 from generalresearch.models.network.rdns.result import RDNSResult
+from generalresearch.models.network.tool_run_command import RDNSRunCommand
 
 
-def run_rdns(ip: str) -> RDNSResult:
-    args = build_rdns_command(ip).split(" ")
+def run_rdns(config: RDNSRunCommand) -> RDNSResult:
+    cmd = config.to_command_str()
+    args = cmd.split(" ")
     proc = subprocess.run(
         args,
         capture_output=True,
@@ -13,10 +15,10 @@ def run_rdns(ip: str) -> RDNSResult:
         check=False,
     )
     raw = proc.stdout.strip()
-    return parse_rdns_output(ip, raw)
+    return parse_rdns_output(ip=config.options.ip, raw=raw)
 
 
-def build_rdns_command(ip: str):
+def build_rdns_command(ip: str) -> str:
     # e.g. dig +noall +answer -x 1.2.3.4
     return " ".join(["dig", "+noall", "+answer", "-x", ip])
 

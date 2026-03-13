@@ -4,6 +4,7 @@ from typing import List, Optional
 from generalresearch.models.network.definitions import IPProtocol
 from generalresearch.models.network.mtr.parser import parse_mtr_output
 from generalresearch.models.network.mtr.result import MTRResult
+from generalresearch.models.network.tool_run_command import MTRRunCommand
 
 SUPPORTED_PROTOCOLS = {
     IPProtocol.TCP,
@@ -56,20 +57,14 @@ def get_mtr_version() -> str:
     return ver_str.split(" ", 1)[1]
 
 
-def run_mtr(
-    ip: str,
-    protocol: Optional[IPProtocol] = None,
-    port: Optional[int] = None,
-    report_cycles: int = 10,
-) -> MTRResult:
-    args = build_mtr_command(
-        ip=ip, protocol=protocol, port=port, report_cycles=report_cycles
-    )
+def run_mtr(config: MTRRunCommand) -> MTRResult:
+    cmd = config.to_command_str()
+    args = cmd.split(" ")
     proc = subprocess.run(
-        args.split(" "),
+        args,
         capture_output=True,
         text=True,
         check=False,
     )
     raw = proc.stdout.strip()
-    return parse_mtr_output(raw, protocol=protocol, port=port)
+    return parse_mtr_output(raw, protocol=config.options.protocol, port=config.options.port)
