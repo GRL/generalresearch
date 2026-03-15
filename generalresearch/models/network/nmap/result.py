@@ -428,4 +428,5 @@ class NmapResult(BaseModel):
         d["last_boot"] = self.last_boot
         d["parsed"] = self.model_dump_json(indent=0)
         d["open_tcp_ports"] = json.dumps(self.tcp_open_ports)
+        d["open_udp_ports"] = json.dumps(self.udp_open_ports)
         return d

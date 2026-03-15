@@ -1,6 +1,6 @@
 from uuid import uuid4
 from django.utils import timezone
-from django.contrib.postgres.indexes import GistIndex
+from django.contrib.postgres.indexes import GistIndex, GinIndex
 
 from django.db import models
 
@@ -32,6 +32,8 @@ class ToolRun(models.Model):
     Represents one execution of one tool against one target
     """
 
+    id = models.BigAutoField(primary_key=True)
+
     # The *Target* IP.
     # Should correspond to an IP we already have in the thl_ipinformation table
     ip = models.GenericIPAddressField()
@@ -60,7 +62,7 @@ class ToolRun(models.Model):
         null=True,
     )
 
-    started_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField()
     finished_at = models.DateTimeField(null=True)
 
     class Status(models.TextChoices):
@@ -97,14 +99,21 @@ class RDNSResult(models.Model):
         primary_key=True,
     )
 
+    # denormalized from ToolRun for query speed
+    ip = models.GenericIPAddressField()
+    started_at = models.DateTimeField()
+    scan_group_id = models.UUIDField()
+
     primary_hostname = models.CharField(max_length=255, null=True)
-    primary_domain = models.CharField(max_length=50, null=True)
+    primary_domain = models.CharField(max_length=255, null=True)
     hostname_count = models.PositiveIntegerField(default=0)
     hostnames = models.JSONField(default=list)
 
     class Meta:
         db_table = "network_rdnsresult"
         indexes = [
+            models.Index(fields=["ip", "-started_at"]),
+            models.Index(fields=["scan_group_id"]),
             models.Index(fields=["primary_hostname"]),
             models.Index(fields=["primary_domain"]),
         ]
@@ -138,17 +147,20 @@ class PortScan(models.Model):
 
     # Can be inferred through a join, but will make common queries easier
     open_tcp_ports = models.JSONField(default=list)
+    open_udp_ports = models.JSONField(default=list)
 
     class Meta:
         db_table = "network_portscan"
         indexes = [
-            models.Index(fields=["started_at"]),
             models.Index(fields=["scan_group_id"]),
-            models.Index(fields=["ip"]),
+            models.Index(fields=["ip", "-started_at"]),
+            GinIndex(fields=["open_tcp_ports"]),
+            GinIndex(fields=["open_udp_ports"]),
         ]
 
 
 class PortScanPort(models.Model):
+    id = models.BigAutoField(primary_key=True)
     port_scan = models.ForeignKey(
         PortScan,
         on_delete=models.CASCADE,
@@ -174,13 +186,6 @@ class PortScanPort(models.Model):
                 fields=["port_scan", "protocol", "port"],
                 name="unique_port_per_scan",
             ),
-            models.CheckConstraint(
-                condition=(
-                    models.Q(protocol=1, port__isnull=True)  # ICMP
-                    | models.Q(protocol__in=[6, 17], port__isnull=False)
-                ),
-                name="port_required_for_tcp_udp",
-            ),
         ]
         indexes = [
             models.Index(fields=["port", "protocol", "state"]),
@@ -197,6 +202,11 @@ class MTR(models.Model):
         primary_key=True,
     )
 
+    # denormalized from ToolRun for query speed
+    ip = models.GenericIPAddressField()
+    started_at = models.DateTimeField()
+    scan_group_id = models.UUIDField()
+
     # Source performing the trace
     source_ip = models.GenericIPAddressField()
     facility_id = models.PositiveIntegerField()
@@ -211,9 +221,14 @@ class MTR(models.Model):
 
     class Meta:
         db_table = "network_mtr"
+        indexes = [
+            models.Index(fields=["ip", "-started_at"]),
+            models.Index(fields=["scan_group_id"]),
+        ]
 
 
 class MTRHop(models.Model):
+    id = models.BigAutoField(primary_key=True)
     mtr_run = models.ForeignKey(
         MTR,
         on_delete=models.CASCADE,
@@ -223,7 +238,7 @@ class MTRHop(models.Model):
     hop = models.PositiveSmallIntegerField()
     ip = models.GenericIPAddressField(null=True)
 
-    domain = models.CharField(max_length=50, null=True)
+    domain = models.CharField(max_length=255, null=True)
     asn = models.PositiveIntegerField(null=True)
 
     class Meta:
@@ -247,7 +262,7 @@ class IPLabel(models.Model):
     Used for model training and evaluation.
     """
 
-    id = models.BigAutoField(primary_key=True, null=False)
+    id = models.BigAutoField(primary_key=True)
 
     ip = CIDRField()
 

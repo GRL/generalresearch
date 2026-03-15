@@ -16,11 +16,13 @@ class MTRRunManager(PostgresManager):
             """
         INSERT INTO network_mtr (
             run_id, source_ip, facility_id,
-            protocol, port, parsed
+            protocol, port, parsed,
+            started_at, ip, scan_group_id
         )
         VALUES (
             %(run_id)s, %(source_ip)s, %(facility_id)s,
-            %(protocol)s, %(port)s, %(parsed)s
+            %(protocol)s, %(port)s, %(parsed)s,
+            %(started_at)s, %(ip)s, %(scan_group_id)s
         );
         """
         )

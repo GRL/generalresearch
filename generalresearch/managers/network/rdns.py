@@ -15,11 +15,13 @@ class RDNSRunManager(PostgresManager):
         query = """
         INSERT INTO network_rdnsresult (
             run_id, primary_hostname, primary_domain,
-            hostname_count, hostnames
+            hostname_count, hostnames,
+            ip, started_at, scan_group_id
         )
         VALUES (
             %(run_id)s, %(primary_hostname)s, %(primary_domain)s,
-            %(hostname_count)s, %(hostnames)s
+            %(hostname_count)s, %(hostnames)s,
+            %(ip)s, %(started_at)s, %(scan_group_id)s
         );
         """
         params = run.model_dump_postgres()
