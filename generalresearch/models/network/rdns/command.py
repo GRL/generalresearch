@@ -31,5 +31,5 @@ def get_dig_version() -> str:
         check=False,
     )
     # e.g. DiG 9.18.39-0ubuntu0.22.04.2-Ubuntu
-    ver_str = proc.stderr.strip()
+    ver_str = proc.stderr.strip() + proc.stdout.strip()
     return ver_str.split("-", 1)[0].split(" ", 1)[1]
