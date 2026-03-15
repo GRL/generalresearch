@@ -278,7 +278,7 @@ class NmapResult(BaseModel):
     command_line: str = Field()
     started_at: AwareDatetimeISO = Field()
     version: str = Field()
-    xmloutputversion: Literal["1.04"] = Field()
+    xmloutputversion: str = Field()
 
     scan_infos: List[NmapScanInfo] = Field(min_length=1)
 
