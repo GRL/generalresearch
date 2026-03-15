@@ -13,6 +13,7 @@ pytest_plugins = [
     "test_utils.managers.conftest",
     "test_utils.managers.contest.conftest",
     "test_utils.managers.ledger.conftest",
+    "test_utils.managers.network.conftest",
     "test_utils.managers.upk.conftest",
     # -- Models
     "test_utils.models.conftest",

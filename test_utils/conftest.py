@@ -4,6 +4,7 @@ from os.path import join as pjoin
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 from uuid import uuid4
+from datetime import datetime, timedelta, timezone
 
 import pytest
 import redis
@@ -17,8 +18,6 @@ from generalresearch.redis_helper import RedisConfig
 from generalresearch.sql_helper import SqlHelper
 
 if TYPE_CHECKING:
-    from datetime import datetime
-
     from generalresearch.config import GRLBaseSettings
     from generalresearch.currency import USDCent
     from generalresearch.models.thl.session import Status
@@ -38,6 +37,8 @@ def env_file_path(pytestconfig: Config) -> str:
 @pytest.fixture(scope="session")
 def settings(env_file_path: str) -> "GRLBaseSettings":
     from generalresearch.config import GRLBaseSettings
+
+    print(f"{env_file_path=}")
 
     s = GRLBaseSettings(_env_file=env_file_path)
 
@@ -202,16 +203,12 @@ def wall_status(request) -> "Status":
 
 
 @pytest.fixture
-def utc_now() -> "datetime":
-    from datetime import datetime, timezone
-
+def utc_now() -> datetime:
     return datetime.now(tz=timezone.utc)
 
 
 @pytest.fixture
-def utc_hour_ago() -> "datetime":
-    from datetime import datetime, timedelta, timezone
-
+def utc_hour_ago() -> datetime:
     return datetime.now(tz=timezone.utc) - timedelta(hours=1)
 
 

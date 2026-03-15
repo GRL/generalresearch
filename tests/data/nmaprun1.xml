@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.80 scan initiated Wed Mar  4 12:59:08 2026 as: nmap -O -A -Pn -sV -p 22-1000,11000,1100,3389,61232 -oX - 108.171.53.1 -->
+<nmaprun scanner="nmap" args="nmap -O -A -Pn -sV -p 22-1000,11000,1100,3389,61232 -oX - 108.171.53.1" start="1772650748"
+         startstr="Wed Mar  4 12:59:08 2026" version="7.80" xmloutputversion="1.04">
+    <scaninfo type="syn" protocol="tcp" numservices="983" services="22-1000,1100,3389,11000,61232"/>
+    <scaninfo type="syn" protocol="udp" numservices="983" services="69,420"/>
+    <verbose level="0"/>
+    <debugging level="0"/>
+    <host starttime="1772650748" endtime="1772650901">
+        <status state="up" reason="user-set" reason_ttl="0"/>
+        <address addr="108.171.53.1" addrtype="ipv4"/>
+        <hostnames>
+            <hostname name="108-171-53-1.aceips.com" type="PTR"/>
+        </hostnames>
+        <ports>
+            <extraports state="filtered" count="982">
+                <extrareasons reason="no-responses" count="982"/>
+            </extraports>
+            <port protocol="tcp" portid="61232">
+                <state state="open" reason="syn-ack" reason_ttl="47"/>
+                <service name="socks5" extrainfo="Username/password authentication required" method="probed" conf="10"/>
+                <script id="socks-auth-info" output="&#xa;  Username and password">
+                    <table>
+                        <elem key="name">Username and password</elem>
+                        <elem key="method">2</elem>
+                    </table>
+                </script>
+            </port>
+        </ports>
+        <os>
+            <portused state="open" proto="tcp" portid="61232"/>
+        </os>
+        <uptime seconds="4063775" lastboot="Fri Jan 16 12:12:06 2026"/>
+        <distance value="21"/>
+        <tcpsequence index="263" difficulty="Good luck!" values="B67613E,2F0160C6,27FA849E,3B16FC3A,916ADEAF,18293FD7"/>
+        <ipidsequence class="All zeros" values="0,0,0,0,0,0"/>
+        <tcptssequence class="1000HZ" values="F2383963,F23839C0,F2383A24,F2383A8C,F2383AED,F2383B54"/>
+        <trace port="61232" proto="tcp">
+            <hop ttl="1" ipaddr="192.168.86.1" rtt="3.83" host="_gateway"/>
+            <hop ttl="2" ipaddr="192.168.100.1" rtt="4.90"/>
+            <hop ttl="3" ipaddr="10.125.64.1" rtt="6.01"/>
+            <hop ttl="4" ipaddr="10.180.25.105" rtt="14.52"/>
+            <hop ttl="5" ipaddr="10.180.25.106" rtt="16.47"/>
+            <hop ttl="6" ipaddr="10.180.25.81" rtt="28.56"/>
+            <hop ttl="7" ipaddr="62.115.192.20" rtt="17.17" host="gdl-b2-link.ip.twelve99.net"/>
+            <hop ttl="8" ipaddr="62.115.140.131" rtt="29.56" host="mny-b4-link.ip.twelve99.net"/>
+            <hop ttl="9" ipaddr="62.115.124.12" rtt="27.68" host="mdc-b2-link.ip.twelve99.net"/>
+            <hop ttl="10" ipaddr="62.115.126.144" rtt="34.92" host="hou-b3-link.ip.twelve99.net"/>
+            <hop ttl="11" ipaddr="62.115.116.47" rtt="48.42" host="atl-b24-link.ip.twelve99.net"/>
+            <hop ttl="13" ipaddr="62.115.137.132" rtt="62.35" host="ash-bb2-link.ip.twelve99.net"/>
+            <hop ttl="14" ipaddr="62.115.139.34" rtt="67.51" host="nyk-bb5-link.ip.twelve99.net"/>
+            <hop ttl="16" ipaddr="62.115.136.13" rtt="64.75" host="ewr-b15-link.ip.twelve99.net"/>
+            <hop ttl="17" ipaddr="62.115.136.13" rtt="67.87" host="ewr-b15-link.ip.twelve99.net"/>
+            <hop ttl="19" ipaddr="75.76.132.68" rtt="72.32" host="hge0-1-0-6.aggr1.jfk.ny.rcn.net"/>
+            <hop ttl="20" ipaddr="207.237.73.98" rtt="68.13"/>
+            <hop ttl="21" ipaddr="108.171.53.1" rtt="64.76" host="108-171-53-1.aceips.com"/>
+        </trace>
+        <times srtt="54719" rttvar="23423" to="148411"/>
+    </host>
+    <runstats>
+        <finished time="1772650901" timestr="Wed Mar  4 13:01:41 2026" elapsed="153.06"
+                  summary="Nmap done at Wed Mar  4 13:01:41 2026; 1 IP address (1 host up) scanned in 153.06 seconds"
+                  exit="success"/>
+        <hosts up="1" down="0" total="1"/>
+    </runstats>
+</nmaprun>

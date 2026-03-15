@@ -2,7 +2,7 @@ from django.apps import AppConfig
 
 
 class THLSchemaConfig(AppConfig):
-    name = "generalresearchutils.thl_django"
+    name = "generalresearch.thl_django"
     label = "thl_django"
 
     def ready(self):
@@ -11,5 +11,6 @@ class THLSchemaConfig(AppConfig):
         from .contest import models  # noqa: F401  # pycharm: keep
         from .event import models  # noqa: F401  # pycharm: keep
         from .marketplace import models  # noqa: F401  # pycharm: keep
+        from .network import models  # noqa: F401  # pycharm: keep
         from .userhealth import models  # noqa: F401  # pycharm: keep
         from .userprofile import models  # noqa: F401  # pycharm: keep
