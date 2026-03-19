@@ -536,6 +536,7 @@ class GrlIqData(BaseModel):
             fp_cols.extend(["screen_width", "screen_height"])
         if self.useragent.os.family not in {OSFamily.CHROME_OS, OSFamily.ANDROID}:
             fp_cols.append("storage_estimate_quota")
+        fp_cols.sort()
         return fp_cols
 
     @cached_property
