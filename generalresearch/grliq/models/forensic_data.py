@@ -522,7 +522,6 @@ class GrlIqData(BaseModel):
             "text_2d_fingerprint",
             "canvas_fingerprint",
             "device_pixel_ratio",
-            "storage_estimate_quota",
             "audio_codecs",
             "video_codecs",
             "color_gamut",
@@ -534,7 +533,9 @@ class GrlIqData(BaseModel):
             "prefers_color_scheme",
         ]
         if self.useragent.os.family in {OSFamily.IOS, OSFamily.MAC_OSX}:
-            fp_cols += ["screen_width", "screen_height"]
+            fp_cols.extend(["screen_width", "screen_height"])
+        if self.useragent.os.family not in {OSFamily.CHROME_OS, OSFamily.ANDROID}:
+            fp_cols.append("storage_estimate_quota")
         return fp_cols
 
     @cached_property
