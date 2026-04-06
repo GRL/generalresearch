@@ -9,6 +9,9 @@ jobs:
     force: false
     condition: SUCCESSFUL
     optional: false
+  triggers:
+  - !BranchUpdateTrigger {}
+  - !TagCreateTrigger {}
   retryCondition: never
   maxRetries: 3
   retryDelay: 30
