@@ -1,0 +1,15 @@
+version: 40
+jobs:
+- name: Push to Github
+  steps:
+  - !PushRepository
+    name: push
+    remoteUrl: https://github.com/GRL/generalresearch
+    passwordSecret: github-generalresearch
+    force: false
+    condition: SUCCESSFUL
+    optional: false
+  retryCondition: never
+  maxRetries: 3
+  retryDelay: 30
+  timeout: 14400
