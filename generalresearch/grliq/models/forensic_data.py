@@ -43,6 +43,7 @@ from generalresearch.grliq.models.useragents import (
     GrlUserAgent,
     OSFamily,
     UserAgentHints,
+    BrowserFamily,
 )
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
@@ -534,7 +535,16 @@ class GrlIqData(BaseModel):
         ]
         if self.useragent.os.family in {OSFamily.IOS, OSFamily.MAC_OSX}:
             fp_cols.extend(["screen_width", "screen_height"])
-        if self.useragent.os.family not in {OSFamily.CHROME_OS, OSFamily.ANDROID, OSFamily.WINDOWS}:
+        if self.useragent.os.family not in {
+            OSFamily.CHROME_OS,
+            OSFamily.ANDROID,
+            OSFamily.WINDOWS,
+        } and self.useragent.browser.family not in {
+            BrowserFamily.CHROME,
+            BrowserFamily.CHROME_MOBILE,
+            BrowserFamily.CHROME_MOBILE_IOS,
+            BrowserFamily.CHROME_MOBILE_WEBVIEW,
+        }:
             # On certain system this is the actual value (to the byte) which results in it
             # changing frequently.
             fp_cols.append("storage_estimate_quota")
