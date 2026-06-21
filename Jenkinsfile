@@ -75,8 +75,8 @@ pipeline {
 
                             script {
                                 env.REDIS_DB = new Random().nextInt(1024).toString()
-                                env.REDIS = "redis://${env.REDIS}:6379/${env.REDIS_DB}"
-                                env.THL_REDIS = "redis://${env.THLREDIS}:6379/${env.REDIS_DB}"
+                                env.REDIS = "${env.REDIS}:6379/${env.REDIS_DB}"
+                                env.THL_REDIS = "${env.THL_REDIS}:6379/${env.REDIS_DB}"
                                 echo "Using THL Redis: ${env.REDIS}"
                                 if (sh(script: "redis-cli -u ${env.REDIS} SET jenkins_lock 1 NX EX 3600", returnStdout: true).trim() != 'OK')
                                     error('Redis already locked... aborting.')
