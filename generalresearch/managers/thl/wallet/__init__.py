@@ -8,6 +8,7 @@ from generalresearch.managers.thl.payout import (
     PayoutEventManager,
     UserPayoutEventManager,
 )
+from generalresearch.managers.thl.tango_api import TangoClient
 from generalresearch.managers.thl.user_manager.user_manager import (
     UserManager,
 )
@@ -32,6 +33,7 @@ def manage_pending_cashout(
     user_manager: UserManager,
     ledger_manager: ThlLedgerManager,
     order_data: Optional[Union[Dict[str, Any], CashMailOrderData]] = None,
+    tango_client: Optional[TangoClient] = None,
 ) -> UserPayoutEvent:
     """
     Called by a UI actions performed by Todd. This rejects/approves/cancels
@@ -72,11 +74,14 @@ def manage_pending_cashout(
                 complete_tango_order,
             )
 
+            assert tango_client is not None
+
             complete_tango_order(
                 user=user,
                 payout_event=pe,
                 payout_event_manager=payout_event_manager,
                 ledger_manager=ledger_manager,
+                tango_client=tango_client,
             )
 
         elif pe.payout_type == PayoutType.PAYPAL:

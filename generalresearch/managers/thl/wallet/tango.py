@@ -7,26 +7,10 @@ from generalresearch.managers.thl.ledger_manager.thl_ledger import (
     ThlLedgerManager,
 )
 from generalresearch.managers.thl.payout import PayoutEventManager
+from generalresearch.managers.thl.tango_api import TangoClient, TangoOrderRequest
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.user import User
-
-# from raas.api_helper import APIHelper
-# from raas.exceptions.raas_client_exception import RaasClientException
-# from raas.raas_client import RaasClient
-
-# RaasClient.config.environment = 1
-# api_client = RaasClient(
-#     platform_name=TANGO_PLATFORM_NAME, platform_key=TANGO_PLATFORM_KEY
-# )
-# it really annoyingly logs the entire http response. turn it off
-# api_client.catalog.logger.setLevel(logging.INFO)
-# api_client.exchange_rates.logger.setLevel(logging.INFO)
-# api_client.orders.logger.setLevel(logging.INFO)
-# api_client.status.logger.setLevel(logging.INFO)
-# api_client.accounts.logger.setLevel(logging.INFO)
-# api_client.customers.logger.setLevel(logging.INFO)
-# api_client.fund.logger.setLevel(logging.INFO)
 
 
 def complete_tango_order(
@@ -34,6 +18,7 @@ def complete_tango_order(
     payout_event: UserPayoutEvent,
     payout_event_manager: PayoutEventManager,
     ledger_manager: ThlLedgerManager,
+    tango_client: TangoClient,
 ):
     """
     We approved the Tango card redemption. Actually request the card.
@@ -54,7 +39,9 @@ def complete_tango_order(
     #   as the ref_id is the same.
     try:
         order = create_tango_order(
-            request_data=payout_event.request_data, ref_id=ref_id
+            request_data=payout_event.request_data,
+            ref_id=ref_id,
+            tango_client=tango_client,
         )
 
     except Exception as e:
@@ -77,20 +64,9 @@ def complete_tango_order(
     return payout_event
 
 
-def get_tango_order(ref_id: str):
-    """
-    Retrieve a tango order by its external ref ID.
-    We should have set it to the TangoPayoutEvent instance uuid associated
-    with this Tango order (lowercase no dashes).
-    :return: the json order data or None if doesn't exist
-    """
-    raise NotImplementedError("convert to requests")
-    # orders = api_client.orders.get_orders({"external_ref_id": ref_id}).orders
-    # if orders:
-    #     return json.loads(APIHelper.json_serialize(orders[0]))
-
-
-def create_tango_order(request_data: Dict[str, Any], ref_id: str) -> Dict[str, Any]:
+def create_tango_order(
+    request_data: Dict[str, Any], ref_id: str, tango_client: TangoClient
+) -> Dict[str, Any]:
     """
     Create a tango gift card order.
     Throws exception if anything is not right.
@@ -103,7 +79,7 @@ def create_tango_order(request_data: Dict[str, Any], ref_id: str) -> Dict[str, A
     :return:
     """
     # make sure we don't create more than one tango order for a single PayoutEvent
-    assert get_tango_order(ref_id) is None
+    assert tango_client.get_order_if_exists(ref_id) is None
     amount = request_data["amount"]
     request_data.pop("amount_usd", None)
     request_data.pop("description", None)
@@ -133,28 +109,14 @@ def create_tango_order(request_data: Dict[str, Any], ref_id: str) -> Dict[str, A
             },
         }
 
-    raise NotImplementedError("convert to requests")
-    # try:
-    #     order = api_client.orders.create_order(request_data)
-    #     order = json.loads(APIHelper.json_serialize(order))
-    # except RaasClientException as e:
-    #     e = json.loads(APIHelper.json_serialize(e))
-    #     try:
-    #         msgs = [x["message"] for x in e["errors"]]
-    #         print(" | ".join(msgs))
-    #     except Exception:
-    #         pass
-    #     capture_exception()
-    #     raise e
-    # except Exception as e:
-    #     capture_exception()
-    #     raise e
+    request = TangoOrderRequest.model_validate(request_data)
+    order = tango_client.create_order(request)
 
-    # amount_f: float = float(amount)
-    # assert order["status"] == "COMPLETE"
-    # assert abs(order["amountCharged"]["total"] - amount_f) < 0.0200001
-    # assert order["amountCharged"]["currencyCode"] == "USD"
-    # if order["denomination"]["currencyCode"] == "USD":
-    #     assert order["denomination"]["value"] == amount_f
-    #
-    # return order
+    amount_f: float = float(amount)
+    assert order["status"] == "COMPLETE"
+    assert abs(order["amountCharged"]["total"] - amount_f) < 0.0200001
+    assert order["amountCharged"]["currencyCode"] == "USD"
+    if order["denomination"]["currencyCode"] == "USD":
+        assert order["denomination"]["value"] == amount_f
+
+    return order
