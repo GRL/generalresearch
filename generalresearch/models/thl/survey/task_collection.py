@@ -4,8 +4,8 @@ import logging
 from typing import List
 
 import pandas as pd
-import pandera
 from pandera import DataFrameSchema
+from pandera.errors import SchemaErrors
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from generalresearch.models.thl.survey import MarketplaceTask
@@ -35,7 +35,7 @@ class TaskCollection(BaseModel):
         df = self.to_df()
         try:
             df = self._schema.validate(df, lazy=True)
-        except pandera.errors.SchemaErrors as exc:
+        except SchemaErrors as exc:
             idx = exc.failure_cases["index"]
             if len(idx) >= len(df) * 0.10:
                 raise exc

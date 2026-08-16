@@ -865,7 +865,7 @@ class Product(BaseModel, validate_assignment=True):
     payments_enabled: bool = Field(
         default=True,
         description="This is only to determine if ACH or Wire payments should "
-        "be made to the Produce.",
+        "be made to the Product.",
     )
 
     created: Optional[AwareDatetimeISO] = Field(

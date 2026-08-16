@@ -91,6 +91,7 @@ if TYPE_CHECKING:
 def ltxm(
     thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
 ) -> "LedgerTransactionManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.ledger_manager.ledger import (
@@ -109,6 +110,7 @@ def ltxm(
 def lam(
     thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
 ) -> "LedgerAccountManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.ledger_manager.ledger import (
@@ -125,6 +127,7 @@ def lam(
 
 @pytest.fixture(scope="session")
 def lm(thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig) -> "LedgerManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.ledger_manager.ledger import (
@@ -148,6 +151,7 @@ def lm(thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig) -> "LedgerMana
 def thl_lm(
     thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
 ) -> "ThlLedgerManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
@@ -171,6 +175,7 @@ def thl_lm(
 def payout_event_manager(
     thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
 ) -> "PayoutEventManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.payout import PayoutEventManager
@@ -186,6 +191,7 @@ def payout_event_manager(
 def user_payout_event_manager(
     thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
 ) -> "UserPayoutEventManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.payout import UserPayoutEventManager
@@ -201,6 +207,7 @@ def user_payout_event_manager(
 def brokerage_product_payout_event_manager(
     thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
 ) -> "BrokerageProductPayoutEventManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.payout import (
@@ -218,6 +225,7 @@ def brokerage_product_payout_event_manager(
 def business_payout_event_manager(
     thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
 ) -> "BusinessPayoutEventManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.payout import (
@@ -233,6 +241,8 @@ def business_payout_event_manager(
 
 @pytest.fixture(scope="session")
 def product_manager(thl_web_rw: PostgresConfig) -> "ProductManager":
+    assert thl_web_rw.dsn
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.product import ProductManager
@@ -244,6 +254,10 @@ def product_manager(thl_web_rw: PostgresConfig) -> "ProductManager":
 def user_manager(
     settings: "GRLBaseSettings", thl_web_rw: PostgresConfig, thl_web_rr: PostgresConfig
 ) -> "UserManager":
+    assert thl_web_rw.dsn
+    assert thl_web_rw.dsn.path
+    assert thl_web_rr.dsn
+    assert thl_web_rr.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rr.dsn.path
 
@@ -260,6 +274,8 @@ def user_manager(
 
 @pytest.fixture(scope="session")
 def user_metadata_manager(thl_web_rw: PostgresConfig) -> "UserMetadataManager":
+    assert thl_web_rw.dsn
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.user_manager.user_metadata_manager import (
@@ -271,6 +287,8 @@ def user_metadata_manager(thl_web_rw: PostgresConfig) -> "UserMetadataManager":
 
 @pytest.fixture(scope="session")
 def session_manager(thl_web_rw: PostgresConfig) -> "SessionManager":
+    assert thl_web_rw.dsn
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.session import SessionManager
@@ -280,6 +298,8 @@ def session_manager(thl_web_rw: PostgresConfig) -> "SessionManager":
 
 @pytest.fixture(scope="session")
 def wall_manager(thl_web_rw: PostgresConfig) -> "WallManager":
+    assert thl_web_rw.dsn
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.wall import WallManager
@@ -311,6 +331,8 @@ def task_adjustment_manager(thl_web_rw: PostgresConfig) -> "TaskAdjustmentManage
 
 @pytest.fixture(scope="session")
 def contest_manager(thl_web_rw: PostgresConfig) -> "ContestManager":
+    assert thl_web_rw.dsn
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.contest_manager import ContestManager
@@ -328,6 +350,8 @@ def contest_manager(thl_web_rw: PostgresConfig) -> "ContestManager":
 
 @pytest.fixture(scope="session")
 def category_manager(thl_web_rw: PostgresConfig) -> "CategoryManager":
+    assert thl_web_rw.dsn
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
     from generalresearch.managers.thl.category import CategoryManager
 
@@ -367,6 +391,7 @@ def surveypenalty_manager(thl_redis_config: RedisConfig):
 
 @pytest.fixture(scope="session")
 def upk_schema_manager(thl_web_rw: PostgresConfig):
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
     from generalresearch.managers.thl.profiling.schema import (
         UpkSchemaManager,
@@ -377,6 +402,7 @@ def upk_schema_manager(thl_web_rw: PostgresConfig):
 
 @pytest.fixture(scope="session")
 def user_upk_manager(thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig):
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
     from generalresearch.managers.thl.profiling.user_upk import (
         UserUpkManager,
@@ -387,6 +413,7 @@ def user_upk_manager(thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig):
 
 @pytest.fixture(scope="session")
 def question_manager(thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig):
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
     from generalresearch.managers.thl.profiling.question import (
         QuestionManager,
@@ -397,6 +424,7 @@ def question_manager(thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig):
 
 @pytest.fixture(scope="session")
 def uqa_manager(thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig):
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
     from generalresearch.managers.thl.profiling.uqa import UQAManager
 
@@ -414,6 +442,7 @@ def uqa_manager_clear_cache(uqa_manager, user: "User"):
 
 @pytest.fixture(scope="session")
 def audit_log_manager(thl_web_rw: PostgresConfig) -> "AuditLogManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.userhealth import AuditLogManager
@@ -423,6 +452,7 @@ def audit_log_manager(thl_web_rw: PostgresConfig) -> "AuditLogManager":
 
 @pytest.fixture(scope="session")
 def ip_geoname_manager(thl_web_rw: PostgresConfig) -> "IPGeonameManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.ipinfo import IPGeonameManager
@@ -432,6 +462,7 @@ def ip_geoname_manager(thl_web_rw: PostgresConfig) -> "IPGeonameManager":
 
 @pytest.fixture(scope="session")
 def ip_information_manager(thl_web_rw: PostgresConfig) -> "IPInformationManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.ipinfo import IPInformationManager
@@ -443,6 +474,7 @@ def ip_information_manager(thl_web_rw: PostgresConfig) -> "IPInformationManager"
 def ip_record_manager(
     thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
 ) -> "IPRecordManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.userhealth import IPRecordManager
@@ -454,6 +486,7 @@ def ip_record_manager(
 def user_iphistory_manager(
     thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
 ) -> "UserIpHistoryManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.userhealth import (
@@ -476,6 +509,7 @@ def user_iphistory_manager_clear_cache(user_iphistory_manager, user):
 def geoipinfo_manager(
     thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
 ) -> "GeoIpInfoManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
@@ -502,6 +536,7 @@ def maxmind_manager(
     thl_web_rw: PostgresConfig,
     thl_redis_config: RedisConfig,
 ) -> "MaxmindManager":
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.maxmind import MaxmindManager
@@ -516,6 +551,7 @@ def maxmind_manager(
 
 @pytest.fixture(scope="session")
 def cashout_method_manager(thl_web_rw: PostgresConfig):
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
     from generalresearch.managers.thl.cashout_method import (
         CashoutMethodManager,
@@ -533,6 +569,7 @@ def event_manager(thl_redis_config: RedisConfig):
 
 @pytest.fixture(scope="session")
 def user_streak_manager(thl_web_rw: PostgresConfig):
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
     from generalresearch.managers.thl.user_streak import (
         UserStreakManager,
@@ -545,6 +582,7 @@ def user_streak_manager(thl_web_rw: PostgresConfig):
 def uqa_db_index(thl_web_rw: PostgresConfig):
     # There were some custom indices created not through django.
     # Make sure the index used in the index hint exists
+    assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     # query = f"""create index idx_user_id
@@ -605,6 +643,7 @@ def business_manager(
 ) -> "BusinessManager":
     from generalresearch.redis_helper import RedisConfig
 
+    assert gr_db.dsn.path
     assert "/unittest-" in gr_db.dsn.path
     assert isinstance(gr_redis_config, RedisConfig)
 
@@ -618,6 +657,7 @@ def business_manager(
 
 @pytest.fixture(scope="session")
 def business_address_manager(gr_db: PostgresConfig) -> "BusinessAddressManager":
+    assert gr_db.dsn.path
     assert "/unittest-" in gr_db.dsn.path
 
     from generalresearch.managers.gr.business import BusinessAddressManager
@@ -629,6 +669,7 @@ def business_address_manager(gr_db: PostgresConfig) -> "BusinessAddressManager":
 def business_bank_account_manager(
     gr_db: PostgresConfig,
 ) -> "BusinessBankAccountManager":
+    assert gr_db.dsn.path
     assert "/unittest-" in gr_db.dsn.path
 
     from generalresearch.managers.gr.business import (
@@ -640,6 +681,7 @@ def business_bank_account_manager(
 
 @pytest.fixture(scope="session")
 def team_manager(gr_db: PostgresConfig, gr_redis_config: RedisConfig) -> "TeamManager":
+    assert gr_db.dsn.path
     assert "/unittest-" in gr_db.dsn.path
 
     from generalresearch.managers.gr.team import TeamManager
@@ -649,6 +691,7 @@ def team_manager(gr_db: PostgresConfig, gr_redis_config: RedisConfig) -> "TeamMa
 
 @pytest.fixture(scope="session")
 def gr_um(gr_db: PostgresConfig, gr_redis_config: RedisConfig) -> "GRUserManager":
+    assert gr_db.dsn.path
     assert "/unittest-" in gr_db.dsn.path
 
     from generalresearch.managers.gr.authentication import GRUserManager
@@ -658,6 +701,7 @@ def gr_um(gr_db: PostgresConfig, gr_redis_config: RedisConfig) -> "GRUserManager
 
 @pytest.fixture(scope="session")
 def gr_tm(gr_db: PostgresConfig) -> "GRTokenManager":
+    assert gr_db.dsn.path
     assert "/unittest-" in gr_db.dsn.path
 
     from generalresearch.managers.gr.authentication import GRTokenManager
@@ -667,6 +711,7 @@ def gr_tm(gr_db: PostgresConfig) -> "GRTokenManager":
 
 @pytest.fixture(scope="session")
 def membership_manager(gr_db: PostgresConfig) -> "MembershipManager":
+    assert gr_db.dsn.path
     assert "/unittest-" in gr_db.dsn.path
 
     from generalresearch.managers.gr.team import MembershipManager
@@ -679,6 +724,7 @@ def membership_manager(gr_db: PostgresConfig) -> "MembershipManager":
 
 @pytest.fixture(scope="session")
 def grliq_dm(grliq_db: PostgresConfig) -> "GrlIqDataManager":
+    assert grliq_db.dsn.path
     assert "/unittest-" in grliq_db.dsn.path
 
     from generalresearch.grliq.managers.forensic_data import (
@@ -690,6 +736,7 @@ def grliq_dm(grliq_db: PostgresConfig) -> "GrlIqDataManager":
 
 @pytest.fixture(scope="session")
 def grliq_em(grliq_db: PostgresConfig) -> "GrlIqEventManager":
+    assert grliq_db.dsn.path
     assert "/unittest-" in grliq_db.dsn.path
 
     from generalresearch.grliq.managers.forensic_events import (
@@ -701,6 +748,7 @@ def grliq_em(grliq_db: PostgresConfig) -> "GrlIqEventManager":
 
 @pytest.fixture(scope="session")
 def grliq_crr(grliq_db: PostgresConfig) -> "GrlIqCategoryResultsReader":
+    assert grliq_db.dsn.path
     assert "/unittest-" in grliq_db.dsn.path
 
     from generalresearch.grliq.managers.forensic_results import (

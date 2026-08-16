@@ -1,16 +1,20 @@
 import os
 import shutil
+import sys
+from datetime import datetime, timedelta, timezone
 from os.path import join as pjoin
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, Generator
 from uuid import uuid4
-from datetime import datetime, timedelta, timezone
 
+import django
 import pytest
 import redis
 from _pytest.config import Config
+from django.conf import settings as django_settings
+from django.core.management import call_command
 from dotenv import load_dotenv
-from pydantic import MariaDBDsn
+from pydantic import MariaDBDsn, PostgresDsn
 from redis import Redis
 
 from generalresearch.pg_helper import PostgresConfig
@@ -26,12 +30,19 @@ if TYPE_CHECKING:
 @pytest.fixture(scope="session")
 def env_file_path(pytestconfig: Config) -> str:
     root_path = pytestconfig.rootpath
-    env_path = os.path.join(root_path, ".env.test")
+    env_file = ".env.test"
 
-    if os.path.exists(env_path):
-        load_dotenv(dotenv_path=env_path, override=True)
+    candidates = [
+        os.path.join(root_path, env_file),
+        os.path.join(root_path, "..", env_file),
+    ]
 
-    return env_path
+    for env_path in candidates:
+        if os.path.exists(env_path):
+            load_dotenv(dotenv_path=env_path, override=True)
+            return os.path.normpath(env_path)
+
+    raise AssertionError(f"No .env.test file found in: {', '.join(candidates)}")
 
 
 @pytest.fixture(scope="session")
@@ -57,24 +68,137 @@ def settings(env_file_path: str) -> "GRLBaseSettings":
 
 
 @pytest.fixture(scope="session")
-def thl_web_rr(settings: "GRLBaseSettings") -> PostgresConfig:
-    assert settings.thl_web_rr_db is not None
-    assert "/unittest-" in settings.thl_web_rr_db.path
+def postgres_instance(settings: "GRLBaseSettings") -> Generator[PostgresDsn]:
+    """Create a ephemeral postgresql instance for us to use during pytest.
+
+    This is simplified, and only based off a single host. We don't want to
+    create multiple migrated tmp databases for each rw/rr/ro connection
+    """
+
+    assert settings.thl_web_rw_db
+    # assert settings.thl_web_rw_db.host
+
+    dsn: PostgresDsn = settings.thl_web_rw_db
+
+    # Connect to default DB to create the new one
+    from psycopg import connect
+    from psycopg.sql import SQL, Identifier
+
+    now = datetime.now(timezone.utc)
+    ts: str = now.strftime("%Y-%m-%d")
+
+    db_name = f"unittest-{ts}-{uuid4().hex[:6]}"
+    print("XXX", str(dsn))
+    conn = connect(str(dsn))
+    conn.autocommit = True
+    cur = conn.cursor()
+    cur.execute(SQL("CREATE DATABASE {}").format(Identifier(db_name)))
+    cur.close()
+    conn.close()
+
+    host = dsn.hosts()[0]
+    db_url = (
+        f"postgres://{host['username']}:{host['password']}@{host['host']}/{db_name}"
+    )
+
+    yield PostgresDsn(db_url)
+
+    # Teardown: drop the DB after the session
+    conn = connect(str(dsn))
+    conn.autocommit = True
+    cur = conn.cursor()
+    # cur.execute(SQL("DROP DATABASE {}").format(Identifier(db_name)))
+    cur.close()
+    conn.close()
+
+
+@pytest.fixture(scope="session")
+def django_db_setup(settings: "GRLBaseSettings") -> Callable[..., None]:
+
+    def _inner():
+
+        assert settings.thl_web_rw_db
+        dsn: PostgresDsn = settings.thl_web_rw_db
+        host = dsn.hosts()[0]
+
+        # 1. Bootstrapping Django settings
+        if not django_settings.configured:
+            django_settings.configure(
+                DATABASES={
+                    "default": {
+                        "ENGINE": "django.db.backends.postgresql",
+                        # PostgresDsn stores path as "/dbname"
+                        "NAME": str(dsn.path).lstrip("/"),
+                        "USER": host["username"],
+                        "PASSWORD": host["password"],
+                        "HOST": host["host"],
+                        "PORT": "5432",
+                    }
+                },
+                INSTALLED_APPS=[
+                    "django.contrib.postgres",
+                    "django.contrib.contenttypes",
+                    "generalresearch.thl_django",
+                ],
+            )
+        django.setup()
+
+        from django.apps import apps
+
+        for model in apps.get_models():
+            print(f"Discovered model: {model._meta.label}")
+
+        # 2. Run migrations directly during fixture activation
+        call_command("migrate")
+
+    return _inner
+
+
+@pytest.fixture(scope="session")
+def thl_web_rr(
+    settings: "GRLBaseSettings", postgres_instance: PostgresDsn, django_db_setup
+) -> PostgresConfig:
+    dsn = settings.thl_web_rr_db
+    assert dsn
+    assert dsn.path
+
+    if dsn.path not in ["/", "/postgres"]:
+        assert "/unittest-" in dsn.path
+
+    db_path = postgres_instance.path
+    host = dsn.hosts()[0]
+    db_url = f"postgres://{host['username']}:{host['password']}@{host['host']}{db_path}"
+
+    # Run Migrations now.
+    django_db_setup()
 
     return PostgresConfig(
-        dsn=settings.thl_web_rr_db,
+        dsn=PostgresDsn(db_url),
         connect_timeout=1,
         statement_timeout=5,
     )
 
 
 @pytest.fixture(scope="session")
-def thl_web_rw(settings: "GRLBaseSettings") -> PostgresConfig:
-    assert settings.thl_web_rw_db is not None
-    assert "/unittest-" in settings.thl_web_rw_db.path
+def thl_web_rw(
+    settings: "GRLBaseSettings", postgres_instance: PostgresDsn, django_db_setup
+) -> PostgresConfig:
+    dsn = settings.thl_web_rw_db
+    assert dsn
+    assert dsn.path
+
+    if dsn.path not in ["/", "/postgres"]:
+        assert "/unittest-" in dsn.path
+
+    db_path = postgres_instance.path
+    host = dsn.hosts()[0]
+    db_url = f"postgres://{host['username']}:{host['password']}@{host['host']}{db_path}"
+
+    # Run Migrations now.
+    django_db_setup()
 
     return PostgresConfig(
-        dsn=settings.thl_web_rw_db,
+        dsn=PostgresDsn(db_url),
         connect_timeout=1,
         statement_timeout=5,
     )
@@ -82,14 +206,24 @@ def thl_web_rw(settings: "GRLBaseSettings") -> PostgresConfig:
 
 @pytest.fixture(scope="session")
 def gr_db(settings: "GRLBaseSettings") -> PostgresConfig:
-    assert "/unittest-" in settings.gr_db.path
+    dsn = settings.gr_db
+    assert dsn
+    assert dsn.path
+
+    if dsn.path not in ["/", "/postgres"]:
+        assert "/unittest-" in dsn.path
+
     return PostgresConfig(dsn=settings.gr_db, connect_timeout=5, statement_timeout=2)
 
 
 @pytest.fixture(scope="session")
 def spectrum_rw(settings: "GRLBaseSettings") -> SqlHelper:
-    assert settings.spectrum_rw_db is not None
-    assert "/unittest-" in settings.spectrum_rw_db.path
+    dsn = settings.spectrum_rw_db
+    assert dsn
+    assert dsn.path
+
+    if dsn.path not in ["/", "/postgres"]:
+        assert "/unittest-" in dsn.path
 
     return SqlHelper(
         dsn=settings.spectrum_rw_db,
@@ -101,8 +235,12 @@ def spectrum_rw(settings: "GRLBaseSettings") -> SqlHelper:
 
 @pytest.fixture(scope="session")
 def grliq_db(settings: "GRLBaseSettings") -> PostgresConfig:
-    assert settings.grliq_db is not None
-    assert "/unittest-" in settings.grliq_db.path
+    dsn = settings.grliq_db
+    assert dsn
+    assert dsn.path
+
+    if dsn.path not in ["/", "/postgres"]:
+        assert "/unittest-" in dsn.path
 
     # test_words = {"localhost", "127.0.0.1", "unittest", "grliq-test"}
     # assert any(w in str(postgres_config.dsn) for w in test_words), "check grliq postgres_config"

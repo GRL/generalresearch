@@ -37,8 +37,8 @@ class MarketplaceTask(BaseModel, ABC):
     cpi: Decimal = Field(gt=0, le=100, decimal_places=2, max_digits=5)
 
     # In some marketplaces, a task can be targeted to one or more country or language.
-    country_isos: CountryISOs = Field(min_items=1)
-    language_isos: LanguageISOs = Field(min_items=1)
+    country_isos: CountryISOs = Field(min_length=1)
+    language_isos: LanguageISOs = Field(min_length=1)
 
     # For convenience, we'll store a single country/lang field as well, since
     #   99% of tasks across all marketplaces, even those that support multiple,

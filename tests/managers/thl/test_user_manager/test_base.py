@@ -12,77 +12,78 @@ from generalresearch.managers.thl.user_manager import (
 from generalresearch.managers.thl.user_manager.rate_limit import (
     RateLimitItemPerHourConstantKey,
 )
-from generalresearch.models.thl.product import UserCreateConfig, Product
-from generalresearch.models.thl.user import User
-from test_utils.models.conftest import (
-    user,
-    product,
-    user_manager,
-    product_manager,
+from generalresearch.managers.thl.user_manager.user_manager import (
+    UserManager,
 )
+from generalresearch.models.thl.product import Product, UserCreateConfig
+from generalresearch.models.thl.user import User
 
 logger = logging.getLogger()
 
 
 class TestUserManager:
+    @pytest.fixture(autouse=True)
+    def _setup(self, user_manager: UserManager, user: User):
+        self.user: User = user
+        self.user_manager: UserManager = user_manager
 
-    def test_copying_lru_cache(self, user_manager, user):
+    def test_copying_lru_cache(self):
         # Before adding the deepcopy_return decorator, this would fail b/c the returned user
         #   is mutable, and it would mutate in the cache
         # user_manager = self.get_user_manager()
 
-        user_manager.clear_user_inmemory_cache(user)
-        u = user_manager.get_user(user_id=user.user_id)
+        self.user_manager.clear_user_inmemory_cache(self.user)
+        u = self.user_manager.get_user(user_id=self.user.user_id)
         assert not u.blocked
 
         u.blocked = True
-        u = user_manager.get_user(user_id=user.user_id)
+        u = self.user_manager.get_user(user_id=self.user.user_id)
         assert not u.blocked
 
-    def test_get_user_no_inmemory(self, user, user_manager):
-        user_manager.clear_user_inmemory_cache(user)
-        user_manager.get_user.__wrapped__.cache_clear()
-        u = user_manager.get_user(user_id=user.user_id)
+    def test_get_user_no_inmemory(self):
+        self.user_manager.clear_user_inmemory_cache(self.user)
+        self.user_manager.get_user.__wrapped__.cache_clear()
+        u = self.user_manager.get_user(user_id=self.user.user_id)
         # this should hit mysql
-        assert u == user
+        assert u == self.user
 
-        cache_info = user_manager.get_user.__wrapped__.cache_info()
+        cache_info = self.user_manager.get_user.__wrapped__.cache_info()
         assert cache_info.hits == 0, cache_info
         assert cache_info.misses == 1, cache_info
 
         # this should hit the lru cache
-        u = user_manager.get_user(user_id=user.user_id)
-        assert u == user
+        u = self.user_manager.get_user(user_id=self.user.user_id)
+        assert u == self.user
 
-        cache_info = user_manager.get_user.__wrapped__.cache_info()
+        cache_info = self.user_manager.get_user.__wrapped__.cache_info()
         assert cache_info.hits == 1, cache_info
         assert cache_info.misses == 1, cache_info
 
-    def test_get_user_with_inmemory(self, user_manager, user):
+    def test_get_user_with_inmemory(self):
         # user_manager = self.get_user_manager()
 
-        user_manager.set_user_inmemory_cache(user)
-        user_manager.get_user.__wrapped__.cache_clear()
-        u = user_manager.get_user(user_id=user.user_id)
+        self.user_manager.set_user_inmemory_cache(self.user)
+        self.user_manager.get_user.__wrapped__.cache_clear()
+        u = self.user_manager.get_user(user_id=self.user.user_id)
         # this should hit inmemory cache
-        assert u == user
+        assert u == self.user
 
-        cache_info = user_manager.get_user.__wrapped__.cache_info()
+        cache_info = self.user_manager.get_user.__wrapped__.cache_info()
         assert cache_info.hits == 0, cache_info
         assert cache_info.misses == 1, cache_info
 
         # this should hit the lru cache
-        u = user_manager.get_user(user_id=user.user_id)
-        assert u == user
+        u = self.user_manager.get_user(user_id=self.user.user_id)
+        assert u == self.user
 
-        cache_info = user_manager.get_user.__wrapped__.cache_info()
+        cache_info = self.user_manager.get_user.__wrapped__.cache_info()
         assert cache_info.hits == 1, cache_info
         assert cache_info.misses == 1, cache_info
 
 
 class TestBlockUserManager:
 
-    def test_block_user(self, product, user_manager):
+    def test_block_user(self, product, user_manager: UserManager):
         product_user_id = f"user-{uuid4().hex[:10]}"
 
         # mysql_user_manager to skip user creation limit check

@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -6,6 +7,8 @@ from pydantic import DirectoryPath, Field, MariaDBDsn, PostgresDsn, RedisDsn
 from pydantic_settings import BaseSettings
 
 from generalresearch.models.custom_types import DaskDsn, SentryDsn
+
+os.environ["DISABLE_PANDERA_IMPORT_WARNING"] = "True"
 
 
 def is_debug() -> bool:

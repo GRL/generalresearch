@@ -53,7 +53,7 @@ class ContestBase(BaseModel, ABC):
 
     end_condition: ContestEndCondition = Field()
     """Defines the conditions to win one or more prizes once the contest is ended"""
-    prizes: List[ContestPrize] = Field(default_factory=list, min_items=1)
+    prizes: List[ContestPrize] = Field(default_factory=list, min_length=1)
 
     starts_at: AwareDatetimeISO = Field(
         description="When the contest starts",
