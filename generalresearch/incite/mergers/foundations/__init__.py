@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Collection, Dict, List
+from collections.abc import Collection
+from typing import Any
 
 import pandas as pd
 from more_itertools import chunked
@@ -28,7 +31,7 @@ def annotate_product_id(
     assert len(user_ids) >= 1, "must have user_ids"
     LOG.warning(f"annotate_product_id.len(user_ids): {len(user_ids)}")
 
-    res: List[Dict[str, Any]] = []
+    res: list[dict[str, Any]] = []
     with pg_config.make_connection() as conn:
         for chunk in chunked(user_ids, chunksize):
             try:
@@ -54,7 +57,7 @@ def annotate_product_id(
 def lookup_product_and_team_id(
     user_ids: Collection[int],
     pg_config: PostgresConfig,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
 
     user_ids = set(user_ids)
     LOG.info(f"lookup_product_and_team_id: {len(user_ids)}")
@@ -64,7 +67,7 @@ def lookup_product_and_team_id(
     assert len(user_ids) >= 1, "must have user_ids"
     assert len(user_ids) <= 1000, "you should chunk this bro"
 
-    res: List[Dict[str, Any]] = []
+    res: list[dict[str, Any]] = []
     with pg_config.make_connection() as conn:
         try:
             with conn.cursor() as c:
@@ -108,7 +111,7 @@ def annotate_product_and_team_id(
     assert len(user_ids) >= 1, "must have user_ids"
     LOG.warning(f"annotate_product_and_team_id.len(user_ids): {len(user_ids)}")
 
-    res: List[Dict[str, Any]] = []
+    res: list[dict[str, Any]] = []
     with pg_config.make_connection() as conn:
         for chunk in chunked(user_ids, chunksize):
             try:
@@ -146,7 +149,7 @@ def annotate_product_user(
     assert len(user_ids) >= 1, "must have user_ids"
     LOG.warning(f"annotate_product_user.len(user_ids): {len(user_ids)}")
 
-    res: List[Dict[str, Any]] = []
+    res: list[dict[str, Any]] = []
     with pg_config.make_connection() as conn:
         for chunk in chunked(user_ids, chunksize):
             try:

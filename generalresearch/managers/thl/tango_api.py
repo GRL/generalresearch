@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Any, Dict, List
+from typing import Any
 
 import requests
 from pydantic import BaseModel
@@ -104,7 +104,7 @@ class TangoClient:
             f"/accounts/{account_identifier}",
         )
 
-    def get_catalog(self) -> Dict[str, List[Dict[str, Any]]]:
+    def get_catalog(self) -> dict[str, list[dict[str, Any]]]:
         """
         Replacement for:
             api_client.catalog.get_catalog()

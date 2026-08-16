@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime, time, timedelta
-from typing import List, Literal, Optional, Type
+from typing import Literal, Type
 
 import dask.dataframe as dd
 import pandas as pd
@@ -81,16 +83,16 @@ class YMWallSummaryMerge(MergeCollection):
     merge_type: Literal[MergeType.YM_WALL_SUMMARY] = MergeType.YM_WALL_SUMMARY
     _schema = YMWallSummarySchema
     collection_item_class: Type[YMWallSummaryMergeItem] = YMWallSummaryMergeItem
-    items: List[YMWallSummaryMergeItem] = Field(default_factory=list)
+    items: list[YMWallSummaryMergeItem] = Field(default_factory=list)
 
     @field_validator("offset")
-    def check_offset_ym_wall_summary(cls, v: Optional[str]):
+    def check_offset_ym_wall_summary(cls, v: str | None):
         # the offset MUST be on a whole day, no hourly
         assert v.endswith("D"), "offset must be in days"
         return v
 
     @field_validator("start")
-    def check_start_ym_wall_summary(cls, v: Optional[datetime]):
+    def check_start_ym_wall_summary(cls, v: datetime | None):
         # the start MUST be start on midnight exactly
         assert v.time() == time(0, 0, 0, 0), "start must no have a time component"
         return v

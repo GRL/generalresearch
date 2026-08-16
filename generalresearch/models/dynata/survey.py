@@ -5,7 +5,7 @@ import logging
 from datetime import timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Type
+from typing import Any, Literal, Type
 
 from more_itertools import flatten
 from pydantic import (
@@ -86,7 +86,7 @@ class DynataRequirements(BaseModel):
 
 
 class DynataCondition(MarketplaceCondition):
-    question_id: Optional[CoercedStr] = Field(
+    question_id: CoercedStr | None = Field(
         min_length=1,
         max_length=16,
         pattern=r"^[0-9]+$",
@@ -95,10 +95,10 @@ class DynataCondition(MarketplaceCondition):
 
     # This comes in the API and is used to match "cells" to quotas they're associated with. Once
     #   we parse the API response, we don't need this tag id anymore.
-    tag: Optional[str] = Field(default=None, max_length=36)
+    tag: str | None = Field(default=None, max_length=36)
 
     @classmethod
-    def from_api(cls, cell: Dict[str, Any]) -> "DynataCondition":
+    def from_api(cls, cell: dict[str, Any]) -> "DynataCondition":
         """
         We perform some preprocessing before calling this to pull in the data from COLLECTION cells.
         """
@@ -167,7 +167,7 @@ class DynataQuota(BaseModel):
     count: int = Field(description="Limit of completes available")
     # Each condition_hash is called in Dynata a "Quota Cell"
     # Some quotas have no conditions. I'm not sure how eligibility is supposed to work for this.
-    condition_hashes: List[str] = Field(min_length=0, default_factory=list)
+    condition_hashes: list[str] = Field(min_length=0, default_factory=list)
     status: DynataStatus = Field()
 
     def __hash__(self):
@@ -180,13 +180,13 @@ class DynataQuota(BaseModel):
         min_open_spots = 3
         return self.status == DynataStatus.OPEN and (self.count >= min_open_spots)
 
-    def passes(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # We have to match all conditions (aka cells) within the quota (aka quota object).
         return self.is_open and all(
             criteria_evaluation.get(c) for c in self.condition_hashes
         )
 
-    def passes_verbose(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes_verbose(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         print(f"quota.is_open: {self.is_open}")
         print(
             ", ".join(
@@ -198,8 +198,8 @@ class DynataQuota(BaseModel):
         )
 
     def passes_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Passes back "passes" (T/F/none) and a list of unknown criterion hashes
         if self.is_open is False:
             return False, set()
@@ -218,7 +218,7 @@ class DynataQuota(BaseModel):
 
 
 class DynataQuotaGroup(RootModel):
-    root: List[DynataQuota] = Field()
+    root: list[DynataQuota] = Field()
 
     def __iter__(self):
         return iter(self.root)
@@ -226,11 +226,11 @@ class DynataQuotaGroup(RootModel):
     def __hash__(self):
         return hash(tuple(self.root))
 
-    def passes(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Qualify for ANY quota object within a quota group
         return any(quota.passes(criteria_evaluation) for quota in self.root)
 
-    def passes_verbose(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes_verbose(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Qualify for ANY quota object within a quota group
         for quota in self.root:
             print("---")
@@ -243,8 +243,8 @@ class DynataQuotaGroup(RootModel):
         return any(cell.is_open for cell in self.root)
 
     def passes_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Qualify for ANY quota object within a quota group
         obj_evals = {obj: obj.passes_soft(criteria_evaluation) for obj in self.root}
         evals = set(v[0] for v in obj_evals.values())
@@ -262,7 +262,7 @@ class DynataQuotaGroup(RootModel):
 
 
 class DynataFilterObject(RootModel):
-    root: List[str] = Field()  # list of criterion hashes
+    root: list[str] = Field()  # list of criterion hashes
 
     def __iter__(self):
         return iter(self.root)
@@ -270,19 +270,19 @@ class DynataFilterObject(RootModel):
     def __hash__(self):
         return hash(tuple(self.root))
 
-    def passes(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # We have to match all cells within an object.
         return all(criteria_evaluation.get(cell) for cell in self.root)
 
-    def passes_verbose(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes_verbose(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         for cell in self.root:
             print(f"{cell}: {criteria_evaluation.get(cell)}")
         # We have to match all cells within an object.
         return all(criteria_evaluation.get(cell) for cell in self.root)
 
     def passes_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Passes back "passes" (T/F/none) and a list of unknown criterion hashes
         cell_evals = {cell: criteria_evaluation.get(cell) for cell in self.root}
         evals = set(cell_evals.values())
@@ -297,7 +297,7 @@ class DynataFilterObject(RootModel):
 
 
 class DynataFilterGroup(RootModel):
-    root: List[DynataFilterObject] = Field()
+    root: list[DynataFilterObject] = Field()
 
     def __iter__(self):
         return iter(self.root)
@@ -305,11 +305,11 @@ class DynataFilterGroup(RootModel):
     def __hash__(self):
         return hash(tuple(self.root))
 
-    def passes(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # A filter group is matched if we match at least 1 filter objs in the group.
         return any(obj.passes(criteria_evaluation) for obj in self.root)
 
-    def passes_verbose(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes_verbose(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # A filter group is matched if we match at least 1 filter objs in the group.
         for obj in self.root:
             print("---")
@@ -318,8 +318,8 @@ class DynataFilterGroup(RootModel):
         return any(obj.passes(criteria_evaluation) for obj in self.root)
 
     def passes_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Passes back "passes" (T/F/none) and a list of unknown criterion hashes
         obj_evals = {obj: obj.passes_soft(criteria_evaluation) for obj in self.root}
         evals = set(v[0] for v in obj_evals.values())
@@ -360,14 +360,14 @@ class DynataSurvey(MarketplaceTask):
     )
 
     # There are 91 min surveys. We'll filter them out later
-    bid_loi: Optional[int] = Field(
+    bid_loi: int | None = Field(
         default=None,
         le=120 * 60,
         description="Docs says 'Estimated length of interview', but this is "
         "really the bid LOI'",
         validation_alias="length_of_interview",
     )
-    bid_ir: Optional[float] = Field(validation_alias="incidence_rate", ge=0, le=1)
+    bid_ir: float | None = Field(validation_alias="incidence_rate", ge=0, le=1)
     cpi: Decimal = Field(gt=0, le=100, validation_alias="cost_per_interview")
     days_in_field: int = Field(description="Expected duration of opportunity in days")
     # This isn't checked for eligibility determination
@@ -399,20 +399,20 @@ class DynataSurvey(MarketplaceTask):
     category_exclusions: AlphaNumStrSet = Field(default_factory=set)
     requirements: DynataRequirements = Field()
 
-    filters: List[DynataFilterGroup] = Field(default_factory=list)
-    quotas: List[DynataQuotaGroup] = Field(default_factory=list)
+    filters: list[DynataFilterGroup] = Field(default_factory=list)
+    quotas: list[DynataQuotaGroup] = Field(default_factory=list)
 
     source: Literal[Source.DYNATA] = Field(default=Source.DYNATA)
 
-    used_question_ids: Set[AlphaNumStr] = Field(default_factory=set)
+    used_question_ids: set[AlphaNumStr] = Field(default_factory=set)
 
     # This is a "special" key to store all conditions that are used (as "condition_hashes") throughout
     #   this survey. In the reduced representation of this task (nearly always, for db i/o, in global_vars)
     #   this field will be null.
-    conditions: Optional[Dict[str, DynataCondition]] = Field(default=None)
+    conditions: dict[str, DynataCondition] | None = Field(default=None)
 
     # These do not come from the API. We set them ourselves
-    last_updated: Optional[AwareDatetimeISO] = Field(default=None)
+    last_updated: AwareDatetimeISO | None = Field(default=None)
 
     @property
     def internal_id(self) -> str:
@@ -431,7 +431,7 @@ class DynataSurvey(MarketplaceTask):
 
     @computed_field
     @cached_property
-    def all_hashes(self) -> Set[str]:
+    def all_hashes(self) -> set[str]:
         s = set()
         for fg in self.filters:
             for f in fg.root:
@@ -474,7 +474,7 @@ class DynataSurvey(MarketplaceTask):
         return self
 
     @property
-    def filters_verbose(self) -> List[List[str]]:
+    def filters_verbose(self) -> list[list[str]]:
         assert self.conditions is not None, "conditions must be set"
         res = []
         for filter_group in self.filters:
@@ -485,7 +485,7 @@ class DynataSurvey(MarketplaceTask):
         return res
 
     @property
-    def quotas_verbose(self) -> List[List[Dict[str, Any]]]:
+    def quotas_verbose(self) -> list[list[dict[str, Any]]]:
         assert self.conditions is not None, "conditions must be set"
         res = []
         for quota_group in self.quotas:
@@ -531,7 +531,7 @@ class DynataSurvey(MarketplaceTask):
             exclude={"created", "last_updated", "conditions"}
         ) == other.model_dump(exclude={"created", "last_updated", "conditions"})
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(
             mode="json",
             exclude={
@@ -560,12 +560,12 @@ class DynataSurvey(MarketplaceTask):
         d["requirements"] = json.loads(d["requirements"])
         return cls.model_validate(d)
 
-    def passes_filters(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes_filters(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # We have to match all filter groups
         return all(group.passes(criteria_evaluation) for group in self.filters)
 
     def passes_filters_verbose(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, bool | None]
     ) -> bool:
         # We have to match all filter groups
         for group in self.filters:
@@ -575,8 +575,8 @@ class DynataSurvey(MarketplaceTask):
         return all(group.passes(criteria_evaluation) for group in self.filters)
 
     def passes_filters_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # We have to match all filter groups
         group_eval = {
             group: group.passes_soft(criteria_evaluation) for group in self.filters
@@ -592,14 +592,14 @@ class DynataSurvey(MarketplaceTask):
         else:
             return True, set()
 
-    def passes_quotas(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes_quotas(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # We have to match all quota groups
         return all(
             quota_group.passes(criteria_evaluation) for quota_group in self.quotas
         )
 
     def passes_quotas_verbose(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, bool | None]
     ) -> bool:
         # We have to match all quota groups
         for quota_group in self.quotas:
@@ -611,8 +611,8 @@ class DynataSurvey(MarketplaceTask):
         )
 
     def passes_quotas_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # We have to match all quota groups
         group_eval = {
             quota: quota.passes_soft(criteria_evaluation) for quota in self.quotas
@@ -629,7 +629,7 @@ class DynataSurvey(MarketplaceTask):
             return True, set()
 
     def determine_eligibility(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, bool | None]
     ) -> bool:
         return (
             self.is_open
@@ -638,7 +638,7 @@ class DynataSurvey(MarketplaceTask):
         )
 
     def determine_eligibility_verbose(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, bool | None]
     ) -> bool:
         print(f"is_open: {self.is_open}")
         print("passes_filters")
@@ -652,8 +652,8 @@ class DynataSurvey(MarketplaceTask):
         )
 
     def determine_eligibility_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         if self.is_open is False:
             return False, set()
         pass_filters, h_filters = self.passes_filters_soft(criteria_evaluation)

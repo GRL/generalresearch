@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from datetime import date, datetime
-from typing import List, Optional, Tuple
 
 import pandas as pd
 
@@ -50,8 +51,8 @@ class UserStreakManager(PostgresManager):
         return self.pg_config.execute_sql_query(query, params)
 
     def get_user_streaks(
-        self, user_id: int, country_iso: Optional[str] = None
-    ) -> List[UserStreak]:
+        self, user_id: int, country_iso: str | None = None
+    ) -> list[UserStreak]:
         country_iso = country_iso or self.get_user_country(user_id=user_id)
         if country_iso is None:
             return []
@@ -60,7 +61,7 @@ class UserStreakManager(PostgresManager):
         active_days = [x["d"] for x in res]
         complete_days = [x["d"] for x in res if x["is_complete"]]
 
-        streaks: List[UserStreak] = []
+        streaks: list[UserStreak] = []
 
         for period in StreakPeriod:
             for fulfillment, days in [
@@ -92,11 +93,11 @@ class UserStreakManager(PostgresManager):
 
 
 def compute_streaks_from_days(
-    days: List[date],
+    days: list[date],
     country_iso: str,
     period: StreakPeriod,
-    today: Optional[date] = None,
-) -> Tuple[int, int, StreakState, Optional[date]]:
+    today: date | None = None,
+) -> tuple[int, int, StreakState, date | None]:
     """
     :returns: (current_streak, longest_streak, streak_state, last_period_start)
     """

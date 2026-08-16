@@ -1,9 +1,11 @@
-from datetime import datetime, timezone, timedelta
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Literal, List, Tuple
+from typing import Literal
 
 import pandas as pd
-from pydantic import BaseModel, Field, model_validator, computed_field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from generalresearch.models.custom_types import AwareDatetimeISO
 
@@ -33,7 +35,7 @@ class ReportRequest(BaseModel):
     @computed_field(
         title="Start floor",
         description="The datetime that this report starts from",
-        examples=[datetime(year=2025, month=5, day=1)],
+        examples=[datetime(year=2025, month=5, day=1, tzinfo=timezone.utc)],
         return_type=datetime,
     )
     @property
@@ -151,7 +153,7 @@ class ReportRequest(BaseModel):
             tz=timezone.utc,
         )
 
-    def bucket_ranges(self) -> List[Tuple[pd.Timestamp, pd.Timestamp]]:
+    def bucket_ranges(self) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
         """Returns list of (start, end) tuples for each bucket."""
         starts = self.buckets()
         return [(s, s + self.interval_timedelta) for s in starts]

@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 from collections import defaultdict
+from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
 from random import choice as rand_choice
 from random import randint
 from time import sleep
-from typing import Any, Collection, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID, uuid4
 
 import numpy as np
@@ -55,13 +58,11 @@ class PayoutEventManager(PostgresManagerWithRedis):
         access
         """
 
-        res = self.pg_config.execute_sql_query(
-            query=f"""
+        res = self.pg_config.execute_sql_query(query=f"""
                 SELECT uuid, reference_uuid 
                 FROM ledger_account
                 WHERE qualified_name LIKE '{thl_lm.currency.value}:bp_wallet:%'
-            """
-        )
+            """)
         account_to_product = {i["uuid"]: i["reference_uuid"] for i in res}
         product_to_account = {i["reference_uuid"]: i["uuid"] for i in res}
 
@@ -91,10 +92,10 @@ class PayoutEventManager(PostgresManagerWithRedis):
 
     def update(
         self,
-        payout_event: Union[UserPayoutEvent, BrokerageProductPayoutEvent],
+        payout_event: UserPayoutEvent | BrokerageProductPayoutEvent | None,
         status: PayoutStatus,
-        ext_ref_id: Optional[str] = None,
-        order_data: Optional[Dict[str, Any]] = None,
+        ext_ref_id: str | None = None,
+        order_data: dict[str, Any] | None = None,
     ) -> None:
         # These 3 things are the only modifiable attributes
         ext_ref_id = ext_ref_id if ext_ref_id is not None else payout_event.ext_ref_id
@@ -102,15 +103,13 @@ class PayoutEventManager(PostgresManagerWithRedis):
         payout_event.update(status=status, ext_ref_id=ext_ref_id, order_data=order_data)
 
         d = payout_event.model_dump_mysql()
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
         UPDATE event_payout SET 
             status = %(status)s,
             ext_ref_id = %(ext_ref_id)s,
             order_data = %(order_data)s
         WHERE uuid = %(uuid)s;
-        """
-        )
+        """)
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query=query, params=d)
@@ -118,8 +117,6 @@ class PayoutEventManager(PostgresManagerWithRedis):
                     c.rowcount == 1
                 ), "Nothing was updated! Are you sure this payout_event exists?"
             conn.commit()
-
-        return None
 
 
 class UserPayoutEventManager(PayoutEventManager):
@@ -163,7 +160,7 @@ class UserPayoutEventManager(PayoutEventManager):
         pe = self.get_by_uuid(pe_uuid=pe_uuid)
 
         transaction_info = dict()
-        order: Dict[str, Any] = pe.order_data
+        order: dict[str, Any] = pe.order_data
         if pe.payout_type == PayoutType.TANGO and pe.status == PayoutStatus.COMPLETE:
             reward = order["reward"]
             if "credentialList" in reward:
@@ -190,17 +187,17 @@ class UserPayoutEventManager(PayoutEventManager):
 
     def filter_by(
         self,
-        reference_uuid: Optional[str] = None,
-        debit_account_uuids: Optional[Collection[UUIDStr]] = None,
-        amount: Optional[int] = None,
-        created: Optional[datetime] = None,
-        created_after: Optional[datetime] = None,
-        product_ids: Collection[str] = None,
-        bp_user_ids: Optional[Collection[str]] = None,
-        cashout_method_uuids: Collection[UUIDStr] = None,
-        cashout_types: Optional[Collection[PayoutType]] = None,
-        statuses: Optional[Collection[PayoutStatus]] = None,
-    ) -> List[UserPayoutEvent]:
+        reference_uuid: str | None = None,
+        debit_account_uuids: Collection[UUIDStr] | None = None,
+        amount: int | None = None,
+        created: datetime | None = None,
+        created_after: datetime | None = None,
+        product_ids: str | None = None,
+        bp_user_ids: Collection[str] | None = None,
+        cashout_method_uuids: Collection[UUIDStr] | None = None,
+        cashout_types: Collection[PayoutType] | None = None,
+        statuses: Collection[PayoutStatus] | None = None,
+    ) -> list[UserPayoutEvent]:
         """Try to retrieve payout events by the product_id/user_uuid, amount,
         and optionally timestamp.
 
@@ -290,16 +287,16 @@ class UserPayoutEventManager(PayoutEventManager):
         payout_type: PayoutType,
         amount: PositiveInt,
         # --- Optional: Default / Default Factory ---
-        uuid: Optional[UUIDStr] = None,
-        status: Optional[PayoutStatus] = None,
-        created: Optional[AwareDatetimeISO] = None,
-        request_data: Optional[Dict[str, Any]] = None,
+        uuid: UUIDStr | None = None,
+        status: PayoutStatus | None = None,
+        created: AwareDatetimeISO | None = None,
+        request_data: dict[str, Any] | None = None,
         # --- Optional: None  ---
-        account_reference_type: Optional[str] = None,
-        account_reference_uuid: Optional[UUIDStr] = None,
-        description: Optional[str] = None,
-        ext_ref_id: Optional[str] = None,
-        order_data: Optional[Union[Dict[str, Any], CashMailOrderData]] = None,
+        account_reference_type: str | None = None,
+        account_reference_uuid: UUIDStr | None = None,
+        description: str | None = None,
+        ext_ref_id: str | None = None,
+        order_data: dict[str, Any] | CashMailOrderData | None = None,
     ) -> UserPayoutEvent:
 
         payout_event = UserPayoutEvent(
@@ -344,19 +341,19 @@ class UserPayoutEventManager(PayoutEventManager):
 
     def create_dummy(
         self,
-        uuid: Optional[UUIDStr] = None,
-        debit_account_uuid: Optional[UUIDStr] = None,
-        account_reference_type: Optional[str] = None,
-        account_reference_uuid: Optional[UUIDStr] = None,
-        cashout_method_uuid: Optional[UUIDStr] = None,
-        description: Optional[str] = None,
-        created: Optional[AwareDatetimeISO] = None,
-        amount: Optional[PositiveInt] = None,
-        status: Optional[PayoutStatus] = None,
-        ext_ref_id: Optional[str] = None,
-        payout_type: Optional[PayoutType] = None,
-        request_data: Optional[Dict[str, Any]] = None,
-        order_data: Optional[Union[Dict[str, Any], CashMailOrderData]] = None,
+        uuid: UUIDStr | None = None,
+        debit_account_uuid: UUIDStr | None = None,
+        account_reference_type: str | None = None,
+        account_reference_uuid: UUIDStr | None = None,
+        cashout_method_uuid: UUIDStr | None = None,
+        description: str | None = None,
+        created: AwareDatetimeISO | None = None,
+        amount: PositiveInt | None = None,
+        status: PayoutStatus | None = None,
+        ext_ref_id: str | None = None,
+        payout_type: PayoutType | None = None,
+        request_data: dict[str, Any] | None = None,
+        order_data: dict[str, Any] | CashMailOrderData | None = None,
     ) -> UserPayoutEvent:
 
         debit_account_uuid = debit_account_uuid or uuid4().hex
@@ -398,7 +395,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         self,
         pe_uuid: UUIDStr,
         # --- Support resources ---
-        account_product_mapping: Optional[Dict[UUIDStr, UUIDStr]] = None,
+        account_product_mapping: dict[UUIDStr, UUIDStr] | None = None,
     ) -> BrokerageProductPayoutEvent:
 
         res = self.pg_config.execute_sql_query(
@@ -422,7 +419,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         #   it can return back a full BrokerageProductPayoutEvent instance
         if account_product_mapping is None:
             rc = self.redis_client
-            account_product_mapping: Dict = rc.hgetall(name="pem:account_to_product")
+            account_product_mapping: dict = rc.hgetall(name="pem:account_to_product")
             assert isinstance(account_product_mapping, dict)
 
         d["product_id"] = account_product_mapping[d["debit_account_uuid"]]
@@ -477,17 +474,17 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
 
     def create(
         self,
-        uuid: Optional[UUIDStr] = None,
-        debit_account_uuid: Optional[UUIDStr] = None,
+        uuid: UUIDStr | None = None,
+        debit_account_uuid: UUIDStr | None = None,
         created: AwareDatetimeISO = None,
         amount: PositiveInt = None,
-        status: Optional[PayoutStatus] = None,
-        ext_ref_id: Optional[str] = None,
+        status: PayoutStatus | None = None,
+        ext_ref_id: str | None = None,
         payout_type: PayoutType = None,
-        request_data: Optional[Dict[str, Any]] = None,
-        order_data: Optional[Union[Dict[str, Any], CashMailOrderData]] = None,
+        request_data: dict[str, Any] | None = None,
+        order_data: dict[str, Any] | CashMailOrderData | None = None,
         # --- Support resources ---
-        account_product_mapping: Optional[Dict[UUIDStr, UUIDStr]] = None,
+        account_product_mapping: dict[UUIDStr, UUIDStr] | None = None,
     ) -> BrokerageProductPayoutEvent:
 
         if request_data is None:
@@ -497,7 +494,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         #   it can return back a full BrokerageProductPayoutEvent instance
         if account_product_mapping is None:
             rc = self.redis_client
-            account_product_mapping: Dict = rc.hgetall(name="pem:account_to_product")
+            account_product_mapping: dict = rc.hgetall(name="pem:account_to_product")
             assert isinstance(account_product_mapping, dict)
         product_id = account_product_mapping[debit_account_uuid]
 
@@ -535,17 +532,17 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
 
     def filter_by(
         self,
-        reference_uuid: Optional[str] = None,
-        ext_ref_id: Optional[str] = None,
-        debit_account_uuids: Optional[Collection[UUIDStr]] = None,
-        amount: Optional[int] = None,
-        created: Optional[datetime] = None,
-        created_after: Optional[datetime] = None,
-        product_ids: Collection[str] = None,
-        bp_user_ids: Optional[Collection[str]] = None,
-        cashout_types: Optional[Collection[PayoutType]] = None,
-        statuses: Optional[Collection[PayoutStatus]] = None,
-    ) -> List[BrokerageProductPayoutEvent]:
+        reference_uuid: str | None = None,
+        ext_ref_id: str | None = None,
+        debit_account_uuids: Collection[UUIDStr] | None = None,
+        amount: int | None = None,
+        created: datetime | None = None,
+        created_after: datetime | None = None,
+        product_ids: str | None = None,
+        bp_user_ids: Collection[str] | None = None,
+        cashout_types: Collection[PayoutType] | None = None,
+        statuses: Collection[PayoutStatus] | None = None,
+    ) -> list[BrokerageProductPayoutEvent]:
         """Try to retrieve payout events by the product_id/user_uuid, amount,
         and optionally timestamp.
 
@@ -645,7 +642,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
 
     def get_bp_payout_events_for_accounts(
         self, accounts: Collection[LedgerAccount]
-    ) -> List[BrokerageProductPayoutEvent]:
+    ) -> list[BrokerageProductPayoutEvent]:
         return self.filter_by(
             debit_account_uuids=[i.uuid for i in accounts],
             cashout_types=[PayoutType.ACH],
@@ -655,8 +652,8 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         self,
         thl_ledger_manager: ThlLedgerManager,
         product_uuids: Collection[UUIDStr],
-        order_by: Optional[OrderBy] = OrderBy.ASC,
-    ) -> List["BrokerageProductPayoutEvent"]:
+        order_by: OrderBy | None = OrderBy.ASC,
+    ) -> list["BrokerageProductPayoutEvent"]:
         """This is a terrible name, but it returns the
         BPPayoutEvent model type rather than a list of PayoutEvents.
 
@@ -673,7 +670,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         rc = self.redis_client
         account_product_mapping = rc.hgetall(name="pem:account_to_product")
 
-        payout_events: List[BrokerageProductPayoutEvent] = (
+        payout_events: list[BrokerageProductPayoutEvent] = (
             self.get_bp_payout_events_for_accounts(
                 accounts=accounts,
             )
@@ -724,8 +721,8 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         product: Product,
         amount: USDCent,
         payout_type: PayoutType = PayoutType.ACH,
-        ext_ref_id: Optional[str] = None,
-        created: Optional[AwareDatetime] = None,
+        ext_ref_id: str | None = None,
+        created: AwareDatetime | None = None,
         skip_wallet_balance_check: bool = False,
         skip_one_per_day_check: bool = False,
     ) -> BrokerageProductPayoutEvent:
@@ -803,7 +800,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         bp_pe: BrokerageProductPayoutEvent,
         product: Product,
         amount: USDCent,
-        created: Optional[AwareDatetime] = None,
+        created: AwareDatetime | None = None,
         skip_wallet_balance_check: bool = False,
         skip_one_per_day_check: bool = False,
     ) -> BrokerageProductPayoutEvent:
@@ -846,20 +843,20 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         self,
         thl_ledger_manager: ThlLedgerManager,
         product: Product,
-    ) -> List[BrokerageProductPayoutEvent]:
+    ) -> list[BrokerageProductPayoutEvent]:
         account = thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
         return self.get_bp_payout_events_for_accounts(accounts=[account])
 
     def get_bp_payout_events_for_account(
         self, account: LedgerAccount
-    ) -> List[BrokerageProductPayoutEvent]:
+    ) -> list[BrokerageProductPayoutEvent]:
         return self.get_bp_payout_events_for_accounts(accounts=[account])
 
     def get_bp_payout_events_for_products(
         self,
         thl_ledger_manager: ThlLedgerManager,
         product_uuids: Collection[UUIDStr],
-    ) -> List[BrokerageProductPayoutEvent]:
+    ) -> list[BrokerageProductPayoutEvent]:
         accounts = thl_ledger_manager.get_accounts_bp_wallet_for_products(
             product_uuids=product_uuids
         )
@@ -871,7 +868,7 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
     def update_ext_reference_ids(
         self,
         new_value: str,
-        current_value: Optional[str] = None,
+        current_value: str | None = None,
     ) -> None:
         """
         There are scenarios where an ACH/Wire payout event was saved with
@@ -900,8 +897,6 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
                 c.execute(query=query, params=[new_value, current_value])
                 assert c.rowcount < 10000
             conn.commit()
-
-        return None
 
     def delete_failed_business_payout(self, ext_ref_id: str, thl_lm: ThlLedgerManager):
         """
@@ -992,8 +987,8 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
         self,
         thl_ledger_manager: ThlLedgerManager,
         product_uuids: Collection[UUIDStr],
-        order_by: Optional[OrderBy] = OrderBy.ASC,
-    ) -> List["BusinessPayoutEvent"]:
+        order_by: OrderBy | None = OrderBy.ASC,
+    ) -> list["BusinessPayoutEvent"]:
         res = self.get_bp_bp_payout_events_for_products(
             thl_ledger_manager=thl_ledger_manager,
             product_uuids=product_uuids,
@@ -1005,7 +1000,7 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
     @staticmethod
     def from_bp_payout_events(
         bp_payout_events: Collection["BrokerageProductPayoutEvent"],
-    ) -> List["BusinessPayoutEvent"]:
+    ) -> list["BusinessPayoutEvent"]:
         if len(bp_payout_events) == 0:
             return []
 
@@ -1022,7 +1017,7 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
     @staticmethod
     def recoup_proportional(
         df: pd.DataFrame,
-        target_amount: Union[USDCent, NonNegativeInt],
+        target_amount: USDCent | NonNegativeInt,
     ) -> pd.DataFrame:
         """
         Recoup a target amount from rows proportionally based on a numeric column.
@@ -1151,9 +1146,9 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
         amount: USDCent,
         pm: ProductManager,
         thl_lm: ThlLedgerManager,
-        created: Optional[datetime] = None,
-        transaction_id: Optional[str] = None,
-    ) -> Optional[BusinessPayoutEvent]:
+        created: datetime | None = None,
+        transaction_id: str | None = None,
+    ) -> BusinessPayoutEvent | None:
         """This records a single banking transfer to a supplier. Takes a
         specific Business that was paid out and how much. It then determines
         how to distribute the amount to each Brokerage Product in the
@@ -1215,7 +1210,7 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
         # Can't pay any Products that don't have an issue amount
         res = res[res["issue_amount"] > 0]
 
-        recouped_amounts: List[Dict[str, int]] = res[
+        recouped_amounts: list[dict[str, int]] = res[
             ["product_id", "remaining_balance", "issue_amount"]
         ].to_dict(orient="records")
 
@@ -1224,7 +1219,7 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
             product_uuids=[i["product_id"] for i in recouped_amounts]
         )
 
-        bp_payouts: List[BrokerageProductPayoutEvent] = []
+        bp_payouts: list[BrokerageProductPayoutEvent] = []
         for idx, item in enumerate(recouped_amounts):
             product = next((p for p in products if p.uuid == item["product_id"]), None)
             assert product is not None

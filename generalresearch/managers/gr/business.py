@@ -1,4 +1,6 @@
-from typing import TYPE_CHECKING, List, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List
 from uuid import UUID, uuid4
 
 from psycopg import sql
@@ -27,12 +29,12 @@ class BusinessBankAccountManager(PostgresManager):
     def create_dummy(
         self,
         business_id: PositiveInt,
-        uuid: Optional[UUIDStr] = None,
-        transfer_method: Optional["TransferMethod"] = None,
-        account_number: Optional[str] = None,
-        routing_number: Optional[str] = None,
-        iban: Optional[str] = None,
-        swift: Optional[str] = None,
+        uuid: UUIDStr | None = None,
+        transfer_method: "TransferMethod" | None = None,
+        account_number: str | None = None,
+        routing_number: str | None = None,
+        iban: str | None = None,
+        swift: str | None = None,
     ):
         from generalresearch.models.gr.business import TransferMethod
 
@@ -51,10 +53,10 @@ class BusinessBankAccountManager(PostgresManager):
         business_id: PositiveInt,
         uuid: UUIDStr,
         transfer_method: "TransferMethod",
-        account_number: Optional[str] = None,
-        routing_number: Optional[str] = None,
-        iban: Optional[str] = None,
-        swift: Optional[str] = None,
+        account_number: str | None = None,
+        routing_number: str | None = None,
+        iban: str | None = None,
+        swift: str | None = None,
     ) -> "BusinessBankAccount":
         from generalresearch.models.gr.business import BusinessBankAccount
 
@@ -75,8 +77,7 @@ class BusinessBankAccountManager(PostgresManager):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                         INSERT INTO common_bankaccount 
                             (uuid, transfer_method, account_number, 
                              routing_number, iban, swift, business_id) 
@@ -84,8 +85,7 @@ class BusinessBankAccountManager(PostgresManager):
                             (%(uuid)s, %(transfer_method)s, %(account_number)s, 
                              %(routing_number)s,  %(iban)s, %(swift)s, %(business_id)s)
                         RETURNING id
-                    """
-                    ),
+                    """),
                     params=data,
                 )
                 ba_id = c.fetchone()["id"]  # type: ignore
@@ -100,13 +100,11 @@ class BusinessBankAccountManager(PostgresManager):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                         SELECT ba.* 
                         FROM common_bankaccount AS ba
                         WHERE ba.business_id = %s
-                    """
-                    ),
+                    """),
                     params=(business_id,),
                 )
                 res = c.fetchall()
@@ -119,14 +117,14 @@ class BusinessAddressManager(PostgresManager):
     def create_dummy(
         self,
         business_id: PositiveInt,
-        uuid: Optional[UUIDStr] = None,
-        line_1: Optional[str] = None,
-        line_2: Optional[str] = None,
-        city: Optional[str] = None,
-        state: Optional[str] = None,
-        postal_code: Optional[str] = None,
-        phone_number: Optional[PhoneNumber] = None,
-        country: Optional[str] = None,
+        uuid: UUIDStr | None = None,
+        line_1: str | None = None,
+        line_2: str | None = None,
+        city: str | None = None,
+        state: str | None = None,
+        postal_code: str | None = None,
+        phone_number: PhoneNumber | None = None,
+        country: str | None = None,
     ):
         uuid = uuid or uuid4().hex
         line_1 = line_1 or "abc"
@@ -153,13 +151,13 @@ class BusinessAddressManager(PostgresManager):
         self,
         business_id: PositiveInt,
         uuid: UUIDStr,
-        line_1: Optional[str] = None,
-        line_2: Optional[str] = None,
-        city: Optional[str] = None,
-        state: Optional[str] = None,
-        postal_code: Optional[str] = None,
-        phone_number: Optional[PhoneNumber] = None,
-        country: Optional[str] = None,
+        line_1: str | None = None,
+        line_2: str | None = None,
+        city: str | None = None,
+        state: str | None = None,
+        postal_code: str | None = None,
+        phone_number: PhoneNumber | None = None,
+        country: str | None = None,
     ) -> "BusinessAddress":
         from generalresearch.models.gr.business import BusinessAddress
 
@@ -181,8 +179,7 @@ class BusinessAddressManager(PostgresManager):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                     INSERT INTO common_businessaddress 
                         (uuid, line_1, line_2, city, country, state, 
                          postal_code, phone_number, business_id) 
@@ -191,8 +188,7 @@ class BusinessAddressManager(PostgresManager):
                          %(country)s, %(state)s, %(postal_code)s, 
                          %(phone_number)s, %(business_id)s)
                     RETURNING id
-                    """
-                    ),
+                    """),
                     params=data,
                 )
                 ba_id = c.fetchone()["id"]  # type: ignore
@@ -220,10 +216,10 @@ class BusinessManager(PostgresManagerWithRedis):
     def get_or_create(
         self,
         uuid: UUIDStr,
-        name: Optional[str] = None,
-        team: Optional["Team"] = None,
-        kind: Optional["BusinessType"] = None,
-        tax_number: Optional[str] = None,
+        name: str | None = None,
+        team: "Team" | None = None,
+        kind: "BusinessType" | None = None,
+        tax_number: str | None = None,
     ) -> "Business":
         """
         Warning: this ** does not ** update the name, team, kind, tax_number
@@ -243,11 +239,11 @@ class BusinessManager(PostgresManagerWithRedis):
 
     def create_dummy(
         self,
-        uuid: Optional[UUIDStr] = None,
-        name: Optional[str] = None,
-        team: Optional["Team"] = None,
-        kind: Optional["BusinessType"] = None,
-        tax_number: Optional[str] = None,
+        uuid: UUIDStr | None = None,
+        name: str | None = None,
+        team: "Team" | None = None,
+        kind: "BusinessType" | None = None,
+        tax_number: str | None = None,
     ) -> "Business":
         from random import randint
 
@@ -262,10 +258,10 @@ class BusinessManager(PostgresManagerWithRedis):
     def create(
         self,
         name: str,
-        kind: Optional["BusinessType"] = None,
-        uuid: Optional[UUIDStr] = None,
-        team: Optional["Team"] = None,
-        tax_number: Optional[str] = None,
+        kind: "BusinessType" | None = None,
+        uuid: UUIDStr | None = None,
+        team: "Team" | None = None,
+        tax_number: str | None = None,
     ) -> "Business":
         """
         Behavior: does this raise on duplicate?
@@ -289,13 +285,11 @@ class BusinessManager(PostgresManagerWithRedis):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                 INSERT INTO common_business (uuid, kind, name, tax_number) 
                 VALUES (%(uuid)s, %(kind)s, %(name)s, %(tax_number)s)
                 RETURNING id
-                """
-                    ),
+                """),
                     params=data,
                 )
                 business_id = c.fetchone()["id"]  # type: ignore
@@ -310,7 +304,7 @@ class BusinessManager(PostgresManagerWithRedis):
 
         return business
 
-    def get_all(self) -> List["Business"]:
+    def get_all(self) -> list["Business"]:
         """WARNING: This should be access by the /god/ page only, and only
             used by GRUser.is_staff as it doesn't provide any authentication
             on it's own. This is used because the .get_by_team_id() and
@@ -324,14 +318,10 @@ class BusinessManager(PostgresManagerWithRedis):
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
-                c.execute(
-                    query=sql.SQL(
-                        """
+                c.execute(query=sql.SQL("""
                 SELECT b.id, b.uuid, b.kind, b.name, b.tax_number
                 FROM common_business AS b
-            """
-                    )
-                )
+            """))
                 res = c.fetchall()
 
         response = []
@@ -348,21 +338,19 @@ class BusinessManager(PostgresManagerWithRedis):
     def get_by_team(
         self,
         team_id: PositiveInt,
-    ) -> List["Business"]:
+    ) -> list["Business"]:
 
         # conn: psycopg.Connection = GR_POSTGRES_C.make_connection()
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                 SELECT  b.id, b.uuid, b.kind, b.name, b.tax_number
                 FROM common_business AS b 
                 INNER JOIN common_team_businesses as tb
                     ON tb.business_id = b.id
                 WHERE tb.team_id = %s
-            """
-                    ),
+            """),
                     params=(team_id,),
                 )
 
@@ -381,14 +369,13 @@ class BusinessManager(PostgresManagerWithRedis):
     def get_by_user_id(
         self,
         user_id: PositiveInt,
-    ) -> List["Business"]:
+    ) -> list["Business"]:
         from generalresearch.models.gr.business import Business
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                         SELECT  b.id, b.uuid, b.kind, b.name, b.tax_number 
                         FROM common_business AS b
                         INNER JOIN common_team_businesses AS tb 
@@ -396,8 +383,7 @@ class BusinessManager(PostgresManagerWithRedis):
                         INNER JOIN common_membership AS m 
                             ON m.team_id = tb.team_id
                         WHERE m.user_id = %s
-                    """
-                    ),
+                    """),
                     params=(user_id,),
                 )
 
@@ -411,7 +397,7 @@ class BusinessManager(PostgresManagerWithRedis):
 
         return response
 
-    def get_ids_by_user_id(self, user_id: PositiveInt) -> List[PositiveInt]:
+    def get_ids_by_user_id(self, user_id: PositiveInt) -> list[PositiveInt]:
         """
         :return: Every Business UUIDStr that this GRUser has permission to view
         """
@@ -419,8 +405,7 @@ class BusinessManager(PostgresManagerWithRedis):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                 SELECT b.id
                 FROM common_business AS b
                 INNER JOIN common_team_businesses AS tb 
@@ -428,8 +413,7 @@ class BusinessManager(PostgresManagerWithRedis):
                 INNER JOIN common_membership AS cm 
                     ON tb.team_id = cm.team_id
                 WHERE cm.user_id = %s
-            """
-                    ),
+            """),
                     params=(user_id,),
                 )
 
@@ -437,7 +421,7 @@ class BusinessManager(PostgresManagerWithRedis):
 
         return [i["id"] for i in res]
 
-    def get_uuids_by_user_id(self, user_id: PositiveInt) -> List[UUIDStr]:
+    def get_uuids_by_user_id(self, user_id: PositiveInt) -> list[UUIDStr]:
         """
         :return: Every Business UUIDStr that this GRUser has permission to view
         """
@@ -445,8 +429,7 @@ class BusinessManager(PostgresManagerWithRedis):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                 SELECT b.uuid
                 FROM common_business AS b
                 INNER JOIN common_team_businesses AS tb 
@@ -454,8 +437,7 @@ class BusinessManager(PostgresManagerWithRedis):
                 INNER JOIN common_membership AS cm 
                     ON tb.team_id = cm.team_id
                 WHERE cm.user_id = %s
-            """
-                    ),
+            """),
                     params=(user_id,),
                 )
 
@@ -466,7 +448,7 @@ class BusinessManager(PostgresManagerWithRedis):
     def get_by_uuid(
         self,
         business_uuid: UUIDStr,
-    ) -> Optional["Business"]:
+    ) -> "Business" | None:
         from generalresearch.models.gr.business import Business
 
         assert UUID(hex=business_uuid).hex == business_uuid
@@ -474,14 +456,12 @@ class BusinessManager(PostgresManagerWithRedis):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                         SELECT id, uuid, kind, name, tax_number
                         FROM common_business
                         WHERE uuid = %s
                         LIMIT 1;
-                    """
-                    ),
+                    """),
                     params=(business_uuid,),
                 )
 
@@ -496,7 +476,7 @@ class BusinessManager(PostgresManagerWithRedis):
         # data["contact"] = BusinessContact.model_validate(data)
         return Business.model_validate(data)
 
-    def get_by_id(self, business_id: PositiveInt) -> Optional["Business"]:
+    def get_by_id(self, business_id: PositiveInt) -> "Business" | None:
         from generalresearch.models.gr.business import Business
 
         assert isinstance(business_id, int)
@@ -504,14 +484,12 @@ class BusinessManager(PostgresManagerWithRedis):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                         SELECT id, uuid, kind, name, tax_number
                         FROM common_business
                         WHERE id = %s
                         LIMIT 1;
-                    """
-                    ),
+                    """),
                     params=(business_id,),
                 )
 

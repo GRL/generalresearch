@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import binascii
 import logging
 import os
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from psycopg import sql
@@ -23,7 +25,7 @@ class GRUserManager(PostgresManagerWithRedis):
 
     def create_dummy(
         self,
-        sub: Optional[str] = None,
+        sub: str | None = None,
         is_superuser: bool = False,
     ) -> "GRUser":
         sub = sub or f"{uuid4().hex}-{uuid4().hex}"
@@ -53,14 +55,12 @@ class GRUserManager(PostgresManagerWithRedis):
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
-                query = sql.SQL(
-                    """
+                query = sql.SQL("""
                     INSERT INTO gr_user 
                         (sub, is_superuser, date_joined)
                     VALUES (%(sub)s, %(is_superuser)s, %(date_joined)s)
                     RETURNING id
-                """
-                )
+                """)
                 c.execute(query=query, params=data)
                 gr_user_id: int = c.fetchone()["id"]
             conn.commit()
@@ -68,7 +68,7 @@ class GRUserManager(PostgresManagerWithRedis):
         instance.id = gr_user_id
         return instance
 
-    def get_by_id(self, gr_user_id: int) -> Optional["GRUser"]:
+    def get_by_id(self, gr_user_id: int) -> "GRUser" | None:
         from generalresearch.models.gr.authentication import GRUser
 
         with self.pg_config.make_connection() as conn:
@@ -96,7 +96,7 @@ class GRUserManager(PostgresManagerWithRedis):
         assert isinstance(gr_user, GRUser), "GRUser not serialized correctly"
         return gr_user
 
-    def get_by_sub(self, sub: str, raises=True) -> Optional["GRUser"]:
+    def get_by_sub(self, sub: str, raises=True) -> "GRUser" | None:
         from generalresearch.models.gr.authentication import GRUser
 
         with self.pg_config.make_connection() as conn:
@@ -131,22 +131,20 @@ class GRUserManager(PostgresManagerWithRedis):
     def get_by_sub_or_create(self, sub: str) -> "GRUser":
         return self.get_by_sub(sub=sub, raises=False) or self.create(sub=sub)
 
-    def get_all(self) -> List["GRUser"]:
+    def get_all(self) -> list["GRUser"]:
         from generalresearch.models.gr.authentication import GRUser
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
-                c.execute(
-                    query="""
+                c.execute(query="""
                         SELECT u.* 
                         FROM gr_user AS u
-                    """
-                )
+                    """)
                 res = c.fetchall()
 
         return [GRUser.from_postgresql(i) for i in res]
 
-    def get_by_team(self, team_id: PositiveInt) -> List["GRUser"]:
+    def get_by_team(self, team_id: PositiveInt) -> list["GRUser"]:
         from generalresearch.models.gr.authentication import GRUser
 
         with self.pg_config.make_connection() as conn:
@@ -172,7 +170,7 @@ class GRUserManager(PostgresManagerWithRedis):
 
     def list_product_uuids(
         self, user: "GRUser", thl_pg_config: PostgresConfig
-    ) -> Optional[List[UUIDStr]]:
+    ) -> list[UUIDStr] | None:
         if user.business_uuids is None:
             LOG.warning("prefetch not run")
             return None
@@ -193,10 +191,10 @@ class GRTokenManager(PostgresManager):
     def get_by_key(
         self,
         api_key: str,
-        jwks: Optional[Dict[str, Any]] = None,
-        audience: Optional[str] = None,
-        issuer: Optional[Union[AnyHttpUrl, str]] = None,
-        gr_redis_config: Optional[RedisConfig] = None,
+        jwks: dict[str, Any] | None = None,
+        audience: str | None = None,
+        issuer: AnyHttpUrl | str | None = None,
+        gr_redis_config: RedisConfig | None = None,
     ) -> "GRToken":
         """Return the GRToken for this API Token.
 
@@ -244,14 +242,12 @@ class GRTokenManager(PostgresManager):
         # API Key
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
-                query = sql.SQL(
-                    """
+                query = sql.SQL("""
                     SELECT grk.* 
                     FROM gr_token AS grk
                     WHERE grk.key = %s
                     LIMIT 1
-                """
-                )
+                """)
                 c.execute(query=query, params=(api_key,))
                 res = c.fetchall()
 
@@ -284,35 +280,31 @@ class GRTokenManager(PostgresManager):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                         INSERT INTO gr_token (key, user_id, created) 
                         VALUES (%(key)s, %(user_id)s, %(created)s) 
-                    """
-                    ),
+                    """),
                     params=data,
                 )
             conn.commit()
 
-        return None
+        return
 
-    def get_by_user_id(self, user_id: PositiveInt) -> Optional["GRToken"]:
+    def get_by_user_id(self, user_id: PositiveInt) -> "GRToken" | None:
         # django authtoken_token table has (user_id) UNIQUE constraint
         # therefore, this will only return 0 or 1 GRTokens
         from generalresearch.models.gr.authentication import GRToken
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
-                query = sql.SQL(
-                    """
+                query = sql.SQL("""
                     SELECT grt.*
                     FROM gr_token AS grt
                     LEFT JOIN gr_user AS u 
                         ON u.id = grt.user_id
                     WHERE u.id = %s
                     LIMIT 1;
-                """
-                )
+                """)
 
                 c.execute(query=query, params=(user_id,))
 

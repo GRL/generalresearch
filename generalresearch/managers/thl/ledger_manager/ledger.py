@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import logging
 from collections import defaultdict
+from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Collection, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Callable
 from uuid import UUID
 
 import redis
@@ -69,9 +72,9 @@ class LedgerManagerBasePostgres(PostgresManager, RedisManager):
         self,
         pg_config: PostgresConfig,
         redis_config: RedisConfig,
-        permissions: Collection[Permission] = None,
-        cache_prefix: Optional[str] = None,
-        currency: Optional[LedgerCurrency] = LedgerCurrency.USD,
+        permissions: Collection[Permission] | None = None,
+        cache_prefix: str | None = None,
+        currency: LedgerCurrency | None = LedgerCurrency.USD,
         testing: bool = False,
     ):
         if permissions is not None and (
@@ -92,11 +95,11 @@ class LedgerManagerBasePostgres(PostgresManager, RedisManager):
 
     def make_filter_str(
         self,
-        time_start: Optional[datetime] = None,
-        time_end: Optional[datetime] = None,
-        account_uuid: Optional[str] = None,
-        metadata_key: Optional[str] = None,
-        metadata_value: Optional[str] = None,
+        time_start: datetime | None = None,
+        time_end: datetime | None = None,
+        account_uuid: str | None = None,
+        metadata_key: str | None = None,
+        metadata_value: str | None = None,
     ):
         filters = []
         params = {}
@@ -129,11 +132,11 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
 
     def create_tx(
         self,
-        entries: List[LedgerEntry],
-        metadata: Optional[Dict[str, str]] = None,
-        ext_description: Optional[str] = None,
-        tag: Optional[str] = None,
-        created: Optional[AwareDatetime] = None,
+        entries: list[LedgerEntry],
+        metadata: dict[str, str] | None = None,
+        ext_description: str | None = None,
+        tag: str | None = None,
+        created: AwareDatetime | None = None,
     ) -> LedgerTransaction:
         """
         :returns a LedgerTransaction ID. This is because we can't fully populate
@@ -206,9 +209,9 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
     def create_tx_protected(
         self,
         lock_key: str,
-        condition: Callable[..., Union[bool, Tuple[bool, str]]],
+        condition: Callable[..., bool | tuple[bool, str]],
         create_tx_func: Callable,
-        flag_key: Optional[str] = None,
+        flag_key: str | None = None,
         skip_flag_check: bool = False,
     ) -> LedgerTransaction:
         """
@@ -351,11 +354,11 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
             raise ValueError(f"Too many txs with this tag: {tag}")
         return {x["id"] for x in res}
 
-    def get_tx_by_tag(self, tag: str) -> List[LedgerTransaction]:
+    def get_tx_by_tag(self, tag: str) -> list[LedgerTransaction]:
         tx_ids = self.get_tx_ids_by_tag(tag=tag)
         return self.get_tx_by_ids(transaction_ids=tx_ids)
 
-    def get_tx_ids_by_tags(self, tags: List[str]) -> set[PositiveInt]:
+    def get_tx_ids_by_tags(self, tags: list[str]) -> set[PositiveInt]:
         res = self.pg_config.execute_sql_query(
             query=f"""
                 SELECT lt.id, lt.tag, lt.created, lt.ext_description
@@ -367,7 +370,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
 
         return {x["id"] for x in res}
 
-    def get_txs_by_tags(self, tags: List[str]) -> List[LedgerTransaction]:
+    def get_txs_by_tags(self, tags: list[str]) -> list[LedgerTransaction]:
         tx_ids = self.get_tx_ids_by_tags(tags=tags)
         return self.get_tx_by_ids(transaction_ids=tx_ids)
 
@@ -384,7 +387,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
     def get_tx_by_ids(
         self,
         transaction_ids: Collection[PositiveInt],
-    ) -> List[LedgerTransaction]:
+    ) -> list[LedgerTransaction]:
 
         args = {"transaction_ids": list(transaction_ids)}
 
@@ -407,8 +410,8 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
 
     @staticmethod
     def process_get_tx_mysql_rows_json(
-        rows: Collection[Dict[str, Any]],
-    ) -> List[LedgerTransaction]:
+        rows: Collection[dict[str, Any]],
+    ) -> list[LedgerTransaction]:
         """Columns: transaction_id, created, ext_description, tag,
             key_value_pairs, entries_json
         - key_value_pairs: &-delimited key=value pairs
@@ -456,8 +459,8 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
     def get_tx_filtered_by_account_summary(
         self,
         account_uuid: UUIDStr,
-        time_start: Optional[datetime] = None,
-        time_end: Optional[datetime] = None,
+        time_start: datetime | None = None,
+        time_end: datetime | None = None,
     ) -> UserLedgerTransactionTypesSummary:
         filter_str, params = self.make_filter_str(
             time_start=time_start,
@@ -494,8 +497,8 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
     def get_tx_filtered_by_account_count(
         self,
         account_uuid: UUIDStr,
-        time_start: Optional[datetime] = None,
-        time_end: Optional[datetime] = None,
+        time_start: datetime | None = None,
+        time_end: datetime | None = None,
     ) -> NonNegativeInt:
         filter_str, params = self.make_filter_str(
             time_start=time_start,
@@ -519,10 +522,10 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
     def get_tx_filtered_by_account(
         self,
         account_uuid: UUIDStr,
-        time_start: Optional[datetime] = None,
-        time_end: Optional[datetime] = None,
-        order_by: Optional[str] = "created,tag",
-    ) -> List[LedgerTransaction]:
+        time_start: datetime | None = None,
+        time_end: datetime | None = None,
+        order_by: str | None = "created,tag",
+    ) -> list[LedgerTransaction]:
         txs, _ = self.get_tx_filtered_by_account_paginated(
             account_uuid=account_uuid,
             time_start=time_start,
@@ -535,7 +538,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         self,
         account_uuid: str,
         oldest_created: datetime,
-        exclude_txs_before: Optional[datetime] = None,
+        exclude_txs_before: datetime | None = None,
     ) -> NonNegativeInt:
         """
         In a paginated list of txs, if I want to calculate
@@ -568,9 +571,9 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
 
     def include_running_balance(
         self,
-        txs: List[UserLedgerTransactionType],
+        txs: list[UserLedgerTransactionType],
         account_uuid: str,
-        exclude_txs_before: Optional[AwareDatetime] = None,
+        exclude_txs_before: AwareDatetime | None = None,
     ):
         """
         exclude_txs_before is NOT for filtering. It is a "hack" to exclude
@@ -598,12 +601,12 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
     def get_tx_filtered_by_account_paginated(
         self,
         account_uuid: UUIDStr,
-        time_start: Optional[datetime] = None,
-        time_end: Optional[datetime] = None,
-        page: Optional[int] = None,
-        size: Optional[int] = None,
-        order_by: Optional[str] = "created,tag",
-    ) -> Tuple[List[LedgerTransaction], int]:
+        time_start: datetime | None = None,
+        time_end: datetime | None = None,
+        page: int | None = None,
+        size: int | None = None,
+        order_by: str | None = "created,tag",
+    ) -> tuple[list[LedgerTransaction], int]:
         """
         If time_start and/or time_end are passed, the txs are filtered to
             include only that range.
@@ -692,9 +695,9 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         self,
         metadata_key: str,
         metadata_value: str,
-        time_start: Optional[datetime] = None,
-        time_end: Optional[datetime] = None,
-    ) -> List[LedgerTransaction]:
+        time_start: datetime | None = None,
+        time_end: datetime | None = None,
+    ) -> list[LedgerTransaction]:
         # Renamed from "get_tx_filtered" which is not a good name
 
         filter_str, params = self.make_filter_str(
@@ -738,8 +741,8 @@ class LedgerMetadataManager(LedgerManagerBasePostgres):
     """
 
     def get_tx_metadata_by_txs(
-        self, transactions: List[LedgerTransaction]
-    ) -> Dict[PositiveInt, Dict[str, Any]]:
+        self, transactions: list[LedgerTransaction]
+    ) -> dict[PositiveInt, dict[str, Any]]:
         """
         Each transaction can have 1 metadata dictionary. However, each
         metadata dictionary can have multiple key/value pairs that
@@ -767,12 +770,12 @@ class LedgerMetadataManager(LedgerManagerBasePostgres):
 
     def get_tx_metadata_ids_by_tx(
         self, transaction: LedgerTransaction
-    ) -> Set[PositiveInt]:
+    ) -> set[PositiveInt]:
         return self.get_tx_metadata_ids_by_txs(transactions=[transaction])
 
     def get_tx_metadata_ids_by_txs(
-        self, transactions: List[LedgerTransaction]
-    ) -> Set[PositiveInt]:
+        self, transactions: list[LedgerTransaction]
+    ) -> set[PositiveInt]:
         """
         This explicitly returns the tx_metadata database ids. Potentially,
         useful for counting total key/value pairs, and/or deleting records
@@ -794,12 +797,12 @@ class LedgerMetadataManager(LedgerManagerBasePostgres):
 
 class LedgerEntryManager(LedgerManagerBasePostgres):
 
-    def get_tx_entries_by_tx(self, transaction: LedgerTransaction) -> List[LedgerEntry]:
+    def get_tx_entries_by_tx(self, transaction: LedgerTransaction) -> list[LedgerEntry]:
         return self.get_tx_entries_by_txs(transactions=[transaction])
 
     def get_tx_entries_by_txs(
-        self, transactions: List[LedgerTransaction]
-    ) -> List[LedgerEntry]:
+        self, transactions: list[LedgerTransaction]
+    ) -> list[LedgerEntry]:
         tx_ids = set([tx.id for tx in transactions])
         tx_entries = self.pg_config.execute_sql_query(
             query="""
@@ -852,15 +855,15 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
 
     def get_account(
         self, qualified_name: str, raise_on_error: bool = True
-    ) -> Optional[LedgerAccount]:
+    ) -> LedgerAccount | None:
         res = self.get_account_many(
             qualified_names=[qualified_name], raise_on_error=raise_on_error
         )
         return res[0] if len(res) == 1 else None
 
     def get_account_many_(
-        self, qualified_names: List[str], raise_on_error: bool = True
-    ) -> List[Dict[str, Any]]:
+        self, qualified_names: list[str], raise_on_error: bool = True
+    ) -> list[dict[str, Any]]:
         assert len(qualified_names) <= 500, "chunk me"
 
         # qualified_name has a unique index so there can only be 0 or 1 match.
@@ -882,8 +885,8 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
         return list(res)
 
     def get_account_many(
-        self, qualified_names: List[str], raise_on_error: bool = True
-    ) -> List[LedgerAccount]:
+        self, qualified_names: list[str], raise_on_error: bool = True
+    ) -> list[LedgerAccount]:
         res = flatten(
             [
                 self.get_account_many_(chunk, raise_on_error)
@@ -893,22 +896,22 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
         return [LedgerAccount.model_validate(i) for i in res]
 
     def get_account_or_create(self, account: LedgerAccount) -> LedgerAccount:
-        res: Optional[LedgerAccount] = self.get_account(
+        res: LedgerAccount | None = self.get_account(
             qualified_name=account.qualified_name, raise_on_error=False
         )
         return res or self.create_account(account=account)
 
-    def get_accounts(self, qualified_names: List[str]) -> List[LedgerAccount]:
+    def get_accounts(self, qualified_names: list[str]) -> list[LedgerAccount]:
         return self.get_account_many(qualified_names, raise_on_error=True)
 
-    def get_accounts_if_exists(self, qualified_names: List[str]) -> List[LedgerAccount]:
+    def get_accounts_if_exists(self, qualified_names: list[str]) -> list[LedgerAccount]:
         """Rather than returning None, this may return an empty list, or
         a list that has less LedgerAccount instances than the number of
         qualified_names that was passed in.
         """
         return self.get_account_many(qualified_names, raise_on_error=False)
 
-    def get_account_if_exists(self, qualified_name: str) -> Optional[LedgerAccount]:
+    def get_account_if_exists(self, qualified_name: str) -> LedgerAccount | None:
         return self.get_account(qualified_name, raise_on_error=False)
 
     def get_account_balance(self, account: LedgerAccount) -> int:
@@ -939,8 +942,8 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
     def get_account_balance_timerange(
         self,
         account: LedgerAccount,
-        time_start: Optional[AwareDatetime] = None,
-        time_end: Optional[AwareDatetime] = None,
+        time_start: AwareDatetime | None = None,
+        time_end: AwareDatetime | None = None,
     ) -> int:
         """
         This returns an int and not a USDCent because an Account's balance
@@ -974,8 +977,8 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
         account: LedgerAccount,
         metadata_key: str,
         metadata_value: str,
-        time_start: Optional[datetime] = None,
-        time_end: Optional[datetime] = None,
+        time_start: datetime | None = None,
+        time_end: datetime | None = None,
     ) -> int:
         """I want the balance for this account filtered by transactions with
         a certain tag.
@@ -1042,8 +1045,7 @@ class LedgerManager(
         """This is for testing only, as it'll take forever to run this if
         the ledger_manager is huge
         """
-        res = self.pg_config.execute_sql_query(
-            f"""
+        res = self.pg_config.execute_sql_query(f"""
             SELECT
                 SUM(CASE WHEN normal_balance = -1 THEN total ELSE 0 END) AS credit_total,
                 SUM(CASE WHEN normal_balance = 1 THEN total ELSE 0 END)  AS debit_total
@@ -1056,17 +1058,16 @@ class LedgerManager(
                     ON ledger_entry.account_id = tl.uuid
                 GROUP BY account_id, normal_balance
             ) x
-        """
-        )[0]
+        """)[0]
         return res["credit_total"] == res["debit_total"]
 
     def get_account_debit_credit_by_metadata(
         self,
         account: LedgerAccount,
         metadata_key: str,
-        time_start: Optional[datetime] = None,
-        time_end: Optional[datetime] = None,
-    ) -> Dict[str, Dict[str, int]]:
+        time_start: datetime | None = None,
+        time_end: datetime | None = None,
+    ) -> dict[str, dict[str, int]]:
         """Show me the sum of debit and credit scoped to this account, grouped
         by all values of metadata_key
         """
@@ -1105,9 +1106,9 @@ class LedgerManager(
 
     def get_balances_timerange(
         self,
-        time_start: Optional[AwareDatetime] = None,
-        time_end: Optional[AwareDatetime] = None,
-    ) -> Dict[str, Any]:
+        time_start: AwareDatetime | None = None,
+        time_end: AwareDatetime | None = None,
+    ) -> dict[str, Any]:
 
         filter_str, params = self.make_filter_str(
             time_end=time_end,

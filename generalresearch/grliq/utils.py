@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional, Union
 from uuid import UUID
 
 # from generalresearch.config import
@@ -10,11 +11,11 @@ from generalresearch.models.custom_types import UUIDStr
 
 def get_screenshot_fp(
     created_at: datetime,
-    forensic_uuid: Union[UUIDStr, UUID],
+    forensic_uuid: UUIDStr | UUID,
     grliq_archive_dir: Path = "/tmp",
     grliq_ss_dir_name: str = "canvas2html",
     create_dir_if_not_exists: bool = True,
-) -> Optional[Path]:
+) -> Path | None:
     assert created_at.tzinfo == timezone.utc
 
     if isinstance(forensic_uuid, UUID):

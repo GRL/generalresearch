@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import List, Optional, Set
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -43,13 +42,13 @@ class GrlIqForensicCategoryResult(BaseModel):
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    uuid: Optional[UUIDStr] = Field(
+    uuid: UUIDStr | None = Field(
         description="The uuid for the GrlIqData model these results are based on",
         default=None,
         examples=[uuid4().hex],
     )
 
-    updated_at: Optional[AwareDatetimeISO] = Field(default=None)
+    updated_at: AwareDatetimeISO | None = Field(default=None)
     is_complete: bool = Field(
         description="This is based on whether or not the GrlIqCheckerResults"
         "object that this data was based on was complete at that time.",
@@ -108,7 +107,7 @@ class GrlIqForensicCategoryResult(BaseModel):
     )
 
     @staticmethod
-    def model_score_fields() -> List[str]:
+    def model_score_fields() -> list[str]:
         return [
             "is_bot",
             "is_velocity",
@@ -143,7 +142,7 @@ class GrlIqCheckerResult(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
     score: GrlIqScore = Field(default=0)
-    msg: Optional[str] = Field(default=None)
+    msg: str | None = Field(default=None)
 
     @property
     def passes(self) -> bool:
@@ -170,27 +169,27 @@ class GrlIqObservations(BaseModel):
         default=0, description="Count of unique timezones (by IP) (past 30 days)"
     )
 
-    paste_event_count: Optional[int] = Field(
+    paste_event_count: int | None = Field(
         default=None, description="Count of paste events (user pasted in text)"
     )
-    visibilitychange_event_count: Optional[int] = Field(
+    visibilitychange_event_count: int | None = Field(
         default=None,
         description="Count of visibilitychange events (entire page isn't visible)",
     )
-    blur_event_count: Optional[int] = Field(
+    blur_event_count: int | None = Field(
         default=None, description="Count of blur events (page lost focus)"
     )
-    devicemotion_event_count: Optional[int] = Field(
+    devicemotion_event_count: int | None = Field(
         default=None,
         description="Count of devicemotion events (device gyroscope motion)",
     )
-    click_event_count: Optional[int] = Field(
+    click_event_count: int | None = Field(
         default=None,
         description="Count of click events (any pointer type)",
     )
     # all clicks are marked as pointerType = 'mouse', but other pointermove events have a pointerType
     #   of 'touch' or 'mouse'
-    pointermove_pointer_types: Optional[Set[str]] = Field(
+    pointermove_pointer_types: set[str] | None = Field(
         default=None, description="pointer types"
     )
 
@@ -203,15 +202,15 @@ class GrlIqCheckerResults(BaseModel):
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    uuid: Optional[UUIDStr] = Field(
+    uuid: UUIDStr | None = Field(
         description="The uuid for the GrlIqData model these results are based on",
         default=None,
         examples=[uuid4().hex],
     )
 
-    updated_at: Optional[AwareDatetimeISO] = Field(default=None)
+    updated_at: AwareDatetimeISO | None = Field(default=None)
 
-    observations: Optional[GrlIqObservations] = Field(default=None)
+    observations: GrlIqObservations | None = Field(default=None)
 
     # browser_props
     check_environment: GrlIqCheckerResult = Field()
@@ -268,16 +267,16 @@ class GrlIqCheckerResults(BaseModel):
     check_ip_webrtc_ip_detail: GrlIqCheckerResult = Field()
 
     # websocket (events)
-    check_page_load_events: Optional[GrlIqCheckerResult] = Field(default=None)
-    check_grliq_events: Optional[GrlIqCheckerResult] = Field(default=None)
-    check_pasting: Optional[GrlIqCheckerResult] = Field(default=None)
-    check_pointer_movements: Optional[GrlIqCheckerResult] = Field(default=None)
-    check_device_motion: Optional[GrlIqCheckerResult] = Field(default=None)
-    check_pointer_type: Optional[GrlIqCheckerResult] = Field(default=None)
-    check_for_bad_events: Optional[GrlIqCheckerResult] = Field(default=None)
+    check_page_load_events: GrlIqCheckerResult | None = Field(default=None)
+    check_grliq_events: GrlIqCheckerResult | None = Field(default=None)
+    check_pasting: GrlIqCheckerResult | None = Field(default=None)
+    check_pointer_movements: GrlIqCheckerResult | None = Field(default=None)
+    check_device_motion: GrlIqCheckerResult | None = Field(default=None)
+    check_pointer_type: GrlIqCheckerResult | None = Field(default=None)
+    check_for_bad_events: GrlIqCheckerResult | None = Field(default=None)
 
     # websocket (ping)
-    check_average_rtt: Optional[GrlIqCheckerResult] = Field(default=None)
+    check_average_rtt: GrlIqCheckerResult | None = Field(default=None)
 
     # todo: we might also have a "fingerprint" in here ???
 

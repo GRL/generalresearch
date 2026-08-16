@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 
 import dask.dataframe as dd
 import pandas as pd
@@ -40,7 +42,7 @@ class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
         enriched_wall: EnrichedWallMerge,
         pg_config: PostgresConfig,
         client: Client,
-        client_resources: Optional[Dict[str, Any]] = None,
+        client_resources: dict[str, Any] | None = None,
     ) -> None:
         """
         TaskAdjustments are always partial because they could be revoked
@@ -61,7 +63,7 @@ class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
         if len(task_adj_coll_items) == 0:
             raise Exception("TaskAdjColl item collection failed")
 
-        ddf: Optional[dd.DataFrame] = task_adj_coll.ddf(
+        ddf: dd.DataFrame | None = task_adj_coll.ddf(
             items=task_adj_coll_items,
             include_partial=True,
             force_rr_latest=False,

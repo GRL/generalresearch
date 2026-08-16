@@ -4,7 +4,7 @@ import binascii
 import json
 import os
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any
 
 from pydantic import (
     AnyHttpUrl,
@@ -29,62 +29,62 @@ if TYPE_CHECKING:
 
 
 class Claims(BaseModel):
-    iss: Optional[str] = Field(
+    iss: str | None = Field(
         default=None,
         description="Issuer: https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.1",
     )
 
-    sub: Optional[str] = Field(
+    sub: str | None = Field(
         default=None,
         description="Subject: https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.2",
     )
 
-    aud: Optional[str] = Field(
+    aud: str | None = Field(
         default=None,
         description="Audience: https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.3",
     )
 
-    exp: Optional[NonNegativeInt] = Field(
+    exp: NonNegativeInt | None = Field(
         default=None,
         description="Expiration time: https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4",
     )
 
-    iat: Optional[NonNegativeInt] = Field(
+    iat: NonNegativeInt | None = Field(
         default=None,
         description="Issued at: https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6",
     )
 
-    auth_time: Optional[NonNegativeInt] = Field(
+    auth_time: NonNegativeInt | None = Field(
         default=None,
         description="When authentication occured: https://openid.net/specs/openid-connect-core-1_0.html#IDToken",
     )
 
-    acr: Optional[str] = Field(
+    acr: str | None = Field(
         default=None,
         description="Authentication Context Class Reference: https://openid.net/specs/openid-connect-core-1_0.html#IDToken",
     )
 
-    amr: Optional[List[str]] = Field(
+    amr: list[str] | None = Field(
         default=None,
         description="Authentication Methods References: https://openid.net/specs/openid-connect-core-1_0.html#IDToken",
     )
 
-    c_hash: Optional[str] = Field(
+    c_hash: str | None = Field(
         default=None,
         description="Code hash value: http://openid.net/specs/openid-connect-core-1_0.html",
     )
 
-    nonce: Optional[str] = Field(
+    nonce: str | None = Field(
         default=None,
         description="Value used to associate a Client session with an ID Token: http://openid.net/specs/openid-connect-core-1_0.html",
     )
 
-    at_hash: Optional[str] = Field(
+    at_hash: str | None = Field(
         default=None,
         description="Access Token hash value: http://openid.net/specs/openid-connect-core-1_0.html",
     )
 
-    sid: Optional[str] = Field(
+    sid: str | None = Field(
         default=None,
         description="Session ID: https://openid.net/specs/openid-connect-frontchannel-1_0.html#ClaimsContents",
     )
@@ -103,8 +103,8 @@ class GRUser(BaseModel):
         arbitrary_types_allowed=True
     )
 
-    id: Optional[PositiveInt] = Field(default=None)
-    sub: Optional[str] = Field(max_length=200)
+    id: PositiveInt | None = Field(default=None)
+    sub: str | None = Field(max_length=200)
     is_superuser: bool = Field(default=False)
 
     date_joined: AwareDatetimeISO = Field(
@@ -112,14 +112,14 @@ class GRUser(BaseModel):
     )
 
     # prefetch attributes
-    businesses: Optional[List["Business"]] = Field(default=None)
-    teams: Optional[List["Team"]] = Field(default=None)
-    products: Optional[List["Product"]] = Field(default=None)
-    token: Optional["GRToken"] = Field(default=None)
-    claims: Optional["Claims"] = Field(default=None)
+    businesses: list["Business"] | None = Field(default=None)
+    teams: list["Team"] | None = Field(default=None)
+    products: list["Product"] | None = Field(default=None)
+    token: "GRToken" | None = Field(default=None)
+    claims: "Claims" | None = Field(default=None)
 
     def prefetch_claims(
-        self, token: str, key: Dict[str, Any], audience: str, issuer: AnyHttpUrl
+        self, token: str, key: dict[str, Any], audience: str, issuer: AnyHttpUrl
     ) -> None:
         from jose import jwt
 
@@ -170,7 +170,7 @@ class GRUser(BaseModel):
 
         if len(business_uuids + team_uuids) == 0:
             self.products = []
-            return None
+            return
 
         from generalresearch.managers.thl.product import ProductManager
 
@@ -207,7 +207,7 @@ class GRUser(BaseModel):
         return f"gr_user:{self.id}"
 
     @property
-    def business_uuids(self) -> Optional[List[UUIDStr]]:
+    def business_uuids(self) -> list[UUIDStr] | None:
         if self.businesses is None:
             LOG.warning("prefetch not run")
             return None
@@ -215,7 +215,7 @@ class GRUser(BaseModel):
         return [b.uuid for b in self.businesses]
 
     @property
-    def business_ids(self) -> Optional[List[PositiveInt]]:
+    def business_ids(self) -> list[PositiveInt] | None:
         if self.businesses is None:
             LOG.warning("prefetch not run")
             return None
@@ -223,7 +223,7 @@ class GRUser(BaseModel):
         return [b.id for b in self.businesses if b.id is not None]
 
     @property
-    def team_uuids(self) -> Optional[List[UUIDStr]]:
+    def team_uuids(self) -> list[UUIDStr] | None:
         if self.teams is None:
             LOG.warning("prefetch not run")
             return None
@@ -231,7 +231,7 @@ class GRUser(BaseModel):
         return [t.uuid for t in self.teams]
 
     @property
-    def team_ids(self) -> Optional[List[PositiveInt]]:
+    def team_ids(self) -> list[PositiveInt] | None:
         if self.teams is None:
             LOG.warning("prefetch not run")
             return None
@@ -239,7 +239,7 @@ class GRUser(BaseModel):
         return [t.id for t in self.teams if t.id is not None]
 
     @property
-    def product_uuids(self) -> Optional[List[UUIDStr]]:
+    def product_uuids(self) -> list[UUIDStr] | None:
         if self.products is None:
             LOG.warning("prefetch not run")
             return None
@@ -294,7 +294,7 @@ class GRUser(BaseModel):
         return GRUser.model_validate(d)
 
     @classmethod
-    def from_redis(cls, d: Union[str, Dict[str, Any]]) -> Self:
+    def from_redis(cls, d: str | dict[str, Any]) -> Self:
         if isinstance(d, str):
             d = json.loads(d)
         assert isinstance(d, dict)
@@ -327,7 +327,7 @@ class GRToken(BaseModel):
     user_id: PositiveInt = Field()
 
     # --- prefetch field ---
-    user: Optional["GRUser"] = Field(default=None)
+    user: "GRUser" | None = Field(default=None)
 
     @property
     def sso(self) -> bool:
@@ -359,13 +359,13 @@ class GRToken(BaseModel):
     # --- Properties ---
 
     @property
-    def auth_header(self, key_name: str = "Authorization") -> Dict[str, str]:
+    def auth_header(self, key_name: str = "Authorization") -> dict[str, str]:
         return {key_name: self.key}
 
     # --- ORM ---
 
     @classmethod
-    def from_redis(cls, d: Union[str, Dict[str, Any]]) -> Self:
+    def from_redis(cls, d: str | dict[str, Any]) -> Self:
         if isinstance(d, str):
             d = json.loads(d)
         assert isinstance(d, dict)

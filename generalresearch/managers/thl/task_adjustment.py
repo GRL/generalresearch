@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import List, Optional
 
 from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
@@ -39,8 +40,8 @@ class TaskAdjustmentManager(PostgresManager):
         wall_uuid: UUIDStr,
         page: int = 1,
         size: int = 100,
-        order_by: Optional[str] = "-created",
-    ) -> List[TaskAdjustmentEvent]:
+        order_by: str | None = "-created",
+    ) -> list[TaskAdjustmentEvent]:
         params = {"wall_uuid": wall_uuid}
         order_by_str = parse_order_by(order_by)
         paginated_filter_str = "LIMIT %(limit)s OFFSET %(offset)s"
@@ -106,9 +107,9 @@ class TaskAdjustmentManager(PostgresManager):
         ledger_manager: ThlLedgerManager,
         wall_uuid: str,
         adjusted_status: WallAdjustedStatus,
-        alert_time: Optional[datetime] = None,
-        ext_status_code: Optional[str] = None,
-        adjusted_cpi: Optional[Decimal] = None,
+        alert_time: datetime | None = None,
+        ext_status_code: str | None = None,
+        adjusted_cpi: Decimal | None = None,
     ) -> None:
         """
         We just got an adjustment notification from a marketplace.
@@ -172,7 +173,7 @@ class TaskAdjustmentManager(PostgresManager):
             )
         except AssertionError as e:
             logging.warning(e)
-            return None
+            return
 
         event = TaskAdjustmentEvent(
             adjusted_status=adjusted_status,
@@ -198,4 +199,4 @@ class TaskAdjustmentManager(PostgresManager):
         self.session_manager.adjust_status(session)
         ledger_manager.create_tx_bp_adjustment(session, created=alert_time)
 
-        return None
+        return

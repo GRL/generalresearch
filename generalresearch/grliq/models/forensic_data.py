@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import hashlib
 import re
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from functools import cached_property
-from typing import Any, Dict, List, Literal, Optional, Set
+from typing import Any, Literal
 from uuid import uuid4
 
 import pycountry
@@ -40,10 +42,10 @@ from generalresearch.grliq.models.forensic_result import (
     Phase,
 )
 from generalresearch.grliq.models.useragents import (
+    BrowserFamily,
     GrlUserAgent,
     OSFamily,
     UserAgentHints,
-    BrowserFamily,
 )
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
@@ -130,28 +132,28 @@ class GrlIqData(BaseModel):
 
     # --- Attributes on the db table directly ---
 
-    id: Optional[BigAutoInteger] = Field(default=None, exclude=True)
+    id: BigAutoInteger | None = Field(default=None, exclude=True)
     uuid: UUIDStr = Field(
         default_factory=lambda: uuid4().hex,
         description="A unique identifier for this data object",
         examples=[uuid4().hex],
     )
 
-    mid: Optional[UUIDStr] = Field(
+    mid: UUIDStr | None = Field(
         description="The mid the of the User's attempt (thl-session) that "
         "is associated with this data",
         examples=[uuid4().hex],
     )
-    phase: Optional[Phase] = Field(
+    phase: Phase | None = Field(
         description="The phase of a thl-session in which this data was collected",
         default=Phase.OFFERWALL_ENTER,
     )
-    product_id: Optional[UUIDStr] = Field(
+    product_id: UUIDStr | None = Field(
         default=None,
         description="The Brokerage Product ID (BPID)",
         examples=[uuid4().hex],
     )
-    product_user_id: Optional[str] = Field(
+    product_user_id: str | None = Field(
         default=None,
         description="The Brokerage Product User ID (BPUID).",
         examples=["test-user-2dbeaaf4"],
@@ -167,7 +169,7 @@ class GrlIqData(BaseModel):
         description="This comes from the actual web request's headers",
         examples=["72.39.217.116"],
     )
-    client_ip_detail: Optional[GeoIPInformation] = Field(default=None)
+    client_ip_detail: GeoIPInformation | None = Field(default=None)
 
     created_at: AwareDatetimeISO = Field(
         description="When we actually received this data. The timestamp field "
@@ -175,16 +177,16 @@ class GrlIqData(BaseModel):
         "by a baddie."
     )
 
-    request_headers: Dict = Field(
+    request_headers: dict = Field(
         description="The full request headers from the actual HTTP call that was made."
     )
 
     # data: Dict = Field()
     # result_data: Dict = Field()
     # fraud_score: int = Field()
-    # is_attempt_allowed: Optional[bool] = Field(default=None)
-    results: Optional[GrlIqCheckerResults] = Field(default=None)
-    category_result: Optional[GrlIqForensicCategoryResult] = Field(
+    # is_attempt_allowed: bool | None = Field(default=None)
+    results: GrlIqCheckerResults | None = Field(default=None)
+    category_result: GrlIqForensicCategoryResult | None = Field(
         default=None, description="Saved in the database as a jsonb"
     )
 
@@ -212,19 +214,19 @@ class GrlIqData(BaseModel):
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
         ]
     )
-    user_agent_str_2: Optional[str] = Field(
+    user_agent_str_2: str | None = Field(
         description="This will only be set if different than user_agent_str"
     )
-    user_agent_hints: Optional[UserAgentHints] = Field(
+    user_agent_hints: UserAgentHints | None = Field(
         description="Comes from the User-Agent Client Hints API", default=None
     )
 
     platform: Platform = Field(description="navigator.platform")
-    platform_2: Optional[Platform] = Field(description="navigator.platform")
-    platform_3: Optional[Platform] = Field()
+    platform_2: Platform | None = Field(description="navigator.platform")
+    platform_3: Platform | None = Field()
     language: str = Field(examples=["en-US"])
     language_2: str = Field(examples=["en-US"])
-    language_3: Optional[str] = Field()
+    language_3: str | None = Field()
     calender_locale: str = Field(examples=["en-US"])
 
     screen_width: NonNegativeInt = Field()
@@ -241,10 +243,10 @@ class GrlIqData(BaseModel):
     app_name: Literal["Netscape"] = Field(
         description="Navigator.appName. Always 'Netscape'"
     )
-    product_sub: Optional[Literal["20030107", "20100101"]] = Field(
+    product_sub: Literal["20030107", "20100101"] | None = Field(
         description="Navigator.productSub"
     )
-    vendor: Optional[Literal["Apple Computer, Inc.", "Google Inc.", "NAVER Corp."]] = (
+    vendor: Literal["Apple Computer, Inc.", "Google Inc.", "NAVER Corp."] | None = (
         Field(description="Navigator.vendor.")
     )
 
@@ -253,14 +255,14 @@ class GrlIqData(BaseModel):
     webrtc_is_supported: PassFailError = Field()
     webrtc_error: bool = Field()
     webrtc_local_ip: str = Field()
-    webrtc_ip: Optional[IPvAnyAddressStr] = Field(examples=[fake.ipv4_public()])
-    webrtc_ip_detail: Optional[GeoIPInformation] = Field(default=None)
+    webrtc_ip: IPvAnyAddressStr | None = Field(examples=[fake.ipv4_public()])
+    webrtc_ip_detail: GeoIPInformation | None = Field(default=None)
 
-    hardware_concurrency: Optional[int] = Field(
+    hardware_concurrency: int | None = Field(
         description="Sometimes this is an empty str"
     )
-    hardware_concurrency_2: Optional[int] = Field()
-    hardware_concurrency_3: Optional[int] = Field()
+    hardware_concurrency_2: int | None = Field()
+    hardware_concurrency_3: int | None = Field()
 
     # Browser/session properties
     navigator_java_enabled: bool = Field()
@@ -340,13 +342,13 @@ class GrlIqData(BaseModel):
         "'de355917bf33e0789539450797b843f9|5' (windows, iphone, mac) or '|0' (typically android). "
     )
     chrome_extensions: str = Field(description="comma sep str of chrome extensions")
-    audio_codecs: Optional[str] = Field(
+    audio_codecs: str | None = Field(
         examples=["1,1,1,1,1,3,1,3,1,3,3,1,1,3,3,3,3,1,3,3,3,2,1,1"],
         description="canPlayType: {'3': probably, '2': maybe, '1': no, 0: error}",
         min_length=47,
         max_length=47,
     )
-    video_codecs: Optional[str] = Field(
+    video_codecs: str | None = Field(
         examples=["1,3,3,3,3,3,3,3,3,3,1,1,1,1,1,1,3,1,1,1,3,3,1"],
         description="canPlayType: {'3': probably, '2': maybe, '1': no, 0: error}",
         min_length=45,
@@ -380,13 +382,13 @@ class GrlIqData(BaseModel):
     ontouchstart: bool = Field()
     # todo: confirm this is 5 for an iphone
     max_touch_points: int = Field()
-    navigator_deviceMemory: Optional[float] = Field()
+    navigator_deviceMemory: float | None = Field()
     memory_jsHeapSizeLimit: int = Field()
     navigator_mediaDevices_len: int = Field()
     unmasked_vendor_webgl: str = Field()
     unmasked_renderer_webgl: str = Field()
     keyboard_detected: bool = Field()
-    keyboard_layout_size: Optional[int] = Field(description="mobile safari None?")
+    keyboard_layout_size: int | None = Field(description="mobile safari None?")
     window_orientation: int = Field(description="0 or 1. idk which is which")
 
     # Session properties
@@ -394,25 +396,23 @@ class GrlIqData(BaseModel):
     #  *different* each (to make sure they aren't reusing posts)
     execution_time_ms: float = Field()
     performance_loop_time: float = Field()
-    connection_rtt: Optional[int] = Field()
-    connection_downlink: Optional[float] = Field()
+    connection_rtt: int | None = Field()
+    connection_downlink: float | None = Field()
     connection_type: str = Field()
     connection_effectiveType: str = Field()
 
     # fingerprint stuff
     canvas_support_level: SupportLevel = Field()
-    canvas_hash: Optional[Hash128] = Field(
-        description="dfiq's canvas image fingerprint"
-    )
-    canvas_hash_2: Optional[Hash128] = Field(
+    canvas_hash: Hash128 | None = Field(description="dfiq's canvas image fingerprint")
+    canvas_hash_2: Hash128 | None = Field(
         description="simpler canvas image fingerprint stolen from amiunique.org",
         default=None,
     )
-    webgl_hash: Optional[Hash128] = Field(
+    webgl_hash: Hash128 | None = Field(
         description="DFIQ's version of webgl hash. It has stuff included in the hash: anisotropy, supported "
         "extensions, etc."
     )
-    webgl_context: Optional[
+    webgl_context: (
         Literal[
             "webgl2",
             "webgl",
@@ -421,17 +421,18 @@ class GrlIqData(BaseModel):
             "webkit-3d",
             "moz-webgl",
         ]
-    ] = Field(default=None)
-    webgl_max_anisotropy: Optional[int] = Field(default=None, examples=[16])
-    webgl_shading_language_version: Optional[str] = Field(
+        | None
+    ) = Field(default=None)
+    webgl_max_anisotropy: int | None = Field(default=None, examples=[16])
+    webgl_shading_language_version: str | None = Field(
         default=None,
         examples=["WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)"],
     )
-    webgl_hash_2: Optional[Hash128] = Field(
+    webgl_hash_2: Hash128 | None = Field(
         description="hash128 of the canvas image, without additional stuff concatenated to it",
         default=None,
     )
-    webgl_extensions: Optional[str] = Field(
+    webgl_extensions: str | None = Field(
         description="pipe-separated list of webgl extensions",
         default=None,
         examples=[
@@ -439,22 +440,22 @@ class GrlIqData(BaseModel):
         ],
     )
 
-    audio_context_hash: Optional[Hash128] = Field()
-    audio_intensity_fingerprint: Optional[float] = Field()
-    audio_compressor_reduction: Optional[float] = Field()
-    speech_synthesis_voice_hash: Optional[Hash128] = Field()
+    audio_context_hash: Hash128 | None = Field()
+    audio_intensity_fingerprint: float | None = Field()
+    audio_compressor_reduction: float | None = Field()
+    speech_synthesis_voice_hash: Hash128 | None = Field()
     speech_synthesis_avail_voices_count: int = Field()
     path_fingerprint: int = Field(
         description="maybe is consistent? sum of pixel value of some path."
     )
-    text_2d_fingerprint: Optional[Hash128] = Field()
+    text_2d_fingerprint: Hash128 | None = Field()
     canvas_fingerprint: int = Field()
 
     # User Preferences
-    color_gamut: Optional[Literal["1", "2", "3", "0"]] = Field(
+    color_gamut: Literal["1", "2", "3", "0"] | None = Field(
         description="{'1': 'rec2020', '2':'p3', '3':'srgb', '0': none}  # p3 typically used in macbooks n stuff"
     )
-    prefers_contrast: Optional[Literal["0", "1", "2", "3", "4", "5", "9"]] = Field(
+    prefers_contrast: Literal["0", "1", "2", "3", "4", "5", "9"] | None = Field(
         description="{'no-preference': 0, 'high': 1, 'more': 2, 'low': 3, 'less': 4, 'forced': 5, None: 9}"
     )
     prefers_reduced_motion: bool = Field(description="reduce (1) vs no-preference (0)")
@@ -464,12 +465,12 @@ class GrlIqData(BaseModel):
     prefers_color_scheme: bool = Field(description="{'dark': 1, '?': 0}")
 
     # Battery Info
-    battery_charging: Optional[bool] = Field(default=None)
-    battery_charging_time: Optional[float] = Field(default=None)
-    battery_discharging_time: Optional[float] = Field(default=None)
-    battery_level: Optional[float] = Field(default=None, ge=0, le=1)
+    battery_charging: bool | None = Field(default=None)
+    battery_charging_time: float | None = Field(default=None)
+    battery_discharging_time: float | None = Field(default=None)
+    battery_level: float | None = Field(default=None, ge=0, le=1)
 
-    supported_fonts_str: Optional[str] = Field(
+    supported_fonts_str: str | None = Field(
         default=None,
         description="Bit-packed string for font support. Each element is 32 bits, with each bit representing T/F for "
         "font support.",
@@ -481,7 +482,7 @@ class GrlIqData(BaseModel):
     )
 
     # Time it took for the client to download the logo.jpg
-    logo_download_ms: Optional[float] = Field(default=None, gt=0)
+    logo_download_ms: float | None = Field(default=None, gt=0)
 
     # --- Not from post body ----
 
@@ -490,15 +491,15 @@ class GrlIqData(BaseModel):
     )
 
     # Can optionally be loaded from the grliq_forensicevents table
-    events: Optional[List[Dict]] = Field(default=None)
-    pointer_move_events: Optional[List[PointerMove]] = Field(default=None)
-    mouse_events: Optional[List[MouseEvent]] = Field(default=None)
-    keyboard_events: Optional[List[KeyboardEvent]] = Field(default=None)
+    events: list[dict] | None = Field(default=None)
+    pointer_move_events: list[PointerMove] | None = Field(default=None)
+    mouse_events: list[MouseEvent] | None = Field(default=None)
+    keyboard_events: list[KeyboardEvent] | None = Field(default=None)
 
-    timing_data: Optional[TimingData] = Field(default=None)
+    timing_data: TimingData | None = Field(default=None)
 
     @property
-    def session_uuid(self) -> Optional[UUIDStr]:
+    def session_uuid(self) -> UUIDStr | None:
         return self.mid
 
     @cached_property
@@ -506,7 +507,7 @@ class GrlIqData(BaseModel):
         return GrlUserAgent.from_ua_str(self.user_agent_str)
 
     @cached_property
-    def fingerprint_keys(self) -> List[str]:
+    def fingerprint_keys(self) -> list[str]:
         fp_cols = [
             "country_iso",
             "canvas_hash",
@@ -557,7 +558,7 @@ class GrlIqData(BaseModel):
         return hashlib.md5(s.encode()).hexdigest()
 
     @cached_property
-    def audio_codecs_named(self) -> Dict[str, bool]:
+    def audio_codecs_named(self) -> dict[str, bool]:
         return dict(
             zip(
                 AUDIO_CODEC_NAMES,
@@ -566,7 +567,7 @@ class GrlIqData(BaseModel):
         )
 
     @cached_property
-    def video_codecs_named(self) -> Dict[str, bool]:
+    def video_codecs_named(self) -> dict[str, bool]:
         return dict(
             zip(
                 VIDEO_CODEC_NAMES,
@@ -584,13 +585,13 @@ class GrlIqData(BaseModel):
         )[-len(SUPPORTED_FONTS) :]
 
     @cached_property
-    def supported_fonts(self) -> Set[str]:
+    def supported_fonts(self) -> set[str]:
         return {
             f for x, f in zip(self.supported_fonts_binary, SUPPORTED_FONTS) if x == "1"
         }
 
     @cached_property
-    def audio_intensity_rounded(self) -> Optional[float]:
+    def audio_intensity_rounded(self) -> float | None:
         # The audio intensity fingerprint seems to be purposely manipulated
         # to add randomness, but the level of randomness if very low, past
         # the 6th decimal point.
@@ -622,7 +623,7 @@ class GrlIqData(BaseModel):
         mode="before",
     )
     @classmethod
-    def str_to_int_or_null(cls, value: str) -> Optional[int]:
+    def str_to_int_or_null(cls, value: str) -> int | None:
         return int(value) if value not in {None, ""} else None
 
     @field_validator(
@@ -633,7 +634,7 @@ class GrlIqData(BaseModel):
         mode="before",
     )
     @classmethod
-    def str_to_float_or_null(cls, value: str) -> Optional[float]:
+    def str_to_float_or_null(cls, value: str) -> float | None:
         return float(value) if value not in {None, ""} else None
 
     @field_validator(
@@ -649,7 +650,7 @@ class GrlIqData(BaseModel):
         mode="before",
     )
     @classmethod
-    def str_or_null(cls, value: str) -> Optional[str]:
+    def str_or_null(cls, value: str) -> str | None:
         return value or None
 
     @field_validator(
@@ -724,7 +725,7 @@ class GrlIqData(BaseModel):
 
     @field_validator("platform", "platform_2", "platform_3", mode="before")
     @classmethod
-    def platform_enum_or_other(cls, value: Optional[str]) -> Optional[Platform]:
+    def platform_enum_or_other(cls, value: str | None) -> Platform | None:
         if value is None or value == "":
             return None
         try:
@@ -734,7 +735,7 @@ class GrlIqData(BaseModel):
 
     @field_validator("webrtc_ip", mode="before")
     @classmethod
-    def preprocess_ip(cls, ip: str) -> Optional[str]:
+    def preprocess_ip(cls, ip: str) -> str | None:
         # Strip square brackets if present
         return re.sub(r"^\[|\]$", "", ip) if ip else None
 
@@ -781,7 +782,7 @@ class GrlIqData(BaseModel):
 
         return None
 
-    def model_dump_sql(self, **kwargs) -> Dict[str, Any]:
+    def model_dump_sql(self, **kwargs) -> dict[str, Any]:
         d = dict()
         d["uuid"] = self.uuid
         d["session_uuid"] = self.mid
@@ -802,7 +803,7 @@ class GrlIqData(BaseModel):
         return d
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> Self:
+    def from_db(cls, d: dict[str, Any]) -> Self:
         res = GrlIqData.model_validate(d["data"])
 
         if d.get("category_result"):

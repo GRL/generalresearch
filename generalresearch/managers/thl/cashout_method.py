@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+from collections.abc import Collection
 from copy import copy
 from datetime import datetime, timezone
-from typing import Any, Collection, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import NonNegativeInt
@@ -41,9 +44,7 @@ class CashoutMethodManager(PostgresManager):
 
         self.pg_config.execute_write(query, values)
 
-        return None
-
-    def delete_cashout_method(self, cm_id: str):
+    def delete_cashout_method(self, cm_id: str) -> None:
         db_res = self.pg_config.execute_sql_query(
             query="""
         SELECT id::uuid, user_id
@@ -152,11 +153,11 @@ class CashoutMethodManager(PostgresManager):
 
     @staticmethod
     def make_filter_str(
-        uuid: Optional[str] = None,
-        user: Optional[User] = None,
-        ext_id: Optional[str] = None,
-        payout_types: Optional[Collection[PayoutType]] = None,
-        is_live: Optional[bool] = True,
+        uuid: str | None = None,
+        user: User | None = None,
+        ext_id: str | None = None,
+        payout_types: Collection[PayoutType] | None = None,
+        is_live: bool | None = True,
     ):
         filters = []
         params = dict()
@@ -183,11 +184,11 @@ class CashoutMethodManager(PostgresManager):
 
     def filter_count(
         self,
-        uuid: Optional[str] = None,
-        user: Optional[User] = None,
-        ext_id: Optional[str] = None,
-        payout_types: Optional[Collection[PayoutType]] = None,
-        is_live: Optional[bool] = True,
+        uuid: str | None = None,
+        user: User | None = None,
+        ext_id: str | None = None,
+        payout_types: Collection[PayoutType] | None = None,
+        is_live: bool | None = True,
     ) -> NonNegativeInt:
         filter_str, params = self.make_filter_str(
             uuid=uuid,
@@ -208,12 +209,12 @@ class CashoutMethodManager(PostgresManager):
 
     def filter(
         self,
-        uuid: Optional[str] = None,
-        user: Optional[User] = None,
-        ext_id: Optional[str] = None,
-        payout_types: Optional[Collection[PayoutType]] = None,
-        is_live: Optional[bool] = True,
-    ) -> List[CashoutMethod]:
+        uuid: str | None = None,
+        user: User | None = None,
+        ext_id: str | None = None,
+        payout_types: Collection[PayoutType] | None = None,
+        is_live: bool | None = True,
+    ) -> list[CashoutMethod]:
         filter_str, params = self.make_filter_str(
             uuid=uuid,
             user=user,
@@ -231,7 +232,7 @@ class CashoutMethodManager(PostgresManager):
         )
         return [self.format_from_db(x, user=user) for x in res]
 
-    def get_cashout_methods(self, user: User) -> List[CashoutMethod]:
+    def get_cashout_methods(self, user: User) -> list[CashoutMethod]:
         """
         The provider column is PayoutType. Some are only user-scoped,
         and some are global.
@@ -279,7 +280,7 @@ class CashoutMethodManager(PostgresManager):
         return cms
 
     @staticmethod
-    def format_from_db(x: Dict[str, Any], user: Optional[User] = None) -> CashoutMethod:
+    def format_from_db(x: dict[str, Any], user: User | None = None) -> CashoutMethod:
         x["id"] = UUID(x["id"]).hex
 
         # The data column here is inconsistent. Pulling keys from the mysql 'data' col

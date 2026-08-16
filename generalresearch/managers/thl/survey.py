@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from collections import defaultdict
+from collections.abc import Collection
 from datetime import datetime, timezone
-from typing import Any, Collection, Dict, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 from more_itertools import chunked
@@ -24,13 +27,13 @@ class SurveyManager(PostgresManager):
     def __init__(
         self,
         pg_config: PostgresConfig,
-        permissions: Collection[Permission] = None,
+        permissions: Collection[Permission] | None = None,
     ):
         super().__init__(pg_config=pg_config, permissions=permissions)
         self.buyer_manager = BuyerManager(pg_config=pg_config, permissions=permissions)
         self.category_manager = CategoryManager(pg_config=pg_config)
 
-    def create_or_update(self, surveys: List[Survey]):
+    def create_or_update(self, surveys: list[Survey]):
         """
         The only field that is checked for a possible update is `is_live`!
         """
@@ -76,12 +79,11 @@ class SurveyManager(PostgresManager):
             "survey_updated_count": len(to_update),
         }
 
-    def create_bulk(self, surveys: List[Survey]):
+    def create_bulk(self, surveys: list[Survey]) -> None:
         for chunk in chunked(surveys, 500):
             self.create_bulk_chunk(chunk)
-        return None
 
-    def create_bulk_chunk(self, surveys: List[Survey]):
+    def create_bulk_chunk(self, surveys: list[Survey]) -> None:
         assert len(surveys) <= 500, "chunk me"
 
         query = """
@@ -97,9 +99,8 @@ class SurveyManager(PostgresManager):
             with conn.cursor() as c:
                 c.executemany(query=query, params_seq=params)
             conn.commit()
-        return None
 
-    def update_is_live(self, surveys: List[Survey]):
+    def update_is_live(self, surveys: list[Survey]):
         ids_ON = [s.id for s in surveys if s.is_live]
         ids_OFF = [s.id for s in surveys if not s.is_live]
         query_ON = """
@@ -127,7 +128,7 @@ class SurveyManager(PostgresManager):
         self,
         survey_keys: Collection[SurveyKey],
         include_categories: bool = False,
-    ) -> List[Survey]:
+    ) -> list[Survey]:
 
         assert len(survey_keys) <= 1000
         if len(survey_keys) == 0:
@@ -202,7 +203,7 @@ class SurveyManager(PostgresManager):
 
     def filter_by_natural_key(
         self, source: Source, survey_ids: Collection[str]
-    ) -> List[Survey]:
+    ) -> list[Survey]:
         res = []
         for chunk in chunked(survey_ids, 1000):
             res.extend(self.filter_by_natural_key_chunk(source, chunk))
@@ -210,7 +211,7 @@ class SurveyManager(PostgresManager):
 
     def filter_by_natural_key_chunk(
         self, source: Source, survey_ids: Collection[str]
-    ) -> List[Survey]:
+    ) -> list[Survey]:
         query = """
         SELECT id, source, survey_id, created_at, updated_at,
             is_live, is_recontact, buyer_id, eligibility_criteria
@@ -224,7 +225,7 @@ class SurveyManager(PostgresManager):
         )
         return [Survey.model_validate(x) for x in res]
 
-    def filter_by_source_live(self, source: Source) -> List[Survey]:
+    def filter_by_source_live(self, source: Source) -> list[Survey]:
         """
         Return all live surveys for this source
         """
@@ -237,7 +238,7 @@ class SurveyManager(PostgresManager):
         res = self.pg_config.execute_sql_query(query, params={"source": source.value})
         return [Survey.model_validate(x) for x in res]
 
-    def filter_by_live(self, fields: Optional[List[str]] = None) -> List[Survey]:
+    def filter_by_live(self, fields: list[str] | None = None) -> list[Survey]:
         """
         Return all live surveys
         """
@@ -281,29 +282,27 @@ class SurveyManager(PostgresManager):
         )
         return None
 
-    def update_surveys_categories(self, surveys: List[Survey] = None) -> None:
+    def update_surveys_categories(self, surveys: list[Survey] | None = None) -> None:
         for chunk in chunked(surveys, 500):
             self.update_surveys_categories_chunk(chunk)
-        return None
 
-    def update_surveys_categories_chunk(self, surveys: List[Survey] = None) -> None:
+    def update_surveys_categories_chunk(
+        self, surveys: list[Survey] | None = None
+    ) -> None:
         assert len(surveys) <= 500, "chunk me"
-        temp_table_sql = sql.SQL(
-            """
+        temp_table_sql = sql.SQL("""
         CREATE TEMP TABLE tmp_survey_categories (
             survey_id   bigint,
             category_id int,
             strength    float8
         ) ON COMMIT DROP;
-        """
-        )
+        """)
         # noinspection SqlResolve
         insert_values_sql = sql.SQL(
             "INSERT INTO tmp_survey_categories VALUES (%s, %s, %s)"
         )
         # noinspection SqlResolve
-        delete_sql = sql.SQL(
-            """
+        delete_sql = sql.SQL("""
         DELETE FROM marketplace_surveycategory sc
         WHERE NOT EXISTS (
             SELECT 1
@@ -313,18 +312,15 @@ class SurveyManager(PostgresManager):
         )
         AND sc.survey_id IN (
             SELECT DISTINCT survey_id FROM tmp_survey_categories
-        );"""
-        )
+        );""")
         # noinspection SqlResolve
-        upsert_sql = sql.SQL(
-            """
+        upsert_sql = sql.SQL("""
         INSERT INTO marketplace_surveycategory (survey_id, category_id, strength)
         SELECT survey_id, category_id, strength
         FROM tmp_survey_categories
         ON CONFLICT (survey_id, category_id)
         DO UPDATE SET
-            strength = EXCLUDED.strength;"""
-        )
+            strength = EXCLUDED.strength;""")
 
         rows = [
             (survey.id, c.category.id, c.strength)
@@ -417,7 +413,7 @@ class SurveyStatManager(PostgresManager):
     def __init__(
         self,
         pg_config: PostgresConfig,
-        permissions: Collection[Permission] = None,
+        permissions: Collection[Permission] | None = None,
     ):
         super().__init__(pg_config=pg_config, permissions=permissions)
         self.survey_manager = SurveyManager(
@@ -457,8 +453,8 @@ class SurveyStatManager(PostgresManager):
     #     info.register(conn)
 
     def update_or_create(
-        self, survey_stats: List[SurveyStat]
-    ) -> Optional[List[SurveyStat]]:
+        self, survey_stats: list[SurveyStat]
+    ) -> list[SurveyStat] | None:
         """
         This manager is NOT responsible for creating surveys or buyers.
         It will check to make sure they exist
@@ -502,10 +498,9 @@ class SurveyStatManager(PostgresManager):
         # survey_stats = sorted(survey_stats, key=lambda s: s.natural_key)
         # return survey_stats
 
-    def upsert_sql(self, survey_stats: List[SurveyStat]) -> None:
+    def upsert_sql(self, survey_stats: list[SurveyStat]) -> None:
         for chunk in chunked(survey_stats, 1000):
             self.upsert_sql_chunk(survey_stats=chunk)
-        return None
 
     # def insert_sql(self, survey_stats: List[SurveyStat]):
     #     for chunk in chunked(survey_stats, 1000):
@@ -532,7 +527,7 @@ class SurveyStatManager(PostgresManager):
     #         conn.commit()
     #     return None
 
-    def upsert_sql_chunk(self, survey_stats: List[SurveyStat]) -> None:
+    def upsert_sql_chunk(self, survey_stats: list[SurveyStat]) -> None:
         assert len(survey_stats) <= 1000, "chunk me"
         keys = self.KEYS
         keys_str = ", ".join(keys)
@@ -557,16 +552,14 @@ class SurveyStatManager(PostgresManager):
                 c.executemany(query=query, params_seq=params)
             conn.commit()
 
-        return None
-
-    def filter_by_unique_keys(self, keys: Collection[Tuple]) -> List[SurveyStat]:
+    def filter_by_unique_keys(self, keys: Collection[tuple]) -> list[SurveyStat]:
         res = []
         for chunk in chunked(keys, 5000):
             res.extend(self.filter_by_unique_keys_chunk(chunk))
 
         return res
 
-    def filter_by_unique_keys_chunk(self, keys: Collection[Tuple]):
+    def filter_by_unique_keys_chunk(self, keys: Collection[tuple]):
         values_sql = ", ".join(["(%s, %s, %s, %s)"] * len(keys))
         query = f"""
         SELECT
@@ -590,8 +583,8 @@ class SurveyStatManager(PostgresManager):
     def update_surveystats_for_source(
         self,
         source: Source,
-        surveys: List[Survey],
-        survey_stats: List[SurveyStat],
+        surveys: list[Survey],
+        survey_stats: list[SurveyStat],
     ):
         """
         What ym-survey-stats actually calls.
@@ -634,13 +627,13 @@ class SurveyStatManager(PostgresManager):
 
     def make_filter_str(
         self,
-        is_live: Optional[bool] = True,
-        updated_after: Optional[datetime] = None,
-        min_score: Optional[float] = None,
-        survey_keys: Optional[Collection[SurveyKey]] = None,
-        sources: Optional[Collection[Source]] = None,
-        country_iso: Optional[str] = None,
-    ) -> Tuple[str, Dict[str, Any]]:
+        is_live: bool | None = True,
+        updated_after: datetime | None = None,
+        min_score: float | None = None,
+        survey_keys: Collection[SurveyKey] | None = None,
+        sources: Collection[Source] | None = None,
+        country_iso: str | None = None,
+    ) -> tuple[str, dict[str, Any]]:
         filters = []
         params = dict()
         if updated_after is not None:
@@ -686,12 +679,12 @@ class SurveyStatManager(PostgresManager):
 
     def filter_count(
         self,
-        is_live: Optional[bool] = True,
-        updated_after: Optional[datetime] = None,
-        min_score: Optional[float] = None,
-        survey_keys: Optional[Collection[SurveyKey]] = None,
-        sources: Optional[Collection[Source]] = None,
-        country_iso: Optional[str] = None,
+        is_live: bool | None = True,
+        updated_after: datetime | None = None,
+        min_score: float | None = None,
+        survey_keys: Collection[SurveyKey] | None = None,
+        sources: Collection[Source] | None = None,
+        country_iso: str | None = None,
     ) -> NonNegativeInt:
         filter_str, params = self.make_filter_str(
             is_live=is_live,
@@ -710,17 +703,17 @@ class SurveyStatManager(PostgresManager):
 
     def filter(
         self,
-        is_live: Optional[bool] = True,
-        updated_after: Optional[datetime] = None,
-        min_score: Optional[float] = None,
-        survey_keys: Optional[Collection[SurveyKey]] = None,
-        sources: Optional[Collection[Source]] = None,
-        country_iso: Optional[str] = None,
-        page: Optional[int] = None,
-        size: Optional[int] = None,
-        order_by: Optional[str] = None,
-        debug: Optional[bool] = False,
-    ) -> List[SurveyStat]:
+        is_live: bool | None = True,
+        updated_after: datetime | None = None,
+        min_score: float | None = None,
+        survey_keys: Collection[SurveyKey] | None = None,
+        sources: Collection[Source] | None = None,
+        country_iso: str | None = None,
+        page: int | None = None,
+        size: int | None = None,
+        order_by: str | None = None,
+        debug: bool | None = False,
+    ) -> list[SurveyStat]:
         filter_str, params = self.make_filter_str(
             is_live=is_live,
             updated_after=updated_after,
@@ -778,10 +771,10 @@ class SurveyStatManager(PostgresManager):
 
     def filter_to_merge_table(
         self,
-        is_live: Optional[bool] = True,
-        updated_after: Optional[datetime] = None,
-        min_score: Optional[float] = 0.0001,
-    ) -> Optional[pd.DataFrame]:
+        is_live: bool | None = True,
+        updated_after: datetime | None = None,
+        min_score: float | None = 0.0001,
+    ) -> pd.DataFrame | None:
 
         survey_stats = self.filter(
             is_live=is_live, updated_after=updated_after, min_score=min_score

@@ -1,4 +1,6 @@
-from typing import List, Set
+from __future__ import annotations
+
+from typing import List
 
 import pandas as pd
 from pandera import Check, Column, DataFrameSchema, Index
@@ -10,8 +12,8 @@ from generalresearch.models.thl.survey.task_collection import (
     create_empty_df_from_schema,
 )
 
-COUNTRY_ISOS: Set[str] = Localelator().get_all_countries()
-LANGUAGE_ISOS: Set[str] = Localelator().get_all_languages()
+COUNTRY_ISOS: set[str] = Localelator().get_all_countries()
+LANGUAGE_ISOS: set[str] = Localelator().get_all_languages()
 
 CintTaskCollectionSchema = DataFrameSchema(
     columns={
@@ -50,7 +52,7 @@ CintTaskCollectionSchema = DataFrameSchema(
 
 
 class CintTaskCollection(TaskCollection):
-    items: List[CintSurvey]
+    items: list[CintSurvey]
     _schema = CintTaskCollectionSchema
 
     def to_row(self, s: CintSurvey):

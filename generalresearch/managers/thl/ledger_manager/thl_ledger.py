@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import logging
+from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import TYPE_CHECKING, Callable, Collection, List, Optional
+from typing import TYPE_CHECKING, Callable
 from uuid import UUID
 
 import numpy as np
@@ -237,8 +240,8 @@ class ThlLedgerManager(LedgerManager):
     def get_tx_bp_payouts(
         self,
         account_uuids: Collection[UUIDStr],
-        time_start: Optional[datetime] = None,
-        time_end: Optional[datetime] = None,
+        time_start: datetime | None = None,
+        time_end: datetime | None = None,
     ):
         if time_start is None:
             time_start = datetime(year=2017, month=1, day=1, tzinfo=timezone.utc)
@@ -270,7 +273,7 @@ class ThlLedgerManager(LedgerManager):
         self,
         wall: Wall,
         user: User,
-        created: Optional[datetime] = None,
+        created: datetime | None = None,
         force: bool = False,
     ) -> PositiveInt:
         """
@@ -297,7 +300,7 @@ class ThlLedgerManager(LedgerManager):
         )
 
     def create_tx_task_complete_(
-        self, wall: Wall, user: User, created: Optional[datetime] = None
+        self, wall: Wall, user: User, created: datetime | None = None
     ) -> LedgerTransaction:
 
         revenue_account = self.get_account_task_complete_revenue()
@@ -338,7 +341,7 @@ class ThlLedgerManager(LedgerManager):
         return t
 
     def create_tx_bp_payment(
-        self, session: Session, created: Optional[datetime] = None, force: bool = False
+        self, session: Session, created: datetime | None = None, force: bool = False
     ) -> LedgerTransaction:
         """
             Create a transaction when we decide to report a session as complete
@@ -366,7 +369,7 @@ class ThlLedgerManager(LedgerManager):
         )
 
     def create_tx_bp_payment_(
-        self, session: Session, created: Optional[datetime] = None
+        self, session: Session, created: datetime | None = None
     ) -> LedgerTransaction:
         user = session.user
         assert user.product, "user.prefetch_product()"
@@ -469,8 +472,8 @@ class ThlLedgerManager(LedgerManager):
         return t
 
     def create_tx_task_adjustment(
-        self, wall: Wall, user: User, created: Optional[datetime] = None
-    ) -> Optional[LedgerTransaction]:
+        self, wall: Wall, user: User, created: datetime | None = None
+    ) -> LedgerTransaction | None:
         """
         How is this different then create_tx_bp_adjustment
 
@@ -554,8 +557,8 @@ class ThlLedgerManager(LedgerManager):
         return t
 
     def create_tx_bp_adjustment(
-        self, session: Session, created: Optional[datetime] = None
-    ) -> Optional[LedgerTransaction]:
+        self, session: Session, created: datetime | None = None
+    ) -> LedgerTransaction | None:
         """
         How is this different then create_tx_task_adjustment
         """
@@ -600,7 +603,7 @@ class ThlLedgerManager(LedgerManager):
         if user.product.user_wallet_enabled:
             # If the user wallet is enabled, the user_payout "comes out" of
             #   the payout
-            payout_after_adj: Optional[Decimal] = (
+            payout_after_adj: Decimal | None = (
                 session.get_user_payout_after_adjustment()
             )
             if payout_after_adj is None:
@@ -869,7 +872,7 @@ class ThlLedgerManager(LedgerManager):
         amount: USDCent,
         created: AwareDatetime,
         direction: Direction = Direction.DEBIT,
-        description: Optional[str] = None,
+        description: str | None = None,
         skip_flag_check: bool = False,
     ) -> LedgerTransaction:
         """https://en.wikipedia.org/wiki/Plug_(accounting)
@@ -935,7 +938,7 @@ class ThlLedgerManager(LedgerManager):
         amount: USDCent,
         created: AwareDatetime,
         direction: Direction,
-        description: Optional[str] = None,
+        description: str | None = None,
     ) -> LedgerTransaction:
 
         assert isinstance(amount, int)
@@ -995,9 +998,9 @@ class ThlLedgerManager(LedgerManager):
         self,
         user: User,
         payout_event: UserPayoutEvent,
-        created: Optional[datetime] = None,
-        skip_flag_check: Optional[bool] = False,
-        skip_wallet_balance_check: Optional[bool] = False,
+        created: datetime | None = None,
+        skip_flag_check: bool | None = False,
+        skip_wallet_balance_check: bool | None = False,
     ) -> LedgerTransaction:
         """
         The funds move from the user's wallet into the BP's "pending"
@@ -1045,7 +1048,7 @@ class ThlLedgerManager(LedgerManager):
             created=created,
         )
 
-        min_balance: Optional[int] = int(amount)
+        min_balance: int | None = int(amount)
         if payout_event.payout_type == PayoutType.AMT_HIT:
             # We allow the user's balance to reach up to -$1.00.
             min_balance = -100 + amount
@@ -1074,9 +1077,9 @@ class ThlLedgerManager(LedgerManager):
         self,
         user: User,
         payout_event: UserPayoutEvent,
-        created: Optional[datetime] = None,
-        fee_amount: Optional[Decimal] = None,
-        skip_flag_check: Optional[bool] = False,
+        created: datetime | None = None,
+        fee_amount: Decimal | None = None,
+        skip_flag_check: bool | None = False,
     ) -> LedgerTransaction:
         """
         Once the cashout request is approved and completed, the funds
@@ -1172,8 +1175,8 @@ class ThlLedgerManager(LedgerManager):
         self,
         user: User,
         payout_event: UserPayoutEvent,
-        created: Optional[datetime] = None,
-        skip_flag_check: Optional[bool] = False,
+        created: datetime | None = None,
+        skip_flag_check: bool | None = False,
     ) -> LedgerTransaction:
         assert (
             user.product.user_wallet_enabled
@@ -1214,7 +1217,7 @@ class ThlLedgerManager(LedgerManager):
         user: User,
         payout_event: UserPayoutEvent,
         description: str,
-        created: Optional[datetime] = None,
+        created: datetime | None = None,
     ) -> LedgerTransaction:
         # This is the same for all user payout requests, regardless of the
         #   payout_type (paypal, amt, tango)
@@ -1263,7 +1266,7 @@ class ThlLedgerManager(LedgerManager):
         fee_payer_account: LedgerAccount,
         fee_amount: Decimal,
         description: str,
-        created: Optional[datetime] = None,
+        created: datetime | None = None,
     ) -> LedgerTransaction:
         """
             Creates the LedgerTransaction for a completed user payout request.
@@ -1346,7 +1349,7 @@ class ThlLedgerManager(LedgerManager):
         user: User,
         payout_event: UserPayoutEvent,
         description: str,
-        created: Optional[datetime] = None,
+        created: datetime | None = None,
     ) -> LedgerTransaction:
         assert user.product
 
@@ -1391,9 +1394,9 @@ class ThlLedgerManager(LedgerManager):
         amount: Decimal,
         ref_uuid: UUIDStr,
         description: str,
-        source_account: Optional[LedgerAccount] = None,
-        created: Optional[datetime] = None,
-        skip_flag_check: Optional[bool] = False,
+        source_account: LedgerAccount | None = None,
+        created: datetime | None = None,
+        skip_flag_check: bool | None = False,
     ) -> LedgerTransaction:
         """
         Pay a user into their wallet balance. There is no fee here. There
@@ -1433,8 +1436,8 @@ class ThlLedgerManager(LedgerManager):
         amount: Decimal,
         ref_uuid: UUIDStr,
         description: str,
-        source_account: Optional[LedgerAccount] = None,
-        created: Optional[datetime] = None,
+        source_account: LedgerAccount | None = None,
+        created: datetime | None = None,
     ) -> LedgerTransaction:
 
         metadata = {
@@ -1477,7 +1480,7 @@ class ThlLedgerManager(LedgerManager):
         self,
         contest_uuid: UUIDStr,
         contest_entry: ContestEntry,
-        skip_flag_check: Optional[bool] = False,
+        skip_flag_check: bool | None = False,
     ) -> LedgerTransaction:
         """
         User is requesting to enter a Raffle Contest. We'll DEBIT
@@ -1525,7 +1528,7 @@ class ThlLedgerManager(LedgerManager):
         amount: USDCent,
         contest_uuid: UUIDStr,
         tag: str,
-        created: Optional[datetime] = None,
+        created: datetime | None = None,
     ) -> LedgerTransaction:
         description = f"Enter contest {amount.to_usd_str()} {contest_uuid}"
         metadata = {
@@ -1562,7 +1565,7 @@ class ThlLedgerManager(LedgerManager):
     def create_tx_contest_close(
         self,
         contest: Contest,
-        skip_flag_check: Optional[bool] = False,
+        skip_flag_check: bool | None = False,
     ) -> LedgerTransaction:
         """
         Contest is over. For each winner, we make a transaction.
@@ -1695,10 +1698,10 @@ class ThlLedgerManager(LedgerManager):
 
     def create_tx_contest_close_(
         self,
-        entries: List[LedgerEntry],
+        entries: list[LedgerEntry],
         contest_uuid: UUIDStr,
         tag: str,
-        created: Optional[datetime] = None,
+        created: datetime | None = None,
     ) -> LedgerTransaction:
         description = f"Close contest {contest_uuid}"
         metadata = {
@@ -1716,8 +1719,8 @@ class ThlLedgerManager(LedgerManager):
     def create_tx_milestone_winner(
         self,
         contest: MilestoneContest,
-        winners: List["ContestWinner"],
-        skip_flag_check: Optional[bool] = False,
+        winners: list["ContestWinner"],
+        skip_flag_check: bool | None = False,
     ) -> LedgerTransaction:
         """
         A user has reached a milestone. Pay out any cash or physical prizes,
@@ -1796,11 +1799,11 @@ class ThlLedgerManager(LedgerManager):
 
     def create_tx_milestone_winner_(
         self,
-        entries: List[LedgerEntry],
+        entries: list[LedgerEntry],
         contest_uuid: UUIDStr,
         user_uuid: UUIDStr,
         tag: str,
-        created: Optional[datetime] = None,
+        created: datetime | None = None,
     ) -> LedgerTransaction:
         description = f"Milestone award {contest_uuid}"
         metadata = {
@@ -1817,7 +1820,7 @@ class ThlLedgerManager(LedgerManager):
         )
 
     def get_user_wallet_balance(
-        self, user: User, since_days_ago: Optional[int] = None
+        self, user: User, since_days_ago: int | None = None
     ) -> int:
         """
         Calculates all payments to user's wallet minus all payouts from
@@ -1932,11 +1935,11 @@ class ThlLedgerManager(LedgerManager):
     def get_user_txs(
         self,
         user: User,
-        time_start: Optional[datetime] = None,
-        time_end: Optional[datetime] = None,
+        time_start: datetime | None = None,
+        time_end: datetime | None = None,
         page: int = 1,
         size: int = 50,
-        order_by: Optional[str] = "created,tag",
+        order_by: str | None = "created,tag",
     ) -> UserLedgerTransactions:
         user.prefetch_product(self.pg_config)
         user_account = self.get_account_or_create_user_wallet(user)

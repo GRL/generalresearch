@@ -1,4 +1,6 @@
-from typing import Collection, Dict
+from __future__ import annotations
+
+from collections.abc import Collection
 
 from generalresearch.managers.base import Permission, PostgresManager
 from generalresearch.models.custom_types import UUIDStr
@@ -13,11 +15,11 @@ class CategoryManager(PostgresManager):
     def __init__(
         self,
         pg_config: PostgresConfig,
-        permissions: Collection[Permission] = None,
+        permissions: Collection[Permission] | None = None,
     ):
         super().__init__(pg_config=pg_config, permissions=permissions)
-        self.categories: Dict[UUIDStr, Category] = dict()
-        self.category_label_map: Dict[str, Category] = dict()
+        self.categories: dict[UUIDStr, Category] = dict()
+        self.category_label_map: dict[str, Category] = dict()
         self.populate_caches()
 
     def populate_caches(self):

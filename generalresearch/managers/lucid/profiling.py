@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import json
-from typing import Collection, List, Optional, Tuple
+from collections.abc import Collection
 
 from pydantic import ValidationError
 
@@ -10,11 +12,11 @@ from generalresearch.sql_helper import SqlHelper
 
 def get_profiling_library(
     sql_helper: SqlHelper,
-    country_iso: Optional[str] = None,
-    language_iso: Optional[str] = None,
-    question_ids: Optional[Collection[str]] = None,
-    pks: Optional[Collection[Tuple[str | int, str, str]]] = None,
-) -> List[LucidQuestion]:
+    country_iso: str | None = None,
+    language_iso: str | None = None,
+    question_ids: Collection[str] | None = None,
+    pks: Collection[tuple[str | int, str, str]] | None = None,
+) -> list[LucidQuestion]:
     """
     Accepts lots of optional filters.
 

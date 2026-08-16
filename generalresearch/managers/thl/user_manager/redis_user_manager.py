@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 import redis
 from pydantic import RedisDsn
@@ -10,8 +10,8 @@ class RedisUserManager:
     def __init__(
         self,
         redis_dsn: RedisDsn,
-        cache_prefix: Optional[str] = None,
-        redis_timeout: Optional[float] = None,
+        cache_prefix: str | None = None,
+        redis_timeout: float | None = None,
     ):
         self.redis = redis_dsn
         self.redis_timeout = redis_timeout if redis_timeout else 0.10
@@ -32,11 +32,11 @@ class RedisUserManager:
     def get_user(
         self,
         *,
-        product_id: Optional[str] = None,
-        product_user_id: Optional[str] = None,
-        user_id: Optional[int] = None,
-        user_uuid: Optional[str] = None,
-    ) -> Optional[User]:
+        product_id: str | None = None,
+        product_user_id: str | None = None,
+        user_id: int | None = None,
+        user_uuid: str | None = None,
+    ) -> User | None:
         # assume we did input validation in user_manager.get_user() function
         if user_uuid:
             d = self.client.get(f"{self.cache_prefix}:uuid:{user_uuid}")
@@ -75,8 +75,6 @@ class RedisUserManager:
 
             p.execute()
 
-        return None
-
     def clear_user(self, user: User) -> None:
         # this should only be used by tests
         with self.client.pipeline(transaction=False) as p:
@@ -86,5 +84,3 @@ class RedisUserManager:
                 f"{self.cache_prefix}:ubp:{user.product_id}:{user.product_user_id}"
             )
             p.execute()
-
-        return None

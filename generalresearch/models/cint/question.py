@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import json
 from datetime import datetime, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -48,7 +50,7 @@ class CintQuestionType(str, Enum):
 
 class CintUserQuestionAnswer(MarketplaceUserQuestionAnswer):
     question_id: CintQuestionIdType = Field()
-    question_type: Optional[CintQuestionType] = Field(default=None)
+    question_type: CintQuestionType | None = Field(default=None)
     # Did this answer come from us asking, or was it passed back from the marketplace
     from_thl: bool = Field(default=True)
 
@@ -89,11 +91,11 @@ class CintQuestion(MarketplaceQuestion):
         frozen=True,
         examples=[CintQuestionType.MULTI_SELECT],
     )
-    options: Optional[List[CintQuestionOption]] = Field(
+    options: list[CintQuestionOption] | None = Field(
         default=None, min_length=1, frozen=True
     )
     option_mask: str = Field(examples=["000000000000000000"])
-    classification_code: Optional[str] = Field(examples=["ELE"], default=None)
+    classification_code: str | None = Field(examples=["ELE"], default=None)
     # This comes from the API! not us
     created_at: AwareDatetimeISO = Field(description="Called create_date in API")
 
@@ -104,7 +106,7 @@ class CintQuestion(MarketplaceQuestion):
         return self.question_id
 
     @field_validator("question_name", "question_text", mode="after")
-    def remove_nbsp(cls, s: Optional[str]) -> Optional[str]:
+    def remove_nbsp(cls, s: str | None) -> str | None:
         return string_utils.remove_nbsp(s)
 
     @model_validator(mode="after")
@@ -124,8 +126,8 @@ class CintQuestion(MarketplaceQuestion):
     @field_validator("options")
     @classmethod
     def order_options(
-        cls, options: Optional[List[CintQuestionOption]]
-    ) -> Optional[List[CintQuestionOption]]:
+        cls, options: list[CintQuestionOption] | None
+    ) -> list[CintQuestionOption] | None:
         if options:
             options.sort(key=lambda x: x.order)
 
@@ -134,8 +136,8 @@ class CintQuestion(MarketplaceQuestion):
     @field_validator("options")
     @classmethod
     def validate_options(
-        cls, options: Optional[List[CintQuestionOption]]
-    ) -> Optional[List[CintQuestionOption]]:
+        cls, options: list[CintQuestionOption] | None
+    ) -> list[CintQuestionOption] | None:
         if options:
             ids = {x.id for x in options}
             assert len(ids) == len(options), "options.id must be unique"
@@ -145,7 +147,7 @@ class CintQuestion(MarketplaceQuestion):
         return options
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any], country_iso: str, language_iso: str) -> Self:
+    def from_api(cls, d: dict[str, Any], country_iso: str, language_iso: str) -> Self:
         options = None
         created_at = datetime.strptime(
             d["create_date"], "%Y-%m-%dT%H:%M:%S%z"
@@ -178,7 +180,7 @@ class CintQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> Self:
+    def from_db(cls, d: dict[str, Any]) -> Self:
         options = None
         if d["options"]:
             options = [
@@ -203,7 +205,7 @@ class CintQuestion(MarketplaceQuestion):
             category_id=UUID(d["category_id"]).hex if d["category_id"] else None,
         )
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json")
         d["options"] = json.dumps(d["options"])
         if self.created_at:

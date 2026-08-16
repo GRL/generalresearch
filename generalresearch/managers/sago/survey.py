@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Collection
 from datetime import datetime, timezone
-from typing import Collection, List, Optional, Set
 
 import pymysql
 from pymysql import IntegrityError
@@ -47,13 +47,13 @@ class SagoSurveyManager(SurveyManager):
 
     def get_survey_library(
         self,
-        country_iso: Optional[str] = None,
-        language_iso: Optional[str] = None,
-        survey_ids: Optional[Collection[str]] = None,
-        is_live: Optional[bool] = None,
-        updated_since: Optional[datetime] = None,
-        exclude_fields: Optional[Set[str]] = None,
-    ) -> List[SagoSurvey]:
+        country_iso: str | None = None,
+        language_iso: str | None = None,
+        survey_ids: Collection[str] | None = None,
+        is_live: bool | None = None,
+        updated_since: datetime | None = None,
+        exclude_fields: set[str] | None = None,
+    ) -> list[SagoSurvey]:
         """
         Accepts lots of optional filters.
 
@@ -121,7 +121,7 @@ class SagoSurveyManager(SurveyManager):
         )
         return True
 
-    def update(self, surveys: List[SagoSurvey]) -> bool:
+    def update(self, surveys: list[SagoSurvey]) -> bool:
         now = datetime.now(tz=timezone.utc)
         update_fields = self.SURVEY_FIELDS + ["updated"]
 
@@ -155,7 +155,7 @@ class SagoSurveyManager(SurveyManager):
             raise ValueError("this should never happen")
         return True
 
-    def create_or_update(self, surveys: List[SagoSurvey]):
+    def create_or_update(self, surveys: list[SagoSurvey]) -> None:
         surveys = {s.survey_id: s for s in surveys}
         sns = set(surveys.keys())
         existing_sns = {
@@ -182,5 +182,3 @@ class SagoSurveyManager(SurveyManager):
                     raise e
 
         self.update([surveys[sn] for sn in existing_sns])
-
-        return None

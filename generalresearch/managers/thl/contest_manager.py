@@ -1,5 +1,8 @@
+from __future__ import annotations
+
+from collections.abc import Collection
 from datetime import datetime, timezone
-from typing import Any, Collection, Dict, List, Literal, Optional, Tuple, cast
+from typing import Any, Literal, cast
 from uuid import UUID
 
 import redis
@@ -163,7 +166,7 @@ class ContestBaseManager(PostgresManager):
         d = res[0]
         return model_cls[d["contest_type"]].model_validate_mysql(d)
 
-    def get_if_exists(self, contest_uuid: UUIDStr) -> Optional[Contest]:
+    def get_if_exists(self, contest_uuid: UUIDStr) -> Contest | None:
         try:
             return self.get(contest_uuid=contest_uuid)
 
@@ -174,15 +177,15 @@ class ContestBaseManager(PostgresManager):
 
     @staticmethod
     def make_filter_str(
-        product_id: Optional[str] = None,
-        status: Optional[ContestStatus] = None,
-        contest_type: Optional[ContestType] = None,
-        starts_at_before: Optional[datetime | bool] = None,
-        name: Optional[str] = None,
-        name_contains: Optional[str] = None,
-        uuids: Optional[Collection[str]] = None,
-        has_participants: Optional[bool] = None,
-    ) -> Tuple[str, Dict[str, Any]]:
+        product_id: str | None = None,
+        status: ContestStatus | None = None,
+        contest_type: ContestType | None = None,
+        starts_at_before: datetime | bool | None = None,
+        name: str | None = None,
+        name_contains: str | None = None,
+        uuids: Collection[str] | None = None,
+        has_participants: bool | None = None,
+    ) -> tuple[str, dict[str, Any]]:
         filters = []
         params = dict()
 
@@ -225,18 +228,18 @@ class ContestBaseManager(PostgresManager):
 
     def get_many(
         self,
-        product_id: Optional[str] = None,
-        status: Optional[ContestStatus] = None,
-        contest_type: Optional[ContestType] = None,
-        starts_at_before: Optional[datetime | bool] = None,
-        name: Optional[str] = None,
-        name_contains: Optional[str] = None,
-        uuids: Optional[Collection[str]] = None,
-        has_participants: Optional[bool] = None,
-        page: Optional[int] = None,
-        size: Optional[int] = None,
+        product_id: str | None = None,
+        status: ContestStatus | None = None,
+        contest_type: ContestType | None = None,
+        starts_at_before: datetime | bool | None = None,
+        name: str | None = None,
+        name_contains: str | None = None,
+        uuids: Collection[str] | None = None,
+        has_participants: bool | None = None,
+        page: int | None = None,
+        size: int | None = None,
         include_winners: bool = True,
-    ) -> List[Contest]:
+    ) -> list[Contest]:
 
         filter_str, params = self.make_filter_str(
             product_id=product_id,
@@ -310,35 +313,35 @@ class ContestBaseManager(PostgresManager):
 
     def get_many_by_user_eligible_raffle(
         self, user: User, country_iso: str
-    ) -> List[RaffleUserView]:
+    ) -> list[RaffleUserView]:
         # Seems like this is a known pycharm bug. Doing it this way to be explicit.
         # https://youtrack.jetbrains.com/issue/PY-42473/Type-inference-broken-for-Literal-with-Enum
         cs = self.get_many_by_user_eligible(
             user=user, country_iso=country_iso, contest_type=ContestType.RAFFLE
         )
-        return cast(List[RaffleUserView], cs)
+        return cast(list[RaffleUserView], cs)
 
     def get_many_by_user_eligible_milestone(
         self,
         user: User,
         country_iso: str,
-        entry_trigger: Optional[ContestEntryTrigger] = None,
-    ) -> List[MilestoneUserView]:
+        entry_trigger: ContestEntryTrigger | None = None,
+    ) -> list[MilestoneUserView]:
         cs = self.get_many_by_user_eligible(
             user=user,
             country_iso=country_iso,
             contest_type=ContestType.MILESTONE,
             entry_trigger=entry_trigger,
         )
-        return cast(List[MilestoneUserView], cs)
+        return cast(list[MilestoneUserView], cs)
 
     def get_many_by_user_eligible(
         self,
         user: User,
         country_iso: str,
-        contest_type: Optional[ContestType] = None,
-        entry_trigger: Optional[ContestEntryTrigger] = None,
-    ) -> List[ContestUserView]:
+        contest_type: ContestType | None = None,
+        entry_trigger: ContestEntryTrigger | None = None,
+    ) -> list[ContestUserView]:
         # Get by product_id, and status OPEN. Then we have to filter in python.
         #   (could also add country filter into mysql)
         assert user.user_id, "invalid user"
@@ -387,9 +390,9 @@ class ContestBaseManager(PostgresManager):
     def get_many_by_user_entered(
         self,
         user: User,
-        limit: Optional[PositiveInt] = 100,
+        limit: PositiveInt | None = 100,
         order_by: Literal["recent_enter", "ending_soon"] = "recent_enter",
-    ) -> List[ContestUserView]:
+    ) -> list[ContestUserView]:
         """
         This sets the user_contest_info field as well, which calculates the
         user's entry count and win percentages.
@@ -445,8 +448,8 @@ class ContestBaseManager(PostgresManager):
     def get_many_by_user_won(
         self,
         user: User,
-        limit: Optional[PositiveInt] = 100,
-    ) -> List[ContestUserView]:
+        limit: PositiveInt | None = 100,
+    ) -> list[ContestUserView]:
         """
         This sets the user_contest_info field as well, which calculates the
         user's entry count and win percentages.
@@ -493,7 +496,7 @@ class ContestBaseManager(PostgresManager):
         return res
 
     @staticmethod
-    def parse_user_from_row(d: Dict):
+    def parse_user_from_row(d: dict):
         return User(
             uuid=UUID(d["user_uuid"]).hex,
             user_id=d["user_id"],
@@ -501,7 +504,7 @@ class ContestBaseManager(PostgresManager):
             product_id=UUID(d["product_id"]).hex,
         )
 
-    def get_winnings_by_user(self, user: User) -> List[ContestWinner]:
+    def get_winnings_by_user(self, user: User) -> list[ContestWinner]:
         assert user.user_id, "invalid user"
         sql_res = self.pg_config.execute_sql_query(
             query=f"""
@@ -530,7 +533,7 @@ class ContestBaseManager(PostgresManager):
 
         return res
 
-    def get_entries_by_contest_id(self, contest_id: PositiveInt) -> List[ContestEntry]:
+    def get_entries_by_contest_id(self, contest_id: PositiveInt) -> list[ContestEntry]:
 
         res = self.pg_config.execute_sql_query(
             query=f"""
@@ -598,7 +601,6 @@ class ContestBaseManager(PostgresManager):
                 assert c.rowcount == 1, "Contest changed during write"
             conn.commit()
         ledger_manager.create_tx_contest_close(contest=contest)
-        return None
 
     def cancel_contest(self, contest: Contest) -> int:
         assert contest.status == ContestStatus.CANCELLED, "status must be cancelled"
@@ -895,7 +897,6 @@ class MilestoneContestManager(ContestBaseManager):
                 )
                 assert c.rowcount == 1, "Contest changed during write"
             conn.commit()
-        return None
 
     def award_milestone_contest(
         self,
@@ -940,7 +941,6 @@ class MilestoneContestManager(ContestBaseManager):
             conn.commit()
         contest.win_count += win_count
         ledger_manager.create_tx_milestone_winner(contest=contest, winners=winners)
-        return None
 
 
 class LeaderboardContestManager(ContestBaseManager):
@@ -1013,7 +1013,7 @@ class ContestManager(
         ledger_manager: ThlLedgerManager,
         redis_client: Redis,
         user_manager: UserManager,
-    ) -> Dict[str, NonNegativeInt]:
+    ) -> dict[str, NonNegativeInt]:
         # This is an administrative function that we'll run on a schedule,
         # that will check for any open contests, for any BP, that should be
         # closed, and then do it!

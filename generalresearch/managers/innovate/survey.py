@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Collection
 from datetime import datetime, timezone
-from typing import Collection, List, Optional, Set
 
 import pymysql
 from pymysql import IntegrityError
@@ -63,13 +63,13 @@ class InnovateSurveyManager(SurveyManager):
 
     def get_survey_library(
         self,
-        country_iso: Optional[str] = None,
-        language_iso: Optional[str] = None,
-        survey_ids: Optional[Collection[str]] = None,
-        is_live: Optional[bool] = None,
-        updated_since: Optional[datetime] = None,
-        exclude_fields: Optional[Set[str]] = None,
-    ) -> List[InnovateSurvey]:
+        country_iso: str | None = None,
+        language_iso: str | None = None,
+        survey_ids: Collection[str] | None = None,
+        is_live: bool | None = None,
+        updated_since: datetime | None = None,
+        exclude_fields: set[str] | None = None,
+    ) -> list[InnovateSurvey]:
         """
         Accepts lots of optional filters.
         :param country_iso: filters on country_iso field
@@ -141,7 +141,7 @@ class InnovateSurveyManager(SurveyManager):
         )
         return True
 
-    def update(self, surveys: List[InnovateSurvey]) -> bool:
+    def update(self, surveys: list[InnovateSurvey]) -> bool:
         now = datetime.now(tz=timezone.utc)
         update_fields = self.SURVEY_FIELDS + ["updated"]
 
@@ -155,7 +155,7 @@ class InnovateSurveyManager(SurveyManager):
 
         return True
 
-    def create_or_update(self, surveys: List[InnovateSurvey]) -> None:
+    def create_or_update(self, surveys: list[InnovateSurvey]) -> None:
         surveys = {s.survey_id: s for s in surveys}
         sns = set(surveys.keys())
         existing_sns = {
@@ -181,5 +181,3 @@ class InnovateSurveyManager(SurveyManager):
                 else:
                     raise e
         self.update([surveys[sn] for sn in existing_sns])
-
-        return None

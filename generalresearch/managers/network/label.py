@@ -1,8 +1,10 @@
-from datetime import datetime, timezone, timedelta
-from typing import Collection, Optional, List
+from __future__ import annotations
+
+from collections.abc import Collection
+from datetime import datetime, timedelta, timezone
 
 from psycopg import sql
-from pydantic import TypeAdapter, IPvAnyNetwork
+from pydantic import IPvAnyNetwork, TypeAdapter
 
 from generalresearch.managers.base import PostgresManager
 from generalresearch.models.custom_types import (
@@ -15,8 +17,7 @@ from generalresearch.models.network.label import IPLabel, IPLabelKind, IPLabelSo
 
 class IPLabelManager(PostgresManager):
     def create(self, ip_label: IPLabel) -> IPLabel:
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
         INSERT INTO network_iplabel (
             ip, labeled_at, created_at,
             label_kind, source, confidence,
@@ -25,8 +26,7 @@ class IPLabelManager(PostgresManager):
             %(ip)s, %(labeled_at)s, %(created_at)s,
             %(label_kind)s, %(source)s, %(confidence)s,
             %(provider)s, %(metadata)s
-        ) RETURNING id;"""
-        )
+        ) RETURNING id;""")
         params = ip_label.model_dump_postgres()
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
@@ -36,14 +36,14 @@ class IPLabelManager(PostgresManager):
 
     def make_filter_str(
         self,
-        ips: Optional[Collection[IPvAnyNetworkStr]] = None,
-        ip_in_network: Optional[IPvAnyAddressStr] = None,
-        label_kind: Optional[IPLabelKind] = None,
-        source: Optional[IPLabelSource] = None,
-        labeled_at: Optional[AwareDatetimeISO] = None,
-        labeled_after: Optional[AwareDatetimeISO] = None,
-        labeled_before: Optional[AwareDatetimeISO] = None,
-        provider: Optional[str] = None,
+        ips: Collection[IPvAnyNetworkStr] | None = None,
+        ip_in_network: IPvAnyAddressStr | None = None,
+        label_kind: IPLabelKind | None = None,
+        source: IPLabelSource | None = None,
+        labeled_at: AwareDatetimeISO | None = None,
+        labeled_after: AwareDatetimeISO | None = None,
+        labeled_before: AwareDatetimeISO | None = None,
+        provider: str | None = None,
     ):
         filters = []
         params = {}
@@ -85,15 +85,15 @@ class IPLabelManager(PostgresManager):
 
     def filter(
         self,
-        ips: Optional[Collection[IPvAnyNetworkStr]] = None,
-        ip_in_network: Optional[IPvAnyAddressStr] = None,
-        label_kind: Optional[IPLabelKind] = None,
-        source: Optional[IPLabelSource] = None,
-        labeled_at: Optional[AwareDatetimeISO] = None,
-        labeled_after: Optional[AwareDatetimeISO] = None,
-        labeled_before: Optional[AwareDatetimeISO] = None,
-        provider: Optional[str] = None,
-    ) -> List[IPLabel]:
+        ips: Collection[IPvAnyNetworkStr] | None = None,
+        ip_in_network: IPvAnyAddressStr | None = None,
+        label_kind: IPLabelKind | None = None,
+        source: IPLabelSource | None = None,
+        labeled_at: AwareDatetimeISO | None = None,
+        labeled_after: AwareDatetimeISO | None = None,
+        labeled_before: AwareDatetimeISO | None = None,
+        provider: str | None = None,
+    ) -> list[IPLabel]:
         filter_str, params = self.make_filter_str(
             ips=ips,
             ip_in_network=ip_in_network,

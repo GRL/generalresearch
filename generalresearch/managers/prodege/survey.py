@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Collection
 from datetime import datetime, timezone
-from typing import Collection, List, Optional
 
 import pymysql
 
@@ -43,12 +43,12 @@ class ProdegeSurveyManager(SurveyManager):
 
     def get_survey_library(
         self,
-        country_iso: Optional[str] = None,
-        language_iso: Optional[str] = None,
-        survey_ids: Optional[Collection[str]] = None,
-        is_live: Optional[bool] = None,
-        updated_since: Optional[datetime] = None,
-    ) -> List[ProdegeSurvey]:
+        country_iso: str | None = None,
+        language_iso: str | None = None,
+        survey_ids: Collection[str] | None = None,
+        is_live: bool | None = None,
+        updated_since: datetime | None = None,
+    ) -> list[ProdegeSurvey]:
         """
         Accepts lots of optional filters.
 
@@ -113,7 +113,7 @@ class ProdegeSurveyManager(SurveyManager):
         )
         return True
 
-    def update(self, surveys: List[ProdegeSurvey]) -> None:
+    def update(self, surveys: list[ProdegeSurvey]) -> None:
         now = datetime.now(tz=timezone.utc)
 
         # Do to stupidity with bid/actual loi/ir values (see ProdegeSurvey.to_mysql), we now

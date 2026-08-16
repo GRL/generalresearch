@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from datetime import timedelta
-from typing import Set
 
 from pandera import Check, Column, DataFrameSchema, Index
 
@@ -7,7 +8,7 @@ from generalresearch.incite.schemas import ARCHIVE_AFTER
 from generalresearch.locales import Localelator
 from generalresearch.models import Source
 
-COUNTRY_ISOS: Set[str] = Localelator().get_all_countries()
+COUNTRY_ISOS: set[str] = Localelator().get_all_countries()
 kosovo = "xk"
 COUNTRY_ISOS.add(kosovo)
 

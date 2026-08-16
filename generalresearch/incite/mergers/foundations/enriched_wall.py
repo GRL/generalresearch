@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal
 
 import dask.dataframe as dd
 import pandas as pd
@@ -39,8 +41,8 @@ class EnrichedWallMergeItem(MergeCollectionItem):
         wall_coll: WallDFCollection,
         session_coll: SessionDFCollection,
         pg_config: PostgresConfig,
-        client: Optional[Client] = None,
-        client_resources: Optional[Dict[str, Any]] = None,
+        client: Client | None = None,
+        client_resources: dict[str, Any] | None = None,
     ) -> None:
 
         ir: pd.Interval = self.interval
@@ -50,7 +52,7 @@ class EnrichedWallMergeItem(MergeCollectionItem):
 
         # Skip which already exist
         if self.has_archive(include_empty=True):
-            return None
+            return
 
         # --- Wall ---
         LOG.warning(f"EnrichedWallMergeItem: get wall_collection")
@@ -59,7 +61,7 @@ class EnrichedWallMergeItem(MergeCollectionItem):
             LOG.warning(f"EnrichedWallMergeItem: no wall items. set_empty.")
             if self.should_archive():
                 self.set_empty()
-            return None
+            return
 
         wdf = wall_coll.ddf(
             items=wall_items,
@@ -85,7 +87,7 @@ class EnrichedWallMergeItem(MergeCollectionItem):
         )
 
         if wdf is None:
-            return None
+            return
 
         wdf = wdf.repartition(npartitions=1)
         wdf = wdf.reset_index(drop=False)
@@ -106,7 +108,7 @@ class EnrichedWallMergeItem(MergeCollectionItem):
 
         if len(session_items) == 0:
             LOG.error(f"EnrichedWallMergeItem: no session items. breaking early.")
-            return None
+            return
 
         sdf = session_coll.ddf(
             items=session_items,
@@ -230,8 +232,8 @@ class EnrichedWallMerge(MergeCollection):
         self,
         rr: "ReportRequest",
         client: Client,
-        product_ids: Optional[List[UUIDStr]] = None,
-        user: Optional[User] = None,
+        product_ids: list[UUIDStr] | None = None,
+        user: User | None = None,
     ) -> pd.DataFrame:
         """We don't have the concept of a Team yet so product_ids will be a list"""
 

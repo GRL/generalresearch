@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import json
 from collections import defaultdict
+from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
-from typing import Any, Collection, Dict, List, Optional, Set, Tuple, Union
+from typing import Any
 from uuid import UUID
 
 from psycopg import Cursor
@@ -29,8 +32,8 @@ class UserUpkManager(PostgresManagerWithRedis):
         self,
         pg_config: PostgresConfig,
         redis_config: RedisConfig,
-        permissions: Collection[Permission] = None,
-        cache_prefix: Optional[str] = None,
+        permissions: Collection[Permission] | None = None,
+        cache_prefix: str | None = None,
     ):
         super().__init__(
             pg_config=pg_config,
@@ -42,9 +45,8 @@ class UserUpkManager(PostgresManagerWithRedis):
 
     def clear_upk_cache(self, user_id: int) -> None:
         self.redis_client.delete(f"thl-grpc:user-upk:{user_id}")
-        return None
 
-    def get_user_upk(self, user_id: int) -> List[UpkQuestionAnswer]:
+    def get_user_upk(self, user_id: int) -> list[UpkQuestionAnswer]:
         res = self.redis_client.get(f"thl-grpc:user-upk:{user_id}")
         if res:
             return [UpkQuestionAnswer.model_validate(x) for x in json.loads(res)]
@@ -53,7 +55,7 @@ class UserUpkManager(PostgresManagerWithRedis):
         self.redis_client.set(f"thl-grpc:user-upk:{user_id}", value, ex=60 * 60 * 24)
         return res
 
-    def get_user_upk_mysql(self, user_id: int) -> List[UpkQuestionAnswer]:
+    def get_user_upk_mysql(self, user_id: int) -> list[UpkQuestionAnswer]:
         since = datetime.now(tz=timezone.utc) - timedelta(days=89)
 
         query = """
@@ -119,11 +121,11 @@ class UserUpkManager(PostgresManagerWithRedis):
 
     def get_user_upk_simple(
         self, user_id: PositiveInt, country_iso: str = "us"
-    ) -> Dict[str, Union[Set[str], str, float]]:
+    ) -> dict[str, set[str] | str | float]:
 
         res = self.get_user_upk(user_id=user_id)
         res = [x for x in res if x.country_iso == country_iso]
-        d: Dict[str, Union[Set[str], str, float]] = defaultdict(set)
+        d: dict[str, set[str] | str | float] = defaultdict(set)
         for x in res:
             if x.cardinality == Cardinality.ZERO_OR_ONE:
                 d[x.property_label] = x.value
@@ -134,7 +136,7 @@ class UserUpkManager(PostgresManagerWithRedis):
 
     def get_age_gender(
         self, user_id: PositiveInt, country_iso: str = "us"
-    ) -> Tuple[Optional[int], Optional[str]]:
+    ) -> tuple[int | None, str | None]:
 
         # Returns an integer year for age, and {'male', 'female', 'other_gender'}
         d = self.get_user_upk_simple(user_id, country_iso)
@@ -145,14 +147,14 @@ class UserUpkManager(PostgresManagerWithRedis):
         gender = d.get("gender")
         return age, gender
 
-    def get_upk_schema(self, country_iso: str) -> List[UpkProperty]:
+    def get_upk_schema(self, country_iso: str) -> list[UpkProperty]:
         return self.upk_schema_manager.get_props_info_for_country(
             country_iso=country_iso
         )
 
     def populate_user_upk_from_dict(
-        self, upk_ans_dict: List[Dict[str, Any]]
-    ) -> List[UpkQuestionAnswer]:
+        self, upk_ans_dict: list[dict[str, Any]]
+    ) -> list[UpkQuestionAnswer]:
 
         country_isos = {x["country_iso"] for x in upk_ans_dict}
         assert len(country_isos) == 1
@@ -193,7 +195,7 @@ class UserUpkManager(PostgresManagerWithRedis):
         upk_ans = [UpkQuestionAnswer.model_validate(x) for x in upk_ans_dict]
         return upk_ans
 
-    def upsert_user_profile_knowledge(self, c: Cursor, row: UpkQuestionAnswer):
+    def upsert_user_profile_knowledge(self, c: Cursor, row: UpkQuestionAnswer) -> None:
         prop_type_table = {
             PropertyType.UPK_ITEM: "marketplace_userprofileknowledgeitem",
             PropertyType.UPK_NUMERICAL: "marketplace_userprofileknowledgenumerical",
@@ -244,7 +246,7 @@ class UserUpkManager(PostgresManagerWithRedis):
 
     def upsert_user_profile_knowledge_multi_item(
         self, c: Cursor, row: UpkQuestionAnswer
-    ):
+    ) -> None:
         args = row.model_dump_mysql()
 
         c.execute(
@@ -299,9 +301,7 @@ class UserUpkManager(PostgresManagerWithRedis):
             args,
         )
 
-        return None
-
-    def set_user_upk(self, upk_ans: List[UpkQuestionAnswer]):
+    def set_user_upk(self, upk_ans: list[UpkQuestionAnswer]) -> None:
         user_id = {x.user_id for x in upk_ans}
         assert len(user_id) == 1, "only run for 1 user at a time"
         user_id = list(user_id)[0]

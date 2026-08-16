@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
+from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
-from typing import Collection, List, Optional
 
 from generalresearch.managers.base import PostgresManagerWithRedis
 from generalresearch.models.thl.profiling.user_question_answer import (
@@ -25,7 +27,7 @@ class UQAManager(PostgresManagerWithRedis):
     def update_cache(
         self,
         user: User,
-        uqas: List[UserQuestionAnswer],
+        uqas: list[UserQuestionAnswer],
     ):
         """
         Adds new answers to the redis cache for this user. If the cache
@@ -82,8 +84,8 @@ class UQAManager(PostgresManagerWithRedis):
 
     def _dedupe_and_clean_uqas(
         self,
-        uqas: List[UserQuestionAnswer],
-    ) -> List[UserQuestionAnswer]:
+        uqas: list[UserQuestionAnswer],
+    ) -> list[UserQuestionAnswer]:
         # Remove anything older than 30 days
         uqas = [uqa for uqa in uqas if not uqa.is_stale()]
 
@@ -98,14 +100,14 @@ class UQAManager(PostgresManagerWithRedis):
 
         return sorted(new_uqas, key=lambda x: x.timestamp, reverse=True)
 
-    def get(self, user: User) -> List[UserQuestionAnswer]:
+    def get(self, user: User) -> list[UserQuestionAnswer]:
         uqas = self.get_from_cache(user=user)
 
         if uqas is None:
             uqas = self.recreate_cache(user)
         return self._dedupe_and_clean_uqas(uqas)
 
-    def get_from_cache(self, user: User) -> Optional[List[UserQuestionAnswer]]:
+    def get_from_cache(self, user: User) -> list[UserQuestionAnswer] | None:
         redis_key = self.redis_key(user)
 
         # Do the exists check and the list retrieval in a single transaction
@@ -123,7 +125,7 @@ class UQAManager(PostgresManagerWithRedis):
         logger.info(f"{redis_key} exists")
         return uqas
 
-    def get_from_db(self, user: User) -> List[UserQuestionAnswer]:
+    def get_from_db(self, user: User) -> list[UserQuestionAnswer]:
         logger.info(f"get_uqa_from_db: {user.user_id}")
         # Only store the latest row per question_id. We don't need it multiple times.
         since = datetime.now(tz=timezone.utc) - timedelta(days=30)
@@ -174,14 +176,12 @@ class UQAManager(PostgresManagerWithRedis):
         redis_key = f"thl-grpc:user-demographics:{user.user_id}"
         self.redis_client.delete(redis_key)
 
-        return None
-
     def create(
         self,
         user: User,
-        uqas: List[UserQuestionAnswer],
-        session_id: Optional[str] = None,
-    ):
+        uqas: list[UserQuestionAnswer],
+        session_id: str | None = None,
+    ) -> None:
         for uqa in uqas:
             if uqa.user_id is None:
                 uqa.user_id = user.user_id
@@ -189,11 +189,10 @@ class UQAManager(PostgresManagerWithRedis):
                 assert uqa.user_id == user.user_id
         self.create_in_db(uqas=uqas, session_id=session_id)
         self.update_cache(user=user, uqas=uqas)
-        return None
 
     def create_in_db(
-        self, uqas: List[UserQuestionAnswer], session_id: Optional[str] = None
-    ):
+        self, uqas: list[UserQuestionAnswer], session_id: str | None = None
+    ) -> None:
         values = [uqa.model_dump_mysql(session_id=session_id) for uqa in uqas]
         query = """
         INSERT INTO marketplace_userquestionanswer
@@ -208,4 +207,3 @@ class UQAManager(PostgresManagerWithRedis):
             with conn.cursor() as c:
                 c.executemany(query=query, params_seq=values)
             conn.commit()
-        return None

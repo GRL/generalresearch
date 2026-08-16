@@ -1,5 +1,7 @@
+from __future__ import annotations
+
+from collections.abc import Collection
 from datetime import datetime, timezone
-from typing import Collection, Dict, List, Optional
 
 from generalresearch.managers.base import Permission, PostgresManager
 from generalresearch.models import Source
@@ -12,12 +14,12 @@ class BuyerManager(PostgresManager):
     def __init__(
         self,
         pg_config: PostgresConfig,
-        permissions: Collection[Permission] = None,
+        permissions: Collection[Permission] | None = None,
     ):
         super().__init__(pg_config=pg_config, permissions=permissions)
         # self.buyer_pk: Dict[Buyer, int] = dict()
-        self.source_code_buyer: Dict[str, Buyer] = dict()
-        self.source_code_pk: Dict[str, int] = dict()
+        self.source_code_buyer: dict[str, Buyer] = dict()
+        self.source_code_pk: dict[str, int] = dict()
         self.populate_caches()
 
     def populate_caches(self):
@@ -36,13 +38,13 @@ class BuyerManager(PostgresManager):
     def get(self, source: Source, code: str) -> Buyer:
         return self.source_code_buyer[f"{source.value}:{code}"]
 
-    def get_if_exists(self, source: Source, code: str) -> Optional[Buyer]:
+    def get_if_exists(self, source: Source, code: str) -> Buyer | None:
         try:
             return self.get(source=source, code=code)
         except KeyError:
             return None
 
-    def bulk_get_or_create(self, source: Source, codes: Collection[str]) -> List[Buyer]:
+    def bulk_get_or_create(self, source: Source, codes: Collection[str]) -> list[Buyer]:
         now = datetime.now(tz=timezone.utc)
         buyers = []
         params_seq = []
@@ -111,5 +113,3 @@ class BuyerManager(PostgresManager):
             else:
                 buyer.id = pk
             conn.commit()
-
-        return None

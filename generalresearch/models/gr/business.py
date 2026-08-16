@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pandas as pd
@@ -76,7 +76,7 @@ class BusinessBankAccount(BaseModel):
         json_encoders={TransferMethod: lambda tm: tm.value},
     )
 
-    id: SkipJsonSchema[Optional[PositiveInt]] = Field(default=None)
+    id: SkipJsonSchema[PositiveInt | None] = Field(default=None)
     uuid: UUIDStrCoerce = Field(examples=[uuid4().hex])
 
     business_id: PositiveInt = Field()
@@ -84,7 +84,7 @@ class BusinessBankAccount(BaseModel):
     # 'business' is a Class with values that are fetched from the DB.
     #   Initialization is deferred until it is actually needed
     #   (see .prefetch_business())
-    business: SkipJsonSchema[Optional["Business"]] = Field(default=None)
+    business: SkipJsonSchema["Business" | None] = Field(default=None)
 
     transfer_method: TransferMethod = Field(
         description=TransferMethod.as_openapi(),
@@ -92,14 +92,14 @@ class BusinessBankAccount(BaseModel):
     )
 
     # ACH requirements
-    account_number: Optional[str] = Field(
+    account_number: str | None = Field(
         default=None,
         max_length=16,
         description="ACH requirements",
         examples=[f"{'*' * 9}1234"],
     )
 
-    routing_number: Optional[str] = Field(
+    routing_number: str | None = Field(
         default=None,
         max_length=9,
         description="ACH requirements",
@@ -107,13 +107,13 @@ class BusinessBankAccount(BaseModel):
     )
 
     # Wire requirements
-    iban: Optional[str] = Field(
+    iban: str | None = Field(
         default=None,
         max_length=50,
         description="Wire requirements",
         examples=[None],
     )
-    swift: Optional[str] = Field(
+    swift: str | None = Field(
         default=None,
         max_length=50,
         description="Wire requirements",
@@ -133,20 +133,16 @@ class BusinessBankAccount(BaseModel):
 class BusinessAddress(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    id: SkipJsonSchema[Optional[PositiveInt]] = Field(default=None)
+    id: SkipJsonSchema[PositiveInt | None] = Field(default=None)
     uuid: UUIDStrCoerce = Field(examples=[uuid4().hex])
 
-    line_1: Optional[str] = Field(
-        default=None, max_length=255, examples=["540 Mariposa"]
-    )
+    line_1: str | None = Field(default=None, max_length=255, examples=["540 Mariposa"])
 
-    line_2: Optional[str] = Field(default=None, max_length=255, examples=[None])
+    line_2: str | None = Field(default=None, max_length=255, examples=[None])
 
-    city: Optional[str] = Field(
-        default=None, max_length=255, examples=["Mountain View"]
-    )
+    city: str | None = Field(default=None, max_length=255, examples=["Mountain View"])
 
-    state: Optional[str] = Field(
+    state: str | None = Field(
         default=None,
         max_length=255,
         description="This can only be more than len=2 if it's a state or"
@@ -154,11 +150,11 @@ class BusinessAddress(BaseModel):
         examples=["CA"],
     )
 
-    postal_code: Optional[str] = Field(default=None, max_length=12, examples=["94041"])
+    postal_code: str | None = Field(default=None, max_length=12, examples=["94041"])
 
-    phone_number: Optional[PhoneNumber] = Field(default=None)
+    phone_number: PhoneNumber | None = Field(default=None)
 
-    country: Optional[str] = Field(default=None, max_length=2, examples=["US"])
+    country: str | None = Field(default=None, max_length=2, examples=["US"])
 
     business_id: PositiveInt = Field()
 
@@ -166,10 +162,10 @@ class BusinessAddress(BaseModel):
 class BusinessContact(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    name: Optional[str] = Field(default=None)
-    email: Optional[str] = Field(default=None)
+    name: str | None = Field(default=None)
+    email: str | None = Field(default=None)
 
-    phone_number: Optional[str] = Field(
+    phone_number: str | None = Field(
         default=None,
         min_length=10,
         max_length=31,
@@ -182,7 +178,7 @@ class Business(BaseModel):
 
     model_config = ConfigDict(extra="ignore")
 
-    id: SkipJsonSchema[Optional[PositiveInt]] = Field(default=None)
+    id: SkipJsonSchema[PositiveInt | None] = Field(default=None)
     uuid: UUIDStrCoerce = Field(examples=[uuid4().hex])
 
     name: str = Field(
@@ -197,23 +193,23 @@ class Business(BaseModel):
         examples=[BusinessType.COMPANY.value],
     )
 
-    tax_number: Optional[str] = Field(default=None, max_length=20)
-    contact: Optional["BusinessContact"] = Field(default=None)
+    tax_number: str | None = Field(default=None, max_length=20)
+    contact: "BusinessContact" | None = Field(default=None)
 
     # Initialization is deferred until it is actually needed
     # (see .prefetch_***())
-    addresses: Optional[List["BusinessAddress"]] = Field(default=None)
-    teams: Optional[List["Team"]] = Field(default=None)
-    products: Optional[List["Product"]] = Field(default=None)
-    bank_accounts: Optional[List["BusinessBankAccount"]] = Field(default=None)
+    addresses: list["BusinessAddress"] | None = Field(default=None)
+    teams: list["Team"] | None = Field(default=None)
+    products: list["Product"] | None = Field(default=None)
+    bank_accounts: list["BusinessBankAccount"] | None = Field(default=None)
 
     # Initialization is deferred until unless it's called
     # (see .prebuild_***())
-    balance: Optional["BusinessBalances"] = Field(default=None, name="Business Balance")
+    balance: "BusinessBalances" | None = Field(default=None, name="Business Balance")
 
-    payouts_total_str: Optional[str] = Field(default=None)
-    payouts_total: Optional[USDCent] = Field(default=None)
-    payouts: Optional[List[BusinessPayoutEvent]] = Field(
+    payouts_total_str: str | None = Field(default=None)
+    payouts_total: USDCent | None = Field(default=None)
+    payouts: list[BusinessPayoutEvent] | None = Field(
         default=None,
         name="Business Payouts",
         description="These are the ACH or Wire payments that were sent to the"
@@ -221,8 +217,8 @@ class Business(BaseModel):
         "child Products",
     )
 
-    pop_financial: Optional[List[POPFinancial]] = Field(default=None)
-    bp_accounts: Optional[List[LedgerAccount]] = Field(default=None)
+    pop_financial: list[POPFinancial] | None = Field(default=None)
+    bp_accounts: list[LedgerAccount] | None = Field(default=None)
 
     def __str__(self) -> str:
         return (
@@ -327,8 +323,8 @@ class Business(BaseModel):
         lm: "LedgerManager",
         ds: "GRLDatasets",
         client: Client,
-        pop_ledger: Optional["PopLedgerMerge"] = None,
-        at_timestamp: Optional[AwareDatetime] = None,
+        pop_ledger: "PopLedgerMerge" | None = None,
+        at_timestamp: AwareDatetime | None = None,
     ) -> None:
         """
         This returns the Business's Balances that are calculated across
@@ -356,7 +352,7 @@ class Business(BaseModel):
 
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
-        accounts: List[LedgerAccount] = lm.get_accounts_if_exists(
+        accounts: list[LedgerAccount] = lm.get_accounts_if_exists(
             qualified_names=(
                 [f"{lm.currency.value}:bp_wallet:{bpid}" for bpid in self.product_uuids]
                 if self.product_uuids
@@ -414,7 +410,7 @@ class Business(BaseModel):
             input_data=df, accounts=accounts, thl_pg_config=thl_pg_config
         )
 
-        return None
+        return
 
     def prebuild_payouts(
         self,
@@ -439,7 +435,7 @@ class Business(BaseModel):
         self.payouts_total = USDCent(sum([po.amount for po in self.payouts]))
         self.payouts_total_str = self.payouts_total.to_usd_str()
 
-        return None
+        return
 
     def prebuild_pop_financial(
         self,
@@ -447,7 +443,7 @@ class Business(BaseModel):
         lm: "LedgerManager",
         ds: "GRLDatasets",
         client: Client,
-        pop_ledger: Optional["PopLedgerMerge"] = None,
+        pop_ledger: "PopLedgerMerge" | None = None,
     ) -> None:
         """This is very similar to the Product POP Financial endpoint; however,
         it returns more than one item for a single time interval. This is
@@ -480,13 +476,13 @@ class Business(BaseModel):
         )
         if ddf is None:
             self.pop_financial = []
-            return None
+            return
 
         df = client.compute(collections=ddf, sync=True)
 
         if df.empty:
             self.pop_financial = []
-            return None
+            return
 
         df = df.groupby(
             [pd.Grouper(key="time_idx", freq=rr.interval), "account_id"]
@@ -502,7 +498,7 @@ class Business(BaseModel):
         ds: "GRLDatasets",
         client: Client,
         mnt_gr_api: Path,
-        enriched_session: Optional["EnrichedSessionMerge"] = None,
+        enriched_session: "EnrichedSessionMerge" | None = None,
     ) -> None:
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
@@ -547,7 +543,7 @@ class Business(BaseModel):
         ds: "GRLDatasets",
         client: Client,
         mnt_gr_api: Path,
-        enriched_wall: Optional["EnrichedWallMerge"] = None,
+        enriched_wall: "EnrichedWallMerge" | None = None,
     ) -> None:
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
@@ -587,7 +583,7 @@ class Business(BaseModel):
         return None
 
     @classmethod
-    def required_fields(cls) -> List[str]:
+    def required_fields(cls) -> list[str]:
         return [
             field_name
             for field_name, field_info in cls.model_fields.items()
@@ -597,7 +593,7 @@ class Business(BaseModel):
     # --- Properties ---
 
     @property
-    def product_uuids(self) -> Optional[List[UUIDStr]]:
+    def product_uuids(self) -> list[UUIDStr] | None:
         if self.products is None:
             LOG.warning("prefetch not run")
             return None
@@ -624,10 +620,10 @@ class Business(BaseModel):
         lm: "LedgerManager",
         thl_lm: "ThlLedgerManager",
         bpem: "BusinessPayoutEventManager",
-        mnt_gr_api: Union[Path, str],
-        pop_ledger: Optional["PopLedgerMerge"] = None,
-        enriched_session: Optional["EnrichedSessionMerge"] = None,
-        enriched_wall: Optional["EnrichedWallMerge"] = None,
+        mnt_gr_api: Path | str,
+        pop_ledger: "PopLedgerMerge" | None = None,
+        enriched_session: "EnrichedSessionMerge" | None = None,
+        enriched_wall: "EnrichedWallMerge" | None = None,
     ) -> None:
         LOG.debug(f"Business.set_cache({self.uuid=})")
 
@@ -700,18 +696,16 @@ class Business(BaseModel):
             enriched_wall=enriched_wall,
         )
 
-        return None
-
     # --- ORM ---
 
     @classmethod
     def from_redis(
         cls,
         uuid: UUIDStr,
-        fields: List[str],
+        fields: list[str],
         gr_redis_config: RedisConfig,
-    ) -> Optional[Self]:
-        keys: List[str] = Business.required_fields() + fields
+    ) -> Self | None:
+        keys: list[str] = Business.required_fields() + fields
 
         if "pop_financial" in keys:
             # We should explicitly pass the pop_financial years we want. By default,
@@ -721,7 +715,7 @@ class Business(BaseModel):
         rc = gr_redis_config.create_redis_client()
 
         try:
-            res: List = rc.hmget(name=f"business:{uuid}", keys=keys)
+            res: list = rc.hmget(name=f"business:{uuid}", keys=keys)
             d = {
                 val: json.loads(res[idx]) if res[idx] is not None else None
                 for idx, val in enumerate(keys)

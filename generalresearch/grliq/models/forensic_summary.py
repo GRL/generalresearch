@@ -2,11 +2,8 @@ from __future__ import annotations
 
 import random
 from typing import (
-    Dict,
     List,
     Literal,
-    Optional,
-    Tuple,
     Union,
     get_args,
     get_origin,
@@ -49,25 +46,25 @@ class UserForensicSummary(BaseModel):
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    period_start: Optional[AwareDatetimeISO] = Field(
+    period_start: AwareDatetimeISO | None = Field(
         default=None,
         description="Timestamp of the earliest attempt included in this summary (UTC)",
     )
-    period_end: Optional[AwareDatetimeISO] = Field(
+    period_end: AwareDatetimeISO | None = Field(
         default=None,
         description="Timestamp of the latest attempt included in this summary (UTC)",
     )
 
     # These must be nullable in case a user has 0 attempts!
-    category_result_summary: Optional[GrlIqForensicCategorySummary] = Field(
+    category_result_summary: GrlIqForensicCategorySummary | = Field(
         default=None
     )
-    checker_result_summary: Optional[GrlIqCheckerResultsSummary] = Field(default=None)
+    checker_result_summary: GrlIqCheckerResultsSummary | None = Field(default=None)
 
-    country_timing_data_summary: Dict[CountryISO, TimingDataCountrySummary] = Field(
+    country_timing_data_summary: dict[CountryISO, TimingDataCountrySummary] = Field(
         default_factory=dict
     )
-    ip_timing_data_summary: Dict[IPvAnyAddressStr, IPTimingDataSummary] = Field(
+    ip_timing_data_summary: dict[IPvAnyAddressStr, IPTimingDataSummary] = Field(
         default_factory=dict
     )
 
@@ -102,7 +99,7 @@ class GrlIqForensicCategorySummary(BaseModel):
     platform_ip_inconsistent_avg: GrlIqAvgScore = Field(
         examples=[random.randint(0, 100)]
     )
-    fraud_score_avg: Optional[GrlIqAvgScore] = Field(
+    fraud_score_avg: GrlIqAvgScore | None = Field(
         default=None, examples=[random.randint(0, 100)]
     )
 
@@ -171,7 +168,7 @@ class TimingDataCountrySummary(BaseModel):
     rtt_q75: float = Field(gt=0, examples=[220.232])
     rtt_max: float = Field(gt=0, examples=[890.006])
 
-    expected_rtt_range: Tuple[float, float] = Field(
+    expected_rtt_range: tuple[float, float] = Field(
         description="The expected rtt range for this IP (based on country_iso/user_type) to server_location",
         examples=[(45.193, 120.841)],
     )
@@ -191,8 +188,8 @@ class IPTimingDataSummary(BaseModel):
     client_ip: IPvAnyAddressStr = Field(examples=["123.123.123.123"])
     country_iso: CountryISO = Field(examples=["us"])
     server_location: Literal["fremont_ca"] = Field(default="fremont_ca")
-    user_type: Optional[UserType] = Field(default=None, examples=[UserType.RESIDENTIAL])
-    expected_rtt_range: Tuple[float, float] = Field(
+    user_type: UserType | None = Field(default=None, examples=[UserType.RESIDENTIAL])
+    expected_rtt_range: tuple[float, float] = Field(
         description="The expected rtt range for this IP (based on country_iso/user_type) to server_location",
         examples=[(45.193, 120.841)],
     )
@@ -213,13 +210,13 @@ class CountryRTTDistribution(BaseModel):
         description="Country client_ip is located in", examples=["fr"]
     )
     # For users marked as fraud or not
-    is_fraud: Optional[bool] = Field(
+    is_fraud: bool| None = Field(
         default=None,
         description="If timing data from sessions determined to be fraud are included",
     )
 
     # we could split by this optionally
-    user_type: Optional[UserType] = Field(
+    user_type: UserType|None = Field(
         default=None,
         description="user_type of the client_ip as determined by MaxMind",
         examples=[UserType.RESIDENTIAL],
@@ -243,7 +240,7 @@ class CountryRTTDistribution(BaseModel):
         description="The 95% confidence interval calculated in log-space",
     )
     @property
-    def expected_rtt_range(self) -> Tuple[float, float]:
+    def expected_rtt_range(self) -> tuple[float, float]:
         # This is the log_mean +- 2 log_std, then converted back to non-log space.
         # This is not just the mean + 2x std b/c we calculate the expected
         #   range in log-space (due to high skewness)

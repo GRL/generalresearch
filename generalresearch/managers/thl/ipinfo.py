@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import ipaddress
+from collections.abc import Collection
 from decimal import Decimal
 from random import randint
-from typing import Collection, Dict, List, Optional
 
 import faker
 import pymysql
@@ -33,19 +35,19 @@ class IPGeonameManager(PostgresManager):
 
     def create_dummy(
         self,
-        geoname_id: Optional[PositiveInt] = None,
-        continent_code: Optional[str] = None,
-        continent_name: Optional[str] = None,
-        country_iso: Optional[str] = None,
-        country_name: Optional[str] = None,
-        subdivision_1_iso: Optional[str] = None,
-        subdivision_1_name: Optional[str] = None,
-        subdivision_2_iso: Optional[str] = None,
-        subdivision_2_name: Optional[str] = None,
-        city_name: Optional[str] = None,
-        metro_code: Optional[int] = None,
-        time_zone: Optional[str] = None,
-        is_in_european_union: Optional[bool] = None,
+        geoname_id: PositiveInt | None = None,
+        continent_code: str | None = None,
+        continent_name: str | None = None,
+        country_iso: str | None = None,
+        country_name: str | None = None,
+        subdivision_1_iso: str | None = None,
+        subdivision_1_name: str | None = None,
+        subdivision_2_iso: str | None = None,
+        subdivision_2_name: str | None = None,
+        city_name: str | None = None,
+        metro_code: int | None = None,
+        time_zone: str | None = None,
+        is_in_european_union: bool | None = None,
     ) -> IPGeoname:
         return self.create(
             geoname_id=geoname_id or randint(1, 999_999_999),
@@ -121,16 +123,16 @@ class IPGeonameManager(PostgresManager):
         geoname_id: PositiveInt,
         continent_code: str,
         continent_name: str,
-        country_iso: Optional[str],
-        country_name: Optional[str] = None,
-        subdivision_1_iso: Optional[str] = None,
-        subdivision_1_name: Optional[str] = None,
-        subdivision_2_iso: Optional[str] = None,
-        subdivision_2_name: Optional[str] = None,
-        city_name: Optional[str] = None,
-        metro_code: Optional[int] = None,
-        time_zone: Optional[str] = None,
-        is_in_european_union: Optional[bool] = None,
+        country_iso: str | None,
+        country_name: str | None = None,
+        subdivision_1_iso: str | None = None,
+        subdivision_1_name: str | None = None,
+        subdivision_2_iso: str | None = None,
+        subdivision_2_name: str | None = None,
+        city_name: str | None = None,
+        metro_code: int | None = None,
+        time_zone: str | None = None,
+        is_in_european_union: bool | None = None,
     ) -> IPGeoname:
 
         instance = IPGeoname.model_validate(
@@ -181,8 +183,8 @@ class IPGeonameManager(PostgresManager):
 
     def fetch_geoname_ids(
         self,
-        filter_ids: List[PositiveInt],
-    ) -> List[IPGeoname]:
+        filter_ids: list[PositiveInt],
+    ) -> list[IPGeoname]:
 
         if len(filter_ids) == 0:
             return []
@@ -203,8 +205,8 @@ class IPGeonameManager(PostgresManager):
     def fetch_geoname_ids_(
         self,
         c: Cursor,
-        filter_ids: List[PositiveInt],
-    ) -> List[IPGeoname]:
+        filter_ids: list[PositiveInt],
+    ) -> list[IPGeoname]:
 
         assert len(filter_ids) <= 500, "chunk me"
 
@@ -230,30 +232,30 @@ class IPInformationManager(PostgresManager):
 
     def create_dummy(
         self,
-        ip: Optional[IPvAnyAddressStr] = None,
-        geoname_id: Optional[PositiveInt] = None,
-        country_iso: Optional[str] = None,
-        registered_country_iso: Optional[str] = None,
-        is_anonymous: Optional[bool] = None,
-        is_anonymous_vpn: Optional[bool] = None,
-        is_hosting_provider: Optional[bool] = None,
-        is_public_proxy: Optional[bool] = None,
-        is_tor_exit_node: Optional[bool] = None,
-        is_residential_proxy: Optional[bool] = None,
-        autonomous_system_number: Optional[PositiveInt] = None,
-        autonomous_system_organization: Optional[str] = None,
-        domain: Optional[str] = None,
-        isp: Optional[str] = None,
-        mobile_country_code: Optional[str] = None,
-        mobile_network_code: Optional[str] = None,
-        network: Optional[str] = None,
-        organization: Optional[str] = None,
-        static_ip_score: Optional[float] = None,
-        user_type: Optional[UserType] = None,
-        postal_code: Optional[str] = None,
-        latitude: Optional[Decimal] = None,
-        longitude: Optional[Decimal] = None,
-        accuracy_radius: Optional[int] = None,
+        ip: IPvAnyAddressStr | None = None,
+        geoname_id: PositiveInt | None = None,
+        country_iso: str | None = None,
+        registered_country_iso: str | None = None,
+        is_anonymous: bool | None = None,
+        is_anonymous_vpn: bool | None = None,
+        is_hosting_provider: bool | None = None,
+        is_public_proxy: bool | None = None,
+        is_tor_exit_node: bool | None = None,
+        is_residential_proxy: bool | None = None,
+        autonomous_system_number: PositiveInt | None = None,
+        autonomous_system_organization: str | None = None,
+        domain: str | None = None,
+        isp: str | None = None,
+        mobile_country_code: str | None = None,
+        mobile_network_code: str | None = None,
+        network: str | None = None,
+        organization: str | None = None,
+        static_ip_score: float | None = None,
+        user_type: UserType | None = None,
+        postal_code: str | None = None,
+        latitude: Decimal | None = None,
+        longitude: Decimal | None = None,
+        accuracy_radius: int | None = None,
     ) -> "IPInformation":
         return self.create(
             ip=ip or fake.ipv4_public(),
@@ -313,29 +315,29 @@ class IPInformationManager(PostgresManager):
     def create(
         self,
         ip: IPvAnyAddressStr,
-        geoname_id: Optional[PositiveInt] = None,
-        country_iso: Optional[str] = None,
-        registered_country_iso: Optional[str] = None,
-        is_anonymous: Optional[bool] = None,
-        is_anonymous_vpn: Optional[bool] = None,
-        is_hosting_provider: Optional[bool] = None,
-        is_public_proxy: Optional[bool] = None,
-        is_tor_exit_node: Optional[bool] = None,
-        is_residential_proxy: Optional[bool] = None,
-        autonomous_system_number: Optional[PositiveInt] = None,
-        autonomous_system_organization: Optional[str] = None,
-        domain: Optional[str] = None,
-        isp: Optional[str] = None,
-        mobile_country_code: Optional[str] = None,
-        mobile_network_code: Optional[str] = None,
-        network: Optional[str] = None,
-        organization: Optional[str] = None,
-        static_ip_score: Optional[float] = None,
-        user_type: Optional[UserType] = None,
-        postal_code: Optional[str] = None,
-        latitude: Optional[Decimal] = None,
-        longitude: Optional[Decimal] = None,
-        accuracy_radius: Optional[int] = None,
+        geoname_id: PositiveInt | None = None,
+        country_iso: str | None = None,
+        registered_country_iso: str | None = None,
+        is_anonymous: bool | None = None,
+        is_anonymous_vpn: bool | None = None,
+        is_hosting_provider: bool | None = None,
+        is_public_proxy: bool | None = None,
+        is_tor_exit_node: bool | None = None,
+        is_residential_proxy: bool | None = None,
+        autonomous_system_number: PositiveInt | None = None,
+        autonomous_system_organization: str | None = None,
+        domain: str | None = None,
+        isp: str | None = None,
+        mobile_country_code: str | None = None,
+        mobile_network_code: str | None = None,
+        network: str | None = None,
+        organization: str | None = None,
+        static_ip_score: float | None = None,
+        user_type: UserType | None = None,
+        postal_code: str | None = None,
+        latitude: Decimal | None = None,
+        longitude: Decimal | None = None,
+        accuracy_radius: int | None = None,
     ) -> "IPInformation":
 
         instance = IPInformation.model_validate(
@@ -423,7 +425,7 @@ class IPInformationManager(PostgresManager):
         """
         self.pg_config.execute_write(query, params=data)
 
-    def get_ip_info(self, ip: IPvAnyAddressStr) -> Optional["IPInformation"]:
+    def get_ip_info(self, ip: IPvAnyAddressStr) -> "IPInformation" | None:
         res = self.fetch_ip_information(filter_ips=[ip])
         if len(res) != 1:
             return None
@@ -432,8 +434,8 @@ class IPInformationManager(PostgresManager):
 
     def fetch_ip_information(
         self,
-        filter_ips: List[IPvAnyAddressStr],
-    ) -> List["IPInformation"]:
+        filter_ips: list[IPvAnyAddressStr],
+    ) -> list["IPInformation"]:
 
         if len(filter_ips) == 0:
             return []
@@ -453,8 +455,8 @@ class IPInformationManager(PostgresManager):
     def fetch_ip_information_(
         self,
         c: Cursor,
-        filter_ips: List[IPvAnyAddressStr],
-    ) -> List["IPInformation"]:
+        filter_ips: list[IPvAnyAddressStr],
+    ) -> list["IPInformation"]:
         """
         IPs are converted to normalized form (/64 network exploded) for DB lookup,
             and are then matched back to the original queried form for return.
@@ -521,7 +523,7 @@ class IPInformationManager(PostgresManager):
 
 class GeoIpInfoManager(PostgresManagerWithRedis):
 
-    def get(self, ip_address: IPvAnyAddressStr) -> Optional[GeoIPInformation]:
+    def get(self, ip_address: IPvAnyAddressStr) -> GeoIPInformation | None:
         res = self.get_cache(ip_address)
         if res:
             return res
@@ -532,7 +534,7 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
 
     def get_multi(
         self, ip_addresses: Collection[IPvAnyAddressStr]
-    ) -> Dict[IPvAnyAddressStr, Optional[GeoIPInformation]]:
+    ) -> dict[IPvAnyAddressStr, GeoIPInformation | None]:
         if not ip_addresses:
             return {}
         # To deploy this, we still have (for the next 28 days) users who's
@@ -547,7 +549,7 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
         return res
 
     def set_cache_multi(
-        self, ipinfo_map: Dict[IPvAnyAddressStr, GeoIPInformation]
+        self, ipinfo_map: dict[IPvAnyAddressStr, GeoIPInformation]
     ) -> None:
         """Set multiple GeoIPInformation objects in Redis in one call."""
         if not ipinfo_map:
@@ -576,7 +578,7 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
 
     def get_cache_multi(
         self, ip_addresses: Collection[IPvAnyAddressStr]
-    ) -> Dict[IPvAnyAddressStr, Optional[GeoIPInformation]]:
+    ) -> dict[IPvAnyAddressStr, GeoIPInformation | None]:
         """Get multiple GeoIPInformation objects from Redis in one call.
 
         Returns a dict mapping IP address -> GeoIPInformation (or None if not in cache).
@@ -627,7 +629,7 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
             self.get_cache_key(ip_address=ipinfo.ip), data, ex=3 * 24 * 3600
         )
 
-    def get_cache(self, ip_address: IPvAnyAddressStr) -> Optional[GeoIPInformation]:
+    def get_cache(self, ip_address: IPvAnyAddressStr) -> GeoIPInformation | None:
         normalized_ip, lookup_prefix = normalize_ip(ip_address)
         res: str = self.get_cache_raw(normalized_ip)
         if not res:
@@ -716,7 +718,7 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
     def get_mysql_multi(
         self,
         ips: Collection[IPvAnyAddressStr],
-    ) -> Dict[IPvAnyAddressStr, Optional[GeoIPInformation]]:
+    ) -> dict[IPvAnyAddressStr, GeoIPInformation | None]:
 
         if len(ips) == 0:
             return {}
@@ -736,8 +738,8 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
     def get_mysql_multi_chunk(
         self,
         c: Cursor,
-        ips: List[IPvAnyAddressStr],
-    ) -> Dict[IPvAnyAddressStr, Optional[GeoIPInformation]]:
+        ips: list[IPvAnyAddressStr],
+    ) -> dict[IPvAnyAddressStr, GeoIPInformation | None]:
 
         assert len(ips) <= 500, "chunk me"
 

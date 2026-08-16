@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from abc import ABC
+from collections.abc import Collection
 from datetime import datetime, timezone
-from typing import Collection, Dict, Set
 
 from more_itertools import chunked
 
@@ -30,7 +32,7 @@ class CriteriaManager(SqlManager, ABC):
         """
         ...
 
-    def filter(self, hashes: Collection[str]) -> Dict[str, MarketplaceCondition]:
+    def filter(self, hashes: Collection[str]) -> dict[str, MarketplaceCondition]:
         """
         Filter for criterion from the db
         """
@@ -44,7 +46,7 @@ class CriteriaManager(SqlManager, ABC):
         )
         return {x["hash"]: self.CONDITION_MODEL.from_mysql(x) for x in res}
 
-    def filter_exists(self, hashes: Set[str]) -> Set[str]:
+    def filter_exists(self, hashes: set[str]) -> set[str]:
         """Returns hashes that exist in the db"""
         res = self.sql_helper.execute_sql_query(
             query=f"""

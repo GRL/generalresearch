@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Callable, Optional, Tuple
+from typing import TYPE_CHECKING, Callable
 
 from generalresearch.config import JAMES_BILLINGS_BPID, JAMES_BILLINGS_TX_CUTOFF
 from generalresearch.currency import USDCent
@@ -70,12 +72,12 @@ def generate_condition_bp_payout(
     payoutevent_uuid: UUIDStr,
     skip_one_per_day_check: bool = False,
     skip_wallet_balance_check: bool = False,
-) -> Callable[..., Tuple[bool, str]]:
+) -> Callable[..., tuple[bool, str]]:
     created = datetime.now(tz=timezone.utc)
 
     def _condition(
         lm: "ThlLedgerManager",
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         bp_wallet_account = lm.get_account_or_create_bp_wallet(product=product)
         tag = f"{lm.currency.value}:bp_payout:{payoutevent_uuid}"
         txs_ids = lm.get_tx_ids_by_tag(tag=tag)
@@ -109,7 +111,7 @@ def generate_condition_bp_payout(
 
 
 def generate_condition_user_payout_request(
-    user: User, payoutevent_uuid: UUIDStr, min_balance: Optional[int] = None
+    user: User, payoutevent_uuid: UUIDStr, min_balance: int | None = None
 ) -> Callable[..., bool]:
     """This returns a function that checks if `user` has at least
     `min_balance` in their wallet and that a payout request hasn't already
@@ -150,14 +152,14 @@ def generate_condition_user_payout_request(
 
 def generate_condition_enter_contest(
     user: User, tag: str, min_balance: USDCent
-) -> Callable[..., Tuple[bool, str]]:
+) -> Callable[..., tuple[bool, str]]:
     """This returns a function that checks if `user` has at least
     `min_balance` in their wallet and that a tx doesn't already exist
     with this tag
     """
     assert isinstance(min_balance, USDCent), "balance must be USDCent"
 
-    def _condition(lm: "ThlLedgerManager") -> Tuple[bool, str]:
+    def _condition(lm: "ThlLedgerManager") -> tuple[bool, str]:
         txs_ids = lm.get_tx_ids_by_tag(tag)
         if len(txs_ids) != 0:
             logger.info(f"{tag} failed condition check duplicate transaction")

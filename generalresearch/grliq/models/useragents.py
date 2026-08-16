@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import hashlib
 from enum import Enum
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing_extensions import Self
@@ -105,7 +106,7 @@ mobile_families = {
 
 class OSInfo(BaseModel):
     family: OSFamily = Field()
-    version_string: Optional[str] = Field()
+    version_string: str | None = Field()
 
     @field_validator("family", mode="before")
     @classmethod
@@ -118,7 +119,7 @@ class OSInfo(BaseModel):
 
 class BrowserInfo(BaseModel):
     family: BrowserFamily = Field()
-    version_string: Optional[str] = Field()
+    version_string: str | None = Field(default=None)
 
     @field_validator("family", mode="before")
     @classmethod
@@ -182,7 +183,7 @@ class GrlUserAgent(BaseModel):
     is_bot: bool = Field()
 
     @property
-    def ua_string_values(self) -> Dict[str, str]:
+    def ua_string_values(self) -> dict[str, str]:
         # Returns the raw parsed string values for each of these. To be used
         #   for db filtering, identifying trends, etc.
         d = dict()
@@ -236,11 +237,11 @@ class UserAgentHints(BaseModel):
         extra="forbid", validate_assignment=True, populate_by_name=True
     )
 
-    brands: Optional[List[Dict]] = Field(validation_alias="b", default=None)
-    brands_full: Optional[List[Dict]] = Field(validation_alias="fv", default=None)
+    brands: list[dict] | None = Field(validation_alias="b", default=None)
+    brands_full: list[dict] | None = Field(validation_alias="fv", default=None)
     mobile: bool = Field(validation_alias="m", default=False)
-    model: Optional[str] = Field(validation_alias="md", default=None)
-    platform: Optional[str] = Field(validation_alias="o", default=None)
-    platform_version: Optional[str] = Field(validation_alias="ov", default=None)
-    architecture: Optional[str] = Field(validation_alias="a", default=None)
-    bitness: Optional[str] = Field(validation_alias="bt", default=None)
+    model: str | None = Field(validation_alias="md", default=None)
+    platform: str | None = Field(validation_alias="o", default=None)
+    platform_version: str | None = Field(validation_alias="ov", default=None)
+    architecture: str | None = Field(validation_alias="a", default=None)
+    bitness: str | None = Field(validation_alias="bt", default=None)

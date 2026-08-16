@@ -1,6 +1,9 @@
+from __future__ import annotations
+
+from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Collection, Dict, List, Optional, Tuple
+from typing import Any
 from uuid import UUID, uuid4
 
 from faker import Faker
@@ -44,12 +47,12 @@ class SessionManager(PostgresManager):
         self,
         started: datetime,
         user: User,
-        country_iso: Optional[str] = None,
-        device_type: Optional[DeviceType] = None,
-        ip: Optional[str] = None,
-        bucket: Optional[Bucket] = None,
-        url_metadata: Optional[Dict[str, str]] = None,
-        uuid_id: Optional[str] = None,
+        country_iso: str | None = None,
+        device_type: DeviceType | None = None,
+        ip: str | None = None,
+        bucket: Bucket | None = None,
+        url_metadata: dict[str, str] | None = None,
+        uuid_id: str | None = None,
     ) -> Session:
         """Creates a Session. Prefer to use this rather than instantiating the
         model directly, because we're explicitly defining here which keys
@@ -70,8 +73,7 @@ class SessionManager(PostgresManager):
         )
 
         d = session.model_dump_mysql()
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
         INSERT INTO thl_session (
             uuid, user_id, started, loi_min, loi_max, 
             user_payout_min, user_payout_max, country_iso, 
@@ -81,8 +83,7 @@ class SessionManager(PostgresManager):
             %(user_payout_min)s, %(user_payout_max)s, %(country_iso)s, 
             %(device_type)s, %(ip)s, %(url_metadata_json)s
         ) RETURNING id;
-        """
-        )
+        """)
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query=query, params=d)
@@ -93,20 +94,20 @@ class SessionManager(PostgresManager):
     def create_dummy(
         self,
         # -- Create Dummy "optional" -- #
-        started: Optional[datetime] = None,
-        user: Optional[User] = None,
+        started: datetime | None = None,
+        user: User | None = None,
         # -- Optional -- #
-        country_iso: Optional[str] = None,
-        device_type: Optional[DeviceType] = None,
-        ip: Optional[str] = None,
-        bucket: Optional[Bucket] = None,
-        url_metadata: Optional[Dict[str, str]] = None,
-        uuid_id: Optional[str] = None,
+        country_iso: str | None = None,
+        device_type: DeviceType | None = None,
+        ip: str | None = None,
+        bucket: Bucket | None = None,
+        url_metadata: dict[str, str] | None = None,
+        uuid_id: str | None = None,
     ) -> Session:
         """To be used in tests, where we don't care about certain fields"""
         started = started or fake.date_time_between(
-            start_date=datetime(year=1900, month=1, day=1),
-            end_date=datetime(year=2000, month=1, day=1),
+            start_date=datetime(year=1900, month=1, day=1, tzinfo=timezone.utc),
+            end_date=datetime(year=2000, month=1, day=1, tzinfo=timezone.utc),
             tzinfo=timezone.utc,
         )
         user = user or User(
@@ -170,7 +171,7 @@ class SessionManager(PostgresManager):
         assert len(res) == 1
         return self.session_from_mysql(res[0])
 
-    def session_from_mysql(self, d: Dict) -> Session:
+    def session_from_mysql(self, d: dict) -> Session:
         d["id"] = d.pop("session_id")
         d["uuid"] = UUID(d.pop("session_uuid")).hex
         d["user"] = User(
@@ -210,12 +211,12 @@ class SessionManager(PostgresManager):
     def finish_with_status(
         self,
         session: Session,
-        finished: Optional[datetime] = None,
-        status: Optional[Status] = None,
-        status_code_1: Optional[StatusCode1] = None,
-        status_code_2: Optional[SessionStatusCode2] = None,
-        payout: Optional[Decimal] = None,
-        user_payout: Optional[Decimal] = None,
+        finished: datetime | None = None,
+        status: Status | None = None,
+        status_code_1: StatusCode1 | None = None,
+        status_code_2: SessionStatusCode2 | None = None,
+        payout: Decimal | None = None,
+        user_payout: Decimal | None = None,
     ) -> Session:
         # We have to update all the fields at once, or else we'll get
         # validation errors. There doesn't seem to be a clean way of doing this.
@@ -249,7 +250,7 @@ class SessionManager(PostgresManager):
         assert session.user.product, "prefetch product"
         modified = session.adjust_status()
         if not modified:
-            return None
+            return
 
         d = {
             "adjusted_status": (
@@ -286,18 +287,18 @@ class SessionManager(PostgresManager):
 
     def filter_paginated(
         self,
-        user_id: Optional[PositiveInt] = None,
-        session_uuids: Optional[List[UUIDStr]] = None,
-        product_uuids: Optional[List[UUIDStr]] = None,
-        started_after: Optional[datetime] = None,
-        started_before: Optional[datetime] = None,
-        status: Optional[Status] = None,
-        adjusted_after: Optional[datetime] = None,
-        adjusted_before: Optional[datetime] = None,
+        user_id: PositiveInt | None = None,
+        session_uuids: list[UUIDStr] | None = None,
+        product_uuids: list[UUIDStr] | None = None,
+        started_after: datetime | None = None,
+        started_before: datetime | None = None,
+        status: Status | None = None,
+        adjusted_after: datetime | None = None,
+        adjusted_before: datetime | None = None,
         page: int = 1,
         size: int = 100,
-        order_by: Optional[str] = "-started",
-    ) -> Tuple[List[Session], int]:
+        order_by: str | None = "-started",
+    ) -> tuple[list[Session], int]:
         """
         Sessions are filtered using user, product_uuids, started_after, &
             started_before (if set).
@@ -419,8 +420,8 @@ class SessionManager(PostgresManager):
 
     def session_from_mysql_rows_json(
         self,
-        rows: Collection[Dict],
-    ) -> List[Session]:
+        rows: Collection[dict],
+    ) -> list[Session]:
         """Columns: thl_session.*, thl_user.*, walls_json
         - walls_json: list of objects, containing keys: thl_wall.*
         """
@@ -472,16 +473,16 @@ class SessionManager(PostgresManager):
 
     @staticmethod
     def make_filter_str(
-        user_id: Optional[int] = None,
-        session_uuids: Optional[List[UUIDStr]] = None,
-        product_uuids: Optional[List[UUIDStr]] = None,
-        started_after: Optional[datetime] = None,
-        started_before: Optional[datetime] = None,
-        status: Optional[Status] = None,
-        adjusted_after: Optional[datetime] = None,
-        adjusted_before: Optional[datetime] = None,
-        extra_filters: Optional[str] = None,
-    ) -> Tuple[str, Dict[str, Any]]:
+        user_id: int | None = None,
+        session_uuids: list[UUIDStr] | None = None,
+        product_uuids: list[UUIDStr] | None = None,
+        started_after: datetime | None = None,
+        started_before: datetime | None = None,
+        status: Status | None = None,
+        adjusted_after: datetime | None = None,
+        adjusted_before: datetime | None = None,
+        extra_filters: str | None = None,
+    ) -> tuple[str, dict[str, Any]]:
         filters = []
         params = {}
 
@@ -547,15 +548,15 @@ class SessionManager(PostgresManager):
 
     def filter(
         self,
-        started_since: Optional[datetime] = None,
-        started_between: Optional[Tuple[datetime, datetime]] = None,
-        user: Optional[User] = None,
-        product_uuids: Optional[List[UUIDStr]] = None,
-        team_uuids: Optional[List[UUIDStr]] = None,
-        business_uuids: Optional[List[UUIDStr]] = None,
+        started_since: datetime | None = None,
+        started_between: tuple[datetime, datetime] | None = None,
+        user: User | None = None,
+        product_uuids: list[UUIDStr] | None = None,
+        team_uuids: list[UUIDStr] | None = None,
+        business_uuids: list[UUIDStr] | None = None,
         order_by: str = "-started",
-        limit: Optional[int] = None,
-    ) -> List[Session]:
+        limit: int | None = None,
+    ) -> list[Session]:
         # to be deprecated ...
 
         if team_uuids:
@@ -584,15 +585,15 @@ class SessionManager(PostgresManager):
 
     def filter_count(
         self,
-        user_id: Optional[int] = None,
-        session_uuids: Optional[List[UUIDStr]] = None,
-        product_uuids: Optional[List[UUIDStr]] = None,
-        started_after: Optional[datetime] = None,
-        started_before: Optional[datetime] = None,
-        status: Optional[Status] = None,
-        adjusted_after: Optional[datetime] = None,
-        adjusted_before: Optional[datetime] = None,
-        extra_filters: Optional[str] = None,
+        user_id: int | None = None,
+        session_uuids: list[UUIDStr] | None = None,
+        product_uuids: list[UUIDStr] | None = None,
+        started_after: datetime | None = None,
+        started_before: datetime | None = None,
+        status: Status | None = None,
+        adjusted_after: datetime | None = None,
+        adjusted_before: datetime | None = None,
+        extra_filters: str | None = None,
     ) -> NonNegativeInt:
         filter_str, params = self.make_filter_str(
             user_id=user_id,
@@ -620,7 +621,7 @@ class SessionManager(PostgresManager):
 
     def get_task_status_response(
         self, session_uuid: UUIDStr
-    ) -> Optional[TaskStatusResponse]:
+    ) -> TaskStatusResponse | None:
         res, total = self.filter_paginated(session_uuids=[session_uuid])
         if total == 0:
             return None
@@ -632,16 +633,16 @@ class SessionManager(PostgresManager):
     def get_tasks_status_response(
         self,
         product_uuid: UUIDStr,
-        user_id: Optional[int] = None,
-        started_after: Optional[datetime] = None,
-        started_before: Optional[datetime] = None,
-        status: Optional[Status] = None,
-        adjusted_after: Optional[datetime] = None,
-        adjusted_before: Optional[datetime] = None,
+        user_id: int | None = None,
+        started_after: datetime | None = None,
+        started_before: datetime | None = None,
+        status: Status | None = None,
+        adjusted_after: datetime | None = None,
+        adjusted_before: datetime | None = None,
         page: int = 1,
         size: int = 100,
-        order_by: Optional[str] = "-started",
-    ) -> Optional[TasksStatusResponse]:
+        order_by: str | None = "-started",
+    ) -> TasksStatusResponse | None:
         PM = ProductManager(pg_config=self.pg_config, permissions=[Permission.READ])
         product = PM.get_by_uuid(product_uuid=product_uuid)
 

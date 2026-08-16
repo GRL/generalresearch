@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Collection
 from datetime import datetime, timezone
-from typing import Collection, List, Optional
 
 import pymysql
 from pymysql import IntegrityError
@@ -56,13 +56,13 @@ class SpectrumSurveyManager(SurveyManager):
 
     def get_survey_library(
         self,
-        country_iso: Optional[str] = None,
-        language_iso: Optional[str] = None,
-        survey_ids: Optional[Collection[str]] = None,
-        is_live: Optional[bool] = None,
-        updated_since: Optional[datetime] = None,
-        fields: List[str] = None,
-    ) -> List[SpectrumSurvey]:
+        country_iso: str | None = None,
+        language_iso: str | None = None,
+        survey_ids: Collection[str] | None = None,
+        is_live: bool | None = None,
+        updated_since: datetime | None = None,
+        fields: list[str] | None = None,
+    ) -> list[SpectrumSurvey]:
         """
         Accepts lots of optional filters.
         :param country_iso: filters on country_iso field
@@ -133,7 +133,7 @@ class SpectrumSurveyManager(SurveyManager):
 
         return True
 
-    def update(self, surveys: List[SpectrumSurvey]) -> bool:
+    def update(self, surveys: list[SpectrumSurvey]) -> bool:
         now = datetime.now(tz=timezone.utc)
 
         # Due to stupidity with bid/actual loi/ir values (last block nonsense),
@@ -144,7 +144,7 @@ class SpectrumSurveyManager(SurveyManager):
 
         return True
 
-    def update_one(self, survey: SpectrumSurvey, now=None) -> bool:
+    def update_one(self, survey: SpectrumSurvey, now: datetime | None = None) -> bool:
         if now is None:
             now = datetime.now(tz=timezone.utc)
 
@@ -188,7 +188,7 @@ class SpectrumSurveyManager(SurveyManager):
 
         return c.rowcount == 1
 
-    def create_or_update(self, surveys: List[SpectrumSurvey]) -> None:
+    def create_or_update(self, surveys: list[SpectrumSurvey]) -> None:
         surveys = {s.survey_id: s for s in surveys}
         sns = set(surveys.keys())
         existing_sns = {
@@ -215,5 +215,3 @@ class SpectrumSurveyManager(SurveyManager):
                     raise e
 
         self.update([surveys[sn] for sn in existing_sns])
-
-        return None

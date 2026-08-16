@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal
 
 import dask.dataframe as dd
 import pandas as pd
@@ -44,8 +46,8 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
         session_coll: SessionDFCollection,
         wall_coll: WallDFCollection,
         pg_config: PostgresConfig,
-        client: Optional[Client] = None,
-        client_resources: Optional[Dict[str, Any]] = None,
+        client: Client | None = None,
+        client_resources: dict[str, Any] | None = None,
     ) -> None:
 
         ir: pd.Interval = self.interval
@@ -55,7 +57,7 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
 
         # Skip which already exist
         if self.has_archive(include_empty=True):
-            return None
+            return
 
         # --- Session ---
         LOG.warning(f"EnrichedSessionMergeItem: get session_collection")
@@ -64,12 +66,12 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
             LOG.warning(f"EnrichedSessionMergeItem: no session items. set_empty.")
             if self.should_archive():
                 self.set_empty()
-            return None
+            return
         if not (
             session_items[-1].has_partial_archive() or session_items[-1].has_archive()
         ):
             LOG.warning(f"EnrichedSessionMergeItem: session isn't updated!")
-            return None
+            return
 
         sddf = session_coll.ddf(
             items=session_items,
@@ -94,7 +96,7 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
 
         if len(wall_items) == 0:
             LOG.error(f"EnrichedSessionMergeItem: no wall items")
-            return None
+            return
 
         wddf = wall_coll.ddf(
             items=wall_items,
@@ -108,7 +110,7 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
         )
 
         if wddf is None:
-            return None
+            return
 
         attempt_cnt_ddf = (
             wddf.groupby("session_id").size().rename("attempt_count").to_frame()
@@ -231,8 +233,8 @@ class EnrichedSessionMerge(MergeCollection):
         self,
         rr: "ReportRequest",
         client: Client,
-        product_ids: Optional[List[UUIDStr]] = None,
-        user: Optional[User] = None,
+        product_ids: list[UUIDStr] | None = None,
+        user: User | None = None,
     ) -> pd.DataFrame:
         """
         We don't have the concept of a Team yet so product_ids will be a list

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 
 import dask.dataframe as dd
 import pandas as pd
@@ -23,8 +25,8 @@ class PopLedgerMergeItem(MergeCollectionItem):
     def build(
         self,
         ledger_coll: LedgerDFCollection,
-        client: Optional[Client] = None,
-        client_resources: Optional[Dict[str, Any]] = None,
+        client: Client | None = None,
+        client_resources: dict[str, Any] | None = None,
     ) -> None:
         ir: pd.Interval = self.interval
 
@@ -44,14 +46,14 @@ class PopLedgerMergeItem(MergeCollectionItem):
         )
 
         if ddf is None:
-            return None
+            return
 
         ddf = ddf[ddf["created"].between(start, end)]
         df: pd.DataFrame = client.compute(ddf, resources=client_resources, sync=True)
 
         if df.empty:
             # self.set_empty()
-            return None
+            return
 
         df["direction_name"] = df["direction"].apply(lambda x: Direction(x).name)
 

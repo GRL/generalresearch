@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # https://developers.dynata.com/docs/rex-respondent-gateway/dc5b33f20a1c9-get-attribute-info
 import json
 import logging
@@ -5,7 +7,7 @@ import re
 from datetime import timedelta
 from enum import Enum
 from functools import cached_property
-from typing import Any, Dict, List, Literal, Optional, Set
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, PositiveInt, field_validator, model_validator
 
@@ -87,11 +89,11 @@ class DynataUserQuestionAnswer(BaseModel):
     # This is optional b/c this model can be used for eligibility checks for "anonymous" users, which are represented
     #   by a list of question answers not associated with an actual user. No default b/c we must explicitly set
     #   the field to None.
-    user_id: Optional[PositiveInt] = Field(lt=MAX_INT32)
+    user_id: PositiveInt | None = Field(lt=MAX_INT32)
     question_id: str = Field(min_length=1, max_length=16, pattern=r"^[0-9]+$")
     # This is optional b/c we do not need it when writing these to the db. When these are fetched from the db
     #   for use in yield-management, we read this field from the question table.
-    question_type: Optional[DynataQuestionType] = Field(default=None)
+    question_type: DynataQuestionType | None = Field(default=None)
     # This may be a pipe-separated string if the question_type is multi. regex means any chars except capital letters
     option_id: str = Field(pattern=r"^[^A-Z]*$")
     created: AwareDatetimeISO = Field()
@@ -105,10 +107,10 @@ class DynataUserQuestionAnswer(BaseModel):
     )
 
     @cached_property
-    def options_ids(self) -> Set[str]:
+    def options_ids(self) -> set[str]:
         return set(self.option_id.split("|"))
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", exclude={"question_type"})
         d["created"] = self.created.replace(tzinfo=None)
         return d
@@ -118,7 +120,7 @@ class DynataQuestionDependency(BaseModel, frozen=True):
     # This is not explained or documented. Going to just store it for now
     question_id: str = Field(min_length=1, max_length=16, pattern=r"^[0-9]+$")
     # Some are an empty list. Unclear if this means "any option" or it is broken.
-    option_ids: List[str] = Field()
+    option_ids: list[str] = Field()
 
 
 class DynataQuestion(MarketplaceQuestion):
@@ -139,10 +141,10 @@ class DynataQuestion(MarketplaceQuestion):
         max_length=1024, min_length=1, description="The text shown to respondents"
     )
     question_type: DynataQuestionType = Field(frozen=True)
-    options: Optional[List[DynataQuestionOption]] = Field(default=None, min_length=1)
+    options: list[DynataQuestionOption] | None = Field(default=None, min_length=1)
     # This does not mean that it doesn't expire, it means undefined.
-    expiration_duration: Optional[timedelta] = Field(default=None)
-    parent_dependencies: List[DynataQuestionDependency] = Field(default_factory=list)
+    expiration_duration: timedelta | None = Field(default=None)
+    parent_dependencies: list[DynataQuestionDependency] = Field(default_factory=list)
 
     source: Literal[Source.DYNATA] = Source.DYNATA
 
@@ -215,7 +217,7 @@ class DynataQuestion(MarketplaceQuestion):
             expiration_duration=expiration_duration,
         )
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", by_alias=True)
         d["options"] = json.dumps(d["options"])
         d["parent_dependencies"] = json.dumps(d["parent_dependencies"])

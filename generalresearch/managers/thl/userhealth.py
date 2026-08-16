@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 import ipaddress
+from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
 from itertools import zip_longest
 from random import choice as rchoice
 from random import random
-from typing import Any, Collection, Dict, List, Optional, Tuple
+from typing import Any
 
 import faker
 from pydantic import NonNegativeInt, PositiveInt
@@ -35,8 +38,8 @@ class UserIpHistoryManager(PostgresManagerWithRedis):
         self,
         pg_config: PostgresConfig,
         redis_config: RedisConfig,
-        permissions: Collection[Permission] = None,
-        cache_prefix: Optional[str] = None,
+        permissions: Collection[Permission] | None = None,
+        cache_prefix: str | None = None,
     ):
         super().__init__(
             pg_config=pg_config,
@@ -53,7 +56,7 @@ class UserIpHistoryManager(PostgresManagerWithRedis):
     def get_redis_key(self, user_id: int) -> str:
         return f"py-utils:user-ip-history:{user_id}"
 
-    def get_user_ip_records_sql(self, user_id: int) -> List[UserIPRecord]:
+    def get_user_ip_records_sql(self, user_id: int) -> list[UserIPRecord]:
         # The IP metadata is ONLY for the 'ip', NOT for any forwarded ips.
         # This might get called immediately after a write, so use the non-rr
         res = self.pg_config.execute_sql_query(
@@ -78,7 +81,7 @@ class UserIpHistoryManager(PostgresManagerWithRedis):
         res = [UserIPRecord.model_validate(x) for x in res]
         return res
 
-    def get_user_ip_history_cache(self, user_id: int) -> Optional[UserIPHistory]:
+    def get_user_ip_history_cache(self, user_id: int) -> UserIPHistory | None:
         res = self.redis_client.get(self.get_redis_key(user_id))
         if res:
             return UserIPHistory.model_validate_json(res)
@@ -86,12 +89,10 @@ class UserIpHistoryManager(PostgresManagerWithRedis):
 
     def delete_user_ip_history_cache(self, user_id: int) -> None:
         self.redis_client.delete(self.get_redis_key(user_id))
-        return None
 
     def set_user_ip_history_cache(self, user_id: int, iph: UserIPHistory) -> None:
         value = iph.model_dump_json()
         self.redis_client.set(self.get_redis_key(user_id), value, ex=3 * 24 * 3600)
-        return None
 
     def recreate_user_ip_history_cache(self, user_id: int) -> None:
         self.delete_user_ip_history_cache(user_id=user_id)
@@ -99,7 +100,6 @@ class UserIpHistoryManager(PostgresManagerWithRedis):
         # todo: we may get dns records from somewhere else here ...
         iph = UserIPHistory(user_id=user_id, ips=records)
         self.set_user_ip_history_cache(user_id=user_id, iph=iph)
-        return None
 
     def get_user_ip_history(self, user_id: int) -> UserIPHistory:
         assert isinstance(user_id, int)
@@ -117,9 +117,7 @@ class UserIpHistoryManager(PostgresManagerWithRedis):
         iph.enrich_ips(pg_config=self.pg_config, redis_config=self.redis_config)
         return iph
 
-    def get_user_latest_ip(
-        self, user: User, exclude_anon: bool = False
-    ) -> Optional[str]:
+    def get_user_latest_ip(self, user: User, exclude_anon: bool = False) -> str | None:
         record = self.get_user_latest_ip_record(user=user, exclude_anon=exclude_anon)
         if record:
             return record.ip
@@ -127,7 +125,7 @@ class UserIpHistoryManager(PostgresManagerWithRedis):
 
     def get_user_latest_ip_record(
         self, user: User, exclude_anon: bool = False
-    ) -> Optional[UserIPRecord]:
+    ) -> UserIPRecord | None:
         iphistory = self.get_user_ip_history(user_id=user.user_id)
 
         if iphistory.ips:
@@ -146,14 +144,14 @@ class UserIpHistoryManager(PostgresManagerWithRedis):
 
     def get_user_latest_country(
         self, user: User, exclude_anon: bool = False
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get the country the user is in, based off their latest ip."""
         ipr = self.get_user_latest_ip_record(user, exclude_anon=exclude_anon)
         # The ipr.information should exist, but it is possible the user has
         #   no IP history at all, so the record is None
         return ipr.country_iso if ipr is not None else None
 
-    def is_user_anonymous(self, user: User) -> Optional[bool]:
+    def is_user_anonymous(self, user: User) -> bool | None:
         # Get the user's latest ip. is it marked as anonymous?
         # Note: it is possible we only did a "basic" lookup of this IP so
         #   we don't know if they are anonymous. Default to False
@@ -170,8 +168,8 @@ class IPRecordManager(PostgresManagerWithRedis):
         self,
         pg_config: PostgresConfig,
         redis_config: RedisConfig,
-        permissions: Collection[Permission] = None,
-        cache_prefix: Optional[str] = None,
+        permissions: Collection[Permission] | None = None,
+        cache_prefix: str | None = None,
     ):
         super().__init__(
             pg_config=pg_config,
@@ -189,13 +187,13 @@ class IPRecordManager(PostgresManagerWithRedis):
     def create_dummy(
         self,
         user_id: PositiveInt,
-        ip: Optional[IPvAnyAddressStr] = None,
-        forwarded_ip1: Optional[IPvAnyAddressStr] = None,
-        forwarded_ip2: Optional[IPvAnyAddressStr] = None,
-        forwarded_ip3: Optional[IPvAnyAddressStr] = None,
-        forwarded_ip4: Optional[IPvAnyAddressStr] = None,
-        forwarded_ip5: Optional[IPvAnyAddressStr] = None,
-        forwarded_ip6: Optional[IPvAnyAddressStr] = None,
+        ip: IPvAnyAddressStr | None = None,
+        forwarded_ip1: IPvAnyAddressStr | None = None,
+        forwarded_ip2: IPvAnyAddressStr | None = None,
+        forwarded_ip3: IPvAnyAddressStr | None = None,
+        forwarded_ip4: IPvAnyAddressStr | None = None,
+        forwarded_ip5: IPvAnyAddressStr | None = None,
+        forwarded_ip6: IPvAnyAddressStr | None = None,
     ) -> IPRecord:
         return self.create(
             user_id=user_id,
@@ -214,7 +212,7 @@ class IPRecordManager(PostgresManagerWithRedis):
         self,
         user_id: PositiveInt,
         ip: IPvAnyAddressStr,
-        forwarded_ips: List[str],
+        forwarded_ips: list[str],
     ) -> IPRecord:
         if len(forwarded_ips) > 6:
             raise ValueError("A maximum of 6 forwarded IPs is allowed.")
@@ -282,7 +280,7 @@ class IPRecordManager(PostgresManagerWithRedis):
 
         return IPRecord.from_mysql(data)
 
-    def get_user_latest_ip_record(self, user: User) -> Optional[IPRecord]:
+    def get_user_latest_ip_record(self, user: User) -> IPRecord | None:
         res = self.filter_ip_records(user_ids=[user.user_id], limit=1)
         if res:
             return res[0]
@@ -290,11 +288,11 @@ class IPRecordManager(PostgresManagerWithRedis):
 
     def filter_ip_records(
         self,
-        filter_ips: Optional[List[IPvAnyAddressStr]] = None,
-        user_ids: Optional[List[PositiveInt]] = None,
-        created_from: Optional[datetime] = None,
-        limit: Optional[int] = None,
-    ) -> List[IPRecord]:
+        filter_ips: list[IPvAnyAddressStr] | None = None,
+        user_ids: list[PositiveInt] | None = None,
+        created_from: datetime | None = None,
+        limit: int | None = None,
+    ) -> list[IPRecord]:
 
         assert any([filter_ips, user_ids, created_from]), "Must provide filter criteria"
 
@@ -353,10 +351,10 @@ class AuditLogManager(PostgresManager):
     def create_dummy(
         self,
         user_id: PositiveInt,
-        level: Optional[AuditLogLevel] = None,
-        event_type: Optional[str] = None,
-        event_msg: Optional[str] = None,
-        event_value: Optional[float] = None,
+        level: AuditLogLevel | None = None,
+        event_type: str | None = None,
+        event_msg: str | None = None,
+        event_value: float | None = None,
     ) -> AuditLog:
 
         event_types = {
@@ -378,8 +376,8 @@ class AuditLogManager(PostgresManager):
         user_id: PositiveInt,
         level: AuditLogLevel,
         event_type: str,
-        event_msg: Optional[str] = None,
-        event_value: Optional[float] = None,
+        event_msg: str | None = None,
+        event_value: float | None = None,
     ) -> AuditLog:
         """AuditLogs may exist with the same event_type, and with different levels"""
 
@@ -433,7 +431,7 @@ class AuditLogManager(PostgresManager):
 
         return AuditLog.from_mysql(res[0])
 
-    def filter_by_product(self, product: Product) -> List[AuditLog]:
+    def filter_by_product(self, product: Product) -> list[AuditLog]:
 
         res = self.pg_config.execute_sql_query(
             query="""
@@ -450,7 +448,7 @@ class AuditLogManager(PostgresManager):
 
         return [AuditLog.from_mysql(i) for i in res]
 
-    def filter_by_user_id(self, user_id: PositiveInt) -> List[AuditLog]:
+    def filter_by_user_id(self, user_id: PositiveInt) -> list[AuditLog]:
         res = self.pg_config.execute_sql_query(
             query="""
                 SELECT * 
@@ -467,13 +465,13 @@ class AuditLogManager(PostgresManager):
     def filter(
         self,
         user_ids: Collection[int],
-        level: Optional[int] = None,
-        level_ge: Optional[int] = None,
-        event_type: Optional[str] = None,
-        event_type_like: Optional[str] = None,
-        event_msg: Optional[str] = None,
-        created_after: Optional[datetime] = None,
-    ) -> List[AuditLog]:
+        level: int | None = None,
+        level_ge: int | None = None,
+        event_type: str | None = None,
+        event_type_like: str | None = None,
+        event_msg: str | None = None,
+        created_after: datetime | None = None,
+    ) -> list[AuditLog]:
 
         filter_str, args = self.make_filter_str(
             user_ids=user_ids,
@@ -500,12 +498,12 @@ class AuditLogManager(PostgresManager):
     def filter_count(
         self,
         user_ids: Collection[int],
-        level: Optional[int] = None,
-        level_ge: Optional[int] = None,
-        event_type: Optional[str] = None,
-        event_type_like: Optional[str] = None,
-        event_msg: Optional[str] = None,
-        created_after: Optional[datetime] = None,
+        level: int | None = None,
+        level_ge: int | None = None,
+        event_type: str | None = None,
+        event_type_like: str | None = None,
+        event_msg: str | None = None,
+        created_after: datetime | None = None,
     ) -> NonNegativeInt:
 
         filter_str, args = self.make_filter_str(
@@ -534,13 +532,13 @@ class AuditLogManager(PostgresManager):
     @staticmethod
     def make_filter_str(
         user_ids: Collection[int],
-        level: Optional[int] = None,
-        level_ge: Optional[int] = None,
-        event_type: Optional[str] = None,
-        event_type_like: Optional[str] = None,
-        event_msg: Optional[str] = None,
-        created_after: Optional[datetime] = None,
-    ) -> Tuple[str, Dict[str, Any]]:
+        level: int | None = None,
+        level_ge: int | None = None,
+        event_type: str | None = None,
+        event_type_like: str | None = None,
+        event_msg: str | Nond = None,
+        created_after: datetime | None = None,
+    ) -> tuple[str, dict[str, Any]]:
         assert user_ids, "must pass at least 1 user_id"
         assert all(
             [isinstance(uid, int) for uid in user_ids]

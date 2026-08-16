@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 import subprocess
@@ -5,7 +7,7 @@ import time
 from datetime import datetime
 from enum import Enum
 from sys import platform
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import dask
 import dask.dataframe as dd
@@ -167,10 +169,10 @@ class DFCollectionItem(CollectionItemBase):
         return self.to_archive(ddf=dd.from_pandas(_df, npartitions=1), is_partial=True)
 
     # --- ORM / Data handlers---
-    def to_dict(self, *args, **kwargs) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return self._to_dict()
 
-    def from_mysql(self, since: Optional[datetime] = None) -> Optional[pd.DataFrame]:
+    def from_mysql(self, since: datetime | None = None) -> pd.DataFrame | None:
         if self._collection.data_type == DFCollectionType.LEDGER:
             assert since is None, "Shouldn't pass since for Ledger item"
             assert self._collection.pg_config is not None
@@ -181,9 +183,7 @@ class DFCollectionItem(CollectionItemBase):
             else:
                 return self.from_postgres_standard(since=since)
 
-    def from_mysql_standard(
-        self, since: Optional[datetime] = None
-    ) -> Optional[pd.DataFrame]:
+    def from_mysql_standard(self, since: datetime | None = None) -> pd.DataFrame | None:
 
         assert (
             self._collection.data_type != DFCollectionType.LEDGER
@@ -235,8 +235,8 @@ class DFCollectionItem(CollectionItemBase):
         return df
 
     def from_postgres_standard(
-        self, since: Optional[datetime] = None
-    ) -> Optional[pd.DataFrame]:
+        self, since: datetime | None = None
+    ) -> pd.DataFrame | None:
         assert (
             self._collection.data_type != DFCollectionType.LEDGER
         ), "Can't call from_postgres_standard for Ledger DFCollectionItem"
@@ -285,7 +285,7 @@ class DFCollectionItem(CollectionItemBase):
 
         return df
 
-    def from_postgres_ledger(self) -> Optional[pd.DataFrame]:
+    def from_postgres_ledger(self) -> pd.DataFrame | None:
         assert (
             self._collection.data_type == DFCollectionType.LEDGER
         ), "Can only call from_postgres_ledger on Ledger DFCollectionItem"
@@ -399,7 +399,7 @@ class DFCollectionItem(CollectionItemBase):
         """
         assert isinstance(ddf, dd.DataFrame), "must pass dask df"
 
-        client: Optional[Client] = self._collection._client
+        client: Client | None = self._collection._client
         # client = None
 
         if client:
@@ -419,7 +419,7 @@ class DFCollectionItem(CollectionItemBase):
 
     def _to_archive(
         self,
-        ddf: dd.DataFrame,
+        ddf: dd.DataFrame | None,
         is_empty: bool,
         overwrite: bool = False,
     ) -> bool:
@@ -503,7 +503,7 @@ class DFCollectionItem(CollectionItemBase):
                 subprocess.call(["mv", "-T", tmp_path.as_posix(), self.path.as_posix()])
         return True
 
-    def to_archive_numbered_partial(self, ddf: Optional[dd.DataFrame] = None) -> bool:
+    def to_archive_numbered_partial(self, ddf: dd.DataFrame | None = None) -> bool:
         """
         For partial files/dirs only. Writes the .partial file with a number
         at the end (.partial.####) and then creates a symlink
@@ -516,7 +516,7 @@ class DFCollectionItem(CollectionItemBase):
 
         collection = self._collection
         schema = collection._schema
-        client: Optional[Client] = collection._client
+        client: Client | None = collection._client
 
         next_numbered_path = self.next_numbered_path(self.partial_path)
         partial_path = self.partial_path
@@ -572,7 +572,7 @@ class DFCollectionItem(CollectionItemBase):
 
         assert self.should_archive(), "not ready to archive!"
 
-        df: Optional[pd.DataFrame] = self.from_mysql()
+        df: pd.DataFrame | None = self.from_mysql()
 
         if df is None:
             self.set_empty()
@@ -589,11 +589,11 @@ class DFCollectionItem(CollectionItemBase):
 
 
 class DFCollection(CollectionBase):
-    data_type: Optional[DFCollectionType] = Field(default=None)
+    data_type: DFCollectionType | None = Field(default=None)
 
     # --- Private ---
-    pg_config: Optional[PostgresConfig] = Field(default=None)
-    sql_helper: Optional[SqlHelper] = Field(default=None)
+    pg_config: PostgresConfig | None = Field(default=None)
+    sql_helper: SqlHelper | None = Field(default=None)
 
     def __repr__(self):
         res = self.signature() + "\n"
@@ -632,7 +632,7 @@ class DFCollection(CollectionBase):
 
     # --- Properties ---
     @property
-    def items(self) -> List[DFCollectionItem]:
+    def items(self) -> list[DFCollectionItem]:
         items = []
         for iv in self.interval_range:
             cm = DFCollectionItem(start=iv[0])
@@ -648,12 +648,12 @@ class DFCollection(CollectionBase):
 
     def initial_load(
         self,
-        client: Optional[Client] = None,
+        client: Client | None = None,
         sync: bool = True,
-        since: Optional[datetime] = None,
-        client_resources: Optional[Dict[str, Any]] = None,
-        timeout: Optional[float] = None,
-    ) -> List[Future]:
+        since: datetime | None = None,
+        client_resources: dict[str, Any] | None = None,
+        timeout: float | None = None,
+    ) -> list[Future]:
         # This can be used to just build all local archive files
         # We typically want to go backwards first, so we can most quickly
         # populate the last 90 days for example
@@ -692,7 +692,7 @@ class DFCollection(CollectionBase):
         else:
             return client.compute(fs, sync=True, priority=2, resources=client_resources)
 
-    def fetch_force_rr_latest(self, sources) -> List[FilePath]:
+    def fetch_force_rr_latest(self, sources) -> list[FilePath]:
         LOG.info(
             f"{self.data_type.value}.fetch_force_rr_latest(sources={len(sources)})"
         )
@@ -736,9 +736,9 @@ class DFCollection(CollectionBase):
     def force_rr_latest(
         self,
         client: Client,
-        client_resources: Optional[Dict[str, Any]] = None,
+        client_resources: dict[str, Any] | None = None,
         sync: bool = True,
-    ) -> List[Future]:
+    ) -> list[Future]:
 
         # For forcing update of any partials asynchronously if desired
         LOG.info(f"{self.data_type.value}.force_rr_latest({client=})")

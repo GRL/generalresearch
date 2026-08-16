@@ -4,7 +4,7 @@ from generalresearch import retry
 class RetryCache:
     # Simple pylibmc.Client wrapper that implements a retry on each method
 
-    def __init__(self, client, tries=4, delay=1, backoff=1.5):
+    def __init__(self, client, tries: int = 4, delay: int = 1, backoff: float = 1.5):
         import pylibmc
 
         self.client = client

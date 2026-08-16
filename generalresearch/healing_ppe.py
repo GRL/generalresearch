@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 import signal
@@ -5,7 +7,6 @@ import time
 from collections import defaultdict
 from concurrent import futures
 from concurrent.futures.process import BrokenProcessPool
-from typing import Optional
 
 logger = logging.getLogger()
 
@@ -17,8 +18,8 @@ signal_int_name = defaultdict(
 class HealingProcessPoolExecutor:
     def __init__(
         self,
-        max_workers: Optional[int] = None,
-        name: Optional[str] = None,
+        max_workers: int | None = None,
+        name: str | None = None,
     ):
         if not name:
             try:

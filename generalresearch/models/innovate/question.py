@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import logging
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -28,7 +28,7 @@ logger.setLevel(logging.INFO)
 class InnovateUserQuestionAnswer(MarketplaceUserQuestionAnswer):
     # Note, this is referred to as the KEY in the Question model
     question_id: InnovateQuestionID = Field()
-    question_type: Optional[InnovateQuestionType] = Field(default=None)
+    question_type: InnovateQuestionType | None = Field(default=None)
     # Did this answer come from us asking, or was it passed back from the marketplace
     from_thl: bool = Field(default=True)
 
@@ -104,8 +104,8 @@ class InnovateQuestion(MarketplaceQuestion):
     # This comes from the API field "Category". There are some useful categories in here, but a bunch have
     #   categories that are not (e.g. NFX - Adhoc, Testing_Cat). We'll store it as a comma-separated string
     #   here to use it to aid our own real categorization.
-    tags: Optional[str] = Field(default=None, frozen=True)
-    options: Optional[List[InnovateQuestionOption]] = Field(
+    tags: str | None = Field(default=None, frozen=True)
+    options: list[InnovateQuestionOption] | None = Field(
         default=None, min_length=1, frozen=True
     )
 
@@ -141,8 +141,8 @@ class InnovateQuestion(MarketplaceQuestion):
 
     @classmethod
     def from_api(
-        cls, d: Dict, country_iso: str, language_iso: str
-    ) -> Optional["InnovateQuestion"]:
+        cls, d: dict, country_iso: str, language_iso: str
+    ) -> "InnovateQuestion" | None:
         """
         :param d: Raw response from API
         :param country_iso:
@@ -185,7 +185,7 @@ class InnovateQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> "InnovateQuestion":
+    def from_db(cls, d: dict[str, Any]) -> "InnovateQuestion":
 
         options = None
         if d["options"]:
@@ -207,7 +207,7 @@ class InnovateQuestion(MarketplaceQuestion):
             tags=d["tags"],
         )
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", by_alias=True)
         d["options"] = json.dumps(d["options"])
         return d

@@ -1,19 +1,20 @@
-from typing import Collection, List, Dict
+from __future__ import annotations
+
+from collections.abc import Collection
 
 from psycopg import Cursor, sql
 
-from generalresearch.managers.base import PostgresManager, Permission
-
+from generalresearch.managers.base import Permission, PostgresManager
+from generalresearch.managers.network.mtr import MTRRunManager
 from generalresearch.managers.network.nmap import NmapRunManager
 from generalresearch.managers.network.rdns import RDNSRunManager
-from generalresearch.managers.network.mtr import MTRRunManager
 from generalresearch.models.network.rdns.result import RDNSResult
 from generalresearch.models.network.tool_run import (
+    MTRRun,
     NmapRun,
     RDNSRun,
-    MTRRun,
-    ToolRun,
     ToolName,
+    ToolRun,
 )
 from generalresearch.pg_helper import PostgresConfig
 
@@ -22,7 +23,7 @@ class ToolRunManager(PostgresManager):
     def __init__(
         self,
         pg_config: PostgresConfig,
-        permissions: Collection[Permission] = None,
+        permissions: Collection[Permission] | None = None,
     ):
         super().__init__(pg_config=pg_config, permissions=permissions)
         self.nmap_manager = NmapRunManager(self.pg_config)
@@ -30,8 +31,7 @@ class ToolRunManager(PostgresManager):
         self.mtr_manager = MTRRunManager(self.pg_config)
 
     def _create_tool_run(self, run: NmapRun | RDNSRun | MTRRun, c: Cursor):
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
         INSERT INTO network_toolrun (
             ip, scan_group_id, tool_class,
             tool_name, tool_version, started_at,
@@ -44,8 +44,7 @@ class ToolRunManager(PostgresManager):
             %(finished_at)s, %(status)s, %(raw_command)s,
             %(config)s
         ) RETURNING id;
-        """
-        )
+        """)
         params = run.model_dump_postgres()
         c.execute(query, params)
         run_id = c.fetchone()["id"]
@@ -62,7 +61,7 @@ class ToolRunManager(PostgresManager):
         else:
             raise ValueError("unrecognized run type")
 
-    def get_latest_runs_by_tool(self, ip: str) -> Dict[ToolName, ToolRun]:
+    def get_latest_runs_by_tool(self, ip: str) -> dict[ToolName, ToolRun]:
         query = """
         SELECT DISTINCT ON (tool_name) *
         FROM network_toolrun

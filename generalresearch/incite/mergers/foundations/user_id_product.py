@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 
 from distributed import Client
 
@@ -19,7 +21,7 @@ class UserIdProductMergeItem(MergeCollectionItem):
         self,
         client: Client,
         user_coll: UserDFCollection,
-        client_resources: Optional[Dict[str, Any]] = None,
+        client_resources: dict[str, Any] | None = None,
     ) -> None:
         LOG.warning(f"UserIdProductMergeItem.build({self.interval})")
 
@@ -37,13 +39,13 @@ class UserIdProductMergeItem(MergeCollectionItem):
 class UserIdProductMerge(MergeCollection):
     merge_type: Literal[MergeType.USER_ID_PRODUCT] = MergeType.USER_ID_PRODUCT
     collection_item_class: Literal[UserIdProductMergeItem] = UserIdProductMergeItem
-    offset: Optional[str] = None
+    offset: str | None = None
 
     def build(
         self,
         client: Client,
         user_coll: UserDFCollection,
-        client_resources: Optional[Dict[str, Any]] = None,
+        client_resources: dict[str, Any] | None = None,
     ) -> None:
         LOG.info(f"UserIdProductMerge.build(user_coll={user_coll.signature()})")
 

@@ -8,12 +8,7 @@ from functools import cached_property
 from typing import (
     Annotated,
     Any,
-    Dict,
-    List,
     Literal,
-    Optional,
-    Set,
-    Tuple,
     Type,
 )
 
@@ -62,16 +57,16 @@ locale_helper = Localelator()
 class InnovateCondition(MarketplaceCondition):
     model_config = ConfigDict(populate_by_name=True, frozen=False, extra="ignore")
     # store everything lowercase !
-    question_id: Optional[CoercedStr] = Field(
+    question_id: CoercedStr | None = Field(
         min_length=1, max_length=64, pattern=r"^[^A-Z]+$"
     )
     # There isn't really a hard limit, but their API is inconsistent and
     #   sometimes returns all the options comma-separated instead of as a list.
     #   Try to catch that.
-    values: List[Annotated[str, Field(max_length=128)]] = Field()
+    values: list[Annotated[str, Field(max_length=128)]] = Field()
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> "InnovateCondition":
+    def from_api(cls, d: dict[str, Any]) -> "InnovateCondition":
         d["logical_operator"] = LogicalOperator.OR
         d["value_type"] = ConditionValueType.LIST
         d["negate"] = False
@@ -91,7 +86,7 @@ class InnovateQuota(BaseModel):
     task_calculation_type: TaskCalculationType = Field()
     hard_stop: bool = Field()
 
-    condition_hashes: List[str] = Field(min_length=0, default_factory=list)
+    condition_hashes: list[str] = Field(min_length=0, default_factory=list)
 
     def __hash__(self):
         return hash(tuple((tuple(self.condition_hashes), self.remaining_count)))
@@ -105,21 +100,21 @@ class InnovateQuota(BaseModel):
         )
 
     @classmethod
-    def from_api(cls, d: Dict):
+    def from_api(cls, d: dict):
         return cls.model_validate(d)
 
-    def passes(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Passes means we 1) meet all conditions (aka "match") AND 2) the quota is open.
         return self.is_open and self.matches(criteria_evaluation)
 
-    def matches(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def matches(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Matches means we meet all conditions.
         # We can "match" a quota that is closed. In that case, we would not be eligible for the survey.
         return all(criteria_evaluation.get(c) for c in self.condition_hashes)
 
     def matches_optional(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Optional[bool]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> bool | None:
         # We need to know if any conditions are unknown to avoid matching a full quota. If any fail,
         #   then we know we fail regardless of any being unknown.
         evals = [criteria_evaluation.get(c) for c in self.condition_hashes]
@@ -130,8 +125,8 @@ class InnovateQuota(BaseModel):
         return True
 
     def matches_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Passes back "matches" (T/F/none) and a list of unknown criterion hashes
         hash_evals = {
             cell: criteria_evaluation.get(cell) for cell in self.condition_hashes
@@ -171,11 +166,11 @@ class InnovateSurvey(MarketplaceTask):
     supplier_completes_achieved: int = Field()
     global_completes: int = Field()
     global_starts: int = Field()
-    global_median_loi: Optional[int] = Field(le=120 * 60)
-    global_conversion: Optional[float] = Field(ge=0, le=1)
+    global_median_loi: int | None = Field(le=120 * 60)
+    global_conversion: float | None = Field(ge=0, le=1)
 
-    bid_loi: Optional[int] = Field(default=None, le=120 * 60)
-    bid_ir: Optional[float] = Field(default=None, ge=0, le=1)
+    bid_loi: int | None = Field(default=None, le=120 * 60)
+    bid_ir: float | None = Field(default=None, ge=0, le=1)
 
     allowed_devices: DeviceTypes = Field(min_length=1)
 
@@ -183,31 +178,31 @@ class InnovateSurvey(MarketplaceTask):
     category: str = Field()
     requires_pii: bool = Field(default=False)
 
-    excluded_surveys: Optional[AlphaNumStrSet] = Field(
+    excluded_surveys: AlphaNumStrSet | None = Field(
         description="list of excluded survey ids", default=None
     )
     duplicate_check_level: InnovateDuplicateCheckLevel = Field()
 
-    exclude_pids: Optional[AlphaNumStrSet] = Field(default=None)
-    include_pids: Optional[AlphaNumStrSet] = Field(default=None)
+    exclude_pids: AlphaNumStrSet | None = Field(default=None)
+    include_pids: AlphaNumStrSet | None = Field(default=None)
 
     # idk what these mean
     is_revenue_sharing: bool = Field()
     group_type: str = Field()
     # undocumented, not sure how we use this
-    off_hour_traffic: Optional[Dict] = Field(default=None)
+    off_hour_traffic: dict | None = Field(default=None)
 
-    qualifications: List[str] = Field(default_factory=list)
-    quotas: List[InnovateQuota] = Field(default_factory=list)
+    qualifications: list[str] = Field(default_factory=list)
+    quotas: list[InnovateQuota] = Field(default_factory=list)
 
     source: Literal[Source.INNOVATE] = Field(default=Source.INNOVATE)
 
-    used_question_ids: Set[InnovateQuestionID] = Field(default_factory=set)
+    used_question_ids: set[InnovateQuestionID] = Field(default_factory=set)
 
     # This is a "special" key to store all conditions that are used (as "condition_hashes") throughout
     #   this survey. In the reduced representation of this task (nearly always, for db i/o, in global_vars)
     #   this field will be null.
-    conditions: Optional[Dict[str, InnovateCondition]] = Field(default=None)
+    conditions: dict[str, InnovateCondition] | None = Field(default=None)
 
     # These come from the API
     created_api: AwareDatetimeISO = Field(
@@ -219,8 +214,8 @@ class InnovateSurvey(MarketplaceTask):
     expected_end_date: date = Field()
 
     # This does not come from the API. We set it when we update this in the db.
-    created: Optional[AwareDatetimeISO] = Field(default=None)
-    updated: Optional[AwareDatetimeISO] = Field(default=None)
+    created: AwareDatetimeISO | None = Field(default=None)
+    updated: AwareDatetimeISO | None = Field(default=None)
 
     @property
     def internal_id(self) -> str:
@@ -239,7 +234,7 @@ class InnovateSurvey(MarketplaceTask):
 
     @computed_field
     @cached_property
-    def all_hashes(self) -> Set[str]:
+    def all_hashes(self) -> set[str]:
         s = set(self.qualifications)
         for q in self.quotas:
             s.update(set(q.condition_hashes))
@@ -266,7 +261,7 @@ class InnovateSurvey(MarketplaceTask):
         return data
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> Optional["InnovateSurvey"]:
+    def from_api(cls, d: dict[str, Any]) -> "InnovateSurvey" | None:
         try:
             return cls._from_api(d)
         except Exception as e:
@@ -274,7 +269,7 @@ class InnovateSurvey(MarketplaceTask):
             return None
 
     @classmethod
-    def _from_api(cls, d: Dict[str, Any]) -> "InnovateSurvey":
+    def _from_api(cls, d: dict[str, Any]) -> "InnovateSurvey":
         d["conditions"] = dict()
 
         # If we haven't hit the "detail" endpoint, we won't get this
@@ -343,7 +338,7 @@ class InnovateSurvey(MarketplaceTask):
             exclude={"updated", "conditions", "created"}
         ) == other.model_dump(exclude={"updated", "conditions", "created"})
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(
             mode="json",
             exclude={
@@ -365,7 +360,7 @@ class InnovateSurvey(MarketplaceTask):
         return d
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> Self:
+    def from_db(cls, d: dict[str, Any]) -> Self:
         d["created"] = d["created"].replace(tzinfo=timezone.utc)
         d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
         d["modified_api"] = d["modified_api"].replace(tzinfo=timezone.utc)
@@ -377,7 +372,7 @@ class InnovateSurvey(MarketplaceTask):
         return cls.model_validate(d)
 
     def participation_allowed(
-        self, att_survey_ids: Set[str], att_job_ids: Set[str]
+        self, att_survey_ids: set[str], att_job_ids: set[str]
     ) -> bool:
         """
         Checks if this user can participate in this survey based on the 'duplicate_check_level'-dictated requirements
@@ -397,14 +392,14 @@ class InnovateSurvey(MarketplaceTask):
         return True
 
     def passes_qualifications(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, bool | None]
     ) -> bool:
         # We have to match all quals
         return all(criteria_evaluation.get(q) for q in self.qualifications)
 
     def passes_qualifications_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Passes back "passes" (T/F/none) and a list of unknown criterion hashes
         hash_evals = {q: criteria_evaluation.get(q) for q in self.qualifications}
         evals = set(hash_evals.values())
@@ -416,7 +411,7 @@ class InnovateSurvey(MarketplaceTask):
             return None, {cell for cell, ev in hash_evals.items() if ev is None}
         return True, set()
 
-    def passes_quotas(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes_quotas(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Many surveys have 0 quotas. Quotas are exclusionary.
         # They can NOT match a quota where currently_open=0
         any_pass = True
@@ -428,8 +423,8 @@ class InnovateSurvey(MarketplaceTask):
         return any_pass
 
     def passes_quotas_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Many surveys have 0 quotas. Quotas are exclusionary.
         # They can NOT match a quota where currently_open=0
         if len(self.quotas) == 0:
@@ -469,7 +464,7 @@ class InnovateSurvey(MarketplaceTask):
         return False, set()
 
     def determine_eligibility(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, bool | None]
     ) -> bool:
         return (
             self.is_open
@@ -478,8 +473,8 @@ class InnovateSurvey(MarketplaceTask):
         )
 
     def determine_eligibility_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         if self.is_open is False:
             return False, set()
         pass_quals, h_quals = self.passes_qualifications_soft(criteria_evaluation)

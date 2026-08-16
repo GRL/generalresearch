@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from datetime import timezone
-from typing import Optional
 
 import psycopg
 from psycopg.adapt import Buffer
@@ -51,7 +52,7 @@ class PostgresConfig:
         dsn: PostgresDsn,
         connect_timeout: int,
         statement_timeout: float,
-        schema: Optional[str] = None,
+        schema: str | None = None,
         row_factory: RowFactory = dict_row,
     ):
         """

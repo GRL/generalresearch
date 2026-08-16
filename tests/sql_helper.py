@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 import pytest
-from pydantic import MySQLDsn, MariaDBDsn, ValidationError
+from pydantic import MariaDBDsn, MySQLDsn, ValidationError
 
 
 class TestSqlHelper:

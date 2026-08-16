@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Type
+from typing import Any, Literal, Type
 
 from more_itertools import flatten
 from pydantic import (
@@ -46,7 +46,7 @@ class CintCondition(MarketplaceCondition):
     question_id: CintQuestionIdType = Field()
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> Self:
+    def from_api(cls, d: dict[str, Any]) -> Self:
         d["question_id"] = str(d["question_id"])
         d["values"] = list(map(str.lower, d["precodes"]))
         d["value_type"] = ConditionValueType.LIST
@@ -61,11 +61,11 @@ class CintQuota(BaseModel):
     model_config = ConfigDict(populate_by_name=True, frozen=True)
     quota_id: CoercedStr = Field(validation_alias="survey_quota_id")
     quota_type: Literal["total", "client"] = Field(validation_alias="survey_quota_type")
-    conversion: Optional[float] = Field(ge=0, le=1, default=None)
+    conversion: float | None = Field(ge=0, le=1, default=None)
     number_of_respondents: NonNegativeInt = Field(
         description="Number of completes available"
     )
-    condition_hashes: Optional[List[str]] = Field(min_length=1, default=None)
+    condition_hashes: list[str] | None = Field(min_length=1, default=None)
 
     def __hash__(self):
         return hash(tuple((tuple(self.condition_hashes), self.quota_id)))
@@ -85,23 +85,23 @@ class CintQuota(BaseModel):
         return self.number_of_respondents >= 2
 
     @classmethod
-    def from_api(cls, d: Dict) -> Self:
+    def from_api(cls, d: dict) -> Self:
         d["survey_quota_type"] = d["survey_quota_type"].lower()
         return cls.model_validate(d)
 
-    def passes(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Passes means we 1) meet all conditions (aka "match") AND 2) the quota is open.
         return self.is_open and self.matches(criteria_evaluation)
 
-    def matches(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def matches(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Matches means we meet all conditions.
         # We can "match" a quota that is closed. In that case, we would
         # not be eligible for the survey.
         return all(criteria_evaluation.get(c) for c in self.condition_hashes)
 
     def matches_optional(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Optional[bool]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> bool | None:
         # We need to know if any conditions are unknown to avoid matching a full quota. If any fail,
         #   then we know we fail regardless of any being unknown.
         evals = [criteria_evaluation.get(c) for c in self.condition_hashes]
@@ -112,8 +112,8 @@ class CintQuota(BaseModel):
         return True
 
     def matches_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Passes back "matches" (T/F/none) and a list of unknown criterion hashes
         hash_evals = {
             cell: criteria_evaluation.get(cell) for cell in self.condition_hashes
@@ -138,12 +138,12 @@ class CintSurvey(MarketplaceTask):
 
     is_live_raw: bool = Field(alias="is_live")
 
-    bid_loi: Optional[int] = Field(
+    bid_loi: int | None = Field(
         ge=60, le=90 * 60, validation_alias="bid_length_of_interview"
     )
-    bid_ir: Optional[float] = Field(ge=0, le=1, validation_alias="bid_incidence")
-    collects_pii: Optional[bool] = Field()
-    survey_group_ids: Set[CoercedStr] = Field()
+    bid_ir: float | None = Field(ge=0, le=1, validation_alias="bid_incidence")
+    collects_pii: bool | None = Field()
+    survey_group_ids: set[CoercedStr] = Field()
 
     calculation_type: TaskCalculationType = Field(
         description="Indicates whether quotas are calculated based on completes or prescreens",
@@ -186,50 +186,50 @@ class CintSurvey(MarketplaceTask):
         description="Number of completes still available to the supplier"
     )
     completion_percentage: float = Field()
-    conversion: Optional[float] = Field(
+    conversion: float | None = Field(
         ge=0,
         le=1,
         description="Percentage of respondents who complete the survey after qualifying",
     )
-    mobile_conversion: Optional[float] = Field(
+    mobile_conversion: float | None = Field(
         ge=0,
         le=1,
         description="Percentage of respondents on a mobile device who complete the survey after qualifying.",
     )
-    length_of_interview: Optional[NonNegativeInt] = Field(
+    length_of_interview: NonNegativeInt | None = Field(
         description="Median time for a respondent to complete the survey, excluding prescreener, in minutes. This "
         "value will be zero until 6 completes are achieved."
     )
     overall_completes: NonNegativeInt = Field(
         description="Number of completes already achieved across all suppliers on the survey."
     )
-    revenue_per_click: Optional[float] = Field(
+    revenue_per_click: float | None = Field(
         description="The Revenue Per Click value of the survey. RPC = (RPI * completes) / system entrants",
         default=None,
     )
-    termination_length_of_interview: Optional[NonNegativeInt] = Field(
+    termination_length_of_interview: NonNegativeInt | None = Field(
         description="Median time for a respondent to be termed, in minutes. This value is calculated after six survey "
         "entrants and rounded to the nearest whole number. Until six survey entrants are achieved the "
         "value will be zero."
     )
 
-    respondent_pids: Set[str] = Field(default_factory=set)
+    respondent_pids: set[str] = Field(default_factory=set)
 
-    qualifications: List[str] = Field(default_factory=list)
-    quotas: List[CintQuota] = Field(default_factory=list)
+    qualifications: list[str] = Field(default_factory=list)
+    quotas: list[CintQuota] = Field(default_factory=list)
 
     source: Literal[Source.CINT] = Field(default=Source.CINT)
 
-    used_question_ids: Set[AlphaNumStr] = Field(default_factory=set)
+    used_question_ids: set[AlphaNumStr] = Field(default_factory=set)
 
     # This is a "special" key to store all conditions that are used (as "condition_hashes") throughout
     #   this survey. In the reduced representation of this task (nearly always, for db i/o, in global_vars)
     #   this field will be null.
-    conditions: Optional[Dict[str, CintCondition]] = Field(default=None)
+    conditions: dict[str, CintCondition] | None = Field(default=None)
 
     # These do not come from the API. We set it when we update/create in the db.
-    created_at: Optional[AwareDatetimeISO] = Field(default=None)
-    last_updated: Optional[AwareDatetimeISO] = Field(default=None)
+    created_at: AwareDatetimeISO | None = Field(default=None)
+    last_updated: AwareDatetimeISO | None = Field(default=None)
 
     @property
     def internal_id(self) -> str:
@@ -246,14 +246,14 @@ class CintSurvey(MarketplaceTask):
     def is_live(self) -> bool:
         return self.is_live_raw
 
-    def model_dump(self, **kwargs: Any) -> Dict[str, Any]:
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
         data = super().model_dump(**kwargs)
         data["is_live"] = data.pop("is_live_raw", None)
         return data
 
     @computed_field
     @property
-    def all_hashes(self) -> Set[str]:
+    def all_hashes(self) -> set[str]:
         s = set(self.qualifications)
         for q in self.quotas:
             s.update(set(q.condition_hashes)) if q.condition_hashes else None
@@ -299,7 +299,7 @@ class CintSurvey(MarketplaceTask):
         return "42"
 
     @property
-    def marketplace_genders(self) -> Dict[Gender, Optional[MarketplaceCondition]]:
+    def marketplace_genders(self) -> dict[Gender, MarketplaceCondition | None]:
         return {
             Gender.MALE: CintCondition(
                 question_id="43",
@@ -315,7 +315,7 @@ class CintSurvey(MarketplaceTask):
         }
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> Optional[Self]:
+    def from_api(cls, d: dict[str, Any]) -> Self | None:
         try:
             return cls._from_api(d)
         except Exception as e:
@@ -323,7 +323,7 @@ class CintSurvey(MarketplaceTask):
             return None
 
     @classmethod
-    def _from_api(cls, d: Dict[str, Any]) -> Self:
+    def _from_api(cls, d: dict[str, Any]) -> Self:
         if "cpi" in d:
             d["gross_cpi"] = Decimal(d.pop("cpi"))
         if "revenue_per_interview" in d:
@@ -396,7 +396,7 @@ class CintSurvey(MarketplaceTask):
 
         return cls.model_validate(d)
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(
             mode="json",
             exclude={
@@ -428,14 +428,14 @@ class CintSurvey(MarketplaceTask):
         return cls.model_validate(d)
 
     def passes_qualifications(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, bool | None]
     ) -> bool:
         # We have to match all quals
         return all(criteria_evaluation.get(q) for q in self.qualifications)
 
     def passes_qualifications_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Passes back "passes" (T/F/none) and a list of unknown criterion hashes
         hash_evals = {q: criteria_evaluation.get(q) for q in self.qualifications}
         evals = set(hash_evals.values())
@@ -447,7 +447,7 @@ class CintSurvey(MarketplaceTask):
             return None, {cell for cell, ev in hash_evals.items() if ev is None}
         return True, set()
 
-    def passes_quotas(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes_quotas(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Many surveys have 0 quotas. Quotas are exclusionary.
         # They can NOT match a quota where currently_open=0
         any_pass = True
@@ -462,8 +462,8 @@ class CintSurvey(MarketplaceTask):
         return any_pass
 
     def passes_quotas_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Many surveys have 0 quotas. Quotas are exclusionary.
         # They can NOT match a quota where currently_open=0
         total_quota = [q for q in self.quotas if q.quota_type == "total"][0]
@@ -506,7 +506,7 @@ class CintSurvey(MarketplaceTask):
         return False, set()
 
     def determine_eligibility(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, bool | None]
     ) -> bool:
         return (
             self.is_open
@@ -515,8 +515,8 @@ class CintSurvey(MarketplaceTask):
         )
 
     def determine_eligibility_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # We check is_open when putting the survey in global_vars. Don't need to check again.
         # if self.is_open is False:
         #     return False, set()

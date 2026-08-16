@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import logging
+from collections.abc import Collection
 from datetime import datetime
 from functools import lru_cache
-from typing import Collection, List, Optional
 from uuid import uuid4
 
 from pydantic import RedisDsn
@@ -32,12 +34,12 @@ auditlog = logging.getLogger("auditlog")
 class UserManager:
     def __init__(
         self,
-        redis: Optional[RedisDsn] = None,
-        pg_config: Optional[PostgresConfig] = None,
-        pg_config_rr: Optional[PostgresConfig] = None,
-        sql_permissions: Optional[Collection[Permission]] = None,
-        cache_prefix: Optional[str] = None,
-        redis_timeout: Optional[float] = None,
+        redis: RedisDsn | None = None,
+        pg_config: PostgresConfig | None = None,
+        pg_config_rr: PostgresConfig | None = None,
+        sql_permissions: Collection[Permission] | None = None,
+        cache_prefix: str | None = None,
+        redis_timeout: float | None = None,
     ):
 
         if sql_permissions is None:
@@ -87,8 +89,8 @@ class UserManager:
         user: User,
         level: int,
         event_type: str,
-        event_msg: Optional[str] = None,
-        event_value: Optional[float] = None,
+        event_msg: str | None = None,
+        event_value: float | None = None,
     ) -> None:
         from generalresearch.managers.thl.userhealth import AuditLogManager
         from generalresearch.models.thl.userhealth import AuditLogLevel
@@ -115,10 +117,10 @@ class UserManager:
     def get_user(
         self,
         *,
-        product_id: Optional[str] = None,
-        product_user_id: Optional[str] = None,
-        user_id: Optional[int] = None,
-        user_uuid: Optional[UUIDStr] = None,
+        product_id: str | None = None,
+        product_user_id: str | None = None,
+        user_id: int | None = None,
+        user_uuid: UUIDStr | None = None,
     ) -> User:
         """
         Retrieve User from (product_id & product_user_id) or (user_id), or (uuid).
@@ -171,9 +173,9 @@ class UserManager:
 
     def get_user_if_exists(
         self,
-        product_id: Optional[str] = None,
-        product_user_id: Optional[str] = None,
-    ) -> Optional[User]:
+        product_id: str | None = None,
+        product_user_id: str | None = None,
+    ) -> User | None:
         """
         Look up User from (product_id & product_user_id). Returns
         None if user does not exist.
@@ -186,11 +188,11 @@ class UserManager:
     def get_user_inmemory_cache(
         self,
         *,
-        product_id: Optional[str] = None,
-        product_user_id: Optional[str] = None,
-        user_id: Optional[int] = None,
-        user_uuid: Optional[UUIDStr] = None,
-    ) -> Optional[User]:
+        product_id: str | None = None,
+        product_user_id: str | None = None,
+        user_id: int | None = None,
+        user_uuid: UUIDStr | None = None,
+    ) -> User | None:
 
         input_str = f"{product_id}, {product_user_id}, {user_id}, {user_uuid}"
         if self.redis_user_manager:
@@ -226,14 +228,10 @@ class UserManager:
             ) as e:
                 logger.info(f"redis.set_user failed: {user}, {e}")
 
-        return None
-
     def clear_user_inmemory_cache(self, user: User) -> None:
         if self.redis_user_manager:
             # this should only be used by tests
             self.redis_user_manager.clear_user(user)
-
-        return None
 
     def get_or_create_user(self, product_user_id: str, product_id: str) -> User:
         """
@@ -266,9 +264,9 @@ class UserManager:
     def create_user(
         self,
         product_user_id: str,
-        product_id: Optional[UUIDStr] = None,
-        product: Optional[Product] = None,
-        created: Optional[datetime] = None,
+        product_id: UUIDStr | None = None,
+        product: Product | None = None,
+        created: datetime | None = None,
     ) -> User:
 
         assert (
@@ -299,11 +297,11 @@ class UserManager:
     def create_dummy(
         self,
         # --- Create dummy "optional" --- #
-        product_user_id: Optional[str] = None,
+        product_user_id: str | None = None,
         # --- Optional --- #
-        product_id: Optional[UUIDStr] = None,
-        product: Optional[Product] = None,
-        created: Optional[datetime] = None,
+        product_id: UUIDStr | None = None,
+        product: Product | None = None,
+        created: datetime | None = None,
     ) -> User:
 
         product_user_id = product_user_id or uuid4().hex
@@ -357,7 +355,7 @@ class UserManager:
         *,
         product_id: str,
         product_user_ids: Collection[str],
-    ) -> List[User]:
+    ) -> list[User]:
         assert product_id, "must pass product_id"
         assert len(product_user_ids) > 0, "must pass 1 or more product_user_ids"
         return self.mysql_user_manager_rr.fetch_by_bpuids(
@@ -367,9 +365,9 @@ class UserManager:
     def fetch(
         self,
         *,
-        user_ids: Collection[int] = None,
-        user_uuids: Collection[str] = None,
-    ) -> List[User]:
+        user_ids: Collection[int] | None = None,
+        user_uuids: Collection[str] | None = None,
+    ) -> list[User]:
         assert (user_ids or user_uuids) and not (
             user_ids and user_uuids
         ), "Must pass ONE of user_ids, user_uuids"

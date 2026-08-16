@@ -1,4 +1,6 @@
-from typing import Any, Dict, List
+from __future__ import annotations
+
+from typing import Any
 
 import pandas as pd
 from pandera import Check, Column, DataFrameSchema, Index
@@ -35,8 +37,8 @@ DynataTaskCollectionSchema = DataFrameSchema(
         "requirements": Column(str),  # json dumped str
         "created": Column(dtype=pd.DatetimeTZDtype(tz="UTC")),
         "last_updated": Column(dtype=pd.DatetimeTZDtype(tz="UTC")),
-        "used_question_ids": Column(List[str]),
-        "all_hashes": Column(List[str]),  # set >> list for column support
+        "used_question_ids": Column(list[str]),
+        "all_hashes": Column(list[str]),  # set >> list for column support
     },
     checks=[],
     index=Index(
@@ -55,7 +57,7 @@ class DynataTaskCollection(TaskCollection):
     items: List[DynataSurvey]
     _schema = DynataTaskCollectionSchema
 
-    def to_row(self, s: DynataSurvey) -> Dict[str, Any]:
+    def to_row(self, s: DynataSurvey) -> dict[str, Any]:
         d = s.model_dump(
             mode="json",
             exclude={

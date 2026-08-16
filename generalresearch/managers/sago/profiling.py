@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import json
-from typing import Collection, List, Optional, Tuple
+from collections.abc import Collection
 
 from generalresearch.models.sago.question import SagoQuestion
 from generalresearch.sql_helper import SqlHelper
@@ -7,13 +9,13 @@ from generalresearch.sql_helper import SqlHelper
 
 def get_profiling_library(
     sql_helper: SqlHelper,
-    country_iso: Optional[str] = None,
-    language_iso: Optional[str] = None,
-    question_ids: Optional[Collection[str]] = None,
-    max_options: Optional[int] = None,
-    is_live: Optional[bool] = None,
-    pks: Optional[Collection[Tuple[str, str, str]]] = None,
-) -> List[SagoQuestion]:
+    country_iso: str | None = None,
+    language_iso: str | None = None,
+    question_ids: Collection[str] | None = None,
+    max_options: int | None = None,
+    is_live: bool | None = None,
+    pks: Collection[tuple[str, str, str]] | None = None,
+) -> list[SagoQuestion]:
     """
     Accepts lots of optional filters.
 

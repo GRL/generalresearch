@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import time
 from concurrent.futures.thread import ThreadPoolExecutor, _WorkItem
 from queue import PriorityQueue
@@ -46,7 +48,7 @@ class PriorityThreadPoolExecutor(ThreadPoolExecutor):
       >> q.submit(do_nothing, 'high', priority=-1)
     """
 
-    def __init__(self, max_workers=None, thread_name_prefix=""):
+    def __init__(self, max_workers: int | None = None, thread_name_prefix=""):
         super().__init__(max_workers, thread_name_prefix)
         self._work_queue = WorkItemPriorityQueue()
 

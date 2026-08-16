@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import json
 import logging
 import operator
+from collections.abc import Collection
 from datetime import datetime, timezone
 from decimal import Decimal
 from threading import Lock
-from typing import TYPE_CHECKING, Collection, List, Optional, Union
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from cachetools import TTLCache, cachedmethod, keys
@@ -41,7 +44,7 @@ class ProductManager(PostgresManager):
     def __init__(
         self,
         pg_config: PostgresConfig,
-        permissions: Collection[Permission] = None,
+        permissions: Collection[Permission] | None = None,
     ):
         super().__init__(pg_config=pg_config, permissions=permissions)
         self.uuid_cache = TTLCache(maxsize=1024, ttl=5 * 60)
@@ -70,8 +73,8 @@ class ProductManager(PostgresManager):
 
     def get_by_uuids(
         self,
-        product_uuids: List[UUIDStr],
-    ) -> List["Product"]:
+        product_uuids: list[UUIDStr],
+    ) -> list["Product"]:
 
         res = self.fetch_uuids(
             product_uuids=product_uuids,
@@ -85,7 +88,7 @@ class ProductManager(PostgresManager):
     def get_by_uuid_if_exists(
         self,
         product_uuid: UUIDStr,
-    ) -> Optional["Product"]:
+    ) -> "Product" | None:
         # many=False, raise_on_error=False
         try:
             return self.fetch_uuids(
@@ -98,18 +101,18 @@ class ProductManager(PostgresManager):
 
     def get_by_uuids_if_exists(
         self,
-        product_uuids: List[UUIDStr],
-    ) -> List["Product"]:
+        product_uuids: list[UUIDStr],
+    ) -> list["Product"]:
         # Same as .get_by_uuids but doesn't raise Exception if len(product_uuids) != len(res)
         return self.fetch_uuids(
             product_uuids=product_uuids,
         )
 
-    def get_all(self, rand_limit: Optional[int]) -> List["Product"]:
+    def get_all(self, rand_limit: int | None) -> list["Product"]:
         product_uuids = self.get_all_uuids(rand_limit=rand_limit)
         return self.fetch_uuids(product_uuids=product_uuids)
 
-    def get_all_uuids(self, rand_limit: Optional[int]) -> List[UUIDStr]:
+    def get_all_uuids(self, rand_limit: int | None) -> list[UUIDStr]:
 
         if rand_limit:
             res = self.pg_config.execute_sql_query(
@@ -123,20 +126,18 @@ class ProductManager(PostgresManager):
             )
 
         else:
-            res = self.pg_config.execute_sql_query(
-                query="""
+            res = self.pg_config.execute_sql_query(query="""
                     SELECT p.id::uuid
                     FROM userprofile_brokerageproduct AS p
-                """
-            )
+                """)
         return [i["id"] for i in res]
 
     def fetch_uuids(
         self,
-        product_uuids: Optional[List[UUIDStr]] = None,
-        business_uuids: Optional[List[UUIDStr]] = None,
-        team_uuids: Optional[List[UUIDStr]] = None,
-    ) -> List["Product"]:
+        product_uuids: list[UUIDStr] | None = None,
+        business_uuids: list[UUIDStr] | None = None,
+        team_uuids: list[UUIDStr] | None = None,
+    ) -> list["Product"]:
         LOG.debug(f"PM.fetch_uuids({product_uuids=}, {business_uuids=}, {team_uuids=})")
 
         assert (
@@ -179,8 +180,8 @@ class ProductManager(PostgresManager):
         return res
 
     def fetch_uuids_(
-        self, c: Cursor, filter_uuids: List[UUIDStr], filter_column: str
-    ) -> List["Product"]:
+        self, c: Cursor, filter_uuids: list[UUIDStr], filter_column: str
+    ) -> list["Product"]:
         from generalresearch.models.thl.product import Product
 
         assert len(filter_uuids) <= 500, "chunk me"
@@ -265,20 +266,20 @@ class ProductManager(PostgresManager):
 
     def create_dummy(
         self,
-        product_id: Optional[UUIDStr] = None,
-        team_id: Optional[UUIDStr] = None,
-        business_id: Optional[UUIDStr] = None,
-        name: Optional[str] = None,
-        redirect_url: Optional[str] = None,
-        harmonizer_domain: Optional[str] = None,
+        product_id: UUIDStr | None = None,
+        team_id: UUIDStr | None = None,
+        business_id: UUIDStr | None = None,
+        name: str | None = None,
+        redirect_url: str | None = None,
+        harmonizer_domain: str | None = None,
         commission_pct: Decimal = Decimal("0.05000"),
-        sources_config: Optional[Union["SourcesConfig", "SupplyConfigs"]] = None,
-        payout_config: Optional["PayoutConfig"] = None,
-        session_config: Optional["SessionConfig"] = None,
-        profiling_config: Optional["ProfilingConfig"] = None,
-        user_wallet_config: Optional["UserWalletConfig"] = None,
-        user_create_config: Optional["UserCreateConfig"] = None,
-        user_health_config: Optional["UserHealthConfig"] = None,
+        sources_config: "SourcesConfig" | "SupplyConfigs" | None = None,
+        payout_config: "PayoutConfig" | None = None,
+        session_config: "SessionConfig" | None = None,
+        profiling_config: "ProfilingConfig" | None = None,
+        user_wallet_config: "UserWalletConfig" | None = None,
+        user_create_config: "UserCreateConfig" | None = None,
+        user_health_config: "UserHealthConfig" | None = None,
     ) -> "Product":
         """To be used in tests, where we don't care about certain fields"""
         product_id = product_id if product_id else uuid4().hex
@@ -309,16 +310,16 @@ class ProductManager(PostgresManager):
         team_id: UUIDStr,
         name: str,
         redirect_url: str,
-        business_id: Optional[UUIDStr] = None,
-        harmonizer_domain: Optional[str] = None,
+        business_id: UUIDStr | None = None,
+        harmonizer_domain: str | None = None,
         commission_pct: Decimal = Decimal("0.05"),
-        sources_config: Optional[Union["SourcesConfig", "SupplyConfigs"]] = None,
-        payout_config: Optional["PayoutConfig"] = None,
-        session_config: Optional["SessionConfig"] = None,
-        profiling_config: Optional["ProfilingConfig"] = None,
-        user_wallet_config: Optional["UserWalletConfig"] = None,
-        user_create_config: Optional["UserCreateConfig"] = None,
-        user_health_config: Optional["UserHealthConfig"] = None,
+        sources_config: "SourcesConfig" | "SupplyConfigs" | None = None,
+        payout_config: "PayoutConfig" | None = None,
+        session_config: "SessionConfig" | None = None,
+        profiling_config: "ProfilingConfig" | None = None,
+        user_wallet_config: "UserWalletConfig" | None = None,
+        user_create_config: "UserCreateConfig" | None = None,
+        user_health_config: "UserHealthConfig" | None = None,
     ) -> "Product":
         """Create a Product with all the basic defaults and return the instance"""
         from generalresearch.models.thl.product import (
@@ -400,14 +401,10 @@ class ProductManager(PostgresManager):
         insert_data["payments_enabled"] = instance.payments_enabled
 
         try:
-            insert_data["id_int"] = list(
-                self.pg_config.execute_sql_query(
-                    query="""
+            insert_data["id_int"] = list(self.pg_config.execute_sql_query(query="""
             SELECT COALESCE(MAX(id_int), 0) + 1 as id_int
             FROM userprofile_brokerageproduct
-            """
-                )
-            )[0]["id_int"]
+            """))[0]["id_int"]
             instance.id_int = insert_data["id_int"]
 
             query = """
@@ -494,7 +491,7 @@ class ProductManager(PostgresManager):
             raise ValueError(f"Not allowed to change: {keys_to_update & not_allowed}")
 
         if not keys_to_update:
-            return None
+            return
 
         in_bp_keys = {
             "name",

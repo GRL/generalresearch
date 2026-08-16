@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import random
 import threading
-from typing import Any, Collection, Dict, List, Tuple
+from collections.abc import Collection
+from typing import Any
 
 from cachetools import TTLCache, cached
 from pydantic import ValidationError
@@ -15,13 +18,13 @@ from generalresearch.models.thl.profiling.upk_question import (
 
 class QuestionManager(PostgresManager):
 
-    def get_multi_upk(self, question_ids: Collection[str]) -> List[UpkQuestion]:
+    def get_multi_upk(self, question_ids: Collection[str]) -> list[UpkQuestion]:
         query = """
         SELECT data, property_code, explanation_template, explanation_fragment_template
         FROM marketplace_question
         WHERE id = ANY(%(question_ids)s);
         """
-        res: List[Dict[str, Any]] = self.pg_config.execute_sql_query(
+        res: list[dict[str, Any]] = self.pg_config.execute_sql_query(
             query=query, params={"question_ids": list(question_ids)}
         )
         for x in res:
@@ -41,7 +44,7 @@ class QuestionManager(PostgresManager):
     )
     def get_questions_ranked(
         self, country_iso: str, language_iso: str
-    ) -> List[UpkQuestion]:
+    ) -> list[UpkQuestion]:
         query = """
         SELECT data, property_code, explanation_template, explanation_fragment_template
         FROM marketplace_question
@@ -51,11 +54,11 @@ class QuestionManager(PostgresManager):
             AND property_code NOT LIKE 'g:%%'
             AND is_live
         """
-        res: List[Dict[str, Any]] = self.pg_config.execute_sql_query(
+        res: list[dict[str, Any]] = self.pg_config.execute_sql_query(
             query=query,
             params={"country_iso": country_iso, "language_iso": language_iso},
         )
-        qs: List[UpkQuestion] = []
+        qs: list[UpkQuestion] = []
         for x in res:
             x["data"]["ext_question_id"] = x["property_code"]
             x["data"]["explanation_template"] = x["explanation_template"]
@@ -95,7 +98,7 @@ class QuestionManager(PostgresManager):
             "country_iso": country_iso,
             "language_iso": language_iso,
         }
-        res: List[Dict[str, Any]] = self.pg_config.execute_sql_query(
+        res: list[dict[str, Any]] = self.pg_config.execute_sql_query(
             query=query, params=params
         )
         assert len(res) == 1, f"expected 1, got {len(res)} results"
@@ -108,8 +111,8 @@ class QuestionManager(PostgresManager):
         return UpkQuestion.model_validate(x["data"])
 
     def filter_by_property(
-        self, lookup: Collection[Tuple[str, str, str]]
-    ) -> List[UpkQuestion]:
+        self, lookup: Collection[tuple[str, str, str]]
+    ) -> list[UpkQuestion]:
         """
         lookup is [(property_code, country_iso, language_iso)]
         """
@@ -123,7 +126,7 @@ class QuestionManager(PostgresManager):
         WHERE {where_str}
         """
         flat_params = [item for tup in lookup for item in tup]
-        res: List[Dict[str, Any]] = self.pg_config.execute_sql_query(
+        res: list[dict[str, Any]] = self.pg_config.execute_sql_query(
             query=query, params=flat_params
         )
         for x in res:
@@ -141,7 +144,7 @@ class QuestionManager(PostgresManager):
                 LOG.warning(e)
         return res2
 
-    def update_question_explanation(self, q: UpkQuestion):
+    def update_question_explanation(self, q: UpkQuestion) -> None:
         # Assuming the question already exists in the db, and we're updating
         # the fields explanation_template and explanation_fragment_template
         assert q.id, "q.id must be set"
@@ -160,4 +163,3 @@ class QuestionManager(PostgresManager):
                 c.execute(query, params)
                 assert c.rowcount == 1
             conn.commit()
-        return None

@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import json
 import os
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pandas as pd
@@ -58,7 +60,7 @@ class Membership(BaseModel):
 
     model_config = ConfigDict(use_enum_values=True)
 
-    id: SkipJsonSchema[Optional[PositiveInt]] = Field(
+    id: SkipJsonSchema[PositiveInt | None] = Field(
         default=None,
     )
     uuid: UUIDStrCoerce = Field(examples=[uuid4().hex])
@@ -82,13 +84,13 @@ class Membership(BaseModel):
     team_id: SkipJsonSchema[PositiveInt] = Field()
 
     # prefetch attributes
-    team: SkipJsonSchema[Optional["Team"]] = Field(default=None)
+    team: SkipJsonSchema["Team" | None] = Field(default=None)
 
     # --- Validators ---
 
     @field_validator("created", mode="before")
     @classmethod
-    def created_utc(cls, v: Union[datetime, str]) -> Union[datetime, str]:
+    def created_utc(cls, v: datetime | str) -> datetime | str:
         if isinstance(v, datetime):
             return v.replace(tzinfo=timezone.utc)
         return v
@@ -105,15 +107,15 @@ class Membership(BaseModel):
 
 
 class Team(BaseModel):
-    id: SkipJsonSchema[Optional[PositiveInt]] = Field(default=None)
+    id: SkipJsonSchema[PositiveInt | None] = Field(default=None)
     uuid: UUIDStrCoerce = Field(examples=[uuid4().hex])
     name: str = Field(max_length=255, examples=["Team ABC"])
 
     # prefetch attributes
-    memberships: SkipJsonSchema[Optional[List["Membership"]]] = Field(default=None)
-    gr_users: SkipJsonSchema[Optional[List["GRUser"]]] = Field(default=None)
-    businesses: SkipJsonSchema[Optional[List["Business"]]] = Field(default=None)
-    products: SkipJsonSchema[Optional[List["Product"]]] = Field(default=None)
+    memberships: SkipJsonSchema[list["Membership"] | None] = Field(default=None)
+    gr_users: SkipJsonSchema[list["GRUser"] | None] = Field(default=None)
+    businesses: SkipJsonSchema[list["Business"] | None] = Field(default=None)
+    products: SkipJsonSchema[list["Product"] | None] = Field(default=None)
 
     # --- Prefetch Methods ---
 
@@ -156,7 +158,7 @@ class Team(BaseModel):
         ds: "GRLDatasets",
         client: Client,
         mnt_gr_api: Path,
-        enriched_session: Optional["EnrichedSessionMerge"] = None,
+        enriched_session: "EnrichedSessionMerge" | None = None,
     ) -> None:
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
@@ -193,7 +195,7 @@ class Team(BaseModel):
         except Exception as e:
             raise IOError(f"Parquet verification failed: {e}")
 
-        return None
+        return
 
     def prebuild_enriched_wall_parquet(
         self,
@@ -201,7 +203,7 @@ class Team(BaseModel):
         ds: "GRLDatasets",
         client: Client,
         mnt_gr_api: Path,
-        enriched_wall: Optional["EnrichedWallMerge"] = None,
+        enriched_wall: "EnrichedWallMerge" | None = None,
     ) -> None:
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
@@ -241,7 +243,7 @@ class Team(BaseModel):
         return None
 
     @classmethod
-    def required_fields(cls) -> List[str]:
+    def required_fields(cls) -> list[str]:
         return [
             field_name
             for field_name, field_info in cls.model_fields.items()
@@ -258,7 +260,7 @@ class Team(BaseModel):
         return f"team-{self.uuid}"
 
     @property
-    def product_ids(self) -> Optional[List[UUIDStr]]:
+    def product_ids(self) -> list[UUIDStr] | None:
         if self.products is None:
             LOG.warning("prefetch not run")
             return None
@@ -266,7 +268,7 @@ class Team(BaseModel):
         return [p.uuid for p in self.products]
 
     @property
-    def product_uuids(self) -> Optional[List[UUIDStr]]:
+    def product_uuids(self) -> list[UUIDStr] | None:
         return self.product_ids
 
     # --- Methods ---
@@ -278,9 +280,9 @@ class Team(BaseModel):
         redis_config: RedisConfig,
         client: "Client",
         ds: "GRLDatasets",
-        mnt_gr_api: Union[Path, str],
-        enriched_session: Optional["EnrichedSessionMerge"] = None,
-        enriched_wall: Optional["EnrichedWallMerge"] = None,
+        mnt_gr_api: Path | str,
+        enriched_session: "EnrichedSessionMerge" | None = None,
+        enriched_wall: "EnrichedWallMerge" | None = None,
     ) -> None:
         ex_secs = 60 * 60 * 24 * 3  # 3 days
 
@@ -324,7 +326,7 @@ class Team(BaseModel):
             enriched_wall=enriched_wall,
         )
 
-        return None
+        return
 
     # --- ORM ---
 
@@ -332,14 +334,14 @@ class Team(BaseModel):
     def from_redis(
         cls,
         uuid: UUIDStr,
-        fields: List[str],
+        fields: list[str],
         gr_redis_config: RedisConfig,
-    ) -> Optional[Self]:
-        keys: List = Team.required_fields() + fields
+    ) -> Self | None:
+        keys: list = Team.required_fields() + fields
         rc = gr_redis_config.create_redis_client()
 
         try:
-            res: List = rc.hmget(name=f"team:{uuid}", keys=keys)
+            res: list = rc.hmget(name=f"team:{uuid}", keys=keys)
             d = {val: json.loads(res[idx]) for idx, val in enumerate(keys)}
             return Team.model_validate(d)
 

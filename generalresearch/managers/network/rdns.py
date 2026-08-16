@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 from psycopg import Cursor
 
@@ -8,7 +8,7 @@ from generalresearch.models.network.tool_run import RDNSRun
 
 class RDNSRunManager(PostgresManager):
 
-    def _create(self, run: RDNSRun, c: Optional[Cursor] = None) -> None:
+    def _create(self, run: RDNSRun, c: Cursor | None = None) -> None:
         """
         Do not use this directly. Must only be used in the context of a toolrun
         """

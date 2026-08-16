@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 from psycopg import Cursor, sql
 
@@ -8,13 +8,12 @@ from generalresearch.models.network.tool_run import NmapRun
 
 class NmapRunManager(PostgresManager):
 
-    def _create(self, run: NmapRun, c: Optional[Cursor] = None) -> None:
+    def _create(self, run: NmapRun, c: Cursor | None = None) -> None:
         """
         Insert a PortScan + PortScanPorts from a Pydantic NmapResult.
         Do not use this directly. Must only be used in the context of a toolrun
         """
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
         INSERT INTO network_portscan (
             run_id, xml_version, host_state,
             host_state_reason, latency_ms, distance,
@@ -29,12 +28,10 @@ class NmapRunManager(PostgresManager):
             %(parsed)s, %(scan_group_id)s, %(open_tcp_ports)s,
             %(started_at)s, %(ip)s, %(open_udp_ports)s
         );
-        """
-        )
+        """)
         params = run.model_dump_postgres()
 
-        query_ports = sql.SQL(
-            """
+        query_ports = sql.SQL("""
         INSERT INTO network_portscanport (
             port_scan_id, protocol, port,
             state, reason, reason_ttl,
@@ -44,8 +41,7 @@ class NmapRunManager(PostgresManager):
             %(state)s, %(reason)s, %(reason_ttl)s,
             %(service_name)s
         )
-        """
-        )
+        """)
         nmap_run = run.parsed
         params_ports = [p.model_dump_postgres(run_id=run.id) for p in nmap_run.ports]
 
@@ -59,5 +55,3 @@ class NmapRunManager(PostgresManager):
                     c.execute(query, params)
                     if nmap_run.ports:
                         c.executemany(query_ports, params_ports)
-
-        return None

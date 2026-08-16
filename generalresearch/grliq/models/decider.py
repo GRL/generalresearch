@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -41,13 +42,13 @@ class GrlIqAttemptResult(BaseModel):
         description="Whether an attempt should be allowed to continue, based on the evidence"
         "available to the decider at this point in time"
     )
-    fraud_score: Optional[int] = Field(
+    fraud_score: int | None = Field(
         ge=0,
         le=100,
         description="Higher equals more likely to be fraudulent",
         default=None,
     )
-    fingerprint: Optional[str] = Field(
+    fingerprint: str | None = Field(
         default=None,
         description="Fingerprint that should be unique to this particular device",
     )

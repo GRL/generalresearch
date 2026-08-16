@@ -4,13 +4,13 @@ import subprocess
 from datetime import datetime, timezone
 from enum import Enum
 from sys import platform
-from typing import Optional, List, Type
+from typing import List, Optional, Type
 
 import dask.dataframe as dd
 import pandas as pd
 from dask.distributed import Client
 from pandera import DataFrameSchema
-from pydantic import Field, field_validator, ValidationInfo, model_validator
+from pydantic import Field, ValidationInfo, field_validator, model_validator
 from typing_extensions import Self
 
 from generalresearch.incite.base import CollectionBase, CollectionItemBase
@@ -28,9 +28,9 @@ from generalresearch.incite.schemas.mergers.foundations.user_id_product import (
     UserIdProductSchema,
 )
 from generalresearch.incite.schemas.mergers.nginx import (
-    NGINXGRSSchema,
     NGINXCoreSchema,
     NGINXFSBSchema,
+    NGINXGRSSchema,
 )
 from generalresearch.incite.schemas.mergers.pop_ledger import (
     PopLedgerSchema,

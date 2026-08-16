@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import json
 import threading
 from collections import defaultdict
 from datetime import timedelta
-from typing import Dict, List, Optional, Tuple
 
 from cachetools import TTLCache, cachedmethod
 
@@ -36,7 +37,7 @@ class SurveyPenaltyManager(RedisManager):
     def __init__(
         self,
         redis_config: RedisConfig,
-        cache_prefix: Optional[str] = None,
+        cache_prefix: str | None = None,
         **kwargs,
     ):
         super().__init__(redis_config=redis_config, cache_prefix=cache_prefix, **kwargs)
@@ -59,7 +60,7 @@ class SurveyPenaltyManager(RedisManager):
     def get_redis_key_for_id(self, uuid_id: UUIDStr):
         return f"{self.redis_prefix}:{uuid_id}"
 
-    def set_penalties(self, penalties: List[Penalty]):
+    def set_penalties(self, penalties: list[Penalty]):
         """ """
         if len(penalties) > 1000:
             LOG.warning("SurveyPenaltyManager.set_penalties batch me!")
@@ -81,7 +82,7 @@ class SurveyPenaltyManager(RedisManager):
 
     def _load_penalties(
         self, product_id: UUIDStr, team_id: UUIDStr
-    ) -> Tuple[List[BPSurveyPenalty], List[TeamSurveyPenalty]]:
+    ) -> tuple[list[BPSurveyPenalty], list[TeamSurveyPenalty]]:
         pipe = self.redis_client.pipeline(transaction=False)
         bp_res, team_res = (
             pipe.hgetall(self.get_redis_key_for_id(product_id))
@@ -99,7 +100,7 @@ class SurveyPenaltyManager(RedisManager):
     @cachedmethod(lambda self: self.cache, lock=lambda self: self.cache_lock)
     def get_penalties_for(
         self, product_id: UUIDStr, team_id: UUIDStr
-    ) -> Dict[str, float]:
+    ) -> dict[str, float]:
         """
         Returns a dict with keys survey sids ({source}:{survey_id}) and values penalties.
         e.g. {'s:1234': 0.8}

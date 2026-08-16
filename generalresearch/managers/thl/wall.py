@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import logging
 from collections import defaultdict
+from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
 from decimal import ROUND_DOWN, Decimal
 from functools import cached_property
 from random import choice as rchoice
-from typing import Collection, List, Optional
 from uuid import uuid4
 
 from faker import Faker
@@ -44,7 +46,7 @@ class WallManager(PostgresManager):
     def __init__(
         self,
         pg_config: PostgresConfig,
-        permissions: Optional[Collection[Permission]] = None,
+        permissions: Collection[Permission] | None = None,
     ):
         assert pg_config.row_factory == dict_row
         super().__init__(pg_config=pg_config, permissions=permissions)
@@ -57,8 +59,8 @@ class WallManager(PostgresManager):
         source: Source,
         req_survey_id: str,
         req_cpi: Decimal,
-        buyer_id: Optional[str] = None,
-        uuid_id: Optional[str] = None,
+        buyer_id: str | None = None,
+        uuid_id: str | None = None,
     ) -> Wall:
         """
         Creates a Wall event. Prefer to use this rather than instantiating
@@ -94,14 +96,14 @@ class WallManager(PostgresManager):
 
     def create_dummy(
         self,
-        session_id: Optional[int] = None,
-        user_id: Optional[int] = None,
-        started: Optional[datetime] = None,
-        source: Optional[Source] = None,
-        req_survey_id: Optional[str] = None,
-        req_cpi: Optional[Decimal] = None,
-        buyer_id: Optional[str] = None,
-        uuid_id: Optional[str] = None,
+        session_id: int | None = None,
+        user_id: int | None = None,
+        started: datetime | None = None,
+        source: Source | None = None,
+        req_survey_id: str | None = None,
+        req_cpi: Decimal | None = None,
+        buyer_id: str | None = None,
+        uuid_id: str | None = None,
     ):
         """To be used in tests, where we don't care about certain fields"""
 
@@ -158,7 +160,7 @@ class WallManager(PostgresManager):
         assert len(res) == 1, f"Expected 1 result, got {len(res)}"
         return Wall.model_validate(res[0])
 
-    def get_from_uuid_if_exists(self, wall_uuid: UUIDStr) -> Optional[Wall]:
+    def get_from_uuid_if_exists(self, wall_uuid: UUIDStr) -> Wall | None:
         try:
             return self.get_from_uuid(wall_uuid=wall_uuid)
         except AssertionError:
@@ -170,12 +172,12 @@ class WallManager(PostgresManager):
         status: Status,
         status_code_1: StatusCode1,
         finished: datetime,
-        ext_status_code_1: Optional[str] = None,
-        ext_status_code_2: Optional[str] = None,
-        ext_status_code_3: Optional[str] = None,
-        status_code_2: Optional[WallStatusCode2] = None,
-        survey_id: Optional[str] = None,
-        cpi: Optional[Decimal] = None,
+        ext_status_code_1: str | None = None,
+        ext_status_code_2: str | None = None,
+        ext_status_code_3: str | None = None,
+        status_code_2: WallStatusCode2 | None = None,
+        survey_id: str | None = None,
+        cpi: Decimal | None = None,
     ) -> None:
         """This wall event is finished. This would be called if/when we get a
         callback for this wall event. Some other code is responsible for
@@ -232,10 +234,10 @@ class WallManager(PostgresManager):
 
     def get_wall_events(
         self,
-        session_id: Optional[PositiveInt] = None,
-        session_ids: Optional[List[PositiveInt]] = None,
+        session_id: PositiveInt | None = None,
+        session_ids: list[PositiveInt] | None = None,
         order_by: OrderBy = OrderBy.ASC,
-    ) -> List[Wall]:
+    ) -> list[Wall]:
 
         if session_id is not None and session_ids is not None:
             raise ValueError("Cannot provide both session_id and session_ids")
@@ -271,8 +273,8 @@ class WallManager(PostgresManager):
         self,
         wall: Wall,
         adjusted_timestamp: AwareDatetime,
-        adjusted_status: Optional[WallAdjustedStatus] = None,
-        adjusted_cpi: Optional[Decimal] = None,
+        adjusted_status: WallAdjustedStatus | None = None,
+        adjusted_cpi: Decimal | None = None,
     ) -> None:
         assert wall.status, "Wall must have an existing Status"
 
@@ -317,15 +319,13 @@ class WallManager(PostgresManager):
             "uuid": wall.uuid,
         }
 
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
         UPDATE thl_wall
         SET adjusted_status = %(adjusted_status)s, 
             adjusted_timestamp = %(adjusted_timestamp)s,
             adjusted_cpi = %(adjusted_cpi)s
         WHERE uuid = %(uuid)s;
-        """
-        )
+        """)
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
@@ -333,14 +333,12 @@ class WallManager(PostgresManager):
                 assert c.rowcount == 1
             conn.commit()
 
-        return None
-
     def report(
         self,
         wall: Wall,
         report_value: ReportValue,
-        report_notes: Optional[str] = None,
-        report_timestamp: Optional[AwareDatetime] = None,
+        report_notes: str | None = None,
+        report_timestamp: AwareDatetime | None = None,
     ) -> None:
         wall.report(
             report_value=report_value,
@@ -354,16 +352,14 @@ class WallManager(PostgresManager):
             "finished": wall.finished,
             "report_notes": report_notes,
         }
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
         UPDATE thl_wall
         SET report_value = %(report_value)s, 
             report_notes = %(report_notes)s,
             status = %(status)s, 
             finished = %(finished)s
         WHERE uuid = %(uuid)s;
-        """
-        )
+        """)
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query=query, params=params)
@@ -400,12 +396,12 @@ class WallManager(PostgresManager):
     def filter_wall_attempts_paginated(
         self,
         user_id: int,
-        started_after: Optional[datetime] = None,
-        started_before: Optional[datetime] = None,
+        started_after: datetime | None = None,
+        started_before: datetime | None = None,
         page: int = 1,
         size: int = 100,
-        order_by: Optional[str] = "-started",
-    ) -> List[WallAttempt]:
+        order_by: str | None = "-started",
+    ) -> list[WallAttempt]:
         """
         Returns WallAttempt
         """
@@ -461,10 +457,10 @@ class WallManager(PostgresManager):
     def filter_wall_attempts(
         self,
         user_id: int,
-        started_after: Optional[datetime] = None,
-        started_before: Optional[datetime] = None,
-        order_by: Optional[str] = "-started",
-    ) -> List[WallAttempt]:
+        started_after: datetime | None = None,
+        started_before: datetime | None = None,
+        order_by: str | None = "-started",
+    ) -> list[WallAttempt]:
         started_before = started_before or datetime.now(tz=timezone.utc)
         res = []
         page = 1
@@ -485,8 +481,8 @@ class WallManager(PostgresManager):
         return res
 
     def get_survey_activities(
-        self, survey_keys: Collection[SurveyKey], product_id: Optional[str] = None
-    ) -> List[TaskActivity]:
+        self, survey_keys: Collection[SurveyKey], product_id: str | None = None
+    ) -> list[TaskActivity]:
         query_base = """
         row_stats AS (
             SELECT
@@ -617,16 +613,16 @@ class WallCacheManager(PostgresManagerWithRedis):
         assert type(user_id) is int, "user_id must be int"
         self.redis_client.delete(self.get_flag_key_(user_id=user_id))
 
-    def get_attempts_redis_(self, user_id: int) -> List[WallAttempt]:
+    def get_attempts_redis_(self, user_id: int) -> list[WallAttempt]:
         redis_key = self.get_cache_key_(user_id=user_id)
         # Returns a list even if there is nothing set
         res = self.redis_client.lrange(redis_key, 0, 5000)
         attempts = [WallAttempt.model_validate_json(x) for x in res]
         return attempts
 
-    def update_attempts_redis_(self, attempts: List[WallAttempt], user_id: int) -> None:
+    def update_attempts_redis_(self, attempts: list[WallAttempt], user_id: int) -> None:
         if not attempts:
-            return None
+            return
 
         redis_key = self.get_cache_key_(user_id=user_id)
         # Make sure attempts is ordered, so the most recent is last
@@ -639,9 +635,8 @@ class WallCacheManager(PostgresManagerWithRedis):
 
         # So this doesn't grow forever, keep only the most recent 5k
         self.redis_client.ltrim(redis_key, 0, 4999)
-        return None
 
-    def get_attempts(self, user_id: PositiveInt) -> List[WallAttempt]:
+    def get_attempts(self, user_id: PositiveInt) -> list[WallAttempt]:
         """
         This is used in the GetOpportunityIDs call to get a list of surveys
         (& surveygroups) which should be excluded for this user. We don't
@@ -658,7 +653,7 @@ class WallCacheManager(PostgresManagerWithRedis):
 
         # Attempt to get the most recent wall attempt
         redis_key = self.get_cache_key_(user_id=user_id)
-        res: Optional[str] = self.redis_client.lindex(redis_key, 0)  # type: ignore[assignment]
+        res: str | None = self.redis_client.lindex(redis_key, 0)  # type: ignore[assignment]
         if res is None:
             # Nothing in the cache, query for all from db
             attempts = self.wall_manager.filter_wall_attempts(user_id=user_id)

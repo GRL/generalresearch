@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Collection
 from datetime import datetime, timezone
-from typing import Collection, List, Optional
 
 import pymysql
 from pymysql import IntegrityError
@@ -49,12 +49,12 @@ class PrecisionSurveyManager(SurveyManager):
 
     def get_survey_library(
         self,
-        country_iso: Optional[str] = None,
-        language_iso: Optional[str] = None,
-        survey_ids: Optional[Collection[str]] = None,
-        is_live: Optional[bool] = None,
-        updated_since: Optional[datetime] = None,
-    ) -> List[PrecisionSurvey]:
+        country_iso: str | None = None,
+        language_iso: str | None = None,
+        survey_ids: Collection[str] | None = None,
+        is_live: bool | None = None,
+        updated_since: datetime | None = None,
+    ) -> list[PrecisionSurvey]:
         """
         Accepts lots of optional filters.
         :param country_iso: filters on country_iso field
@@ -145,7 +145,7 @@ class PrecisionSurveyManager(SurveyManager):
 
         return True
 
-    def update(self, surveys: List[PrecisionSurvey]) -> bool:
+    def update(self, surveys: list[PrecisionSurvey]) -> bool:
         for survey in surveys:
             self.update_one(survey)
         return True
@@ -218,7 +218,7 @@ class PrecisionSurveyManager(SurveyManager):
 
         return True
 
-    def create_or_update(self, surveys: List[PrecisionSurvey]):
+    def create_or_update(self, surveys: list[PrecisionSurvey]):
         surveys = {s.survey_id: s for s in surveys}
         sns = set(surveys.keys())
         existing_sns = {

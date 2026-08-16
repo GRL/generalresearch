@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional
 from uuid import uuid4
 
 from pydantic import NonNegativeInt
@@ -16,9 +17,9 @@ def user_compensate(
     ledger_manager: ThlLedgerManager,
     user: User,
     amount_int: NonNegativeInt,
-    ext_ref: Optional[str] = None,
-    description: Optional[str] = None,
-    skip_flag_check: Optional[bool] = False,
+    ext_ref: str | None = None,
+    description: str | None = None,
+    skip_flag_check: bool | None = False,
 ) -> UUIDStr:
     """
     Compensate a user. aka "bribe". The money is paid out of the BP's

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 from datetime import timedelta
-from typing import Any, Dict, Literal, Optional
+from typing import Any, Literal
 
 import dask.dataframe as dd
 import pandas as pd
@@ -30,8 +32,8 @@ class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
         self,
         wall_coll: WallDFCollection,
         enriched_session: EnrichedSessionMerge,
-        client: Optional[Client] = None,
-        client_resources: Optional[Dict[str, Any]] = None,
+        client: Client | None = None,
+        client_resources: dict[str, Any] | None = None,
     ) -> None:
         LOG.info(f"YMSurveyWallMerge.build({self.start=}, {self.finish=})")
         ir: pd.Interval = self.interval
@@ -114,7 +116,7 @@ class YMSurveyWallMerge(MergeCollection):
     collection_item_class: Literal[YMSurveyWallMergeCollectionItem] = (
         YMSurveyWallMergeCollectionItem
     )
-    start: Optional[AwareDatetimeISO] = None
+    start: AwareDatetimeISO | None = None
     offset: str = "10D"
     _schema = YMSurveyWallSchema
 

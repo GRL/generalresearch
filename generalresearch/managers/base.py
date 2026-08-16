@@ -1,5 +1,7 @@
+from __future__ import annotations
+
+from collections.abc import Collection
 from enum import Enum
-from typing import Collection, Optional
 
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
@@ -21,7 +23,7 @@ class SqlManager(Manager):
     def __init__(
         self,
         sql_helper: SqlHelper,
-        permissions: Optional[Collection[Permission]] = None,
+        permissions: Collection[Permission] | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -36,7 +38,7 @@ class PostgresManager(Manager):
     def __init__(
         self,
         pg_config: PostgresConfig,
-        permissions: Collection[Permission] = None,
+        permissions: Collection[Permission] | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -50,7 +52,7 @@ class RedisManager(Manager):
     def __init__(
         self,
         redis_config: RedisConfig,
-        cache_prefix: Optional[str] = None,
+        cache_prefix: str | None = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -64,8 +66,8 @@ class SqlManagerWithRedis(SqlManager, RedisManager):
         self,
         sql_helper: SqlHelper,
         redis_config: RedisConfig,
-        permissions: Collection[Permission] = None,
-        cache_prefix: Optional[str] = None,
+        permissions: Collection[Permission] | None = None,
+        cache_prefix: str | None = None,
     ):
         super().__init__(
             sql_helper=sql_helper,
@@ -80,8 +82,8 @@ class PostgresManagerWithRedis(PostgresManager, RedisManager):
         self,
         pg_config: PostgresConfig,
         redis_config: RedisConfig,
-        permissions: Collection[Permission] = None,
-        cache_prefix: Optional[str] = None,
+        permissions: Collection[Permission] | None = None,
+        cache_prefix: str | None = None,
     ):
         super().__init__(
             pg_config=pg_config,

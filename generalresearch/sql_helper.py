@@ -1,16 +1,18 @@
+from __future__ import annotations
+
 import logging
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional
 from uuid import UUID
 
 from pydantic import MariaDBDsn, MySQLDsn, PostgresDsn
 from pymysql import Connection
 
-ListOrTupleOfStrings = Union[List[str], Tuple[str, ...]]
-ListOrTupleOfListOrTuple = Union[
-    List[List], List[Tuple], Tuple[List, ...], Tuple[Tuple, ...]
-]
+ListOrTupleOfStrings = list[str] | tuple[str, ...] | None
+ListOrTupleOfListOrTuple = (
+    list[list] | list[tuple] | tuple[list, ...] | tuple[tuple, ...]
+)
 
-DataBaseDsn = Union[MySQLDsn, MariaDBDsn, PostgresDsn]
+DataBaseDsn = MySQLDsn | MariaDBDsn | PostgresDsn | None
 
 
 class MultipleObjectsReturned(Exception):
@@ -26,7 +28,7 @@ class SqlConnector:
 
     # For connection and cursor handling, and any difference between mysql
     # and postgresql
-    def __init__(self, dsn: Optional[DataBaseDsn] = None, **kwargs):
+    def __init__(self, dsn: DataBaseDsn | None = None, **kwargs):
         """
         Anything in kwargs gets passed into the engine_module's connect
         function. To be used for e.g.:
@@ -119,7 +121,7 @@ def is_uuid4(s: Any) -> bool:
         return False
 
 
-def decode_uuids(row: Dict[str, Any]) -> Dict[str, Any]:
+def decode_uuids(row: dict[str, Any]) -> dict[str, Any]:
     return {
         key: (UUID(value, version=4).hex if is_uuid4(value) else value)
         for key, value in row.items()
@@ -132,8 +134,8 @@ class SqlHelper(SqlConnector):
         super(SqlHelper, self).__init__(dsn, **kwargs)
 
     def execute_sql_query(
-        self, query: str, params: Optional[Dict[str, Any]] = None, commit: bool = False
-    ) -> List[Dict[str, Any]]:
+        self, query: str, params: dict[str, Any] | None = None, commit: bool = False
+    ) -> list[dict[str, Any]]:
         for param in params if params else []:
             if isinstance(param, (tuple, list, set)) and len(param) == 0:
                 logging.warning("param is empty. not executing query")
@@ -207,7 +209,7 @@ class SqlHelper(SqlConnector):
         cursor=None,
     ) -> None:
         if len(values_to_insert) == 0:
-            return None
+            return
 
         assert len(set([len(x) for x in values_to_insert])) == 1
         if cursor is None:
@@ -240,7 +242,7 @@ class SqlHelper(SqlConnector):
         lookup_dict: dict,
         update_dict: dict,
         cursor=None,
-    ) -> Tuple[Union[str, int], bool]:
+    ) -> tuple[str | int, bool]:
         """
         returns the value of the primary key ONLY, and bool (created)
         """
@@ -310,7 +312,7 @@ class SqlHelper(SqlConnector):
         filter_d=None,
         limit=None,
         cursor=None,
-    ) -> List[Dict[Any, Any]]:
+    ) -> list[dict[Any, Any]]:
 
         if cursor is None:
             connection = self.make_connection()

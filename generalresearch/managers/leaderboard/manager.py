@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from pandas import Period
@@ -28,7 +30,7 @@ class LeaderboardManager:
         freq: LeaderboardFrequency,
         product_id: str,
         country_iso: str,
-        within_time: Optional[NaiveDatetime | AwareDatetime] = None,
+        within_time: NaiveDatetime | AwareDatetime | None = None,
     ):
         """
         :param within_time: Any local datetime falling within the desired leaderboard period.
@@ -87,8 +89,8 @@ class LeaderboardManager:
 
     def get_leaderboard_rows(
         self,
-        limit: Optional[int] = None,
-    ) -> List[LeaderboardRow]:
+        limit: int | None = None,
+    ) -> list[LeaderboardRow]:
         limit = limit if limit else 0
         res = self.redis_client.zrange(
             self.key, start=0, end=limit - 1, withscores=True, desc=True
@@ -104,8 +106,8 @@ class LeaderboardManager:
         ]
 
     def get_personal_leaderboard_rows(
-        self, bp_user_id: str, limit: Optional[int] = 5
-    ) -> List[LeaderboardRow]:
+        self, bp_user_id: str, limit: int | None = 5
+    ) -> list[LeaderboardRow]:
         # We can't just grab this user's rank and nearby rows b/c redis does
         #   not handle ties the same way we do (in redis, each value is a
         #   unique rank, we use lowest rank for all ties). So we have to just
@@ -129,8 +131,8 @@ class LeaderboardManager:
 
     def get_leaderboard(
         self,
-        limit: Optional[int] = None,
-        bp_user_id: Optional[str] = None,
+        limit: int | None = None,
+        bp_user_id: str | None = None,
     ) -> Leaderboard:
 
         if bp_user_id:
@@ -168,8 +170,6 @@ class LeaderboardManager:
         self.redis_client.zincrby(self.key, amount=1, value=product_user_id)
         self.redis_client.expire(self.key, time=self.expiration)
 
-        return None
-
     def hit_sum_payouts(self, product_user_id: str, user_payout: Decimal) -> None:
         assert (
             self.board_code == LeaderboardCode.SUM_PAYOUTS
@@ -178,8 +178,6 @@ class LeaderboardManager:
             self.key, amount=round(user_payout * 100), value=product_user_id
         )
         self.redis_client.expire(self.key, time=self.expiration)
-
-        return None
 
     def hit_largest_payout(self, product_user_id: str, user_payout: Decimal) -> None:
         assert (
@@ -190,8 +188,6 @@ class LeaderboardManager:
             self.key, {product_user_id: round(user_payout * 100)}, gt=True
         )
         self.redis_client.expire(self.key, time=self.expiration)
-
-        return None
 
     def hit(self, session: "Session") -> None:
         user = session.user

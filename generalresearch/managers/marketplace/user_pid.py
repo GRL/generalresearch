@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABC
-from typing import Collection, Dict, List, Optional
+from collections.abc import Collection
 from uuid import UUID
 
 from generalresearch.managers.base import SqlManager
@@ -12,14 +14,14 @@ class UserPidManager(SqlManager, ABC):
     For getting user pids across marketplaces
     """
 
-    SOURCE: Optional[Source] = None
+    SOURCE: Source | None = None
     TABLE_NAME = None
 
     def filter(
         self,
-        user_ids: Optional[Collection[int]] = None,
-        pids: Optional[Collection[str]] = None,
-    ) -> List[Dict[str, str]]:
+        user_ids: Collection[int] | None = None,
+        pids: Collection[str] | None = None,
+    ) -> list[dict[str, str]]:
         """
         Filter by user_id or user_pid
         """
@@ -65,11 +67,11 @@ class UserPidMultiManager:
     For looking up marketplace user_pids by user_id across multiple marketplaces
     """
 
-    def __init__(self, sql_helper: SqlHelper, managers: List[UserPidManager]):
+    def __init__(self, sql_helper: SqlHelper, managers: list[UserPidManager]):
         self.sql_helper = sql_helper
         self.managers = managers
 
-    def filter(self, user_ids: Optional[Collection[int]] = None):
+    def filter(self, user_ids: Collection[int] | None = None):
         # You can only query across all marketplaces by user_id.
         #   If you are looking by user_pid, it is assumed
         #   you know which marketplace you are looking in.
@@ -77,14 +79,11 @@ class UserPidMultiManager:
         assert isinstance(user_ids, (list, set)), "must pass a collection of user_ids"
 
         params = [set(user_ids)] * len(self.managers)
-        queries = [
-            f"""
+        queries = [f"""
         SELECT user_id, pid, '{m.SOURCE.value}' as source
         FROM {m.mysql_db_table}
         WHERE user_id IN %s
-        """
-            for m in self.managers
-        ]
+        """ for m in self.managers]
         query = "\nUNION ".join(queries)
         res = self.sql_helper.execute_sql_query(query=query, params=params)
         for x in res:

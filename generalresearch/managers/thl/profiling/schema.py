@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from threading import RLock
-from typing import List
 from uuid import UUID
 
 from cachetools import TTLCache, cached
@@ -13,7 +14,7 @@ from generalresearch.models.thl.profiling.upk_property import (
 class UpkSchemaManager(PostgresManager):
 
     @cached(cache=TTLCache(maxsize=1, ttl=18 * 60), lock=RLock())
-    def get_props_info(self) -> List[UpkProperty]:
+    def get_props_info(self) -> list[UpkProperty]:
         query = """
         SELECT
             p.id AS property_id,
@@ -68,7 +69,7 @@ class UpkSchemaManager(PostgresManager):
                     c["id"] = UUID(c["id"]).hex
         return [UpkProperty.model_validate(x) for x in res]
 
-    def get_props_info_for_country(self, country_iso: str) -> List[UpkProperty]:
+    def get_props_info_for_country(self, country_iso: str) -> list[UpkProperty]:
         assert country_iso.lower() == country_iso
         res = self.get_props_info()
         res = [x for x in res if x.country_iso == country_iso].copy()

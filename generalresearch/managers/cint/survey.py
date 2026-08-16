@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Collection
 from datetime import datetime, timezone
-from typing import Collection, List, Optional, Set
 
 import pymysql
 from pymysql import IntegrityError
@@ -31,13 +31,13 @@ class CintSurveyManager(SurveyManager):
 
     def get_survey_library(
         self,
-        country_iso: Optional[str] = None,
-        language_iso: Optional[str] = None,
-        survey_ids: Optional[Collection[str]] = None,
-        is_live: Optional[bool] = None,
-        updated_since: Optional[datetime] = None,
-        exclude_fields: Optional[Set[str]] = None,
-    ) -> List[CintSurvey]:
+        country_iso: str | None = None,
+        language_iso: str | None = None,
+        survey_ids: Collection[str] | None = None,
+        is_live: bool | None = None,
+        updated_since: datetime | None = None,
+        exclude_fields: set[str] | None = None,
+    ) -> list[CintSurvey]:
         """
         Accepts lots of optional filters.
 
@@ -106,7 +106,7 @@ class CintSurveyManager(SurveyManager):
         )
         return True
 
-    def update(self, surveys: List[CintSurvey]) -> bool:
+    def update(self, surveys: list[CintSurvey]) -> bool:
         now = datetime.now(tz=timezone.utc)
         for survey in surveys:
             survey.last_updated = now
@@ -117,7 +117,7 @@ class CintSurveyManager(SurveyManager):
         self.sql_helper.bulk_update("cint_survey", survey_fields, survey_data)
         return True
 
-    def create_or_update(self, surveys: List[CintSurvey]):
+    def create_or_update(self, surveys: list[CintSurvey]):
         surveys = {s.survey_id: s for s in surveys}
         sns = set(surveys.keys())
         existing_sns = {

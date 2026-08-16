@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import csv
 import logging
 import os
@@ -5,7 +7,7 @@ import threading
 import time
 from pathlib import Path
 from threading import RLock
-from typing import Any, Dict, Union
+from typing import Any
 
 from cachetools import TTLCache, cached
 
@@ -53,7 +55,7 @@ def get_bp_trust_df():
 convert_int = lambda x: int(float(x))
 
 
-def parse_bp_trust_df(fp: Union[str, Path]) -> Dict[str, Any]:
+def parse_bp_trust_df(fp: str | Path) -> dict[str, Any]:
     dtype = {
         "bp_trust": float,
         "team_trust": float,

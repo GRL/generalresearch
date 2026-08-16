@@ -1,4 +1,6 @@
-from typing import Collection, List, Optional
+from __future__ import annotations
+
+from collections.abc import Collection
 
 from generalresearch.managers.base import PostgresManager
 from generalresearch.models.thl.user_profile import UserMetadata
@@ -7,12 +9,12 @@ from generalresearch.models.thl.user_profile import UserMetadata
 class UserMetadataManager(PostgresManager):
     def filter(
         self,
-        user_ids: Optional[Collection[int]] = None,
-        email_addresses: Optional[Collection[str]] = None,
-        email_sha256s: Optional[Collection[str]] = None,
-        email_sha1s: Optional[Collection[str]] = None,
-        email_md5s: Optional[Collection[str]] = None,
-    ) -> List[UserMetadata]:
+        user_ids: Collection[int] | None = None,
+        email_addresses: Collection[str] | None = None,
+        email_sha256s: Collection[str] | None = None,
+        email_sha1s: Collection[str] | None = None,
+        email_md5s: Collection[str] | None = None,
+    ) -> list[UserMetadata]:
         for arg in [
             user_ids,
             email_addresses,
@@ -57,12 +59,12 @@ class UserMetadataManager(PostgresManager):
 
     def get_if_exists(
         self,
-        user_id: Optional[int] = None,
-        email_address: Optional[str] = None,
-        email_sha256: Optional[str] = None,
-        email_sha1: Optional[str] = None,
-        email_md5: Optional[str] = None,
-    ) -> Optional[UserMetadata]:
+        user_id: int | None = None,
+        email_address: str | None = None,
+        email_sha256: str | None = None,
+        email_sha1: str | None = None,
+        email_md5: str | None = None,
+    ) -> UserMetadata | None:
         filters = {
             "user_ids": user_id,
             "email_addresses": email_address,
@@ -81,11 +83,11 @@ class UserMetadataManager(PostgresManager):
 
     def get(
         self,
-        user_id: Optional[int] = None,
-        email_address: Optional[str] = None,
-        email_sha256: Optional[str] = None,
-        email_sha1: Optional[str] = None,
-        email_md5: Optional[str] = None,
+        user_id: int | None = None,
+        email_address: str | None = None,
+        email_sha256: str | None = None,
+        email_sha1: str | None = None,
+        email_md5: str | None = None,
     ) -> UserMetadata:
         res = self.get_if_exists(
             user_id=user_id,

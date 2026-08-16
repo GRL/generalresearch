@@ -1,11 +1,12 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
-from typing import Optional
 
 import pandas as pd
 from dateutil import relativedelta
 
 
-def get_date_list(start_datetime: datetime, end_datetime: Optional[datetime] = None):
+def get_date_list(start_datetime: datetime, end_datetime: datetime | None = None):
     start_datetime = start_datetime.replace(tzinfo=timezone.utc)
     end_datetime = end_datetime if end_datetime else datetime.now(tz=timezone.utc)
     return (

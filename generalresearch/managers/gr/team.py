@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from psycopg import sql
@@ -16,8 +18,6 @@ if TYPE_CHECKING:
     from generalresearch.models.gr.authentication import GRUser
     from generalresearch.models.gr.business import Business
     from generalresearch.models.gr.team import (
-        Membership,
-        MembershipPrivilege,
         Team,
     )
 
@@ -66,15 +66,13 @@ class MembershipManager(PostgresManager):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                     INSERT INTO common_membership
                         (uuid, privilege, owner, team_id, user_id, created)
                     VALUES (%(uuid)s, %(privilege)s, %(owner)s, %(team_id)s, 
                             %(user_id)s, %(created)s)
                     RETURNING id
-                """
-                    ),
+                """),
                     params=data,
                 )
                 membership_id: int = c.fetchone()["id"]  # type: ignore
@@ -85,19 +83,17 @@ class MembershipManager(PostgresManager):
 
     def exists(
         self, gr_user_id: PositiveInt, team_id: PositiveInt
-    ) -> Optional[Membership]:
+    ) -> Membership | None:
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                             SELECT  id, uuid, privilege, owner, created, 
                                     user_id, team_id
                             FROM common_membership
                             WHERE team_id = %s AND user_id = %s
                             LIMIT 1
-                        """
-                    ),
+                        """),
                     params=(team_id, gr_user_id),
                 )
                 res = c.fetchone()
@@ -107,38 +103,34 @@ class MembershipManager(PostgresManager):
 
         return Membership.model_validate(res)
 
-    def get_by_team_id(self, team_id: PositiveInt) -> List[Membership]:
+    def get_by_team_id(self, team_id: PositiveInt) -> list[Membership]:
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                             SELECT  id, uuid, privilege, owner, created, 
                                     user_id, team_id
                             FROM common_membership
                             WHERE team_id = %s
                             LIMIT 250
-                        """
-                    ),
+                        """),
                     params=(team_id,),
                 )
                 res = c.fetchall()
 
         return [Membership.model_validate(i) for i in res]
 
-    def get_by_gr_user_id(self, gr_user_id: PositiveInt) -> List[Membership]:
+    def get_by_gr_user_id(self, gr_user_id: PositiveInt) -> list[Membership]:
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                             SELECT  id, uuid, privilege, owner, created, 
                                     user_id, team_id
                             FROM common_membership
                             WHERE user_id = %s
                             LIMIT 250
-                        """
-                    ),
+                        """),
                     params=(gr_user_id,),
                 )
                 res = c.fetchall()
@@ -149,7 +141,7 @@ class MembershipManager(PostgresManager):
 class TeamManager(PostgresManagerWithRedis):
 
     def get_or_create(
-        self, uuid: Optional[UUIDStr] = None, name: Optional[str] = None
+        self, uuid: UUIDStr | None = None, name: str | None = None
     ) -> "Team":
 
         team = self.get_by_uuid(team_uuid=uuid)
@@ -159,25 +151,21 @@ class TeamManager(PostgresManagerWithRedis):
 
         return self.create(uuid=uuid, name=name or "< Unknown >")
 
-    def get_all(self) -> List["Team"]:
+    def get_all(self) -> list["Team"]:
         from generalresearch.models.gr.team import Team
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
-                c.execute(
-                    query=sql.SQL(
-                        """
+                c.execute(query=sql.SQL("""
                 SELECT t.id, t.uuid, t.name
                 FROM common_team AS t
-            """
-                    )
-                )
+            """))
                 res = c.fetchall()
 
         return [Team.model_validate(i) for i in res]
 
     def create_dummy(
-        self, uuid: Optional[UUIDStr] = None, name: Optional[str] = None
+        self, uuid: UUIDStr | None = None, name: str | None = None
     ) -> "Team":
         uuid = uuid or uuid4().hex
         name = name or f"name-{uuid4().hex[:12]}"
@@ -187,7 +175,7 @@ class TeamManager(PostgresManagerWithRedis):
     def create(
         self,
         name: str,
-        uuid: Optional[UUIDStr] = None,
+        uuid: UUIDStr | None = None,
     ) -> "Team":
         from generalresearch.models.gr.team import Team
 
@@ -196,13 +184,11 @@ class TeamManager(PostgresManagerWithRedis):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                     INSERT INTO common_team (uuid, name) 
                     VALUES (%s, %s)
                     RETURNING id
-                """
-                    ),
+                """),
                     params=[team.uuid, team.name],
                 )
                 team_id = c.fetchone()["id"]  # type: ignore
@@ -227,13 +213,11 @@ class TeamManager(PostgresManagerWithRedis):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                             INSERT INTO common_team_businesses 
                                 (team_id, business_id) 
                             VALUES (%s, %s)
-                        """
-                    ),
+                        """),
                     params=(
                         team.id,
                         business.id,
@@ -241,9 +225,7 @@ class TeamManager(PostgresManagerWithRedis):
                 )
             conn.commit()
 
-        return None
-
-    def get_by_uuid(self, team_uuid: UUIDStr) -> Optional["Team"]:
+    def get_by_uuid(self, team_uuid: UUIDStr) -> "Team" | None:
         from generalresearch.models.gr.team import Team
 
         with self.pg_config.make_connection() as conn:
@@ -265,20 +247,18 @@ class TeamManager(PostgresManagerWithRedis):
 
         return Team.model_validate(res)
 
-    def get_by_id(self, team_id: PositiveInt) -> Optional["Team"]:
+    def get_by_id(self, team_id: PositiveInt) -> "Team" | None:
         from generalresearch.models.gr.team import Team
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                     SELECT t.id, t.uuid, t.name
                     FROM common_team AS t
                     WHERE t.id = %s
                     LIMIT 1;
-                """
-                    ),
+                """),
                     params=(team_id,),
                 )
 
@@ -289,21 +269,19 @@ class TeamManager(PostgresManagerWithRedis):
 
         return Team.model_validate(res)
 
-    def get_by_user(self, gr_user: "GRUser") -> List["Team"]:
+    def get_by_user(self, gr_user: "GRUser") -> list["Team"]:
         from generalresearch.models.gr.team import Team
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
-                    query=sql.SQL(
-                        """
+                    query=sql.SQL("""
                     SELECT team.*
                     FROM common_team AS team
                     INNER JOIN common_membership AS mem 
                         ON mem.team_id = team.id
                     WHERE mem.user_id = %s
-                """
-                    ),
+                """),
                     params=(gr_user.id,),
                 )
 

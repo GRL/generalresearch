@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import logging
+from collections.abc import Collection
 from datetime import datetime, timezone
 from functools import lru_cache
-from typing import Collection, List, Optional
 from uuid import uuid4
 
 import psycopg
@@ -37,12 +39,12 @@ class MysqlUserManager:
     def get_user_from_mysql(
         self,
         *,
-        product_id: Optional[str] = None,
-        product_user_id: Optional[str] = None,
-        user_id: Optional[int] = None,
-        user_uuid: Optional[UUIDStr] = None,
+        product_id: str | None = None,
+        product_user_id: str | None = None,
+        user_id: int | None = None,
+        user_uuid: UUIDStr | None = None,
         can_use_read_replica: bool = True,
-    ) -> Optional[User]:
+    ) -> User | None:
 
         logger.info(
             f"get_user_from_mysql: {product_id}, {product_user_id}, {user_id}, {user_uuid}"
@@ -108,7 +110,7 @@ class MysqlUserManager:
         self,
         product_user_id: str,
         product_id: str,
-        created: Optional[datetime] = None,
+        created: datetime | None = None,
     ) -> User:
         """Creates a thl_user record for a new user."""
         assert self.is_read_replica is False
@@ -127,16 +129,14 @@ class MysqlUserManager:
         }
 
         # in postgres, you do not include the auto-increment id column
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
         INSERT INTO thl_user
         (uuid, product_id, product_user_id, created, 
          last_seen, blocked, last_country_iso, last_geoname_id, last_ip)
         VALUES (%(user_uuid)s, %(product_id)s, %(product_user_id)s, %(created)s,
         %(last_seen)s, FALSE, NULL, NULL, NULL)
         RETURNING id;
-        """
-        )
+        """)
 
         try:
             with self.pg_config.make_connection() as conn:
@@ -221,7 +221,7 @@ class MysqlUserManager:
         *,
         product_id: str,
         product_user_ids: Collection[str],
-    ) -> List[User]:
+    ) -> list[User]:
         assert product_id, "must pass product_id"
         assert len(product_user_ids) > 0, "must pass 1 or more product_user_ids"
         assert len(product_user_ids) <= 500, "limit 500 product_user_ids"
@@ -247,9 +247,9 @@ class MysqlUserManager:
     def fetch(
         self,
         *,
-        user_ids: Collection[int] = None,
-        user_uuids: Collection[str] = None,
-    ) -> List[User]:
+        user_ids: Collection[int] | None = None,
+        user_uuids: Collection[str] | None = None,
+    ) -> list[User]:
         assert (user_ids or user_uuids) and not (
             user_ids and user_uuids
         ), "Must pass ONE of user_ids, user_uuids"

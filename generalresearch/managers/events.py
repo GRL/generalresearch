@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import math
 import socket
@@ -5,7 +7,7 @@ import threading
 import time
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
+from typing import TYPE_CHECKING
 
 from redis.client import PubSub, Redis
 
@@ -119,7 +121,7 @@ class UserStatsManager(RedisManager):
         # The key is the user's ID so this can be called multiple times
         #   without side effects.
         if user.created is None:
-            return None
+            return
         now = round(time.time())
         sec_24hr = round(timedelta(hours=24).total_seconds())
 
@@ -127,7 +129,7 @@ class UserStatsManager(RedisManager):
         expires_at = minute + sec_24hr
         ttl = expires_at - now
         if ttl <= 0:
-            return None
+            return
 
         pipe = self.redis_client.pipeline()
         name = "signups_last_24h"
@@ -137,7 +139,6 @@ class UserStatsManager(RedisManager):
         pipe.hset(name, user.product_user_id, now)
         pipe.hexpire(name, ttl, user.product_user_id)
         pipe.execute()
-        return None
 
     def mark_user_active(self, user: User) -> None:
         now = datetime.now(tz=timezone.utc).isoformat()
@@ -190,7 +191,6 @@ class UserStatsManager(RedisManager):
         pipe.hset(name, key, now)
         pipe.hexpire(name, timedelta(hours=1), key)
         pipe.execute()
-        return None
 
     def unmark_user_inprogress(self, user: User):
         # Call when a user exits a Session
@@ -205,7 +205,6 @@ class UserStatsManager(RedisManager):
         name = "in_progress_users"
         pipe.hdel(name, user.uuid)
         pipe.execute()
-        return None
 
     def clear_global_user_stats(self) -> None:
         # For testing
@@ -214,7 +213,6 @@ class UserStatsManager(RedisManager):
         r.delete("active_users_last_24h")
         r.delete("signups_last_24h")
         r.delete("in_progress_users")
-        return None
 
 
 class TaskStatsManager(RedisManager):
@@ -252,7 +250,7 @@ class TaskStatsManager(RedisManager):
             "TaskStatsManager:latest", res.model_dump_json(), ex=timedelta(hours=24)
         )
 
-    def get_latest_task_stats(self) -> Optional[TaskStatsSnapshot]:
+    def get_latest_task_stats(self) -> TaskStatsSnapshot | None:
         res = self.redis_client.get("TaskStatsManager:latest")
         if res is not None:
             return TaskStatsSnapshot.model_validate_json(res)
@@ -286,7 +284,6 @@ class TaskStatsManager(RedisManager):
         pipe.hexpire(name_24h_source, ttl_24hr, key)
 
         pipe.execute()
-        return None
 
     def _set_live_task_stats(
         self, source: Source, live_task_count: int, live_tasks_max_payout: Decimal
@@ -306,12 +303,12 @@ class TaskStatsManager(RedisManager):
 
         pipe.execute()
 
-    def get_active_sources(self) -> List[Source]:
+    def get_active_sources(self) -> list[Source]:
         return [Source(x) for x in self.redis_client.hkeys("live_task_count")]
 
     def get_task_stats_raw(
         self,
-    ) -> Dict[str, Union[AggregateBySource, MaxGaugeBySource]]:
+    ) -> dict[str, AggregateBySource | MaxGaugeBySource | None]:
         sources = self.get_active_sources()
 
         pipe = self.redis_client.pipeline(transaction=False)
@@ -375,8 +372,6 @@ class TaskStatsManager(RedisManager):
         )
         self.redis_client.delete(*keys)
 
-        return None
-
 
 class SessionStatsManager(RedisManager):
     """
@@ -413,7 +408,6 @@ class SessionStatsManager(RedisManager):
             self.session_on_complete(session=session, user=user)
         else:
             self.session_on_fail(session=session, user=user)
-        return None
 
     def session_on_fail(self, session: Session, user: User):
         r = self.redis_client
@@ -564,7 +558,7 @@ class SessionStatsManager(RedisManager):
         self.calculate_avg_stats(res)
         return res
 
-    def calculate_avg_stats(self, res: Dict[str, Optional[float | int]]):
+    def calculate_avg_stats(self, res: dict[str, float | int | None]):
         res["session_avg_payout_last_24h"] = None
         res["session_avg_user_payout_last_24h"] = None
         res["session_complete_avg_loi_last_24h"] = None
@@ -634,7 +628,7 @@ class EventManager(StatsManager):
     def get_last_stats_key(self, product_id: UUIDStr):
         return f"{self.cache_prefix}:last_stats:{product_id}"
 
-    def get_active_subscribers(self) -> Set[UUIDStr]:
+    def get_active_subscribers(self) -> set[UUIDStr]:
         res = self.redis_client.pubsub_channels(f"{self.cache_prefix}:event-channel:*")
         product_ids = {x.rsplit(":", 1)[-1] for x in res}
         return product_ids
@@ -661,7 +655,8 @@ class EventManager(StatsManager):
         res = self.redis_client.set(lock_key, 1, ex=120, nx=True)
         if not res:
             logging.debug("failed to acquire stats_worker_task lock")
-            return None
+            return
+
         logging.info("Acquired stats_worker_task lock")
 
         for product_id in self.get_active_subscribers():
@@ -683,7 +678,7 @@ class EventManager(StatsManager):
 
         self.redis_client.delete(lock_key)
 
-        return None
+        return
 
     def make_influx_point(self, channel: str, numsub: int):
         return {
@@ -729,7 +724,7 @@ class EventManager(StatsManager):
             )
         )
         self.publish_event(msg, product_id=user.product_id)
-        return None
+        return
 
     def handle_task_finish(self, wall: Wall, session: Session, user: User):
         self.mark_user_active(user=user)
@@ -811,8 +806,8 @@ class EventSubscriber(RedisManager):
     def __init__(self, *args, product_id: UUIDStr, **kwargs):
         super().__init__(*args, **kwargs)
         self.product_id = product_id
-        self.pubsub_client: Optional[Redis] = None
-        self.pubsub: Optional[PubSub] = None
+        self.pubsub_client: Redis | None = None
+        self.pubsub: PubSub | None = None
         self._subscribe()
 
     def _subscribe(self):
@@ -823,7 +818,7 @@ class EventSubscriber(RedisManager):
         p.subscribe(self.get_channel_name())
         self.pubsub_client = r
         self.pubsub = p
-        return None
+        return
 
     def get_channel_name(self):
         return f"{self.cache_prefix}:event-channel:{self.product_id}"
@@ -834,7 +829,7 @@ class EventSubscriber(RedisManager):
     def get_last_stats_key(self):
         return f"{self.cache_prefix}:last_stats:{self.product_id}"
 
-    def get_last_stats_msg(self) -> Optional[StatsMessage]:
+    def get_last_stats_msg(self) -> StatsMessage | None:
         raw = self.redis_client.get(self.get_last_stats_key())
         if raw is not None:
             return StatsMessage.model_validate_json(raw)
@@ -847,7 +842,7 @@ class EventSubscriber(RedisManager):
         raw.reverse()
         return [ServerToClientMessageAdapter.validate_json(x) for x in raw]
 
-    def poll_message(self) -> Optional[ServerToClientMessage]:
+    def poll_message(self) -> ServerToClientMessage | None:
         res = self.pubsub.get_message(ignore_subscribe_messages=True)
         if res is None:
             return None

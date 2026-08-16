@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Collection
 from datetime import datetime, timezone
-from typing import Collection, List, Optional
 
 import pymysql
 from pymysql import IntegrityError
@@ -67,12 +67,12 @@ class MorningSurveyManager(SurveyManager):
 
     def get_survey_library(
         self,
-        country_iso: Optional[str] = None,
-        language_iso: Optional[str] = None,
-        survey_ids: Optional[Collection[str]] = None,
-        is_live: Optional[bool] = None,
-        updated_since: Optional[datetime] = None,
-    ) -> List[MorningBid]:
+        country_iso: str | None = None,
+        language_iso: str | None = None,
+        survey_ids: Collection[str] | None = None,
+        is_live: bool | None = None,
+        updated_since: datetime | None = None,
+    ) -> list[MorningBid]:
         """
         Accepts lots of optional filters.
         :param country_iso: filters on country_iso field
@@ -178,13 +178,13 @@ class MorningSurveyManager(SurveyManager):
 
         return True
 
-    def update(self, surveys: List[MorningBid]) -> None:
+    def update(self, surveys: list[MorningBid]) -> None:
         now = datetime.now(tz=timezone.utc)
 
         for survey in surveys:
             self.update_one(survey, now=now)
 
-    def update_one(self, bid: MorningBid, now: Optional[datetime] = None) -> bool:
+    def update_one(self, bid: MorningBid, now: datetime | None = None) -> bool:
         if now is None:
             now = datetime.now(tz=timezone.utc)
         d = bid.to_mysql()
@@ -235,7 +235,7 @@ class MorningSurveyManager(SurveyManager):
         conn.commit()
         return bool(c.rowcount >= 1)
 
-    def create_or_update(self, surveys: List[MorningBid]):
+    def create_or_update(self, surveys: list[MorningBid]):
         surveys = {s.id: s for s in surveys}
         sns = set(surveys.keys())
         existing_sns = {

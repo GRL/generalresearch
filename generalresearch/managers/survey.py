@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from abc import ABC
-from typing import List
 
 from generalresearch.managers.base import SqlManager
 from generalresearch.models.thl.survey import MarketplaceTask
@@ -13,7 +14,7 @@ class SurveyManager(SqlManager, ABC):
         """
         ...
 
-    def update(self, surveys: List[MarketplaceTask]) -> bool:
+    def update(self, surveys: list[MarketplaceTask]) -> bool:
         """
         Update a list of surveys. Depending on the implementation, this may
           operate one by one or as a bulk update.

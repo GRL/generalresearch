@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 from psycopg import Cursor, sql
 
@@ -8,12 +8,11 @@ from generalresearch.models.network.tool_run import MTRRun
 
 class MTRRunManager(PostgresManager):
 
-    def _create(self, run: MTRRun, c: Optional[Cursor] = None) -> None:
+    def _create(self, run: MTRRun, c: Cursor | None = None) -> None:
         """
         Do not use this directly. Must only be used in the context of a toolrun
         """
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
         INSERT INTO network_mtr (
             run_id, source_ip, facility_id,
             protocol, port, parsed,
@@ -24,20 +23,17 @@ class MTRRunManager(PostgresManager):
             %(protocol)s, %(port)s, %(parsed)s,
             %(started_at)s, %(ip)s, %(scan_group_id)s
         );
-        """
-        )
+        """)
         params = run.model_dump_postgres()
 
-        query_hops = sql.SQL(
-            """
+        query_hops = sql.SQL("""
         INSERT INTO network_mtrhop (
             hop, ip, domain, asn, mtr_run_id
         ) VALUES (
             %(hop)s, %(ip)s, %(domain)s,
             %(asn)s, %(mtr_run_id)s
         )
-        """
-        )
+        """)
         mtr_run = run.parsed
         params_hops = [h.model_dump_postgres(run_id=run.id) for h in mtr_run.hops]
 
