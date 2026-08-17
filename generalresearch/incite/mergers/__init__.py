@@ -27,11 +27,7 @@ from generalresearch.incite.schemas.mergers.foundations.enriched_wall import (
 from generalresearch.incite.schemas.mergers.foundations.user_id_product import (
     UserIdProductSchema,
 )
-from generalresearch.incite.schemas.mergers.nginx import (
-    NGINXCoreSchema,
-    NGINXFSBSchema,
-    NGINXGRSSchema,
-)
+
 from generalresearch.incite.schemas.mergers.pop_ledger import (
     PopLedgerSchema,
 )
@@ -51,10 +47,6 @@ class MergeType(str, Enum):
     YM_SURVEY_WALL = "ym_survey_wall"
     YM_WALL_SUMMARY = "ym_wall_summary"
 
-    NGINX_GRS = "nginx_grs"
-    NGINX_FSB = "nginx_fsb"
-    NGINX_CORE = "nginx_core"
-
     POP_LEDGER = "pop_ledger"
 
     # --- Foundations ---
@@ -67,9 +59,6 @@ class MergeType(str, Enum):
 MergeTypeSchemas = {
     MergeType.YM_SURVEY_WALL: YMSurveyWallSchema,
     MergeType.YM_WALL_SUMMARY: YMWallSummarySchema,
-    MergeType.NGINX_GRS: NGINXGRSSchema,
-    MergeType.NGINX_FSB: NGINXFSBSchema,
-    MergeType.NGINX_CORE: NGINXCoreSchema,
     MergeType.POP_LEDGER: PopLedgerSchema,
     # --- Foundations ---
     MergeType.USER_ID_PRODUCT: UserIdProductSchema,
