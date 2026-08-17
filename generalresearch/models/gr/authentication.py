@@ -115,8 +115,8 @@ class GRUser(BaseModel):
     businesses: list["Business"] | None = Field(default=None)
     teams: list["Team"] | None = Field(default=None)
     products: list["Product"] | None = Field(default=None)
-    token: "GRToken" | None = Field(default=None)
-    claims: "Claims" | None = Field(default=None)
+    token: "GRToken | None" = Field(default=None)
+    claims: "Claims | None" = Field(default=None)
 
     def prefetch_claims(
         self, token: str, key: dict[str, Any], audience: str, issuer: AnyHttpUrl
@@ -327,7 +327,7 @@ class GRToken(BaseModel):
     user_id: PositiveInt = Field()
 
     # --- prefetch field ---
-    user: "GRUser" | None = Field(default=None)
+    user: "GRUser | None" = Field(default=None)
 
     @property
     def sso(self) -> bool:
