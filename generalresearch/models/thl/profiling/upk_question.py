@@ -5,7 +5,7 @@ import json
 import re
 from enum import Enum
 from functools import cached_property
-from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Union
+from typing import Any, List, Literal, Union
 
 from pydantic import (
     BaseModel,
@@ -24,21 +24,21 @@ from generalresearch.models.thl.category import Category
 
 
 class UPKImportance(BaseModel):
-    task_count: Optional[int] = Field(
+    task_count: int | None = Field(
         ge=0,
         default=None,
         examples=[47],
         description="The number of live Tasks that use this UPK Question",
     )
 
-    task_score: Optional[float] = Field(
+    task_score: float | None = Field(
         ge=0,
         default=None,
         examples=[0.11175522477414712],
         description="GRL's internal ranked score for the UPK Question",
     )
 
-    marketplace_task_count: Optional[Dict[Source, NonNegativeInt]] = Field(
+    marketplace_task_count: dict[Source, NonNegativeInt] | None = Field(
         default=None,
         examples=[{Source.DYNATA: 23, Source.SPECTRUM: 24}],
         description="The number of live Tasks that use this UPK Question per marketplace",
@@ -80,14 +80,14 @@ class UpkQuestionChoice(BaseModel):
     order: NonNegativeInt = Field()
 
     # Allows you to group answer choices together (used for display or extra logic)
-    group: Optional[int] = Field(default=None)
+    group: int | None = Field(default=None)
 
     exclusive: bool = Field(
         default=False,
         description="If answer is exclusive, it can be the only option selected",
     )
 
-    importance: Optional[UPKImportance] = Field(default=None)
+    importance: UPKImportance | None = Field(default=None)
 
     def __hash__(self):
         # We don't know the question ID!! Unique within a question only!
@@ -151,7 +151,7 @@ class UpkQuestionConfigurationMC(BaseModel):
         exclude=True, default=UpkQuestionType.MULTIPLE_CHOICE
     )
 
-    max_select: Optional[int] = Field(gt=0, default=None)
+    max_select: int | None = Field(gt=0, default=None)
 
 
 class UpkQuestionConfigurationTE(BaseModel):
@@ -163,7 +163,7 @@ class UpkQuestionConfigurationTE(BaseModel):
     )
 
     # Sets input form attribute; not the same as regex validation
-    max_length: Optional[PositiveInt] = Field(
+    max_length: PositiveInt | None = Field(
         default=None,
         description="Maximum str length of any input. Meant as an easy, non"
         "regex based check.",
@@ -171,7 +171,7 @@ class UpkQuestionConfigurationTE(BaseModel):
 
     # The text input box must contain this number of chars before submission
     # is allowed
-    min_length: Optional[PositiveInt] = Field(
+    min_length: PositiveInt | None = Field(
         default=None,
         description="Minimum str length of any input. Meant as an easy, non"
         "regex based check.",
@@ -195,25 +195,25 @@ class UpkQuestionConfigurationSLIDER(BaseModel):
     )
 
     # TODO: constraints. we don't have any of these so not wasting time on this
-    slider_min: Optional[float] = Field(default=None)
-    slider_max: Optional[float] = Field(default=None)
-    slider_start: Optional[float] = Field(default=None)
-    slider_step: Optional[float] = Field(default=None)
+    slider_min: float | None = Field(default=None)
+    slider_max: float | None = Field(default=None)
+    slider_start: float | None = Field(default=None)
+    slider_step: float | None = Field(default=None)
 
 
 class UpkQuestionValidation(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # --- UpkQuestionType.TEXT_ENTRY Options ---
-    patterns: Optional[List[PatternValidation]] = Field(min_length=1)
+    patterns: list[PatternValidation] | None = Field(min_length=1)
 
 
-SelectorType = Union[
-    UpkQuestionSelectorMC,
-    UpkQuestionSelectorTE,
-    UpkQuestionSelectorSLIDER,
-    UpkQuestionSelectorHIDDEN,
-]
+SelectorType = (
+    UpkQuestionSelectorMC
+    | UpkQuestionSelectorTE
+    | UpkQuestionSelectorSLIDER
+    | UpkQuestionSelectorHIDDEN
+)
 Configuration = Annotated[
     Union[
         UpkQuestionConfigurationMC,
@@ -276,11 +276,11 @@ class UpkQuestion(BaseModel):
     )
 
     # The id is globally unique
-    id: Optional[UUIDStr] = Field(default=None, alias="question_id")
+    id: UUIDStr | None = Field(default=None, alias="question_id")
 
     # The format is "{Source}:{question_id}" where Source is 1 or 2 chars, and
     # question_id is the marketplace's ID for this question.
-    ext_question_id: Optional[str] = Field(
+    ext_question_id: str | None = Field(
         default=None,
         description="what marketplace question this question links to",
         pattern=r"^[a-z]{1,2}\:.*",
@@ -301,25 +301,25 @@ class UpkQuestion(BaseModel):
 
     # Don't set a min_length=1 here. We'll allow this to be created, but it
     #   won't be askable with empty choices.
-    choices: Optional[List[UpkQuestionChoice]] = Field(default=None)
+    choices: list[UpkQuestionChoice] | None = Field(default=None)
     selector: SelectorType = Field()
-    configuration: Optional[Configuration] = Field(default=None)
-    validation: Optional[UpkQuestionValidation] = Field(default=None)
-    importance: Optional[UPKImportance] = Field(default=None)
+    configuration: Configuration | None = Field(default=None)
+    validation: UpkQuestionValidation | None = Field(default=None)
+    importance: UPKImportance | None = Field(default=None)
 
-    categories: List[Category] = Field(
+    categories: list[Category] = Field(
         default_factory=list,
         description="Categories associated with this question",
     )
 
-    explanation_template: Optional[str] = Field(
+    explanation_template: str | None = Field(
         description="Human-readable template for explaining how a user's answer to this question affects eligibility",
         examples=[
             "The company that administers your employer's retirement plan is {answer}."
         ],
         default=None,
     )
-    explanation_fragment_template: Optional[str] = Field(
+    explanation_fragment_template: str | None = Field(
         description="A very short, natural-language explanation fragment that can be combined with others into a single sentence",
         examples=["whose employer's retirement plan is {answer}"],
         default=None,
@@ -336,7 +336,7 @@ class UpkQuestion(BaseModel):
         return self.country_iso + "_" + self.language_iso
 
     @property
-    def source(self) -> Optional[Source]:
+    def source(self) -> Source | None:
         if self.ext_question_id:
             return Source(self.ext_question_id.split(":", 1)[0])
 
@@ -348,7 +348,7 @@ class UpkQuestion(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def check_configuration_type(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+    def check_configuration_type(cls, data: dict[str, Any]) -> dict[str, Any]:
         # The model knows what the type of Configuration to grab depending on
         # the key 'type' which it expects inside the configuration object.
         # Here, we grab the type from the top-level model instead.
@@ -441,8 +441,8 @@ class UpkQuestion(BaseModel):
     @field_validator("choices")
     @classmethod
     def validate_choices(
-        cls, choices: Optional[List[UpkQuestionChoice]]
-    ) -> Optional[List[UpkQuestionChoice]]:
+        cls, choices: list[UpkQuestionChoice] | None
+    ) -> list[UpkQuestionChoice] | None:
         if choices:
             ids = {x.id for x in choices}
             assert len(ids) == len(choices), "choices.id must be unique"
@@ -507,7 +507,7 @@ class UpkQuestion(BaseModel):
         d.update(d.pop("importance", {}))
         return d
 
-    def validate_question_answer(self, answer: Tuple[str, ...]) -> Tuple[bool, str]:
+    def validate_question_answer(self, answer: tuple[str, ...]) -> tuple[bool, str]:
         """
         Returns (is_valid, error_message).
         """
@@ -518,7 +518,7 @@ class UpkQuestion(BaseModel):
         else:
             return True, ""
 
-    def _validate_question_answer(self, answer: Tuple[str, ...]) -> None:
+    def _validate_question_answer(self, answer: tuple[str, ...]) -> None:
         """
         If the question is MC, validate:
             - validate selector SA vs MA (1 selected vs >1 selected)
@@ -578,24 +578,24 @@ class UpkQuestion(BaseModel):
 
 
 class UpkQuestionOut(UpkQuestion):
-    choices: Optional[List[UpkQuestionChoiceOut]] = Field(default=None)
+    choices: list[UpkQuestionChoiceOut] | None = Field(default=None)
     # Return both importance top-level model and extracted keys for now.
     # Eventually deprecate one way.
-    task_count: Optional[int] = Field(
+    task_count: int | None = Field(
         ge=0,
         default=None,
         examples=[47],
         description="The number of live Tasks that use this UPK Question",
     )
 
-    task_score: Optional[float] = Field(
+    task_score: float | None = Field(
         ge=0,
         default=None,
         examples=[0.11175522477414712],
         description="GRL's internal ranked score for the UPK Question",
     )
 
-    marketplace_task_count: Optional[Dict[Source, NonNegativeInt]] = Field(
+    marketplace_task_count: dict[Source, NonNegativeInt] | None = Field(
         default=None,
         examples=[{Source.DYNATA: 23, Source.SPECTRUM: 24}],
         description="The number of live Tasks that use this UPK Question per marketplace",
@@ -649,7 +649,7 @@ def trim_options(q: UpkQuestion, max_options: int = 50) -> UpkQuestion:
     if q.ext_question_id.startswith("gr:") or q.ext_question_id.startswith("g:"):
         return q
 
-    special_choices: Set[UpkQuestionChoice] = {
+    special_choices: set[UpkQuestionChoice] = {
         c for c in q.choices if option_is_catch_all(c)
     }
 

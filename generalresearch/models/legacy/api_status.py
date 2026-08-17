@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -14,7 +14,7 @@ class StatusResponse(BaseModel):
     status: Literal["success", "error"] = Field(
         description="The status of the API response.", examples=["success"]
     )
-    msg: Optional[str] = Field(
+    msg: str | None = Field(
         description="An optional message, if the status is error.",
         examples=[""],
         default=None,

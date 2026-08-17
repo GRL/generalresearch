@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import ipaddress
 from enum import StrEnum
-from typing import Optional, List
 
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
+    IPvAnyNetwork,
     computed_field,
     field_validator,
-    ConfigDict,
-    IPvAnyNetwork,
 )
 
 from generalresearch.models.custom_types import (
@@ -69,7 +68,7 @@ class IPLabel(BaseModel):
     ip: IPvAnyNetwork = Field()
 
     labeled_at: AwareDatetimeISO = Field(default_factory=now_utc_factory)
-    created_at: Optional[AwareDatetimeISO] = Field(default=None)
+    created_at: AwareDatetimeISO | None = Field(default=None)
 
     label_kind: IPLabelKind = Field()
     source: IPLabelSource = Field()
@@ -77,11 +76,11 @@ class IPLabel(BaseModel):
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
 
     # Optionally, if this is untrusted, which service is providing the proxy/vpn service
-    provider: Optional[str] = Field(
+    provider: str | None = Field(
         default=None, examples=["geonode", "gecko"], max_length=128
     )
 
-    metadata: Optional[IPLabelMetadata] = Field(default=None)
+    metadata: IPLabelMetadata | None = Field(default=None)
 
     @field_validator("ip", mode="before")
     @classmethod
@@ -96,7 +95,7 @@ class IPLabel(BaseModel):
 
     @field_validator("provider", mode="before")
     @classmethod
-    def provider_format(cls, v: Optional[str]) -> Optional[str]:
+    def provider_format(cls, v: str | None) -> str | None:
         if v is None:
             return v
         return v.lower().strip()
@@ -123,4 +122,4 @@ class IPLabelMetadata(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True, extra="allow")
 
-    services: Optional[List[str]] = Field(min_length=1, examples=[["RDP"]])
+    services: list[str] | None = Field(min_length=1, examples=[["RDP"]])

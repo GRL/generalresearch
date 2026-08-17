@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 # https://wss.pollfish.com/mediation/documentation
 import json
 import logging
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Self
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -59,9 +61,9 @@ class PollfishQuestion(MarketplaceQuestion):
         max_length=1024, min_length=1, description="The text shown to respondents"
     )
     question_type: PollfishQuestionType = Field(frozen=True)
-    options: Optional[List[PollfishQuestionOption]] = Field(default=None, min_length=1)
+    options: list[PollfishQuestionOption] | None = Field(default=None, min_length=1)
     # This comes from the API field "category"
-    tags: Optional[str] = Field(default=None, frozen=True)
+    tags: str | None = Field(default=None, frozen=True)
     source: Literal[Source.POLLFISH] = Source.POLLFISH
 
     @property
@@ -78,7 +80,7 @@ class PollfishQuestion(MarketplaceQuestion):
         return self
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> Self:
+    def from_db(cls, d: dict[str, Any]) -> Self:
         options = None
         if d["options"]:
             options = [
@@ -97,7 +99,7 @@ class PollfishQuestion(MarketplaceQuestion):
             category_id=d.get("category_id"),
         )
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", by_alias=True)
         d["options"] = json.dumps(d["options"])
         return d

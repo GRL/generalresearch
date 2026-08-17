@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 from enum import Enum
-from typing import List, Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field, PositiveInt
 
@@ -46,15 +46,15 @@ class AccessControlEvent(BaseModel):
         QualityEventType.clear_access_control_list,
     ] = Field()
     # One of user_id / (product_id, bpuid) is required.
-    product_id: Optional[UUIDStr] = Field(
+    product_id: UUIDStr | None = Field(
         default=None, examples=["4fe381fb7186416cb443a38fa66c6557"]
     )
-    bpuid: Optional[BPUIDStr] = Field(default=None, examples=["app-user-9329ebd"])
-    user_id: Optional[PositiveInt] = Field(default=None, lt=MAX_INT32)
+    bpuid: BPUIDStr | None = Field(default=None, examples=["app-user-9329ebd"])
+    user_id: PositiveInt | None = Field(default=None, lt=MAX_INT32)
 
 
 class AccessControlEventBody(BaseModel):
-    events: List[AccessControlEvent] = Field(max_length=100, min_length=1)
+    events: list[AccessControlEvent] = Field(max_length=100, min_length=1)
 
 
 class TaskAdjustmentEvent(BaseModel):
@@ -70,21 +70,21 @@ class TaskAdjustmentEvent(BaseModel):
 
     # Only MID is needed to populate all the following, however we can pass them in order
     #   to perform validation. If any disagree, an error should be raised.
-    survey_id: Optional[str] = Field(max_length=32, default=None)
-    amount: Optional[Decimal] = Field(
+    survey_id: str | None = Field(max_length=32, default=None)
+    amount: Decimal | None = Field(
         description="If negative, the status should adjusted to incomplete",
         default=None,
     )
-    event_time: Optional[AwareDatetimeISO] = Field(
+    event_time: AwareDatetimeISO | None = Field(
         description="This is when the original wall event was started",
         default=None,
     )
-    product_id: Optional[UUIDStr] = Field(
+    product_id: UUIDStr | None = Field(
         default=None, examples=["4fe381fb7186416cb443a38fa66c6557"]
     )
-    bpuid: Optional[BPUIDStr] = Field(default=None, examples=["app-user-9329ebd"])
-    user_id: Optional[PositiveInt] = Field(default=None, lt=MAX_INT32)
+    bpuid: BPUIDStr | None = Field(default=None, examples=["app-user-9329ebd"])
+    user_id: PositiveInt | None = Field(default=None, lt=MAX_INT32)
 
 
 class TaskAdjustmentEventBody(BaseModel):
-    events: List[TaskAdjustmentEvent] = Field(max_length=100, min_length=1)
+    events: list[TaskAdjustmentEvent] = Field(max_length=100, min_length=1)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-from typing import Any, Dict, Literal, Optional, Tuple
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -53,13 +53,13 @@ class MilestoneContestEndCondition(BaseModel):
     Multiple conditions can be set. The contest is over once ANY conditions are met.
     """
 
-    max_winners: Optional[PositiveInt] = Field(
+    max_winners: PositiveInt | None = Field(
         default=None,
         description="The contest will end once this many users have won (i.e. reached"
         "the milestone).",
     )
 
-    ends_at: Optional[AwareDatetimeISO] = Field(
+    ends_at: AwareDatetimeISO | None = Field(
         default=None, description="The Contest is over at the ends_at time."
     )
 
@@ -72,17 +72,17 @@ class MilestoneContestConfig(BaseModel):
     target_amount: PositiveInt = Field(
         description="Each user 'wins' (receives prizes) once this target amount is reached."
     )
-    entry_trigger: Optional[ContestEntryTrigger] = Field(
+    entry_trigger: ContestEntryTrigger | None = Field(
         description="What user action triggers an entry automatically.",
         default=None,
     )
 
     # These two fields allow something like: "Get a complete in your first 24 hours!"
-    valid_for: Optional[timedelta] = Field(
+    valid_for: timedelta | None = Field(
         description="The time after valid_for_event for which the contest is open",
         default=None,
     )
-    valid_for_event: Optional[Literal["signup"]] = Field(default=None)
+    valid_for_event: Literal["signup"] | None = Field(default=None)
 
 
 class MilestoneContestCreate(ContestBase, MilestoneContestConfig):
@@ -127,7 +127,7 @@ class MilestoneContest(MilestoneContestCreate, Contest):
         default=0,
     )
 
-    def should_end(self) -> Tuple[bool, Optional[ContestEndReason]]:
+    def should_end(self) -> tuple[bool, ContestEndReason | None]:
         res, msg = super().should_end()
 
         if res:
@@ -145,7 +145,7 @@ class MilestoneContest(MilestoneContestCreate, Contest):
         #   just does nothing
         return None
 
-    def model_dump_mysql(self) -> Dict[str, Any]:
+    def model_dump_mysql(self) -> dict[str, Any]:
         d = super().model_dump_mysql(
             exclude={
                 "entry_trigger",
@@ -163,7 +163,7 @@ class MilestoneContest(MilestoneContestCreate, Contest):
         return d
 
     @classmethod
-    def model_validate_mysql(cls, data: Dict[str, Any]) -> Self:
+    def model_validate_mysql(cls, data: dict[str, Any]) -> Self:
         data.update(
             MilestoneContestConfig.model_validate(data["milestone_config"]).model_dump()
         )
@@ -180,7 +180,7 @@ class MilestoneUserView(MilestoneContest, ContestUserView):
         json_schema_extra=_example_milestone_user_view,
     )
 
-    valid_until: Optional[AwareDatetimeISO] = Field(
+    valid_until: AwareDatetimeISO | None = Field(
         default=None,
         exclude=True,
         description="If valid_for is set, this gets populated wrt this user",
@@ -201,7 +201,7 @@ class MilestoneUserView(MilestoneContest, ContestUserView):
                 return True
         return False
 
-    def is_user_eligible(self, country_iso: str) -> Tuple[bool, str]:
+    def is_user_eligible(self, country_iso: str) -> tuple[bool, str]:
         passes, msg = super().is_user_eligible(country_iso=country_iso)
         if not passes:
             return False, msg

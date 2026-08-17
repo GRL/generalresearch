@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Dict, List
-
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from generalresearch.models.custom_types import UUIDStr
@@ -70,9 +68,9 @@ class OfferWall(BaseModel):
         default=0,
     )
 
-    buckets: List[BucketBase] = Field(default_factory=list)
+    buckets: list[BucketBase] = Field(default_factory=list)
 
-    offerwall_reasons: List[OfferwallReason] = Field(
+    offerwall_reasons: list[OfferwallReason] = Field(
         default_factory=list,
         description=(
             "Explanations describing why so many or few opportunities are available."
@@ -92,7 +90,7 @@ class SingleEntryOfferWall(OfferWall):
     """
 
     payout_format: PayoutFormatType = PayoutFormatField
-    buckets: List[SingleEntryBucket] = Field(default_factory=list, max_length=1)
+    buckets: list[SingleEntryBucket] = Field(default_factory=list, max_length=1)
 
 
 class TopNOfferWall(OfferWall):
@@ -102,7 +100,7 @@ class TopNOfferWall(OfferWall):
     Offerwall code: `45b7228a7`
     """
 
-    buckets: List[TopNBucket] = Field(default_factory=list)
+    buckets: list[TopNBucket] = Field(default_factory=list)
     payout_format: PayoutFormatType = PayoutFormatField
 
 
@@ -114,7 +112,7 @@ class StarwallOfferWall(OfferWall):
     Offerwall code: `b59a2d2b`
     """
 
-    buckets: List[TopNBucket] = Field(default_factory=list)
+    buckets: list[TopNBucket] = Field(default_factory=list)
     payout_format: PayoutFormatType = PayoutFormatField
 
 
@@ -124,7 +122,7 @@ class TopNPlusOfferWall(OfferWall):
     Offerwall code: `b145b803`
     """
 
-    buckets: List[TopNPlusBucket] = Field(default_factory=list)
+    buckets: list[TopNPlusBucket] = Field(default_factory=list)
 
 
 class TopNPlusBlockOfferWall(OfferWall):
@@ -134,7 +132,7 @@ class TopNPlusBlockOfferWall(OfferWall):
     Offerwall code: `d48cce47`
     """
 
-    buckets: List[TopNPlusBucket] = Field(default_factory=list)
+    buckets: list[TopNPlusBucket] = Field(default_factory=list)
 
     # This incorrectly gets returned only when the user is blocked. It
     #   shouldn't get returned at all
@@ -149,7 +147,7 @@ class TopNPlusBlockRecontactOfferWall(OfferWall):
     Offerwall code: `1e5f0af8`
     """
 
-    buckets: List[TopNPlusRecontactBucket] = Field(default_factory=list)
+    buckets: list[TopNPlusRecontactBucket] = Field(default_factory=list)
 
     # This incorrectly gets returned only when the user is blocked. It
     #   shouldn't get returned at all
@@ -162,7 +160,7 @@ class StarwallPlusOfferWall(OfferWall):
     Offerwall code: `5481f322`
     """
 
-    buckets: List[TopNPlusBucket] = Field(default_factory=list)
+    buckets: list[TopNPlusBucket] = Field(default_factory=list)
 
 
 class StarwallPlusBlockOfferWall(OfferWall):
@@ -172,7 +170,7 @@ class StarwallPlusBlockOfferWall(OfferWall):
     Offerwall code: `7fa1b3f4`
     """
 
-    buckets: List[TopNPlusBucket] = Field(default_factory=list)
+    buckets: list[TopNPlusBucket] = Field(default_factory=list)
 
     # This incorrectly gets returned only when the user is blocked. It
     #   shouldn't get returned at all
@@ -187,7 +185,7 @@ class StarwallPlusBlockRecontactOfferWall(OfferWall):
     Offerwall code: `630db2a4`
     """
 
-    buckets: List[TopNPlusRecontactBucket] = Field(default_factory=list)
+    buckets: list[TopNPlusRecontactBucket] = Field(default_factory=list)
 
     # This incorrectly gets returned only when the user is blocked. It
     #   shouldn't get returned at all
@@ -203,9 +201,9 @@ class SoftPairOfferwall(OfferWall):
     Offerwall code: `37d1da64`
     """
 
-    buckets: List[SoftPairBucket] = Field(default_factory=list)
+    buckets: list[SoftPairBucket] = Field(default_factory=list)
 
-    question_info: Dict[str, "UpkQuestion"] = Field(
+    question_info: dict[str, "UpkQuestion"] = Field(
         default_factory=dict,
         examples=[
             # {
@@ -228,7 +226,7 @@ class MarketplaceOfferwall(OfferWall):
     Offerwall code: `5fa23085`
     """
 
-    buckets: List[MarketplaceBucket] = Field(default_factory=list)
+    buckets: list[MarketplaceBucket] = Field(default_factory=list)
 
 
 class TimeBucksOfferwall(OfferWall):
@@ -242,7 +240,7 @@ class TimeBucksOfferwall(OfferWall):
     Offerwall code: `1705e4f8`
     """
 
-    buckets: List[TimeBucksBucket] = Field(default_factory=list)
+    buckets: list[TimeBucksBucket] = Field(default_factory=list)
 
 
 class TimeBucksBlockOfferwall(OfferWall):
@@ -252,7 +250,7 @@ class TimeBucksBlockOfferwall(OfferWall):
     Offerwall code: `0af0f7ec`
     """
 
-    buckets: List[TimeBucksBucket] = Field(default_factory=list)
+    buckets: list[TimeBucksBucket] = Field(default_factory=list)
     # This incorrectly gets returned only when the user is blocked. It shouldn't get returned at all
     payout_format: str = Field(exclude=True, default="")
 
@@ -264,7 +262,7 @@ class OneShotOfferwall(OfferWall):
     Offerwall code: `6f27b1ae`
     """
 
-    buckets: List[OneShotOfferwallBucket] = Field(default_factory=list)
+    buckets: list[OneShotOfferwallBucket] = Field(default_factory=list)
 
 
 class OneShotSoftPairOfferwall(SoftPairOfferwall):
@@ -274,7 +272,7 @@ class OneShotSoftPairOfferwall(SoftPairOfferwall):
     Offerwall code: `18347426`
     """
 
-    buckets: List[OneShotSoftPairOfferwallBucket] = Field(default_factory=list)
+    buckets: list[OneShotSoftPairOfferwallBucket] = Field(default_factory=list)
 
 
 class WXETOfferwall(OfferWall):
@@ -282,7 +280,7 @@ class WXETOfferwall(OfferWall):
     Offerwall code: `55a4e1a9`
     """
 
-    buckets: List[WXETOfferwallBucket] = Field(default_factory=list)
+    buckets: list[WXETOfferwallBucket] = Field(default_factory=list)
 
 
 class SingleEntryOfferWallResponse(OfferWallResponse):

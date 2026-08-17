@@ -1,4 +1,6 @@
-from typing import Any, Dict, List
+from __future__ import annotations
+
+from typing import Any
 
 import pandas as pd
 from pandera import Check, Column, DataFrameSchema, Index
@@ -46,8 +48,8 @@ RepDataTaskCollectionSchema = DataFrameSchema(
         "remaining_count": Column(int, Check.greater_than_or_equal_to(0)),
         "calculation_type": Column(str, Check.isin(TaskCalculationType)),
         "cpi": Column(float, Check.between(min_value=0, max_value=100)),
-        "used_question_ids": Column(List[str]),
-        "all_hashes": Column(List[str]),  # set >> list for column support
+        "used_question_ids": Column(list[str]),
+        "all_hashes": Column(list[str]),  # set >> list for column support
     },
     checks=[
         # # There's only 1 or 2 live surveys, so we can't really assert anything ...
@@ -78,10 +80,10 @@ RepDataTaskCollectionSchema = DataFrameSchema(
 
 
 class RepDataTaskCollection(TaskCollection):
-    items: List[RepDataSurveyHashed]
+    items: list[RepDataSurveyHashed]
     _schema = RepDataTaskCollectionSchema
 
-    def to_rows(self, s: RepDataSurveyHashed) -> List[Dict[str, Any]]:
+    def to_rows(self, s: RepDataSurveyHashed) -> list[dict[str, Any]]:
         survey_fields = [
             "survey_id",
             "survey_uuid",

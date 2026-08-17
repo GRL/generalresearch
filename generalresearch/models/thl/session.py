@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import json
 import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import TYPE_CHECKING, Annotated, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Annotated, Any
 from uuid import uuid4
 
 from pydantic import (
@@ -64,7 +66,7 @@ class WallBase(BaseModel):
 
     uuid: UUIDStr = Field(default_factory=lambda: uuid4().hex)
     source: Source
-    buyer_id: Optional[str] = Field(default=None, max_length=32)
+    buyer_id: str | None = Field(default=None, max_length=32)
     req_survey_id: str = Field(max_length=32)
     req_cpi: Decimal = Field(decimal_places=5, lt=1000, ge=0)
     started: AwareDatetimeISO = Field(
@@ -74,27 +76,27 @@ class WallBase(BaseModel):
     # These get set on creation, or updated when the wall event is finished. So
     #   they shouldn't really ever be NULL, but you don't have to pass them in
     #   on instantiation
-    survey_id: Optional[str] = Field(max_length=32, default=None)
-    cpi: Optional[Decimal] = Field(lt=1000, ge=0, default=None)
+    survey_id: str | None = Field(max_length=32, default=None)
+    cpi: Decimal | None = Field(lt=1000, ge=0, default=None)
 
     # Gets set when a wall is "finished"
-    finished: Optional[AwareDatetimeISO] = Field(default=None)
-    status: Optional[Status] = None
-    status_code_1: Optional[StatusCode1] = None
-    status_code_2: Optional[WallStatusCode2] = None
+    finished: AwareDatetimeISO | None = Field(default=None)
+    status: Status | None = None
+    status_code_1: StatusCode1 | None = None
+    status_code_2: WallStatusCode2 | None = None
 
-    ext_status_code_1: Optional[str] = Field(default=None, max_length=32)
-    ext_status_code_2: Optional[str] = Field(default=None, max_length=32)
-    ext_status_code_3: Optional[str] = Field(default=None, max_length=32)
+    ext_status_code_1: str | None = Field(default=None, max_length=32)
+    ext_status_code_2: str | None = Field(default=None, max_length=32)
+    ext_status_code_3: str | None = Field(default=None, max_length=32)
 
-    report_value: Optional[ReportValue] = None
-    report_notes: Optional[str] = Field(default=None, max_length=255)
+    report_value: ReportValue | None = None
+    report_notes: str | None = Field(default=None, max_length=255)
 
     # This is the most recent reconciliation status of the wall event.
     # Possible values: 'ac' (adjusted to complete), 'af' (adj to fail)
     # If a wall gets adjusted and adjusted back to its original status, the
     # adjusted_status = None
-    adjusted_status: Optional[WallAdjustedStatus] = None
+    adjusted_status: WallAdjustedStatus | None = None
 
     # This is not really used, it is only important if the requested CPI
     #   doesn't match the adjusted amount, which shouldn't happen as no
@@ -103,11 +105,11 @@ class WallBase(BaseModel):
     # - If adjusted_status = 'ac': adjusted_cpi is the amount paid (should
     #       equal the `cpi`)
     # - If adjusted_status = 'af': adjusted_cpi is 0.00
-    adjusted_cpi: Optional[Decimal] = Field(default=None, lt=1000, ge=0)
+    adjusted_cpi: Decimal | None = Field(default=None, lt=1000, ge=0)
 
     # This timestamp gets updated every time there is an adjustment. Even if
     # we flip-flop, this will be set (and adjusted_status will be None).
-    adjusted_timestamp: Optional[AwareDatetimeISO] = Field(default=None)
+    adjusted_timestamp: AwareDatetimeISO | None = Field(default=None)
 
     # --- Validation ---
 
@@ -261,19 +263,17 @@ class WallBase(BaseModel):
         self.model_config["validate_assignment"] = True
         self.__class__.model_validate(self)
 
-        return None
-
     def finish(
         self,
         status: Status,
         status_code_1: StatusCode1,
-        status_code_2: Optional[WallStatusCode2] = None,
-        finished: Optional[datetime] = None,
-        ext_status_code_1: Optional[str] = None,
-        ext_status_code_2: Optional[str] = None,
-        ext_status_code_3: Optional[str] = None,
-        survey_id: Optional[str] = None,
-        cpi: Optional[Decimal] = None,
+        status_code_2: WallStatusCode2 | None = None,
+        finished: datetime | None = None,
+        ext_status_code_1: str | None = None,
+        ext_status_code_2: str | None = None,
+        ext_status_code_3: str | None = None,
+        survey_id: str | None = None,
+        cpi: Decimal | None = None,
     ) -> None:
 
         # This is just used in tests at the moment. This needs to be adjusted.
@@ -296,14 +296,12 @@ class WallBase(BaseModel):
         if cpi is not None:
             self.cpi = cpi
 
-        return None
-
     def annotate_status_codes(
         self,
         ext_status_code_1: str,
-        ext_status_code_2: Optional[str] = None,
-        ext_status_code_3: Optional[str] = None,
-        finished: Optional[datetime] = None,
+        ext_status_code_2: str | None = None,
+        ext_status_code_3: str | None = None,
+        finished: datetime | None = None,
     ) -> None:
         # This should be called by the wall manager in order to actually update db
         from generalresearch import wall_status_codes
@@ -325,8 +323,6 @@ class WallBase(BaseModel):
             ext_status_code_3=ext_status_code_3,
             finished=finished,
         )
-
-        return None
 
     def is_soft_fail(self) -> bool:
         from generalresearch import wall_status_codes
@@ -371,8 +367,8 @@ class WallBase(BaseModel):
     def report(
         self,
         report_value: ReportValue,
-        report_notes: Optional[str] = None,
-        report_timestamp: Optional[AwareDatetime] = None,
+        report_notes: str | None = None,
+        report_timestamp: AwareDatetime | None = None,
     ) -> None:
         """When a wall event is reported:
 
@@ -454,7 +450,7 @@ class Wall(WallBase):
         d = self.model_dump(mode="json", exclude={"elapsed"})
         return json.dumps(d)
 
-    def model_dump_mysql(self, *args, **kwargs) -> Dict:
+    def model_dump_mysql(self, *args, **kwargs) -> dict:
         # Generate a dictionary representation of the model, with special handling for datetimes
         d = self.model_dump(mode="json", exclude={"elapsed"}, *args, **kwargs)
         d["started"] = self.started.replace(tzinfo=None)
@@ -468,27 +464,27 @@ class Wall(WallBase):
 class WallOut(WallBase):
 
     # These get serialized to the enum name instead of the int value (for ease in UI)
-    status_code_1: Optional[Annotated[StatusCode1, EnumNameSerializer]] = Field(
+    status_code_1: Annotated[StatusCode1, EnumNameSerializer] | None = Field(
         default=None,
         examples=[StatusCode1.COMPLETE.name],
         description=StatusCode1.as_openapi_with_value_descriptions_name(),
     )
 
-    status_code_2: Optional[Annotated[WallStatusCode2, EnumNameSerializer]] = Field(
+    status_code_2: Annotated[WallStatusCode2, EnumNameSerializer] | None = Field(
         default=None,
         examples=[None],
         description=WallStatusCode2.as_openapi_with_value_descriptions_name(),
     )
 
     # Exclude these 3 fields
-    cpi: Optional[Decimal] = Field(lt=1000, ge=0, default=None, exclude=True)
-    req_cpi: Optional[Decimal] = Field(
+    cpi: Decimal | None = Field(lt=1000, ge=0, default=None, exclude=True)
+    req_cpi: Decimal | None = Field(
         decimal_places=5, lt=1000, ge=0, default=None, exclude=True
     )
-    adjusted_cpi: Optional[Decimal] = Field(lt=1000, ge=0, default=None, exclude=True)
+    adjusted_cpi: Decimal | None = Field(lt=1000, ge=0, default=None, exclude=True)
 
     # user_cpi is serialized to integer cents!!!
-    user_cpi: Optional[Decimal] = Field(
+    user_cpi: Decimal | None = Field(
         lt=1000,
         ge=0,
         default=None,
@@ -500,7 +496,7 @@ class WallOut(WallBase):
         examples=[123],
     )
 
-    user_cpi_string: Optional[str] = Field(
+    user_cpi_string: str | None = Field(
         default=None,
         description="If a payout transformation is configured on this account, "
         "this is the amount to display to the user",
@@ -588,7 +584,7 @@ class Session(BaseModel):
 
     # id will be None until db_create is called (or if this is instantiated
     #   from an existing session)
-    id: Optional[int] = None
+    id: int | None = None
     uuid: UUIDStr = Field(default_factory=lambda: uuid4().hex)
     user: User
     started: AwareDatetimeISO = Field(
@@ -599,25 +595,23 @@ class Session(BaseModel):
     # store the 4 fields: loi_min, loi_max, user_payout_min, user_payout_max
     # in the db, but there may be other metadata associated with the bucket
     # that is cached, such as the category.
-    clicked_bucket: Optional[Bucket] = Field(default=None)
+    clicked_bucket: Bucket | None = Field(default=None)
 
-    country_iso: Optional[str] = Field(
-        default=None, max_length=2, pattern=r"^[a-z]{2}$"
-    )
-    device_type: Optional[DeviceType] = Field(default=None)
-    ip: Optional[IPvAnyAddressStr] = Field(default=None)
+    country_iso: str | None = Field(default=None, max_length=2, pattern=r"^[a-z]{2}$")
+    device_type: DeviceType | None = Field(default=None)
+    ip: IPvAnyAddressStr | None = Field(default=None)
 
-    url_metadata: Optional[Dict[str, str]] = Field(default=None)
+    url_metadata: dict[str, str] | None = Field(default=None)
 
     # Below here shouldn't be set upon initialization, or directly.
-    wall_events: List[Wall] = Field(default_factory=list)
+    wall_events: list[Wall] = Field(default_factory=list)
 
     # Gets set when a session is "finished"
-    finished: Optional[AwareDatetimeISO] = Field(default=None)
+    finished: AwareDatetimeISO | None = Field(default=None)
 
-    status: Optional[Status] = None
-    status_code_1: Optional[StatusCode1] = None
-    status_code_2: Optional[SessionStatusCode2] = None
+    status: Status | None = None
+    status_code_1: StatusCode1 | None = None
+    status_code_2: SessionStatusCode2 | None = None
 
     # There are two scenarios. Let's say the user payout transformation is
     #   40% and this session pays out $1.
@@ -637,25 +631,25 @@ class Session(BaseModel):
     #   going to the BP and ($0.40) to the user, and if the wallet is disabled,
     #   then the whole $1 goes to the BP and $0 to the user, but the $0.40 value
     #   is saved, so it can be displayed in the task status endpoint.
-    payout: Optional[Decimal] = Field(default=None, lt=1000, ge=0)
-    user_payout: Optional[Decimal] = Field(default=None, lt=1000, ge=0)
+    payout: Decimal | None = Field(default=None, lt=1000, ge=0)
+    user_payout: Decimal | None = Field(default=None, lt=1000, ge=0)
 
     # This is the most recent reconciliation status of the session. Generally,
     #   we would adjust this if the last survey in the session was adjusted
     #   from complete to incomplete. If any survey in the session was adjusted
     #   from fail -> complete (and the user didn't already get a complete)
     #   we'll adjust this to a complete.
-    adjusted_status: Optional[SessionAdjustedStatus] = None
+    adjusted_status: SessionAdjustedStatus | None = None
 
     # If adjusted_status = 'ac': payout = 0 and adjusted_payout is the amount paid
     # If adjusted_status = 'af': payout = the amount paid, adjusted_payout is 0.00
     #   (the `payout` never changed, only the adjusted_payout can change).
-    adjusted_payout: Optional[Decimal] = Field(default=None, lt=1000, ge=0)
-    adjusted_user_payout: Optional[Decimal] = Field(default=None, lt=1000, ge=0)
+    adjusted_payout: Decimal | None = Field(default=None, lt=1000, ge=0)
+    adjusted_user_payout: Decimal | None = Field(default=None, lt=1000, ge=0)
 
     # This timestamp gets updated every time there is an adjustment (even if
     #   there are flip-flops).
-    adjusted_timestamp: Optional[AwareDatetimeISO] = Field(default=None)
+    adjusted_timestamp: AwareDatetimeISO | None = Field(default=None)
 
     # --- Validation ---
 
@@ -757,7 +751,7 @@ class Session(BaseModel):
 
     @field_validator("wall_events")
     @classmethod
-    def check_wall_events(cls, wall_events: List[Wall]):
+    def check_wall_events(cls, wall_events: list[Wall]):
         # Note: this can't work on modifications as pydantic/python doesn't
         #   know if a list is mutated. We have to run it manually, or hide
         #   the self.wall_events attr and wrap all access
@@ -831,7 +825,7 @@ class Session(BaseModel):
 
     def model_dump_mysql(
         self, *args, **kwargs
-    ) -> Dict[str, Union[str, int, datetime, float, None]]:
+    ) -> dict[str, str | int | datetime | float | None]:
 
         # Generate a dictionary representation of the model, with special
         #   handling for datetimes, and nested models such as User & Bucket
@@ -893,7 +887,7 @@ class Session(BaseModel):
             last_wall.status = Status.TIMEOUT
             self.status = Status.TIMEOUT
 
-    def determine_session_status(self) -> Tuple[Status, StatusCode1]:
+    def determine_session_status(self) -> tuple[Status, StatusCode1]:
         """Given a list of wall events, determine what the session status
         should be. If this is called, it is because the Session is *over*,
         or it has timed out.
@@ -989,8 +983,8 @@ class Session(BaseModel):
 
     def determine_payments(
         self,
-        thl_ledger_manager: Optional["ThlLedgerManager"] = None,
-    ) -> Tuple[Decimal, Decimal, Decimal, Optional[Decimal]]:
+        thl_ledger_manager: "ThlLedgerManager" | None = None,
+    ) -> tuple[Decimal, Decimal, Decimal, Decimal | None]:
         # How much we should get paid by the MPs for all completes in this
         #   session (usually 0 or 1 completes)
         thl_net: Decimal = Decimal(
@@ -1012,7 +1006,7 @@ class Session(BaseModel):
             assert thl_ledger_manager is not None
             amt = thl_ledger_manager.get_user_wallet_balance(user=self.user)
             user_wallet_balance = Decimal(amt / 100).quantize(Decimal("0.01"))
-        user_pay: Optional[Decimal] = product.calculate_user_payment(
+        user_pay: Decimal | None = product.calculate_user_payment(
             bp_pay, user_wallet_balance=user_wallet_balance
         )
 
@@ -1034,7 +1028,7 @@ class Session(BaseModel):
 
     def determine_new_status_and_payouts(
         self,
-    ) -> Tuple[Status, Decimal, Optional[Decimal]]:
+    ) -> tuple[Status, Decimal, Decimal | None]:
         """Session is adjusted any time one of the wall events is. Assuming
         status adjustments happened on a session's wall events. Calculate
         if any status changes are need to the session.
@@ -1229,7 +1223,7 @@ class Session(BaseModel):
         else:
             return self.payout or Decimal(0)
 
-    def get_user_payout_after_adjustment(self) -> Optional[Decimal]:
+    def get_user_payout_after_adjustment(self) -> Decimal | None:
         if self.adjusted_status is not None:
             return self.adjusted_user_payout
         else:
@@ -1270,12 +1264,12 @@ def check_adjusted_status_consistent(
 
 def check_adjusted_status_wall_consistent(
     status: Status,
-    cpi: Optional[Decimal] = None,
-    adjusted_status: Optional[WallAdjustedStatus] = None,
-    adjusted_cpi: Optional[Decimal] = None,
-    new_adjusted_status: Optional[WallAdjustedStatus] = None,
-    new_adjusted_cpi: Optional[Decimal] = None,
-) -> Tuple[bool, str]:
+    cpi: Decimal | None = None,
+    adjusted_status: WallAdjustedStatus | None = None,
+    adjusted_cpi: Decimal | None = None,
+    new_adjusted_status: WallAdjustedStatus | None = None,
+    new_adjusted_cpi: Decimal | None = None,
+) -> tuple[bool, str]:
     """
     Raises an AssertionError if inconsistent.
 
@@ -1300,11 +1294,11 @@ def check_adjusted_status_wall_consistent(
 
 def _check_adjusted_status_wall_consistent(
     status: Status,
-    cpi: Optional[Decimal] = None,
-    adjusted_status: Optional[WallAdjustedStatus] = None,
-    adjusted_cpi: Optional[Decimal] = None,
-    new_adjusted_status: Optional[WallAdjustedStatus] = None,
-    new_adjusted_cpi: Optional[Decimal] = None,
+    cpi: Decimal | None = None,
+    adjusted_status: WallAdjustedStatus | None = None,
+    adjusted_cpi: Decimal | None = None,
+    new_adjusted_status: WallAdjustedStatus | None = None,
+    new_adjusted_cpi: Decimal | None = None,
 ) -> None:
     """
     See check_adjusted_status_wall_consistent

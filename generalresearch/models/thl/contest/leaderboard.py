@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Literal
 
 from pydantic import (
     ConfigDict,
@@ -96,7 +98,7 @@ class LeaderboardContestCreate(ContestBase):
         return self
 
     @property
-    def leaderboard_key_parts(self) -> Dict[str, Any]:
+    def leaderboard_key_parts(self) -> dict[str, Any]:
         assert self.leaderboard_key.count(":") == 5, "invalid leaderboard_key"
         parts = self.leaderboard_key.split(":")
         _, product_id, country_iso, freq_str, date_str, board_code_value = parts
@@ -137,8 +139,8 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
         default=LeaderboardTieBreakStrategy.SPLIT_PRIZE_POOL
     )
 
-    _redis_client: Optional[Redis] = PrivateAttr(default=None)
-    _user_manager: Optional[UserManager] = PrivateAttr(default=None)
+    _redis_client: Redis | None = PrivateAttr(default=None)
+    _user_manager: UserManager | None = PrivateAttr(default=None)
 
     @model_validator(mode="after")
     def validate_product_lb_key(self) -> Self:
@@ -190,7 +192,7 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
         )
         return lbm
 
-    def should_end(self) -> Tuple[bool, Optional[ContestEndReason]]:
+    def should_end(self) -> tuple[bool, ContestEndReason | None]:
         if self.status == ContestStatus.ACTIVE:
             if self.end_condition.ends_at:
                 if datetime.now(tz=timezone.utc) >= self.end_condition.ends_at:
@@ -198,7 +200,7 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
 
         return False, None
 
-    def select_winners(self) -> List[ContestWinner]:
+    def select_winners(self) -> list[ContestWinner]:
         from generalresearch.models.thl.contest.utils import (
             distribute_leaderboard_prizes,
         )
@@ -233,7 +235,7 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
     def country_iso(self) -> str:
         return self.leaderboard_key.split(":")[2]
 
-    def model_dump_mysql(self) -> Dict[str, Any]:
+    def model_dump_mysql(self) -> dict[str, Any]:
         d = super().model_dump_mysql(
             exclude={
                 "tie_break_strategy",
@@ -252,7 +254,7 @@ class LeaderboardContestUserView(LeaderboardContest, ContestUserView):
 
     @computed_field(description="The current rank of this user in this contest")
     @property
-    def user_rank(self) -> Optional[int]:
+    def user_rank(self) -> int | None:
         if not self._redis_client:
             return None
 
@@ -263,7 +265,7 @@ class LeaderboardContestUserView(LeaderboardContest, ContestUserView):
 
         return None
 
-    def is_user_eligible(self, country_iso: str) -> Tuple[bool, str]:
+    def is_user_eligible(self, country_iso: str) -> tuple[bool, str]:
         passes, msg = super().is_user_eligible(country_iso=country_iso)
         if not passes:
             return False, msg

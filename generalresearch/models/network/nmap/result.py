@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import json
 from datetime import timedelta
 from enum import StrEnum
 from functools import cached_property
-from typing import Dict, Any, Literal, List, Optional, Tuple, Set
+from typing import Any, Literal, Set
 
-from pydantic import computed_field, BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 from generalresearch.models.custom_types import AwareDatetimeISO, IPvAnyAddressStr
 from generalresearch.models.network.definitions import IPProtocol
@@ -80,18 +82,18 @@ class NmapHostStatusReason(StrEnum):
 class NmapOSClass(BaseModel):
     vendor: str = None
     osfamily: str = None
-    osgen: Optional[str] = None
+    osgen: str | None = None
     accuracy: int = None
-    cpe: Optional[List[str]] = None
+    cpe: list[str] | None = None
 
 
 class NmapOSMatch(BaseModel):
     name: str
     accuracy: int
-    classes: List[NmapOSClass] = Field(default_factory=list)
+    classes: list[NmapOSClass] = Field(default_factory=list)
 
     @property
-    def best_class(self) -> Optional[NmapOSClass]:
+    def best_class(self) -> NmapOSClass | None:
         if not self.classes:
             return None
         return max(self.classes, key=lambda m: m.accuracy)
@@ -108,19 +110,19 @@ class NmapScript(BaseModel):
     """
 
     id: str
-    output: Optional[str] = None
-    elements: Dict[str, Any] = Field(default_factory=dict)
+    output: str | None = None
+    elements: dict[str, Any] = Field(default_factory=dict)
 
 
 class NmapService(BaseModel):
     # <service name="socks5" extrainfo="Username/password authentication required" method="probed" conf="10"/>
-    name: Optional[str] = None
-    product: Optional[str] = None
-    version: Optional[str] = None
-    extrainfo: Optional[str] = None
-    method: Optional[str] = None
-    conf: Optional[int] = None
-    cpe: List[str] = Field(default_factory=list)
+    name: str | None = None
+    product: str | None = None
+    version: str | None = None
+    extrainfo: str | None = None
+    method: str | None = None
+    conf: int | None = None
+    cpe: list[str] = Field(default_factory=list)
 
     def model_dump_postgres(self):
         d = self.model_dump(mode="json")
@@ -133,11 +135,11 @@ class NmapPort(BaseModel):
     protocol: IPProtocol = Field()
     # Closed ports will not have a NmapPort record
     state: PortState = Field()
-    reason: Optional[PortStateReason] = Field(default=None)
-    reason_ttl: Optional[int] = Field(default=None)
+    reason: PortStateReason | None = Field(default=None)
+    reason_ttl: int | None = Field(default=None)
 
-    service: Optional[NmapService] = None
-    scripts: List[NmapScript] = Field(default_factory=list)
+    service: NmapService | None = None
+    scripts: list[NmapScript] = Field(default_factory=list)
 
     def model_dump_postgres(self, run_id: int):
         # Writes for the network_portscanport table
@@ -160,7 +162,7 @@ class NmapPort(BaseModel):
 
 class NmapHostScript(BaseModel):
     id: str = Field()
-    output: Optional[str] = Field(default=None)
+    output: str | None = Field(default=None)
 
 
 class NmapTraceHop(BaseModel):
@@ -173,17 +175,17 @@ class NmapTraceHop(BaseModel):
 
     ttl: int = Field()
 
-    ipaddr: Optional[str] = Field(
+    ipaddr: str | None = Field(
         default=None,
         description="IP address of the responding router or host",
     )
 
-    rtt_ms: Optional[float] = Field(
+    rtt_ms: float | None = Field(
         default=None,
         description="Round-trip time in milliseconds for the probe reaching this hop.",
     )
 
-    host: Optional[str] = Field(
+    host: str | None = Field(
         default=None,
         description="Reverse DNS hostname for the hop if Nmap resolved one.",
     )
@@ -203,29 +205,29 @@ class NmapTrace(BaseModel):
         </trace>
     """
 
-    port: Optional[int] = Field(
+    port: int | None = Field(
         default=None,
         description="Destination port used for traceroute probes (may be absent depending on scan type).",
     )
-    protocol: Optional[IPProtocol] = Field(
+    protocol: IPProtocol | None = Field(
         default=None,
         description="Transport protocol used for the traceroute probes (tcp, udp, etc.).",
     )
 
-    hops: List[NmapTraceHop] = Field(
+    hops: list[NmapTraceHop] = Field(
         default_factory=list,
         description="Ordered list of hops observed during the traceroute.",
     )
 
     @property
-    def destination(self) -> Optional[NmapTraceHop]:
+    def destination(self) -> NmapTraceHop | None:
         return self.hops[-1] if self.hops else None
 
 
 class NmapHostname(BaseModel):
     # <hostname name="108-171-53-1.aceips.com" type="PTR"/>
     name: str
-    type: Optional[Literal["PTR", "user"]] = None
+    type: Literal["PTR", "user"] | None = None
 
 
 class NmapPortStats(BaseModel):
@@ -280,11 +282,11 @@ class NmapResult(BaseModel):
     version: str = Field()
     xmloutputversion: str = Field()
 
-    scan_infos: List[NmapScanInfo] = Field(min_length=1)
+    scan_infos: list[NmapScanInfo] = Field(min_length=1)
 
     # comes from <runstats>
-    finished_at: Optional[AwareDatetimeISO] = Field(default=None)
-    exit_status: Optional[Literal["success", "error"]] = Field(default=None)
+    finished_at: AwareDatetimeISO | None = Field(default=None)
+    exit_status: Literal["success", "error"] | None = Field(default=None)
 
     #####
     # Everything below here is from within the *single* host we've scanned
@@ -293,53 +295,53 @@ class NmapResult(BaseModel):
     # <status state="up" reason="user-set" reason_ttl="0"/>
     host_state: NmapHostState = Field()
     host_state_reason: NmapHostStatusReason = Field()
-    host_state_reason_ttl: Optional[int] = None
+    host_state_reason_ttl: int | None = None
 
     # <address addr="108.171.53.1" addrtype="ipv4"/>
     target_ip: IPvAnyAddressStr = Field()
 
-    hostnames: List[NmapHostname] = Field()
+    hostnames: list[NmapHostname] = Field()
 
-    ports: List[NmapPort] = []
+    ports: list[NmapPort] = []
     port_stats: NmapPortStats = Field()
 
     # <uptime seconds="4063775" lastboot="Fri Jan 16 12:12:06 2026"/>
-    uptime_seconds: Optional[int] = Field(default=None)
+    uptime_seconds: int | None = Field(default=None)
     # <distance value="11"/>
-    distance: Optional[int] = Field(description="approx number of hops", default=None)
+    distance: int | None = Field(description="approx number of hops", default=None)
 
     # <tcpsequence index="263" difficulty="Good luck!">
-    tcp_sequence_index: Optional[int] = None
-    tcp_sequence_difficulty: Optional[str] = None
+    tcp_sequence_index: int | None = None
+    tcp_sequence_difficulty: str | None = None
 
     # <ipidsequence class="All zeros">
-    ipid_sequence_class: Optional[str] = None
+    ipid_sequence_class: str | None = None
 
     # <tcptssequence class="1000HZ" >
-    tcp_timestamp_class: Optional[str] = None
+    tcp_timestamp_class: str | None = None
 
     # <times srtt="54719" rttvar="23423" to="148411"/>
-    srtt_us: Optional[int] = Field(
+    srtt_us: int | None = Field(
         default=None, description="smoothed RTT estimate (microseconds µs)"
     )
-    rttvar_us: Optional[int] = Field(
+    rttvar_us: int | None = Field(
         default=None, description="RTT variance (microseconds µs)"
     )
-    timeout_us: Optional[int] = Field(
+    timeout_us: int | None = Field(
         default=None, description="probe timeout (microseconds µs)"
     )
 
-    os_matches: Optional[List[NmapOSMatch]] = Field(default=None)
+    os_matches: list[NmapOSMatch] | None = Field(default=None)
 
-    host_scripts: List[NmapHostScript] = Field(default_factory=list)
+    host_scripts: list[NmapHostScript] = Field(default_factory=list)
 
-    trace: Optional[NmapTrace] = Field(default=None)
+    trace: NmapTrace | None = Field(default=None)
 
-    raw_xml: Optional[str] = None
+    raw_xml: str | None = None
 
     @computed_field
     @property
-    def last_boot(self) -> Optional[AwareDatetimeISO]:
+    def last_boot(self) -> AwareDatetimeISO | None:
         if self.uptime_seconds:
             return self.started_at - timedelta(seconds=self.uptime_seconds)
 
@@ -356,20 +358,20 @@ class NmapResult(BaseModel):
         )
 
     @property
-    def latency_ms(self) -> Optional[float]:
+    def latency_ms(self) -> float | None:
         return self.srtt_us / 1000 if self.srtt_us is not None else None
 
     @property
-    def best_os_match(self) -> Optional[NmapOSMatch]:
+    def best_os_match(self) -> NmapOSMatch | None:
         if not self.os_matches:
             return None
         return max(self.os_matches, key=lambda m: m.accuracy)
 
-    def filter_ports(self, protocol: IPProtocol, state: PortState) -> List[NmapPort]:
+    def filter_ports(self, protocol: IPProtocol, state: PortState) -> list[NmapPort]:
         return [p for p in self.ports if p.protocol == protocol and p.state == state]
 
     @property
-    def tcp_open_ports(self) -> List[int]:
+    def tcp_open_ports(self) -> list[int]:
         """
         Returns a list of open TCP port numbers.
         """
@@ -379,7 +381,7 @@ class NmapResult(BaseModel):
         ]
 
     @property
-    def udp_open_ports(self) -> List[int]:
+    def udp_open_ports(self) -> list[int]:
         """
         Returns a list of open UDP port numbers.
         """
@@ -389,7 +391,7 @@ class NmapResult(BaseModel):
         ]
 
     @cached_property
-    def _port_index(self) -> Dict[Tuple[IPProtocol, int], NmapPort]:
+    def _port_index(self) -> dict[tuple[IPProtocol, int], NmapPort]:
         return {(p.protocol, p.port): p for p in self.ports}
 
     def get_port_state(

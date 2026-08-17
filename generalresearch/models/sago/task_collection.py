@@ -1,4 +1,6 @@
-from typing import Any, Dict, List, Set
+from __future__ import annotations
+
+from typing import Any
 
 import pandas as pd
 from pandera import Check, Column, DataFrameSchema, Index
@@ -11,8 +13,8 @@ from generalresearch.models.thl.survey.task_collection import (
     create_empty_df_from_schema,
 )
 
-COUNTRY_ISOS: Set[str] = Localelator().get_all_countries()
-LANGUAGE_ISOS: Set[str] = Localelator().get_all_languages()
+COUNTRY_ISOS: set[str] = Localelator().get_all_countries()
+LANGUAGE_ISOS: set[str] = Localelator().get_all_languages()
 
 SagoTaskCollectionSchema = DataFrameSchema(
     columns={
@@ -31,8 +33,8 @@ SagoTaskCollectionSchema = DataFrameSchema(
         "remaining_count": Column(int),
         "created": Column(dtype=pd.DatetimeTZDtype(tz="UTC")),
         "updated": Column(dtype=pd.DatetimeTZDtype(tz="UTC")),
-        "used_question_ids": Column(List[str]),
-        "all_hashes": Column(List[str]),  # set >> list for column support
+        "used_question_ids": Column(list[str]),
+        "all_hashes": Column(list[str]),  # set >> list for column support
     },
     checks=[],
     index=Index(
@@ -48,10 +50,10 @@ SagoTaskCollectionSchema = DataFrameSchema(
 
 
 class SagoTaskCollection(TaskCollection):
-    items: List[SagoSurvey]
+    items: list[SagoSurvey]
     _schema = SagoTaskCollectionSchema
 
-    def to_row(self, s: SagoSurvey) -> Dict[str, Any]:
+    def to_row(self, s: SagoSurvey) -> dict[str, Any]:
         d = s.model_dump(
             mode="json",
             exclude={

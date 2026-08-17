@@ -1,4 +1,6 @@
-from typing import Any, Dict, Optional
+from __future__ import annotations
+
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, PositiveInt, model_validator
@@ -8,11 +10,11 @@ from generalresearch.models.custom_types import UUIDStr
 
 
 class Category(BaseModel, frozen=True):
-    id: Optional[PositiveInt] = Field(exclude=True, default=None)
+    id: PositiveInt | None = Field(exclude=True, default=None)
 
     uuid: UUIDStr = Field(examples=[uuid4().hex])
 
-    adwords_vertical_id: Optional[str] = Field(default=None, max_length=8)
+    adwords_vertical_id: str | None = Field(default=None, max_length=8)
 
     label: str = Field(max_length=255, examples=["Hair Loss"])
 
@@ -23,8 +25,8 @@ class Category(BaseModel, frozen=True):
         examples=["/Beauty & Fitness/Hair Care/Hair Loss"],
     )
 
-    parent_id: Optional[PositiveInt] = Field(default=None, exclude=True)
-    parent_uuid: Optional[UUIDStr] = Field(default=None, examples=[uuid4().hex])
+    parent_id: PositiveInt | None = Field(default=None, exclude=True)
+    parent_uuid: UUIDStr | None = Field(default=None, examples=[uuid4().hex])
 
     @model_validator(mode="after")
     def check_path(self) -> Self:
@@ -45,7 +47,7 @@ class Category(BaseModel, frozen=True):
         return self.path.split("/", 2)[1]
 
     @property
-    def parent_path(self) -> Optional[str]:
+    def parent_path(self) -> str | None:
         # If path is "/Beauty & Fitness/Hair Care/Hair Loss", this returns "/Beauty & Fitness/Hair Care"
         return self.path.rsplit("/", 1)[0] or None
 
@@ -53,7 +55,7 @@ class Category(BaseModel, frozen=True):
     def is_root(self) -> bool:
         return self.parent_path is None
 
-    def to_offerwall_api(self) -> Dict[str, Any]:
+    def to_offerwall_api(self) -> dict[str, Any]:
         return {
             "id": self.uuid,
             "label": self.label,

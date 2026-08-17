@@ -4,7 +4,7 @@ import json
 import logging
 from enum import Enum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Set
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
 from pydantic import (
@@ -35,12 +35,12 @@ class RepDataUserQuestionAnswer(BaseModel):
     # "anonymous" users, which are represented by a list of question answers
     # not associated with an actual user. No default b/c we must explicitly
     # set the field to None.
-    user_id: Optional[PositiveInt] = Field(lt=MAX_INT32)
+    user_id: PositiveInt | None = Field(lt=MAX_INT32)
     question_id: str = Field(min_length=1, max_length=16, pattern=r"^[0-9]+$")
     # This is optional b/c we do not need it when writing these to the db. When
     # these are fetched from the db for use in yield-management, we read this
     # field from the repdata_question table.
-    question_type: Optional[RepDataQuestionType] = Field(default=None)
+    question_type: RepDataQuestionType | None = Field(default=None)
     # This may be a pipe-separated string if the question_type is multi. regex
     # means any chars except capital letters
     option_id: str = Field(pattern=r"^[^A-Z]*$")
@@ -55,10 +55,10 @@ class RepDataUserQuestionAnswer(BaseModel):
     )
 
     @cached_property
-    def options_ids(self) -> Set[str]:
+    def options_ids(self) -> set[str]:
         return set(self.option_id.split("|"))
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", exclude={"question_type"})
         d["created"] = self.created.replace(tzinfo=None)
         return d
@@ -118,14 +118,14 @@ class RepDataQuestion(MarketplaceQuestion):
     question_name: str = Field(
         min_length=1, max_length=64, frozen=True, validation_alias="QualificationName"
     )
-    lucid_id: Optional[str] = Field(
+    lucid_id: str | None = Field(
         min_length=1,
         max_length=16,
         pattern=r"^[0-9]+$",
         validation_alias="StandardGlobalID",
         frozen=True,
     )
-    lucid_name: Optional[str] = Field(
+    lucid_name: str | None = Field(
         min_length=1, max_length=64, frozen=True, validation_alias="StandardGlobalName"
     )
     question_text: str = Field(
@@ -137,7 +137,7 @@ class RepDataQuestion(MarketplaceQuestion):
     question_type: RepDataQuestionType = Field(
         frozen=True, validation_alias="QualificationType"
     )
-    options: Optional[List[RepDataQuestionOption]] = Field(default=None, min_length=1)
+    options: list[RepDataQuestionOption] | None = Field(default=None, min_length=1)
     source: Literal[Source.REPDATA] = Source.REPDATA
 
     @property
@@ -160,8 +160,8 @@ class RepDataQuestion(MarketplaceQuestion):
 
     @classmethod
     def from_api(
-        cls, d: Dict[str, Any], country_iso: str, language_iso: str
-    ) -> Optional["RepDataQuestion"]:
+        cls, d: dict[str, Any], country_iso: str, language_iso: str
+    ) -> "RepDataQuestion" | None:
         """
         :param d: Raw response from API
         """
@@ -173,7 +173,7 @@ class RepDataQuestion(MarketplaceQuestion):
 
     @classmethod
     def _from_api(
-        cls, d: Dict[str, Any], country_iso: str, language_iso: str
+        cls, d: dict[str, Any], country_iso: str, language_iso: str
     ) -> "RepDataQuestion":
         d["QualificationType"] = RepDataQuestionType.from_api(d["QualificationType"])
         # zip code/age has a placeholder invalid option for some reason
@@ -191,7 +191,7 @@ class RepDataQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> "RepDataQuestion":
+    def from_db(cls, d: dict[str, Any]) -> "RepDataQuestion":
         options = None
         if d["options"]:
             options = [
@@ -212,7 +212,7 @@ class RepDataQuestion(MarketplaceQuestion):
             category_id=d.get("category_id"),
         )
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", by_alias=True)
         d["options"] = json.dumps(d["options"])
         return d

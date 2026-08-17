@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, Union
 from uuid import uuid4
 
 from pydantic import (
@@ -20,7 +19,7 @@ from generalresearch.models.thl.user import User
 class ContestEntryCreate(BaseModel):
     entry_type: ContestEntryType = Field()
     # The meaning of this field is dictated by the contest's ContestEntryType
-    amount: Union[USDCent, int] = Field(
+    amount: USDCent | int = Field(
         description="The amount of the entry in integer counts or USD Cents",
         gt=0,
     )
@@ -51,7 +50,7 @@ class ContestEntry(BaseModel):
     entry_type: ContestEntryType = Field()
 
     # The meaning of this field is dictated by the contest's ContestEntryType
-    amount: Union[USDCent, int] = Field(
+    amount: USDCent | int = Field(
         description="The amount of the entry in integer counts or USD Cents",
         gt=0,
     )
@@ -61,7 +60,7 @@ class ContestEntry(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_amount_type(cls, data: Dict) -> Dict:
+    def validate_amount_type(cls, data: dict) -> dict:
         from generalresearch.models.thl.contest.definitions import (
             ContestEntryType,
         )
@@ -102,7 +101,7 @@ class ContestEntry(BaseModel):
 
         return censor_product_user_id(user=self.user)
 
-    def model_dump_mysql(self, contest_id: int) -> Dict[str, Any]:
+    def model_dump_mysql(self, contest_id: int) -> dict[str, Any]:
         data = self.model_dump(mode="json", exclude={"user"})
         data["contest_id"] = contest_id
         data["created_at"] = self.created_at

@@ -4,7 +4,7 @@ import json
 import logging
 import re
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from pydantic import (
@@ -45,22 +45,22 @@ BPUID_ALLOWED = r"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 class User(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    user_id: Optional[PositiveInt] = Field(
+    user_id: PositiveInt | None = Field(
         default=None, lt=MAX_INT32, serialization_alias="id"
     )
 
-    uuid: Optional[UUIDStr] = Field(default=None, examples=[uuid4().hex])
+    uuid: UUIDStr | None = Field(default=None, examples=[uuid4().hex])
 
     # 'product' is a Class with values that are fetched from the DB.
     #   Initialization is deferred until it is actually needed
     #   (see .prefetch_product())
-    product: Optional[Product] = Field(default=None)
+    product: Product | None = Field(default=None)
 
-    product_id: Optional[UUIDStr] = Field(
+    product_id: UUIDStr | None = Field(
         default=None, examples=["4fe381fb7186416cb443a38fa66c6557"]
     )
 
-    product_user_id: Optional[BPUIDStr] = Field(
+    product_user_id: BPUIDStr | None = Field(
         default=None,
         examples=["app-user-9329ebd"],
         description="A unique identifier for each user, which is set by the "
@@ -72,24 +72,24 @@ class User(BaseModel):
     # TODO: Is it possible to protect these from ever being initialized?
     #  - Would need to be allowed with .from_json but not User constructor directly
     #  - Would need to allow private setters for setting from DB values
-    blocked: Optional[bool] = Field(default=False, strict=True)
+    blocked: bool | None = Field(default=False, strict=True)
 
-    created: Optional[AwareDatetimeISO] = Field(
+    created: AwareDatetimeISO | None = Field(
         default=None,
         description="When the user was created on the GRL platform.",
     )
 
     # Note: due to cacheing, last_seen might be up to a day out of date!
-    last_seen: Optional[AwareDatetimeISO] = Field(
+    last_seen: AwareDatetimeISO | None = Field(
         default=None,
         description="When the user was last seen on, or acting on any"
         "part of the GRL platform.",
     )
 
     # --- Prefetch Fields ---
-    audit_log: Optional[List[AuditLog]] = Field(default=None)
-    transactions: Optional[List["LedgerTransaction"]] = Field(default=None)
-    location_history: Optional[List["GeoIPInformation"]] = Field(default=None)
+    audit_log: list[AuditLog] | None = Field(default=None)
+    transactions: list["LedgerTransaction"] | None = Field(default=None)
+    location_history: list["GeoIPInformation"] | None = Field(default=None)
 
     # --- Prebuild Fields ---
     # session: Optional[List] = Field(default=None)
@@ -199,7 +199,7 @@ class User(BaseModel):
             raise ValueError("product_user_id must not equal the product_id")
         return True
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return self.model_dump(mode="python", exclude={"product"})
 
     def to_json(self) -> str:
@@ -279,16 +279,12 @@ class User(BaseModel):
             pm = ProductManager(pg_config=pg_config)
             self.product = pm.get_by_uuid(product_uuid=self.product_id)
 
-        return None
-
     def prefetch_audit_log(self, audit_log_manager: "AuditLogManager") -> None:
         self.audit_log = audit_log_manager.filter_by_user_id(user_id=self.user_id)
-        return None
 
     def prefetch_transactions(self, thl_lm: "ThlLedgerManager") -> None:
         account = thl_lm.get_account_or_create_user_wallet(user=self)
         self.transactions = thl_lm.get_tx_filtered_by_account(account_uuid=account.uuid)
-        return None
 
     # def prefetch_location_history(self, user_ip_history_manager: "UserIpHistoryManager") -> None:
     #     return user_ip_history_manager.get_user_ip_history(user_id=self.user_id)

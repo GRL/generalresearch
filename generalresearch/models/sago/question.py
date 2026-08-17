@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 # https://developer-beta.market-cube.com/api-details#api=definition-api&operation=get-api-v1-definition-qualification
 # -answers-lanaguge-languageid
 import json
 import logging
 from enum import Enum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Set
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -39,7 +41,7 @@ class SagoQuestionOption(BaseModel):
     )
     # This is returned by the API but does not seem to be used for anything.
     # Will keep it any ways.
-    code: Optional[str] = Field(min_length=1, max_length=16)
+    code: str | None = Field(min_length=1, max_length=16)
     text: str = Field(
         min_length=1,
         max_length=1024,
@@ -94,13 +96,13 @@ class SagoUserQuestionAnswer(BaseModel):
     # "anonymous" users, which are represented by a list of question answers
     # not associated with an actual user. No default b/c we must explicitly set
     # the field to None.
-    user_id: Optional[PositiveInt] = Field(lt=MAX_INT32)
+    user_id: PositiveInt | None = Field(lt=MAX_INT32)
     question_id: str = Field(min_length=1, max_length=16, pattern=r"^[0-9]+$")
 
     # This is optional b/c we do not need it when writing these to the db. When
     # these are fetched from the db for use in yield-management, we read this
     # field from the question table.
-    question_type: Optional[SagoQuestionType] = Field(default=None)
+    question_type: SagoQuestionType | None = Field(default=None)
 
     # This may be a pipe-separated string if the question_type is multi.
     # regex means any chars except capital letters
@@ -121,10 +123,10 @@ class SagoUserQuestionAnswer(BaseModel):
         return self.pre_code
 
     @cached_property
-    def options_ids(self) -> Set[str]:
+    def options_ids(self) -> set[str]:
         return set(self.pre_code.split("|"))
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", exclude={"question_type"})
         d["created"] = self.created.replace(tzinfo=None)
         return d
@@ -145,10 +147,10 @@ class SagoQuestion(MarketplaceQuestion):
         max_length=1024, min_length=1, description="The text shown to respondents"
     )
     question_type: SagoQuestionType = Field(frozen=True)
-    options: Optional[List[SagoQuestionOption]] = Field(default=None, min_length=1)
+    options: list[SagoQuestionOption] | None = Field(default=None, min_length=1)
 
     # This comes from the API field "qualificationCategoryId"
-    tags: Optional[str] = Field(default=None, frozen=True)
+    tags: str | None = Field(default=None, frozen=True)
     source: Literal[Source.SAGO] = Source.SAGO
 
     @property
@@ -165,13 +167,13 @@ class SagoQuestion(MarketplaceQuestion):
         return self
 
     @field_validator("question_name", "question_text", "tags", mode="after")
-    def remove_nbsp(cls, s: Optional[str]):
+    def remove_nbsp(cls, s: str | None):
         return string_utils.remove_nbsp(s)
 
     @classmethod
     def from_api(
-        cls, d: Dict[str, Any], country_iso: str, language_iso: str
-    ) -> Optional["SagoQuestion"]:
+        cls, d: dict[str, Any], country_iso: str, language_iso: str
+    ) -> "SagoQuestion" | None:
         """
         :param d: Raw response from API
         :param country_iso:
@@ -186,7 +188,7 @@ class SagoQuestion(MarketplaceQuestion):
 
     @classmethod
     def _from_api(
-        cls, d: Dict[str, Any], country_iso: str, language_iso: str
+        cls, d: dict[str, Any], country_iso: str, language_iso: str
     ) -> "SagoQuestion":
         sago_category_to_tags = {
             1: "Standard",
@@ -221,7 +223,7 @@ class SagoQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> "SagoQuestion":
+    def from_db(cls, d: dict[str, Any]) -> "SagoQuestion":
         options = None
         if d["options"]:
             options = [
@@ -243,7 +245,7 @@ class SagoQuestion(MarketplaceQuestion):
             category_id=d.get("category_id"),
         )
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", by_alias=True)
         d["options"] = json.dumps(d["options"])
         return d

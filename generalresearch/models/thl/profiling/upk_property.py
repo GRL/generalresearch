@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from enum import Enum
 from functools import cached_property
-from typing import Dict, List, Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
@@ -34,7 +35,7 @@ class Cardinality(str, Enum, metaclass=ReprEnumMeta):
 class UpkItem(BaseModel):
     id: UUIDStr = Field(examples=["497b1fedec464151b063cd5367643ffa"])
     label: str = Field(max_length=255, examples=["high_school_completion"])
-    description: Optional[str] = Field(
+    description: str | None = Field(
         max_length=1024, examples=["Completed high school"], default=None
     )
 
@@ -78,17 +79,17 @@ class UpkProperty(BaseModel):
         "the Nudge API.",
     )
 
-    allowed_items: Optional[List[UpkItem]] = Field(default=None)
+    allowed_items: list[UpkItem] | None = Field(default=None)
 
-    categories: List[Category] = Field(default_factory=list)
+    categories: list[Category] = Field(default_factory=list)
 
     @cached_property
-    def allowed_items_by_label(self) -> Dict[str, UpkItem]:
+    def allowed_items_by_label(self) -> dict[str, UpkItem]:
         return {i.label: i for i in self.allowed_items}
 
     @cached_property
-    def allowed_items_by_id(self) -> Dict[UUIDStr, UpkItem]:
+    def allowed_items_by_id(self) -> dict[UUIDStr, UpkItem]:
         return {i.id: i for i in self.allowed_items}
 
 
-ProfilingInfo = TypeAdapter(List[UpkProperty])
+ProfilingInfo = TypeAdapter(list[UpkProperty])

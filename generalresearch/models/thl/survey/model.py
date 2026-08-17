@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from pydantic import (
     BaseModel,
@@ -33,7 +35,7 @@ class SurveyCategoryModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     category: Category = Field()
-    strength: Optional[float] = Field(default=None)
+    strength: float | None = Field(default=None)
 
 
 class SurveyEligibilityDefinition(BaseModel):
@@ -45,7 +47,7 @@ class SurveyEligibilityDefinition(BaseModel):
     """
 
     # References a marketplace-specific question
-    property_codes: Tuple[PropertyCode, ...] = Field(default_factory=tuple)
+    property_codes: tuple[PropertyCode, ...] = Field(default_factory=tuple)
 
     @model_validator(mode="after")
     def sort_question_ids(self):
@@ -56,16 +58,16 @@ class SurveyEligibilityDefinition(BaseModel):
 class Survey(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
-    id: Optional[PositiveInt] = Field(default=None, exclude=True)
+    id: PositiveInt | None = Field(default=None, exclude=True)
 
     source: Source = Field()
     survey_id: str = Field(min_length=1, max_length=32, examples=["127492892"])
 
-    buyer_id: Optional[int] = Field(
+    buyer_id: int | None = Field(
         default=None, exclude=True, description="This is the DB's fk id"
     )
     # ---v So the fk id can be looked up from the code
-    buyer_code: Optional[str] = Field(
+    buyer_code: str | None = Field(
         min_length=1, max_length=128, default=None, examples=["124"]
     )
 
@@ -79,9 +81,9 @@ class Survey(BaseModel):
     is_live: bool = Field(default=True)
     is_recontact: bool = Field(default=False)
 
-    categories: List[SurveyCategoryModel] = Field(default_factory=list)
+    categories: list[SurveyCategoryModel] = Field(default_factory=list)
 
-    eligibility_criteria: Optional[SurveyEligibilityDefinition] = Field(default=None)
+    eligibility_criteria: SurveyEligibilityDefinition | None = Field(default=None)
 
     @property
     def natural_key(self) -> SurveyKey:
@@ -119,10 +121,10 @@ class Survey(BaseModel):
 class SurveyStat(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
-    id: Optional[PositiveInt] = Field(exclude=True, default=None)
+    id: PositiveInt | None = Field(exclude=True, default=None)
 
     # ---- Identity ----
-    survey_id: Optional[PositiveInt] = Field(
+    survey_id: PositiveInt | None = Field(
         default=None,
         exclude=True,
         description="This is the pk of the Survey object in the db",
@@ -137,8 +139,8 @@ class SurveyStat(BaseModel):
 
     # --- For lookup / de-normalization, to avoid potentially costly
     # joins on marketplace_survey table ---
-    survey_source: Optional[Source] = Field(default=None, exclude=True)
-    survey_survey_id: Optional[str] = Field(
+    survey_source: Source | None = Field(default=None, exclude=True)
+    survey_survey_id: str | None = Field(
         default=None, exclude=True, min_length=1, max_length=32
     )
     survey_is_live: bool = Field(default=True, exclude=True)
@@ -201,7 +203,7 @@ class SurveyStat(BaseModel):
         return f"{self.survey_source.value}:{self.survey_survey_id}"
 
     @property
-    def unique_key(self) -> Tuple[int, Optional[str], str, int]:
+    def unique_key(self) -> tuple[int, str | None, str, int]:
         return self.survey_id, self.quota_id, self.country_iso, self.version
 
     def model_dump_sql(self):
@@ -219,16 +221,16 @@ class TaskActivity(BaseModel):
     source: Source = Field()
     survey_id: str = Field(min_length=1, max_length=32, examples=["127492892"])
 
-    status_counts: Dict[Status, NonNegativeInt] = Field(default_factory=dict)
-    status_code_1_counts: Dict[StatusCode1, NonNegativeInt] = Field(
+    status_counts: dict[Status, NonNegativeInt] = Field(default_factory=dict)
+    status_code_1_counts: dict[StatusCode1, NonNegativeInt] = Field(
         default_factory=dict
     )
     in_progress_count: NonNegativeInt = Field(
         default=0,
         description="Count of entrances that have no Status and were entered within the past 90 minutes",
     )
-    last_complete: Optional[AwareDatetimeISO] = Field(default=None)
-    last_entrance: Optional[AwareDatetimeISO] = Field(default=None)
+    last_complete: AwareDatetimeISO | None = Field(default=None)
+    last_entrance: AwareDatetimeISO | None = Field(default=None)
 
     @computed_field
     @property
@@ -243,7 +245,7 @@ class TaskActivity(BaseModel):
     # ---- percentages ----
     @computed_field
     @property
-    def status_percentages(self) -> Dict[Status, NonNegativeFloat]:
+    def status_percentages(self) -> dict[Status, NonNegativeFloat]:
         total = self.total_finished
         if total == 0:
             return {}
@@ -251,7 +253,7 @@ class TaskActivity(BaseModel):
 
     @computed_field
     @property
-    def status_code_1_percentages(self) -> Dict[StatusCode1, NonNegativeFloat]:
+    def status_code_1_percentages(self) -> dict[StatusCode1, NonNegativeFloat]:
         total = sum(self.status_code_1_counts.values())
         if total == 0:
             return {}
@@ -259,21 +261,21 @@ class TaskActivity(BaseModel):
 
 
 class TaskActivityPublic(BaseModel):
-    source: Optional[Source] = Field(exclude=True, default=None)
-    survey_id: Optional[str] = Field(
+    source: Source | None = Field(exclude=True, default=None)
+    survey_id: str | None = Field(
         min_length=1, max_length=32, examples=["127492892"], exclude=True, default=None
     )
 
-    status_percentages: Dict[Status, NonNegativeFloat] = Field(default_factory=dict)
-    status_code_1_percentages: Dict[
+    status_percentages: dict[Status, NonNegativeFloat] = Field(default_factory=dict)
+    status_code_1_percentages: dict[
         Annotated[StatusCode1, EnumNameSerializer], NonNegativeFloat
     ] = Field(default_factory=dict)
 
-    last_complete: Optional[AwareDatetimeISO] = Field(default=None)
-    last_entrance: Optional[AwareDatetimeISO] = Field(default=None)
+    last_complete: AwareDatetimeISO | None = Field(default=None)
+    last_entrance: AwareDatetimeISO | None = Field(default=None)
 
     @field_validator("status_code_1_percentages", mode="before")
-    def transform_enum_name_pct(cls, value: Dict[str, Any]) -> Dict[str, Any]:
+    def transform_enum_name_pct(cls, value: dict[str, Any]) -> dict[str, Any]:
         # If we are serializing+deserializing this model (i.e. when we cache
         # it), this fails because we've replaced the enum value with the
         # name. Put it back here ...
@@ -287,8 +289,8 @@ class TaskActivityPublic(BaseModel):
 
 
 class TaskActivityPrivate(TaskActivityPublic):
-    status_counts: Dict[Status, int] = Field(default_factory=dict)
-    status_code_1_counts: Dict[Annotated[StatusCode1, EnumNameSerializer], int] = Field(
+    status_counts: dict[Status, int] = Field(default_factory=dict)
+    status_code_1_counts: dict[Annotated[StatusCode1, EnumNameSerializer], int] = Field(
         default_factory=dict
     )
     in_progress_count: NonNegativeInt = Field(
@@ -297,7 +299,7 @@ class TaskActivityPrivate(TaskActivityPublic):
     )
 
     @field_validator("status_code_1_counts", mode="before")
-    def transform_enum_name_cnt(cls, value: Dict[str, Any]) -> Dict[str, Any]:
+    def transform_enum_name_cnt(cls, value: dict[str, Any]) -> dict[str, Any]:
         # If we are serializing+deserializing this model (i.e. when we cache
         # it), this fails because we've replaced the enum value with the
         # name. Put it back here ...
@@ -310,12 +312,12 @@ class TaskWithDetail(BaseModel):
     """For API Responses"""
 
     task: Survey = Field()
-    stats: List[SurveyStat] = Field(default_factory=list)
-    activity_global: Optional[TaskActivityPublic] = Field(default=None)
-    activity_product: Optional[TaskActivityPrivate] = Field(default=None)
+    stats: list[SurveyStat] = Field(default_factory=list)
+    activity_global: TaskActivityPublic | None = Field(default=None)
+    activity_product: TaskActivityPrivate | None = Field(default=None)
 
 
 class TasksWithDetail(Page):
     """For API Responses"""
 
-    tasks: List[TaskWithDetail] = Field(default_factory=list)
+    tasks: list[TaskWithDetail] = Field(default_factory=list)

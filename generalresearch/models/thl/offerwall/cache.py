@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -23,21 +25,21 @@ class GetOfferWallCache(BaseModel):
     request: OfferWallRequest = Field()
     request_id: str = Field()
     offerwall: OfferwallBase = Field()
-    all_sids: List[str] = Field()
+    all_sids: list[str] = Field()
     timestamp: AwareDatetimeISO = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
-    latest_ip_info: Dict[str, Any] = Field(
+    latest_ip_info: dict[str, Any] = Field(
         description="So we can easily check if user's IP info has changed"
     )
-    profiling_task: Optional[TaskResult] = Field(
+    profiling_task: TaskResult | None = Field(
         description="Profiling task", default=None
     )
     is_avg_offerwall: bool = Field()
 
     # These only get set once a bucket is clicked.
-    clicked_timestamp: Optional[AwareDatetimeISO] = Field(default=None)
-    clicked_bucket: Optional[UUIDStr] = Field(default=None)
+    clicked_timestamp: AwareDatetimeISO | None = Field(default=None)
+    clicked_bucket: UUIDStr | None = Field(default=None)
 
 
 class SessionInfoCache(BaseModel):
@@ -47,13 +49,13 @@ class SessionInfoCache(BaseModel):
 
     # This starts out as just the tasks within the clicked bucket, but
     #   will get pruned as tasks are attempted
-    tasks: List[ScoredTaskResult] = Field()
+    tasks: list[ScoredTaskResult] = Field()
 
     started: AwareDatetimeISO = Field(
         default_factory=lambda: datetime.now(tz=timezone.utc)
     )
 
     # The count of attempts per marketplace
-    mp_retry_count: Dict[Source, int] = Field(default_factory=dict)
+    mp_retry_count: dict[Source, int] = Field(default_factory=dict)
 
     hard_retry_count: int = Field(default=0)

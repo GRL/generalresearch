@@ -1,9 +1,10 @@
-from typing import Optional
+from __future__ import annotations
+
 from uuid import uuid4
 
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.network.nmap.command import run_nmap
-from generalresearch.models.network.tool_run import NmapRun, ToolName, ToolClass, Status
+from generalresearch.models.network.tool_run import NmapRun, Status, ToolClass, ToolName
 from generalresearch.models.network.tool_run_command import (
     NmapRunCommand,
     NmapRunCommandOptions,
@@ -12,12 +13,12 @@ from generalresearch.models.network.tool_run_command import (
 
 def execute_nmap(
     ip: str,
-    top_ports: Optional[int] = 1000,
-    ports: Optional[str] = None,
+    top_ports: int | None = 1000,
+    ports: str | None = None,
     no_ping: bool = True,
     enable_advanced: bool = True,
     timing: int = 4,
-    scan_group_id: Optional[UUIDStr] = None,
+    scan_group_id: UUIDStr | None = None,
 ):
     config = NmapRunCommand(
         options=NmapRunCommandOptions(

@@ -1,4 +1,6 @@
-from typing import Any, Dict
+from __future__ import annotations
+
+from typing import Any
 
 from pydantic import HttpUrl
 
@@ -6,7 +8,7 @@ from generalresearch.config import EXAMPLE_PRODUCT_ID
 from generalresearch.currency import USDCent
 
 
-def _example_raffle_create(schema: Dict[str, Any]) -> None:
+def _example_raffle_create(schema: dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestEndCondition,
         ContestEntryRule,
@@ -46,7 +48,7 @@ def _example_raffle_create(schema: Dict[str, Any]) -> None:
     ).model_dump(mode="json")
 
 
-def _example_raffle(schema: Dict) -> None:
+def _example_raffle(schema: dict) -> None:
     from generalresearch.models.thl.contest import (
         ContestEndCondition,
         ContestEntryRule,
@@ -94,7 +96,7 @@ def _example_raffle(schema: Dict) -> None:
     return None
 
 
-def _example_raffle_user_view(schema: Dict[str, Any]) -> None:
+def _example_raffle_user_view(schema: dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestEndCondition,
         ContestEntryRule,
@@ -145,7 +147,7 @@ def _example_raffle_user_view(schema: Dict[str, Any]) -> None:
     return None
 
 
-def _example_milestone_create(schema: Dict[str, Any]) -> None:
+def _example_milestone_create(schema: dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestPrize,
     )
@@ -186,7 +188,7 @@ def _example_milestone_create(schema: Dict[str, Any]) -> None:
     return None
 
 
-def _example_milestone(schema: Dict[str, Any]) -> None:
+def _example_milestone(schema: dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestPrize,
     )
@@ -232,7 +234,7 @@ def _example_milestone(schema: Dict[str, Any]) -> None:
     return None
 
 
-def _example_milestone_user_view(schema: Dict[str, Any]) -> None:
+def _example_milestone_user_view(schema: dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import ContestPrize
     from generalresearch.models.thl.contest.definitions import (
         ContestPrizeKind,
@@ -278,7 +280,7 @@ def _example_milestone_user_view(schema: Dict[str, Any]) -> None:
     return None
 
 
-def _example_leaderboard_contest_create(schema: Dict[str, Any]) -> None:
+def _example_leaderboard_contest_create(schema: dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestPrize,
     )
@@ -323,7 +325,7 @@ def _example_leaderboard_contest_create(schema: Dict[str, Any]) -> None:
     return None
 
 
-def _example_leaderboard_contest(schema: Dict[str, Any]) -> None:
+def _example_leaderboard_contest(schema: dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestPrize,
     )
@@ -369,7 +371,7 @@ def _example_leaderboard_contest(schema: Dict[str, Any]) -> None:
     return None
 
 
-def _example_leaderboard_contest_user_view(schema: Dict[str, Any]) -> None:
+def _example_leaderboard_contest_user_view(schema: dict[str, Any]) -> None:
     from generalresearch.models.thl.contest import (
         ContestPrize,
     )
@@ -412,5 +414,3 @@ def _example_leaderboard_contest_user_view(schema: Dict[str, Any]) -> None:
         product_id=EXAMPLE_PRODUCT_ID,
         product_user_id="test-user",
     ).model_dump(mode="json")
-
-    return None

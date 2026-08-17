@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timezone
 from enum import Enum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Set
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
 from pydantic import (
@@ -41,12 +41,12 @@ class SpectrumUserQuestionAnswer(BaseModel):
     #   answers not associated with an actual user. No default b/c we must
     #   explicitly set the field to None.
 
-    user_id: Optional[PositiveInt] = Field(lt=MAX_INT32)
+    user_id: PositiveInt | None = Field(lt=MAX_INT32)
     question_id: SpectrumQuestionIdType = Field()
     # This is optional b/c we do not need it when writing these to the
     #   db. When these are fetched from the db for use in yield-management,
     #   we read this field from the spectrum_question table.
-    question_type: Optional[SpectrumQuestionType] = Field(default=None)
+    question_type: SpectrumQuestionType | None = Field(default=None)
     # This may be a pipe-separated string if the question_type is multi. regex
     #   means any chars except capital letters
     option_id: str = Field(pattern=r"^[^A-Z]*$")
@@ -63,10 +63,10 @@ class SpectrumUserQuestionAnswer(BaseModel):
     )
 
     @cached_property
-    def options_ids(self) -> Set[str]:
+    def options_ids(self) -> set[str]:
         return set(self.option_id.split("|"))
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", exclude={"question_type"})
         d["created"] = self.created.replace(tzinfo=None)
         return d
@@ -123,7 +123,7 @@ class SpectrumQuestionType(str, Enum):
     UNKNOWN = "u"
 
     @staticmethod
-    def get_api_map() -> Dict[int, SpectrumQuestionType]:
+    def get_api_map() -> dict[int, SpectrumQuestionType]:
         return {
             1: SpectrumQuestionType.SINGLE_SELECT,
             2: SpectrumQuestionType.SINGLE_SELECT,
@@ -169,8 +169,8 @@ class SpectrumQuestion(MarketplaceQuestion):
     #   looks to be a comma-separated str of "tags" or keywords associated
     #   with a question, but they are freeform and don't pertain to any sort
     #   of structured schema. This will be useful ChatGPT
-    tags: Optional[str] = Field(default=None, frozen=True)
-    options: Optional[List[SpectrumQuestionOption]] = Field(
+    tags: str | None = Field(default=None, frozen=True)
+    options: list[SpectrumQuestionOption] | None = Field(
         default=None, min_length=1, frozen=True
     )
     # This comes from the API. Of course there are more than what is documented.
@@ -178,7 +178,7 @@ class SpectrumQuestion(MarketplaceQuestion):
     class_num: SpectrumQuestionClass = Field(frozen=True)
     # This comes from the API. It is when it was created in Spectrum's DB,
     #   not when we created it
-    created: Optional[AwareDatetimeISO] = Field(default=None, frozen=True)
+    created: AwareDatetimeISO | None = Field(default=None, frozen=True)
 
     source: Literal[Source.SPECTRUM] = Source.SPECTRUM
 
@@ -207,7 +207,7 @@ class SpectrumQuestion(MarketplaceQuestion):
         return data
 
     @field_validator("question_name", "question_text", "tags", mode="after")
-    def remove_nbsp(cls, s: Optional[str]):
+    def remove_nbsp(cls, s: str | None):
         return string_utils.remove_nbsp(s)
 
     @model_validator(mode="before")
@@ -236,7 +236,7 @@ class SpectrumQuestion(MarketplaceQuestion):
 
     @field_validator("options")
     @classmethod
-    def uniquify_options(cls, options: Optional[List[SpectrumQuestionOption]]):
+    def uniquify_options(cls, options: list[SpectrumQuestionOption] | None):
         if options:
             # The API returns questions with identical option IDs multiple
             #   times. They seem to all be typo/corrections to the text, so
@@ -251,8 +251,8 @@ class SpectrumQuestion(MarketplaceQuestion):
 
     @classmethod
     def from_api(
-        cls, d: Dict[str, Any], country_iso: str, language_iso: str
-    ) -> Optional["SpectrumQuestion"]:
+        cls, d: dict[str, Any], country_iso: str, language_iso: str
+    ) -> "SpectrumQuestion" | None:
         # To not pollute our logs, we know we are skipping any question that
         #   meets the following conditions:
         if not SpectrumQuestionType.from_api(d["type"]):
@@ -268,7 +268,7 @@ class SpectrumQuestion(MarketplaceQuestion):
             return None
 
     @classmethod
-    def _from_api(cls, d: Dict[str, Any], country_iso: str, language_iso: str) -> Self:
+    def _from_api(cls, d: dict[str, Any], country_iso: str, language_iso: str) -> Self:
         options = None
         if d.get("condition_codes"):
             # Sometimes they use the key "name" instead of "text" ... ?
@@ -301,7 +301,7 @@ class SpectrumQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> Self:
+    def from_db(cls, d: dict[str, Any]) -> Self:
         options = None
         if d["options"]:
             options = [
@@ -329,7 +329,7 @@ class SpectrumQuestion(MarketplaceQuestion):
             created=d["created"],
         )
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", by_alias=True)
         d["options"] = json.dumps(d["options"])
         if self.created:

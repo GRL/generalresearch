@@ -51,11 +51,11 @@ ProdegeTaskCollectionSchema = DataFrameSchema(
 
 
 class ProdegeTaskCollection(TaskCollection):
-    items: List[ProdegeSurvey]
+    items: list[ProdegeSurvey]
     _schema = ProdegeTaskCollectionSchema
 
     @staticmethod
-    def to_row(s: ProdegeSurvey) -> Dict[str, Any]:
+    def to_row(s: ProdegeSurvey) -> dict[str, Any]:
         fields = [
             "survey_id",
             "status",

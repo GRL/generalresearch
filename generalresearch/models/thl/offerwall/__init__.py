@@ -4,7 +4,7 @@ import hashlib
 import json
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, Literal, Optional, Set
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -111,7 +111,7 @@ class OfferWallRequest(BaseModel):
     offerwall_type: OfferWallType = Field()
     user: User = Field()
 
-    ip: Optional[IPvAnyAddressStr] = Field(
+    ip: IPvAnyAddressStr | None = Field(
         default=None,
         description="Respondent's IP address (IPv4 or IPv6). Either 'ip' must be "
         "provided, or 'country_iso' must be provided if 'ip' is "
@@ -121,38 +121,38 @@ class OfferWallRequest(BaseModel):
     country_iso: CountryISO = Field(
         description="Respondent's country code (ISO 3166-1 alpha-2, lowercase)"
     )
-    language_isos: Set[LanguageISO] = Field(
+    language_isos: set[LanguageISO] = Field(
         description="Respondent's desired language (ISO 639-2/B, lowercase)",
     )
 
-    behavior: Optional[OfferWallBehaviorsType] = Field(
+    behavior: OfferWallBehaviorsType | None = Field(
         default=None,
         max_length=12,
         description="Allows using custom scoring functions. Please "
         "discuss directly with GRL.",
     )
 
-    min_payout: Optional[Decimal] = Field(
+    min_payout: Decimal | None = Field(
         default=None,
         description="Decimal representation of the minimum amount of USD that "
         "any of the tasks will pay",
         examples=["1.23"],
     )
 
-    duration: Optional[int] = Field(
+    duration: int | None = Field(
         default=60 * 90,
         description="Maximum length of desired task (in seconds).",
         gt=0,
     )
 
-    n_bins: Optional[int] = Field(
+    n_bins: int | None = Field(
         default=None,
         description="Number of bins requested in the offerwall.",
         le=100,
         gt=0,
     )
 
-    min_bin_size: Optional[int] = Field(
+    min_bin_size: int | None = Field(
         default=None,
         description="Minimum number of tasks that need to be in a bucket",
         gt=0,
@@ -169,7 +169,7 @@ class OfferWallRequest(BaseModel):
         default="payout", description="Cluster tasks by payout or duration"
     )
 
-    passthrough_kwargs: Dict[str, str] = Field(
+    passthrough_kwargs: dict[str, str] = Field(
         default_factory=dict,
         description="These are pulled from the url params. They are any 'extra' url params "
         "in the getofferwall request. They'll be available through the task_status "
@@ -177,12 +177,12 @@ class OfferWallRequest(BaseModel):
     )
 
     # Only for soft pair (offerwall_id, max_options, max_questions)
-    offerwall_id: Optional[str] = Field(default=None)
-    max_options: Optional[int] = Field(
+    offerwall_id: str | None = Field(default=None)
+    max_options: int | None = Field(
         default=None,
         description="Max number of options an allowed question can have (allowed to be asked)",
     )
-    max_questions: Optional[int] = Field(
+    max_questions: int | None = Field(
         default=None,
         description="Max number of missing questions on a single bin",
     )
@@ -199,7 +199,7 @@ class OfferWallRequest(BaseModel):
         "these may be set in the bpc table globally for a BP.",
     )
 
-    marketplaces: Optional[Set[Source]] = Field(
+    marketplaces: set[Source] | None = Field(
         default=None,
         description="If set, restrict tasks to those from these marketplaces only.",
     )
@@ -264,7 +264,7 @@ class OfferWallRequest(BaseModel):
             json.dumps(self.model_dump(mode="json"), sort_keys=True).encode("utf-8")
         ).hexdigest()[:7]
 
-    def to_grpc_request(self) -> Dict[str, Any]:
+    def to_grpc_request(self) -> dict[str, Any]:
         # We need this so thl-core can refresh an offerwall in order to continue
         #   a session
         d = self.model_dump(mode="json")
@@ -301,15 +301,15 @@ class OfferWallRequest(BaseModel):
         }
 
     @property
-    def product_id(self) -> Optional[str]:
+    def product_id(self) -> str | None:
         return self.user.product_id
 
     @property
-    def product_user_id(self) -> Optional[str]:
+    def product_user_id(self) -> str | None:
         return self.user.product_user_id
 
     @property
-    def bpuid(self) -> Optional[str]:
+    def bpuid(self) -> str | None:
         return self.user.product_user_id
 
     @property

@@ -5,7 +5,7 @@ import logging
 from datetime import timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import Annotated, Any, Dict, List, Literal, Optional, Set, Tuple, Type
+from typing import Annotated, Any, Literal, Type
 
 from more_itertools import flatten
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
@@ -38,18 +38,18 @@ locale_helper = Localelator()
 
 class SagoCondition(MarketplaceCondition):
     model_config = ConfigDict(populate_by_name=True, frozen=False, extra="ignore")
-    question_id: Optional[CoercedStr] = Field(
+    question_id: CoercedStr | None = Field(
         min_length=1, max_length=16, pattern=r"^[0-9]+$"
     )
     # There isn't really a hard limit, but their API is inconsistent and
     # sometimes returns all the options comma-separated instead of as a list.
     # Try to catch that.
-    values: List[Annotated[str, Field(max_length=128)]] = Field()
+    values: list[Annotated[str, Field(max_length=128)]] = Field()
 
     _CONVERT_LIST_TO_RANGE = ["59"]
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> "SagoCondition":
+    def from_api(cls, d: dict[str, Any]) -> "SagoCondition":
         d["logical_operator"] = LogicalOperator.OR
         d["value_type"] = ConditionValueType(d["value_type"])
         d["negate"] = False
@@ -67,7 +67,7 @@ class SagoQuota(BaseModel):
     cpi: Decimal = Field(gt=0, le=100, decimal_places=2, max_digits=5)
 
     remaining_count: int = Field()
-    condition_hashes: List[str] = Field(min_length=0, default_factory=list)
+    condition_hashes: list[str] = Field(min_length=0, default_factory=list)
 
     # There is no explicit status. The quota is closed if the count is 0
 
@@ -80,23 +80,23 @@ class SagoQuota(BaseModel):
         return self.remaining_count >= min_open_spots
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> Self:
+    def from_api(cls, d: dict[str, Any]) -> Self:
         return cls.model_validate(d)
 
-    def passes(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Passes means we 1) meet all conditions (aka "match") AND 2) the
         # quota is open.
         return self.is_open and self.matches(criteria_evaluation)
 
-    def matches(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def matches(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Matches means we meet all conditions.
         # We can "match" a quota that is closed. In that case, we would not be
         # eligible for the survey.
         return all(criteria_evaluation.get(c) for c in self.condition_hashes)
 
     def matches_optional(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Optional[bool]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> bool | None:
         # We need to know if any conditions are unknown to avoid matching a
         # full quota. If any fail, then we know we fail regardless of any
         # being unknown.
@@ -108,8 +108,8 @@ class SagoQuota(BaseModel):
         return True
 
     def matches_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Passes back "matches" (T/F/none) and a list of unknown criterion hashes
         hash_evals = {
             cell: criteria_evaluation.get(cell) for cell in self.condition_hashes
@@ -151,35 +151,35 @@ class SagoSurvey(MarketplaceTask):
     allowed_devices: DeviceTypes = Field(min_length=1)
     collects_pii: bool = Field(default=False)
 
-    survey_exclusions: Optional[AlphaNumStrSet] = Field(
+    survey_exclusions: AlphaNumStrSet | None = Field(
         description="list of excluded survey ids", default=None
     )
-    ip_exclusions: Optional[IPLikeStrSet] = Field(
+    ip_exclusions: IPLikeStrSet | None = Field(
         description="list of excluded IP addresses", default=None
     )
 
     # Documentation I think is wrong. These are the keys "LOI" and "IR". it
     # doesn't say that they are bid or not, but they never seem to change ...
-    bid_loi: Optional[int] = Field(default=None, le=120 * 60)
-    bid_ir: Optional[float] = Field(default=None, ge=0, le=1)
+    bid_loi: int | None = Field(default=None, le=120 * 60)
+    bid_ir: float | None = Field(default=None, ge=0, le=1)
 
     live_link: str = Field()
 
     # this comes from the Survey Reservation endpoint
     remaining_count: int = Field()
 
-    qualifications: List[str] = Field(default_factory=list)
-    quotas: List[SagoQuota] = Field(default_factory=list)
+    qualifications: list[str] = Field(default_factory=list)
+    quotas: list[SagoQuota] = Field(default_factory=list)
 
     source: Literal[Source.SAGO] = Field(default=Source.SAGO)
 
-    used_question_ids: Set[AlphaNumStr] = Field(default_factory=set)
+    used_question_ids: set[AlphaNumStr] = Field(default_factory=set)
 
     # This is a "special" key to store all conditions that are used (as
     # "condition_hashes") throughout this survey. In the reduced representation
     # of this task (nearly always, for db i/o, in global_vars) this field will
     # be null.
-    conditions: Optional[Dict[str, SagoCondition]] = Field(default=None)
+    conditions: dict[str, SagoCondition] | None = Field(default=None)
 
     # These come from the API
     modified_api: AwareDatetimeISO = Field(
@@ -187,8 +187,8 @@ class SagoSurvey(MarketplaceTask):
     )
 
     # This does not come from the API. We set it when we update this in the db.
-    created: Optional[AwareDatetimeISO] = Field(default=None)
-    updated: Optional[AwareDatetimeISO] = Field(default=None)
+    created: AwareDatetimeISO | None = Field(default=None)
+    updated: AwareDatetimeISO | None = Field(default=None)
 
     @property
     def internal_id(self) -> str:
@@ -208,7 +208,7 @@ class SagoSurvey(MarketplaceTask):
 
     @computed_field
     @cached_property
-    def all_hashes(self) -> Set[str]:
+    def all_hashes(self) -> set[str]:
         s = set(self.qualifications)
         for q in self.quotas:
             s.update(set(q.condition_hashes))
@@ -243,7 +243,7 @@ class SagoSurvey(MarketplaceTask):
         return "59"
 
     @property
-    def marketplace_genders(self) -> Dict[Gender, Optional[MarketplaceCondition]]:
+    def marketplace_genders(self) -> dict[Gender, MarketplaceCondition | None]:
         return {
             Gender.MALE: SagoCondition(
                 question_id="60",
@@ -259,7 +259,7 @@ class SagoSurvey(MarketplaceTask):
         }
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> Optional["SagoSurvey"]:
+    def from_api(cls, d: dict[str, Any]) -> "SagoSurvey" | None:
         try:
             return cls._from_api(d)
         except Exception as e:
@@ -267,7 +267,7 @@ class SagoSurvey(MarketplaceTask):
             return None
 
     @classmethod
-    def _from_api(cls, d: Dict[str, Any]) -> "SagoSurvey":
+    def _from_api(cls, d: dict[str, Any]) -> "SagoSurvey":
         return cls.model_validate(d)
 
     def __repr__(self) -> str:
@@ -294,7 +294,7 @@ class SagoSurvey(MarketplaceTask):
             exclude={"updated", "conditions", "created"}
         ) == other.model_dump(exclude={"updated", "conditions", "created"})
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(
             mode="json",
             exclude={
@@ -313,7 +313,7 @@ class SagoSurvey(MarketplaceTask):
         return d
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]):
+    def from_db(cls, d: dict[str, Any]):
         d["created"] = d["created"].replace(tzinfo=timezone.utc)
         d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
         d["modified_api"] = d["modified_api"].replace(tzinfo=timezone.utc)
@@ -323,14 +323,14 @@ class SagoSurvey(MarketplaceTask):
         return cls.model_validate(d)
 
     def passes_qualifications(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, bool | None]
     ) -> bool:
         # We have to match all quals
         return all(criteria_evaluation.get(q) for q in self.qualifications)
 
     def passes_qualifications_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Passes back "passes" (T/F/none) and a list of unknown criterion hashes
         hash_evals = {q: criteria_evaluation.get(q) for q in self.qualifications}
         evals = set(hash_evals.values())
@@ -342,7 +342,7 @@ class SagoSurvey(MarketplaceTask):
             return None, {cell for cell, ev in hash_evals.items() if ev is None}
         return True, set()
 
-    def passes_quotas(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes_quotas(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Many surveys have 0 quotas. Quotas are exclusionary.
         # They can NOT match a quota where currently_open=0
         any_pass = True
@@ -354,8 +354,8 @@ class SagoSurvey(MarketplaceTask):
         return any_pass
 
     def passes_quotas_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Many surveys have 0 quotas. Quotas are exclusionary.
         # They can NOT match a quota where currently_open=0
         if len(self.quotas) == 0:
@@ -394,7 +394,7 @@ class SagoSurvey(MarketplaceTask):
         return False, set()
 
     def determine_eligibility(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, bool | None]
     ) -> bool:
         return (
             self.is_open
@@ -403,8 +403,8 @@ class SagoSurvey(MarketplaceTask):
         )
 
     def determine_eligibility_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         if self.is_open is False:
             return False, set()
         pass_quals, h_quals = self.passes_qualifications_soft(criteria_evaluation)

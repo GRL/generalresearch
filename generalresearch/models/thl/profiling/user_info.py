@@ -1,4 +1,4 @@
-from typing import List, Optional
+from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.json_schema import SkipJsonSchema
@@ -14,11 +14,11 @@ from generalresearch.models.thl.user import User
 class UserProfileKnowledgeAnswer(BaseModel):
     # Returns {id, label, translation} when the prop_type is an item,
     #   and only {value} if it's a string/text (such as for postalcode)
-    id: Optional[str] = Field(default=None)
-    label: Optional[str] = Field(default=None)
-    translation: Optional[str] = Field(default=None)
+    id: str | None = Field(default=None)
+    label: str | None = Field(default=None)
+    translation: str | None = Field(default=None)
 
-    value: Optional[str] = Field(default=None)
+    value: str | None = Field(default=None)
 
 
 class UserProfileKnowledge(BaseModel):
@@ -26,7 +26,7 @@ class UserProfileKnowledge(BaseModel):
     property_label: str = Field()
     translation: str = Field()
 
-    answer: List[UserProfileKnowledgeAnswer] = Field(default_factory=list)
+    answer: list[UserProfileKnowledgeAnswer] = Field(default_factory=list)
 
     created: AwareDatetimeISO = Field(
         description="When the User submitted this Profiling data"
@@ -44,7 +44,7 @@ class MarketProfileKnowledge(BaseModel):
 
     question_id: str = Field(examples=["gender", "1843", "gender_plus"])
 
-    answer: List[str] = Field(
+    answer: list[str] = Field(
         default_factory=list, examples=[["male"], ["7657644"], ["1"]]
     )
 
@@ -67,10 +67,10 @@ class MarketProfileKnowledge(BaseModel):
 class UserInfo(BaseModel):
     model_config = ConfigDict()
 
-    user: SkipJsonSchema[Optional[User]] = Field(exclude=True, default=None)
+    user: SkipJsonSchema[User | None] = Field(exclude=True, default=None)
 
-    user_profile_knowledge: List[UserProfileKnowledge] = Field(default_factory=list)
+    user_profile_knowledge: list[UserProfileKnowledge] = Field(default_factory=list)
 
-    marketplace_profile_knowledge: List[MarketProfileKnowledge] = Field(
+    marketplace_profile_knowledge: list[MarketProfileKnowledge] = Field(
         default_factory=list
     )

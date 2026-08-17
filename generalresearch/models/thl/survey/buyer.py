@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from decimal import Decimal
 from math import log
-from typing import Annotated, Optional
+from typing import Annotated
 
 from pydantic import (
     BaseModel,
@@ -30,9 +32,9 @@ class Buyer(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True)
 
-    id: Optional[PositiveInt] = Field(default=None, exclude=True)
+    id: PositiveInt | None = Field(default=None, exclude=True)
     # todo: need to add to db
-    uuid: Optional[UUIDStr] = Field(default=None)
+    uuid: UUIDStr | None = Field(default=None)
 
     source: Source = Field(
         description="The marketplace this buyer is on.\n" + Source.as_openapi()
@@ -42,7 +44,7 @@ class Buyer(BaseModel):
         max_length=128,
         description="The internal code on this marketplace for this buyer",
     )
-    label: Optional[str] = Field(default=None, max_length=255)
+    label: str | None = Field(default=None, max_length=255)
     created: AwareDatetimeISO = Field(
         default_factory=lambda: datetime.now(tz=timezone.utc),
         description="When this entry was made, or when the buyer was first seen",
@@ -72,7 +74,7 @@ class BuyerWithDetail(BaseModel):
     """For API Responses"""
 
     buyer: Buyer = Field()
-    activity: Optional[BuyerActivity] = Field(default=None)
+    activity: BuyerActivity | None = Field(default=None)
 
 
 class BuyerCountryStat(BaseModel):
@@ -89,12 +91,12 @@ class BuyerCountryStat(BaseModel):
     model_config = ConfigDict(validate_assignment=False)
 
     # ---- Identity ----
-    buyer_id: Optional[PositiveInt] = Field(
+    buyer_id: PositiveInt | None = Field(
         default=None,
         exclude=True,
         description="This is the pk of the Buyer object in the db",
     )
-    country_iso: Optional[CountryISOLike] = Field(
+    country_iso: CountryISOLike | None = Field(
         default=None,
         description="If null, this is a weighted average across all countries",
         examples=["us"],

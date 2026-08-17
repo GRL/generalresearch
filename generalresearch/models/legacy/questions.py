@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import (
     BaseModel,
@@ -32,11 +32,11 @@ if TYPE_CHECKING:
 
 
 class UpkQuestionResponse(StatusResponse):
-    questions: List[UpkQuestionOut] = Field()
-    consent_questions: List[Dict[str, Any]] = Field(
+    questions: list[UpkQuestionOut] = Field()
+    consent_questions: list[dict[str, Any]] = Field(
         description="For internal use", default_factory=list
     )
-    special_questions: List[Dict[str, Any]] = Field(
+    special_questions: list[dict[str, Any]] = Field(
         description="For internal use", default_factory=list
     )
     count: NonNegativeInt = Field(description="The number of questions returned")
@@ -71,7 +71,7 @@ class UserQuestionAnswerIn(BaseModel):
 
     question_id: UUIDStr = Field(examples=["fb20fd4773304500b39c4f6de0012a5a"])
 
-    answer: List[AnswerStr] = Field(
+    answer: list[AnswerStr] = Field(
         min_length=1,
         max_length=10,
         description="The user's answers to this question. Must pass the "
@@ -113,7 +113,7 @@ class UserQuestionAnswerIn(BaseModel):
 
     @field_validator("answer", mode="after")
     @classmethod
-    def no_duplicate_answer_values(cls, v: List[AnswerStr]) -> List[AnswerStr]:
+    def no_duplicate_answer_values(cls, v: list[AnswerStr]) -> list[AnswerStr]:
         if len(v) != len(set(v)):
             raise ValueError("Don't provide duplicate answers")
 
@@ -121,7 +121,7 @@ class UserQuestionAnswerIn(BaseModel):
 
     @field_validator("answer", mode="after")
     @classmethod
-    def sort_answer_values(cls, v: List[AnswerStr]) -> List[AnswerStr]:
+    def sort_answer_values(cls, v: list[AnswerStr]) -> list[AnswerStr]:
         return sorted(v)
 
     # --- Properties ---
@@ -162,7 +162,7 @@ class UserQuestionAnswers(BaseModel):
     # POST /profiling-questions/ that they could use a randomly generated
     # session_id... I'm not sure, but it's entirely possible this will start
     # to cause issues in production.
-    session_id: Optional[UUIDStr] = Field(
+    session_id: UUIDStr | None = Field(
         default=None,
         description="The Session ID corresponds to the Wall.uuid. If profiling"
         "answers are being submitted directly, this can be None.",
@@ -170,7 +170,7 @@ class UserQuestionAnswers(BaseModel):
 
     # We don't apply a default_factory here because there is no valid reason
     # why a GRS submission would come valid without any answers.
-    answers: Annotated[List[UserQuestionAnswerIn], BeforeValidator(preflight)] = Field(
+    answers: Annotated[list[UserQuestionAnswerIn], BeforeValidator(preflight)] = Field(
         min_length=1,
         max_length=100,
         description="The list of questions and their answers that are being"
@@ -178,8 +178,8 @@ class UserQuestionAnswers(BaseModel):
         "(if via FSB).",
     )
 
-    user: Optional[User] = Field(default=None)
-    wall: Optional[Wall] = Field(default=None)
+    user: User | None = Field(default=None)
+    wall: Wall | None = Field(default=None)
 
     # --- Validation ---
 
@@ -209,7 +209,7 @@ class UserQuestionAnswers(BaseModel):
 
     @field_validator("answers", mode="after")
     @classmethod
-    def no_duplicate_questions(cls, v: List[UserQuestionAnswerIn]):
+    def no_duplicate_questions(cls, v: list[UserQuestionAnswerIn]):
         answer_qids = [qa.question_id for qa in v]
         if len(answer_qids) != len(set(answer_qids)):
             raise ValueError("Don't provide answers to duplicate questions")
@@ -220,7 +220,7 @@ class UserQuestionAnswers(BaseModel):
     def prefetch_user(self, um: "UserManager") -> None:
         from generalresearch.models.thl.user import User
 
-        res: Optional[User] = um.get_user_if_exists(
+        res: User | None = um.get_user_if_exists(
             product_id=self.product_id, product_user_id=self.product_user_id
         )
 
@@ -228,13 +228,12 @@ class UserQuestionAnswers(BaseModel):
             raise ValidationError("Invalid user")
 
         self.user = res
-        return None
 
     def prefetch_wall(self, wm: "WallManager") -> None:
         from generalresearch.models import Source
         from generalresearch.models.thl.session import Wall
 
-        res: Optional[Wall] = wm.get_from_uuid_if_exists(wall_uuid=self.session_id)
+        res: Wall | None = wm.get_from_uuid_if_exists(wall_uuid=self.session_id)
 
         if res is None:
             raise ValueError("Invalid Event for session_id")
@@ -252,4 +251,3 @@ class UserQuestionAnswers(BaseModel):
             raise ValueError("Not a valid GRS event status")
 
         self.wall = res
-        return None

@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import ipaddress
 from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional
 
 from faker import Faker
 from pydantic import (
@@ -34,10 +35,10 @@ class UserIPRecord(BaseModel):
 
     ip: IPvAnyAddressStr = Field()
     created: AwareDatetimeISO = Field()
-    information: Optional[GeoIPInformation] = Field(default=None, exclude=True)
+    information: GeoIPInformation | None = Field(default=None, exclude=True)
 
     @property
-    def country_iso(self) -> Optional[CountryISOLike]:
+    def country_iso(self) -> CountryISOLike | None:
         return self.information.country_iso if self.information else None
 
     @property
@@ -52,15 +53,15 @@ class UserIPRecord(BaseModel):
         )
 
     @property
-    def user_type(self) -> Optional[UserType]:
+    def user_type(self) -> UserType | None:
         return self.information.user_type if self.information else None
 
     @property
-    def subdivision_1_iso(self) -> Optional[str]:
+    def subdivision_1_iso(self) -> str | None:
         return self.information.subdivision_1_iso if self.information else None
 
     @property
-    def subdivision_2_iso(self) -> Optional[str]:
+    def subdivision_2_iso(self) -> str | None:
         return self.information.subdivision_2_iso if self.information else None
 
 
@@ -71,14 +72,12 @@ class IPRecord(BaseModel):
 
     # On a top-level, this should be an empty list if there are no forwarded_ip.
     #   Within a forwarded_ip record, this should be None.
-    forwarded_ip_records: Optional[List["IPRecord"]] = Field(
-        default=None, description=""
-    )
+    forwarded_ip_records: list["IPRecord"] | None = Field(default=None, description="")
 
-    information: Optional[GeoIPInformation] = Field(default=None)
+    information: GeoIPInformation | None = Field(default=None)
 
     @property
-    def forwarded_ips(self) -> Optional[List[IPvAnyAddressStr]]:
+    def forwarded_ips(self) -> list[IPvAnyAddressStr] | None:
         return (
             [x.ip for x in self.forwarded_ip_records]
             if self.forwarded_ip_records is not None
@@ -86,7 +85,7 @@ class IPRecord(BaseModel):
         )
 
     def ip_changed(
-        self, ip: IPvAnyAddressStr, forwarded_ips: List[IPvAnyAddressStr]
+        self, ip: IPvAnyAddressStr, forwarded_ips: list[IPvAnyAddressStr]
     ) -> bool:
         return not (ip == self.ip and forwarded_ips == self.forwarded_ips)
 
@@ -110,11 +109,10 @@ class IPRecord(BaseModel):
                 x.information = res.get(x.ip)
         else:
             self.information = m.get(ip_address=self.ip)
-        return None
 
     # --- ORM ---
     @classmethod
-    def from_mysql(cls, d: Dict) -> Self:
+    def from_mysql(cls, d: dict) -> Self:
         created = d["created"].replace(tzinfo=timezone.utc)
 
         d["created"] = created
@@ -149,22 +147,22 @@ class UserIPHistory(BaseModel):
     # In thl-gprc, we run "audit_ip_history()", and so a user should
     #   get blocked after 100 IP switches or 30 unique IPs
     # Sorted created DESC
-    ips: Optional[List[UserIPRecord]] = Field(
+    ips: list[UserIPRecord] | None = Field(
         default=None,
         description="These are any IP addresses that came in ",
         max_length=101,
     )
 
-    ips_ws: Optional[List[IPRecord]] = Field(
+    ips_ws: list[IPRecord] | None = Field(
         default=None, description="These are any IP addresses that came in "
     )
 
-    ips_dns: Optional[List[IPRecord]] = Field(
+    ips_dns: list[IPRecord] | None = Field(
         default=None, description="These are any IP addresses that came in "
     )
 
     # -- prefetch_ fields
-    user: Optional[User] = Field(default=None)
+    user: User | None = Field(default=None)
 
     @field_validator("ips", mode="after")
     @classmethod
@@ -194,8 +192,6 @@ class UserIPHistory(BaseModel):
             redis=redis_config.dsn,
         )
         self.user = um.get_user(user_id=self.user_id)
-
-        return None
 
     def enrich_ips(self, pg_config: PostgresConfig, redis_config: RedisConfig) -> None:
         from generalresearch.managers.thl.ipinfo import GeoIpInfoManager

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Annotated, Any, Dict, List, Literal, Optional, Union
+from typing import Annotated, Any, Literal, Union
 from uuid import uuid4
 
 from pydantic import (
@@ -164,9 +166,9 @@ class LedgerAccount(BaseModel, validate_assignment=True, frozen=True):
 
     normal_balance: Direction = Field(description=Direction.as_openapi())
 
-    reference_type: Optional[str] = Field(default=None)
+    reference_type: str | None = Field(default=None)
 
-    reference_uuid: Optional[UUIDStr] = Field(
+    reference_uuid: UUIDStr | None = Field(
         default=None,
         description="The associated Product ID or other parent account that"
         "this Ledger Account is intended to track transactions for."
@@ -202,7 +204,7 @@ class LedgerAccount(BaseModel, validate_assignment=True, frozen=True):
 
 
 class LedgerEntry(BaseModel):
-    id: Optional[int] = Field(default=None)
+    id: int | None = Field(default=None)
 
     direction: Direction
     account_uuid: UUIDStr
@@ -217,7 +219,7 @@ class LedgerEntry(BaseModel):
 
     # This really shouldn't be Optional, but it has to be in order to
     #   instantiate this class before the LedgerTransaction exists
-    transaction_id: Optional[int] = Field(default=None)
+    transaction_id: int | None = Field(default=None)
 
     @classmethod
     def from_amount(cls, account_uuid: UUIDStr, amount: int):
@@ -248,7 +250,7 @@ class LedgerEntry(BaseModel):
 class LedgerTransaction(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    id: Optional[int] = Field(default=None)
+    id: int | None = Field(default=None)
 
     created: AwareDatetimeISO = Field(
         default_factory=lambda: datetime.now(tz=timezone.utc),
@@ -258,11 +260,11 @@ class LedgerTransaction(BaseModel):
         "TX timestamps will likely be a few milliseconds delayed",
     )
 
-    ext_description: Optional[str] = Field(default=None, max_length=255)
-    tag: Optional[str] = Field(default=None, max_length=255)
-    metadata: Dict[str, str] = Field(default_factory=dict)
+    ext_description: str | None = Field(default=None, max_length=255)
+    tag: str | None = Field(default=None, max_length=255)
+    metadata: dict[str, str] = Field(default_factory=dict)
 
-    entries: List[LedgerEntry] = Field(
+    entries: list[LedgerEntry] = Field(
         default_factory=list,
         description="A Transaction (TX) is composed of multiple Entry events.",
     )
@@ -288,7 +290,7 @@ class LedgerTransaction(BaseModel):
 
     @field_validator("entries", mode="after")
     @classmethod
-    def check_entries(cls, entries: List[LedgerEntry]) -> List[LedgerEntry]:
+    def check_entries(cls, entries: list[LedgerEntry]) -> list[LedgerEntry]:
         """Transactions should enforce double-entry upon creation. Each
         transaction needs to have at least two entries, which, in aggregate,
         must affect credit and debit sides in equal amounts.
@@ -300,7 +302,7 @@ class LedgerTransaction(BaseModel):
             ), "ledger entries must balance"
         return entries
 
-    def model_dump_mysql(self, *args, **kwargs) -> Dict[str, Any]:
+    def model_dump_mysql(self, *args, **kwargs) -> dict[str, Any]:
         d = self.model_dump(mode="json", *args, **kwargs)
         if "created" in d:
             d["created"] = self.created.replace(tzinfo=None)
@@ -387,12 +389,12 @@ class UserLedgerTransaction(BaseModel):
     )
 
     # Needed to generate urls
-    product_id: Optional[str] = Field(default=None, exclude=True)
+    product_id: str | None = Field(default=None, exclude=True)
     # Needed to generate amount_string
-    payout_format: Optional[PayoutFormatType] = Field(default=None, exclude=True)
+    payout_format: PayoutFormatType | None = Field(default=None, exclude=True)
     # The balance in this account immediately after this tx.
     # It is optional b/c we'll calculate this from the query
-    balance_after: Optional[int] = Field(default=None)
+    balance_after: int | None = Field(default=None)
 
     def create_url(self, product_id: str):
         raise NotImplementedError()
@@ -400,7 +402,7 @@ class UserLedgerTransaction(BaseModel):
     @computed_field(
         description="A link to where the user can get more details about this transaction",
     )
-    def url(self) -> Optional[HttpsUrlStr]:
+    def url(self) -> HttpsUrlStr | None:
         if self.product_id is None:
             return None
         return self.create_url(product_id=self.product_id)
@@ -408,7 +410,7 @@ class UserLedgerTransaction(BaseModel):
     @computed_field(
         description="The 'amount' with the payout_format applied.",
     )
-    def amount_string(self) -> Optional[HttpsUrlStr]:
+    def amount_string(self) -> HttpsUrlStr | None:
         if self.payout_format is None:
             return None
         return format_payout_format(
@@ -546,13 +548,13 @@ UserLedgerTransactionType = Annotated[
 
 class UserLedgerTransactionTypeSummary(BaseModel):
     entry_count: NonNegativeInt = Field(default=0)
-    min_amount: Optional[int] = Field(
+    min_amount: int | None = Field(
         description="positive or negative USDCent", default=None
     )
-    max_amount: Optional[int] = Field(
+    max_amount: int | None = Field(
         description="positive or negative USDCent", default=None
     )
-    total_amount: Optional[int] = Field(
+    total_amount: int | None = Field(
         description="positive or negative USDCent", default=None
     )
 
@@ -578,7 +580,7 @@ class UserLedgerTransactions(Page):
     A (paginated) collection that holds transaction models that can be shown to a (wallet-managed) user.
     """
 
-    transactions: List[UserLedgerTransactionType] = Field(default_factory=list)
+    transactions: list[UserLedgerTransactionType] = Field(default_factory=list)
     # The summary is w.r.t an optional time-filter. The transactions are
     # paginated so the counts won't necesarily match. In other words, the
     # summary is across all transaction in all pages, not this the transactions
@@ -589,7 +591,7 @@ class UserLedgerTransactions(Page):
     def from_txs(
         cls,
         user_account: LedgerAccount,
-        txs: List[LedgerTransaction],
+        txs: list[LedgerTransaction],
         product_id: str,
         payout_format: str,
         summary: UserLedgerTransactionTypesSummary,
@@ -617,11 +619,11 @@ class UserLedgerTransactions(Page):
 
 
 class LedgerAccountStatement(BaseModel):
-    id: Optional[int] = Field(default=None)
+    id: int | None = Field(default=None)
     account_uuid: UUIDStr
-    filter_str: Optional[str] = Field(default=None)
+    filter_str: str | None = Field(default=None)
     effective_at_lower_bound: AwareDatetimeISO
     effective_at_upper_bound: AwareDatetimeISO
     starting_balance: int = Field(lt=2**63 - 1, ge=0)
     ending_balance: int = Field(lt=2**63 - 1, ge=0)
-    sql_query: Optional[str] = Field(default=None)
+    sql_query: str | None = Field(default=None)

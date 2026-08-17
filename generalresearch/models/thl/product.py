@@ -13,11 +13,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    List,
     Literal,
-    Optional,
-    Set,
 )
 from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
@@ -138,7 +134,7 @@ class ProfilingConfig(BaseModel):
         the GRS system but won't present them any questions.""",
     )
 
-    n_questions: Optional[PositiveInt] = Field(
+    n_questions: PositiveInt | None = Field(
         default=None,
         description="Use to hard code the number of questions to ask. None means use default algorithm.",
     )
@@ -187,7 +183,7 @@ class UserHealthConfig(BaseModel):
     # Users in these countries are "blocked". Blocked in quotes because
     #   the user doesn't actually get blocked, they just are treated like they
     #   are blocked.
-    banned_countries: List[CountryISOLike] = Field(default_factory=list)
+    banned_countries: list[CountryISOLike] = Field(default_factory=list)
 
     # Decide if a user can be blocked for IP-related triggers such as sharing
     #   IPs and location history. This should eventually be deprecated and
@@ -196,13 +192,13 @@ class UserHealthConfig(BaseModel):
 
     # These are only checked by ym-user-predict, which I'm not sure even
     #   works properly. To be deprecated ... don't even use them.
-    userprofit_cutoff: Optional[Decimal] = Field(default=None, exclude=True)
-    recon_cutoff: Optional[float] = Field(default=None, exclude=True)
-    droprate_cutoff: Optional[float] = Field(default=None, exclude=True)
-    conversion_cutoff: Optional[float] = Field(default=None, exclude=True)
+    userprofit_cutoff: Decimal | None = Field(default=None, exclude=True)
+    recon_cutoff: float | None = Field(default=None, exclude=True)
+    droprate_cutoff: float | None = Field(default=None, exclude=True)
+    conversion_cutoff: float | None = Field(default=None, exclude=True)
 
     @field_validator("banned_countries", mode="after")
-    def sort_values(cls, values: List[str]):
+    def sort_values(cls, values: list[str]):
         return sorted(values)
 
 
@@ -246,15 +242,15 @@ class OfferWallRequestYieldmanParams(BaseModel):
 
 class OfferWallCategoryRequest(BaseModel):
     # Only include these categories
-    adwords_category: Optional[List[str]] = Field(default=None, examples=[["45", "65"]])
-    category: Optional[List[str]] = Field(
+    adwords_category: list[str] | None = Field(default=None, examples=[["45", "65"]])
+    category: list[str] | None = Field(
         default=None, examples=[["98c137e4e90a4d92ac6c00e523eb1b50"]]
     )
     # Exclude these categories
-    exclude_adwords_category: Optional[List[str]] = Field(
+    exclude_adwords_category: list[str] | None = Field(
         default=None, examples=[["1558"]]
     )
-    exclude_category: Optional[List[str]] = Field(
+    exclude_category: list[str] | None = Field(
         default=None,
         examples=[
             [
@@ -291,7 +287,7 @@ class SourcesConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    user_defined: List[SourceConfig] = Field(default_factory=list)
+    user_defined: list[SourceConfig] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_user_defined(self):
@@ -300,11 +296,11 @@ class SourcesConfig(BaseModel):
         return self
 
     @cached_property
-    def default_sources(self) -> List[SourceConfig]:
+    def default_sources(self) -> list[SourceConfig]:
         return [SourceConfig.model_validate({"name": s}) for s in Source]
 
     @cached_property
-    def sources(self) -> List[SourceConfig]:
+    def sources(self) -> list[SourceConfig]:
         # If a BP has no user_defined SourceConfigs, we use the default. Any
         # defined in user_defined will replace the default for that
         # SourceConfig.name
@@ -320,13 +316,13 @@ class PayoutConfig(BaseModel):
     """Store configuration related to payouts, payout transformation, and user
     payout formatting."""
 
-    payout_format: Optional[PayoutFormatType] = Field(
+    payout_format: PayoutFormatType | None = Field(
         default=None,
         description=payout_format_description,
         examples=payout_format_examples,
     )
 
-    payout_transformation: Optional[PayoutTransformation] = Field(
+    payout_transformation: PayoutTransformation | None = Field(
         default=None,
         description="How the BP's payout is converted to the User's payout",
     )
@@ -395,7 +391,7 @@ class UserCreateConfig(BaseModel):
         description="The smallest allowed value for the hourly user create limit.",
     )
 
-    max_hourly_create_limit: Optional[NonNegativeInt] = Field(
+    max_hourly_create_limit: NonNegativeInt | None = Field(
         default=None,
         description="The largest allowed value for the hourly user create "
         "limit. If None, the hourly create limit is unconstrained.",
@@ -420,11 +416,11 @@ class UserWalletConfig(BaseModel):
     # This field could go in supported_payout_types ---v
     amt: bool = Field(default=False, description="Uses Amazon Mechanical Turk")
 
-    supported_payout_types: Set["PayoutType"] = Field(
+    supported_payout_types: set["PayoutType"] = Field(
         default={PayoutType.CASH_IN_MAIL, PayoutType.TANGO, PayoutType.PAYPAL}
     )
 
-    min_cashout: Optional[Decimal] = Field(
+    min_cashout: Decimal | None = Field(
         default=None,
         gt=0,
         description="Minimum cashout amount. If enabled is True and no min_cashout is "
@@ -434,8 +430,8 @@ class UserWalletConfig(BaseModel):
 
     @field_serializer("supported_payout_types", when_used="json")
     def serialize_supported_payout_types_in_order(
-        self, supported_payout_types: Set["PayoutType"]
-    ) -> Set["PayoutType"]:
+        self, supported_payout_types: set["PayoutType"]
+    ) -> set["PayoutType"]:
         return set(sorted(supported_payout_types))
 
     @field_validator("min_cashout", mode="after")
@@ -470,14 +466,14 @@ class PayoutTransformationPercentArgs(BaseModel):
         examples=[0.5],
     )
 
-    min_payout: Optional[Decimal] = Field(
+    min_payout: Decimal | None = Field(
         default=None,
         description="The minimum amount paid for a complete. Note: This does not "
         "check that the actual payout was at least this amount.",
         examples=[Decimal("0.50")],
     )
 
-    max_payout: Optional[Decimal] = Field(
+    max_payout: Decimal | None = Field(
         default=None,
         description="The maximum amount paid for a complete",
         examples=[Decimal("5.00")],
@@ -524,7 +520,7 @@ class PayoutTransformation(BaseModel):
         description="The name of the transformation function to use."
     )
 
-    kwargs: Optional[PayoutTransformationPercentArgs] = Field(
+    kwargs: PayoutTransformationPercentArgs | None = Field(
         description="The kwargs to pass to the transformation function.",
         examples=[{"pct": 0.50, "max_payout": "5.00"}],
         default=None,
@@ -549,8 +545,8 @@ class PayoutTransformation(BaseModel):
         self,
         payout: Decimal,
         pct: Decimal = 1,
-        min_payout: Decimal = 0,
-        max_payout: Optional[Decimal] = None,
+        min_payout: Decimal | None = 0,
+        max_payout: Decimal | None = None,
     ) -> Decimal:
         """Payout transformation for user displayed values"""
         if min_payout is None:
@@ -567,7 +563,7 @@ class PayoutTransformation(BaseModel):
         return payout
 
     def payout_transformation_amt(
-        self, payout: Decimal, user_wallet_balance: Optional[Decimal] = None
+        self, payout: Decimal, user_wallet_balance: Decimal | None = None
     ) -> Decimal:
         """Payout transformation for user displayed values"""
         # If user_wallet_balance isn't passed, we are re-calculating this
@@ -600,7 +596,7 @@ class SourceConfig(BaseModel):
 
     name: Source = Field()
     active: bool = Field(default=True)
-    banned_countries: List[CountryISOLike] = Field(default_factory=list)
+    banned_countries: list[CountryISOLike] = Field(default_factory=list)
     allow_mobile_ip: bool = Field(default=True)
 
     allow_pii_only_buyers: bool = Field(
@@ -651,7 +647,7 @@ class SupplyConfig(BaseModel):
 
     model_config = ConfigDict(frozen=False, validate_assignment=True)
 
-    policies: List[SupplyPolicy] = Field(default_factory=list)
+    policies: list[SupplyPolicy] = Field(default_factory=list)
 
     @property
     def configs(self):
@@ -702,13 +698,13 @@ class SupplyConfig(BaseModel):
         return [c for c in self.policies if c.scope == Scope.PRODUCT]
 
     @property
-    def global_scoped_policies_dict(self) -> Dict[Source, SupplyPolicy]:
+    def global_scoped_policies_dict(self) -> dict[Source, SupplyPolicy]:
         return {c.name: c for c in self.policies if c.scope == Scope.GLOBAL}
 
     @property
     def team_scoped_policies_dict(
         self,
-    ) -> Dict[str, Dict[Source, SupplyPolicy]]:
+    ) -> dict[str, dict[Source, SupplyPolicy]]:
         # str in top-level dict is the team_id
         d = defaultdict(dict)
         for c in self.team_scoped_policies:
@@ -719,7 +715,7 @@ class SupplyConfig(BaseModel):
     @property
     def product_scoped_policies_dict(
         self,
-    ) -> Dict[str, Dict[Source, SupplyPolicy]]:
+    ) -> dict[str, dict[Source, SupplyPolicy]]:
         # str in top-level dict is the product_id
         d = defaultdict(dict)
         for c in self.product_scoped_policies:
@@ -729,7 +725,7 @@ class SupplyConfig(BaseModel):
 
     def get_policies_for(
         self, product_id: str, team_id: str
-    ) -> Dict[Source, SupplyPolicy]:
+    ) -> dict[Source, SupplyPolicy]:
         """
         Is there a config scoped to this product? If not,
             Is there a config scoped to this team? If not,
@@ -768,20 +764,20 @@ class SupplyPolicy(SourceConfig):
     internally in grpc logic.
     """
 
-    address: List[str] = Field(description="address for the grpc GetOpps call")
+    address: list[str] = Field(description="address for the grpc GetOpps call")
 
     allow_vpn: bool = Field(default=False)
 
     distribute_harmonizer_active: bool = Field(default=True)
 
-    supplier_id: Optional[str] = Field(
+    supplier_id: str | None = Field(
         default=None,
         description="For some inventory Sources, we may partition traffic using "
         "different supplier accounts instead",
     )
 
-    team_ids: Optional[List[UUIDStr]] = Field(default=None)
-    product_ids: Optional[List[UUIDStr]] = Field(default=None)
+    team_ids: list[UUIDStr] | None = Field(default=None)
+    product_ids: list[UUIDStr] | None = Field(default=None)
 
     integration_mode: IntegrationMode = Field(default=IntegrationMode.PLATFORM)
 
@@ -847,7 +843,7 @@ class Product(BaseModel, validate_assignment=True):
         examples=["1108d053e4fa47c5b0dbdcd03a7981e7"],
     )
 
-    id_int: SkipJsonSchema[Optional[PositiveInt]] = Field(default=None)
+    id_int: SkipJsonSchema[PositiveInt | None] = Field(default=None)
 
     name: str = Field(
         min_length=3,
@@ -868,14 +864,14 @@ class Product(BaseModel, validate_assignment=True):
         "be made to the Product.",
     )
 
-    created: Optional[AwareDatetimeISO] = Field(
+    created: AwareDatetimeISO | None = Field(
         # TODO: make this non-nullable
         default=None,
         description="When the Product was created, this does necessarily mean "
         "it started to retrieve traffic at that time.",
     )
 
-    team_id: Optional[UUIDStr] = Field(
+    team_id: UUIDStr | None = Field(
         # TODO: make this non-nullable
         default=None,
         examples=["b96c1209cf4a4baaa27d38082421a039"],
@@ -884,7 +880,7 @@ class Product(BaseModel, validate_assignment=True):
         "Product",
     )
 
-    business_id: Optional[UUIDStr] = Field(
+    business_id: UUIDStr | None = Field(
         default=None,
         examples=[uuid4().hex],
         description="The legal business entity or individual that is "
@@ -892,7 +888,7 @@ class Product(BaseModel, validate_assignment=True):
         "Payments for this Product's activity.",
     )
 
-    tags: Set["SupplierTag"] = Field(
+    tags: set["SupplierTag"] = Field(
         default_factory=set,
         description="Tags which are used to annotate supplier traffic",
     )
@@ -945,24 +941,24 @@ class Product(BaseModel, validate_assignment=True):
 
     # Initialization is deferred until unless it's called
     # (see .prebuild_***())
-    balance: Optional["ProductBalances"] = Field(
+    balance: "ProductBalances" | None = Field(
         default=None, description="Product Balance"
     )
 
-    payouts_total_str: Optional[str] = Field(default=None)
-    payouts_total: Optional[USDCent] = Field(default=None)
-    payouts: Optional[List["BrokerageProductPayoutEvent"]] = Field(
+    payouts_total_str: str | None = Field(default=None)
+    payouts_total: USDCent | None = Field(default=None)
+    payouts: list["BrokerageProductPayoutEvent"] | None = Field(
         default=None,
         description="Product Payouts. These are the ACH or Wire payments that were sent to the"
         "Business on behalf of this specific Product",
     )
 
-    pop_financial: Optional[List["POPFinancial"]] = Field(default=None)
-    bp_account: Optional[LedgerAccount] = Field(default=None)
+    pop_financial: list["POPFinancial"] | None = Field(default=None)
+    bp_account: LedgerAccount | None = Field(default=None)
 
     # --- Validators ---
     @field_validator("harmonizer_domain", mode="before")
-    def harmonizer_domain_https(cls, s: Optional[str]):
+    def harmonizer_domain_https(cls, s: str | None):
         # in the db, this has no scheme. accept both with a default of https://
         if s is not None and not (s.startswith("https://") or s.startswith("http://")):
             s = f"https://{s}"
@@ -1022,7 +1018,7 @@ class Product(BaseModel, validate_assignment=True):
         return self.sources_config.sources
 
     @property
-    def sources_dict(self) -> Dict[Source, SourceConfig]:
+    def sources_dict(self) -> dict[Source, SourceConfig]:
         # This stores the same info as sources but with the keys as a Source
         return {x.name: x for x in self.sources}
 
@@ -1054,11 +1050,9 @@ class Product(BaseModel, validate_assignment=True):
         return f"product-{self.uuid}"
 
     # --- Prefetch ---
-    def prefetch_bp_account(self, thl_lm: "ThlLedgerManager"):
+    def prefetch_bp_account(self, thl_lm: "ThlLedgerManager") -> None:
         account = thl_lm.get_account_or_create_bp_wallet(product=self)
         self.bp_account = account
-
-        return None
 
     # --- Prebuild ---
 
@@ -1067,7 +1061,7 @@ class Product(BaseModel, validate_assignment=True):
         thl_lm: "ThlLedgerManager",
         ds: "GRLDatasets",
         client: Client,
-        pop_ledger: Optional["PopLedgerMerge"] = None,
+        pop_ledger: "PopLedgerMerge" | None = None,
     ) -> None:
         """
         This returns the Product's Balances that are calculated across
@@ -1129,7 +1123,6 @@ class Product(BaseModel, validate_assignment=True):
                 "If the df is empty, we can also assume that there should be no "
                 "transactions in the ledger."
             )
-            return None
 
         df = df.set_index("time_idx")
         from generalresearch.models.thl.finance import ProductBalances
@@ -1143,14 +1136,13 @@ class Product(BaseModel, validate_assignment=True):
         assert bal == balance.balance, "Sql and Parquet Balance inconsistent"
 
         self.balance = balance
-        return None
 
     def prebuild_pop_financial(
         self,
         thl_lm: "ThlLedgerManager",
         ds: "GRLDatasets",
         client: Client,
-        pop_ledger: Optional["PopLedgerMerge"] = None,
+        pop_ledger: "PopLedgerMerge" | None = None,
     ) -> None:
         """This is very similar to the Product POP Financial endpoint; however,
         it returns more than one item for a single time interval. This is
@@ -1186,13 +1178,13 @@ class Product(BaseModel, validate_assignment=True):
         )
         if ddf is None:
             self.pop_financial = []
-            return None
+            return
 
         df = client.compute(collections=ddf, sync=True)
 
         if df.empty:
             self.pop_financial = []
-            return None
+            return
 
         df = df.groupby(
             [pd.Grouper(key="time_idx", freq=rr.interval), "account_id"]
@@ -1204,7 +1196,7 @@ class Product(BaseModel, validate_assignment=True):
             input_data=df, accounts=[self.bp_account]
         )
 
-        return None
+        return
 
     def prebuild_payouts(
         self,
@@ -1227,8 +1219,6 @@ class Product(BaseModel, validate_assignment=True):
 
         self.payouts_total = USDCent(sum([po.amount for po in self.payouts]))
         self.payouts_total_str = self.payouts_total.to_usd_str()
-
-        return None
 
     # def prebuild_pop(self):
     #     account = LM.get_account(qualified_name=f"{LM.currency.value}:bp_wallet:{product.id}")
@@ -1326,7 +1316,7 @@ class Product(BaseModel, validate_assignment=True):
         client: Client,
         bp_pem: "BrokerageProductPayoutEventManager",
         redis_config: RedisConfig,
-        pop_ledger: Optional[PopLedgerMerge] = None,
+        pop_ledger: PopLedgerMerge | None = None,
     ) -> None:
         LOG.debug(f"Product.set_cache({self.uuid=})")
 
@@ -1352,8 +1342,6 @@ class Product(BaseModel, validate_assignment=True):
         rc = redis_config.create_redis_client()
         rc.set(name=self.cache_key, value=self.model_dump_json(), ex=ex_secs)
 
-        return None
-
     def determine_bp_payment(self, thl_net: Decimal) -> Decimal:
         """
         How much should we pay the BP?
@@ -1369,7 +1357,6 @@ class Product(BaseModel, validate_assignment=True):
         return (thl_net * self.commission_pct).quantize(Decimal("0.01"))
 
     def get_payout_transformation_func(self) -> Callable:
-        """ """
         if self.payout_config.payout_transformation is None:
             return lambda x: x
         else:
@@ -1378,8 +1365,8 @@ class Product(BaseModel, validate_assignment=True):
             )
 
     def calculate_user_payment(
-        self, bp_payout: Decimal, user_wallet_balance: Optional[Decimal] = None
-    ) -> Optional[Decimal]:
+        self, bp_payout: Decimal, user_wallet_balance: Decimal | None = None
+    ) -> Decimal | None:
         """
         :param bp_payout: This is the amount we paid to the brokerage product
         :return: The amount that should be paid to the user
@@ -1403,7 +1390,7 @@ class Product(BaseModel, validate_assignment=True):
         url = urlunsplit(url_split)
         return url
 
-    def format_payout_format(self, payout: Decimal) -> Optional[str]:
+    def format_payout_format(self, payout: Decimal) -> str | None:
         assert isinstance(payout, Decimal), "payout should be a Decimal"
         if self.payout_config.payout_format is None:
             return None
@@ -1412,7 +1399,7 @@ class Product(BaseModel, validate_assignment=True):
 
     # --- ORM ---
 
-    def model_dump_mysql(self, *args, **kwargs) -> Dict[str, Any]:
+    def model_dump_mysql(self, *args, **kwargs) -> dict[str, Any]:
         d = self.model_dump(mode="json", *args, **kwargs)
 
         if "created" in d:

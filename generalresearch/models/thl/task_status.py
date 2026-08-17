@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Annotated, Any, Dict, List, Literal, Optional
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -69,12 +71,12 @@ class TaskStatusResponse(BaseModel):
 
     started: AwareDatetimeISO = Field(description="When the session was started")
 
-    finished: Optional[AwareDatetimeISO] = Field(
+    finished: AwareDatetimeISO | None = Field(
         default=None, description="When the session was finished"
     )
 
     # This uses the grpc's Status enum. It gets serialized to an int.
-    status: Optional[Status] = Field(
+    status: Status | None = Field(
         default=None,
         examples=[3],
         description="The outcome of a session."
@@ -84,14 +86,14 @@ class TaskStatusResponse(BaseModel):
         "  - 3 - COMPLETE (the user completed the task)",
     )
 
-    payout: Optional[NonNegativeInt] = Field(
+    payout: NonNegativeInt | None = Field(
         default=None,
         lt=100_000,
         examples=[500],
         description="The amount paid to the supplier, in integer USD cents",
     )
 
-    user_payout: Optional[NonNegativeInt] = Field(
+    user_payout: NonNegativeInt | None = Field(
         default=None,
         lt=100_000,
         description="If a payout transformation is configured on this account, "
@@ -99,78 +101,78 @@ class TaskStatusResponse(BaseModel):
         examples=[337],
     )
 
-    payout_format: Optional[PayoutFormatType] = PayoutFormatOptionalField
+    payout_format: PayoutFormatType | None = PayoutFormatOptionalField
 
-    user_payout_string: Optional[str] = Field(
+    user_payout_string: str | None = Field(
         default=None,
         description="If a payout transformation is configured on this account, "
         "this is the amount to display to the user",
         examples=["3370 Points"],
     )
 
-    kwargs: Dict[str, str] = Field(
+    kwargs: dict[str, str] = Field(
         default_factory=dict,
         description="Any extra url params used in the offerwall request will be "
         "passed back here",
     )
 
-    status_code_1: Optional[Annotated[StatusCode1, EnumNameSerializer]] = Field(
+    status_code_1: Annotated[StatusCode1, EnumNameSerializer] | None = Field(
         default=None,
         examples=[StatusCode1.COMPLETE.name],
         description=StatusCode1.as_openapi_with_value_descriptions_name(),
     )
 
-    status_code_2: Optional[Annotated[SessionStatusCode2, EnumNameSerializer]] = Field(
+    status_code_2: Annotated[SessionStatusCode2, EnumNameSerializer] | None = Field(
         default=None,
         examples=[None],
         description=SessionStatusCode2.as_openapi_with_value_descriptions_name(),
     )
 
-    adjusted_status: Optional[SessionAdjustedStatus] = Field(
+    adjusted_status: SessionAdjustedStatus | None = Field(
         default=None,
         description=SessionAdjustedStatus.as_openapi_with_value_descriptions(),
         examples=[None],
     )
 
-    adjusted_timestamp: Optional[AwareDatetimeISO] = Field(
+    adjusted_timestamp: AwareDatetimeISO | None = Field(
         default=None,
         description="When the adjusted status was last set.",
         examples=[None],
     )
 
-    adjusted_payout: Optional[NonNegativeInt] = Field(
+    adjusted_payout: NonNegativeInt | None = Field(
         default=None,
         lt=100_000,
         description="The new payout after adjustment.",
         examples=[None],
     )
 
-    adjusted_user_payout: Optional[NonNegativeInt] = Field(
+    adjusted_user_payout: NonNegativeInt | None = Field(
         default=None,
         lt=100_000,
         description="The new user_payout after adjustment.",
         examples=[None],
     )
 
-    adjusted_user_payout_string: Optional[str] = Field(
+    adjusted_user_payout_string: str | None = Field(
         default=None,
         description="The new user_payout_string after adjustment.",
         examples=[None],
     )
 
     # This is used for validation purposes only. It won't get serialized
-    payout_transformation: Optional[PayoutTransformation] = Field(
+    payout_transformation: PayoutTransformation | None = Field(
         default=None, exclude=True
     )
 
-    wall_events: Optional[List[WallOut]] = Field(default=None)
+    wall_events: list[WallOut] | None = Field(default=None)
 
     currency: Literal["USD"] = Field(default="USD")
     final_status: int = Field(default=0, description="This is deprecated")
 
     # Serialize enum → int
     @field_serializer("status", return_type=int)
-    def serialize_status(self, v: Optional[Status], _info):
+    def serialize_status(self, v: Status | None, _info):
         return STATUS_MAP[v]
 
     # Accept int OR string for input, but internally store a Status enum
@@ -219,11 +221,11 @@ class TaskStatusResponse(BaseModel):
         return v
 
     @field_validator("payout", mode="before")
-    def transform_payout(cls, v: Optional[NonNegativeInt]) -> NonNegativeInt:
+    def transform_payout(cls, v: NonNegativeInt | None) -> NonNegativeInt:
         return v or 0
 
     @field_validator("kwargs", mode="after")
-    def sanitize_kwargs(cls, v: Optional[Dict]) -> Optional[Dict]:
+    def sanitize_kwargs(cls, v: dict | None) -> dict | None:
         if v and "clicked_timestamp" in v:
             try:
                 clicked_timestamp = datetime.strptime(
@@ -289,4 +291,4 @@ class TaskStatusResponse(BaseModel):
 
 
 class TasksStatusResponse(Page):
-    tasks_status: List[TaskStatusResponse] = Field(default_factory=list)
+    tasks_status: list[TaskStatusResponse] = Field(default_factory=list)

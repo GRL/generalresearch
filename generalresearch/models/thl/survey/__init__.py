@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from decimal import Decimal
 from itertools import product
-from typing import Dict, List, Optional, Set, Type
+from typing import Type
 
 from more_itertools import flatten
 from pydantic import BaseModel, Field
@@ -48,22 +50,22 @@ class MarketplaceTask(BaseModel, ABC):
     language_iso: LanguageISO = Field()
 
     # These should be overloaded with more specific type hints
-    buyer_id: Optional[str] = Field(min_length=1, max_length=32, default=None)
+    buyer_id: str | None = Field(min_length=1, max_length=32, default=None)
     # This is in seconds
-    bid_loi: Optional[int] = Field(default=None, le=90 * 60)
-    bid_ir: Optional[float] = Field(default=None, ge=0, le=1)
+    bid_loi: int | None = Field(default=None, le=90 * 60)
+    bid_ir: float | None = Field(default=None, ge=0, le=1)
 
     # This should be an "abstract field", but there is no way to do that, so
     #   just listing it here. It should be overridden by the implementation
     source: Source = Field()
     # This should also
-    used_question_ids: Set[str] = Field(default_factory=set)
+    used_question_ids: set[str] = Field(default_factory=set)
 
     # This is a "special" key to store all conditions that are used (as
     # "condition_hashes") throughout this survey. In the reduced
     # representation of this task (nearly always, for db i/o, in global_vars)
     # this field will be null.
-    conditions: Optional[Dict[str, MarketplaceCondition]] = Field(default=None)
+    conditions: dict[str, MarketplaceCondition] | None = Field(default=None)
 
     @property
     @abstractmethod
@@ -80,7 +82,7 @@ class MarketplaceTask(BaseModel, ABC):
 
     @property
     @abstractmethod
-    def all_hashes(self) -> Set[str]: ...
+    def all_hashes(self) -> set[str]: ...
 
     @property
     @abstractmethod
@@ -124,7 +126,7 @@ class MarketplaceTask(BaseModel, ABC):
     @abstractmethod
     def marketplace_genders(
         self,
-    ) -> Dict[Gender, Optional[MarketplaceCondition]]:
+    ) -> dict[Gender, MarketplaceCondition | None]:
         """
         Mapping of generic Gender to the marketplace condition for that gender
         """
@@ -133,7 +135,7 @@ class MarketplaceTask(BaseModel, ABC):
     @property
     def marketplace_age_groups(
         self,
-    ) -> Dict[AgeGroup, Optional[MarketplaceCondition]]:
+    ) -> dict[AgeGroup, MarketplaceCondition | None]:
         """
         Mapping of generic age groups to the marketplace condition for those ages
         """
@@ -147,7 +149,7 @@ class MarketplaceTask(BaseModel, ABC):
         }
 
     @property
-    def targeted_ages(self) -> Set[str]:
+    def targeted_ages(self) -> set[str]:
         assert self.conditions is not None, "conditions must be populated"
         cs = [self.conditions[k] for k in self.all_hashes if k in self.conditions]
         age_cs = [c for c in cs if c.question_id == self.age_question]
@@ -166,7 +168,7 @@ class MarketplaceTask(BaseModel, ABC):
         return age_values
 
     @property
-    def targeted_age_groups(self) -> Set[AgeGroup]:
+    def targeted_age_groups(self) -> set[AgeGroup]:
         age_values = self.targeted_ages
         age_conditions = self.marketplace_age_groups
         age_targeting = set()
@@ -186,7 +188,7 @@ class MarketplaceTask(BaseModel, ABC):
         return age_targeting
 
     @property
-    def targeted_genders(self) -> Set[Gender]:
+    def targeted_genders(self) -> set[Gender]:
         mp_genders = self.marketplace_genders
         gender_targeting = set()
         if mp_genders[Gender.MALE].criterion_hash in self.all_hashes:
@@ -198,7 +200,7 @@ class MarketplaceTask(BaseModel, ABC):
         return gender_targeting
 
     @property
-    def demographic_targets(self) -> List[DemographicTarget]:
+    def demographic_targets(self) -> list[DemographicTarget]:
         targets = [DemographicTarget(country="*", gender="*", age_group="*")]
 
         gt = self.targeted_genders

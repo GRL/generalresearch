@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Self, Set, Tuple
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
@@ -23,7 +23,7 @@ class LucidCondition(MarketplaceCondition):
 
     id: BigAutoInteger = Field()
     source: Source = Field(default=Source.LUCID)
-    question_id: Optional[CoercedStr] = Field(
+    question_id: CoercedStr | None = Field(
         min_length=1,
         max_length=16,
         pattern=r"^[0-9]+$",
@@ -41,7 +41,7 @@ class LucidCondition(MarketplaceCondition):
         return hash(self.id)
 
     @classmethod
-    def from_mysql(cls, x: Dict[str, Any]) -> Self:
+    def from_mysql(cls, x: dict[str, Any]) -> Self:
         x["value_type"] = ConditionValueType.LIST
         x["negate"] = False
         x["values"] = x.pop("pre_codes").split("|")
@@ -58,11 +58,11 @@ class LucidQuota(BaseModel):
     id: BigAutoInteger = Field()
     uuid: UUIDStr = Field()
     upper_limit: NonNegativeInt = Field(examples=[20])
-    criteria: List[int] = Field(min_length=1, max_length=25)
+    criteria: list[int] = Field(min_length=1, max_length=25)
     modified: AwareDatetimeISO = Field(description="modified or created")
     # We'll look this up with a special mysql query. If None, it means
     #   that we don't know.
-    finish_count: Optional[int] = Field(default=None)
+    finish_count: int | None = Field(default=None)
 
     def __hash__(self):
         return hash(self.id)
@@ -71,11 +71,11 @@ class LucidQuota(BaseModel):
     def is_open(self) -> bool:
         return self.upper_limit > self.finish_count
 
-    def passes(self, criteria_evaluation: Dict[int, Optional[bool]]) -> bool:
+    def passes(self, criteria_evaluation: dict[int, bool | None]) -> bool:
         # Passes means we 1) meet all conditions (aka "match") AND 2) the quota is open.
         return self.is_open and self.matches(criteria_evaluation)
 
-    def matches(self, criteria_evaluation: Dict[int, Optional[bool]]) -> bool:
+    def matches(self, criteria_evaluation: dict[int, bool | None]) -> bool:
         # Matches means we meet all conditions.
         # We can "match" a quota that is closed. In that case, we would not be eligible for the survey.
         return all(criteria_evaluation.get(c) for c in self.criteria)
@@ -93,8 +93,8 @@ class LucidQuota(BaseModel):
     #     return True
 
     def matches_soft(
-        self, criteria_evaluation: Dict[int, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[int]]:
+        self, criteria_evaluation: dict[int, bool | None]
+    ) -> tuple[bool | None, set[int]]:
         # Passes back "matches" (T/F/none) and a list of unknown criterion hashes
         hash_evals = {cell: criteria_evaluation.get(cell) for cell in self.criteria}
         evals = set(hash_evals.values())

@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 import json
 from functools import cached_property
-from typing import Optional, List
 
 import tldextract
-from pydantic import BaseModel, Field, model_validator, computed_field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 from generalresearch.models.custom_types import IPvAnyAddressStr
 
@@ -12,7 +13,7 @@ class RDNSResult(BaseModel):
 
     ip: IPvAnyAddressStr = Field()
 
-    hostnames: List[str] = Field(default_factory=list)
+    hostnames: list[str] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_hostname_prop(self):
@@ -24,7 +25,7 @@ class RDNSResult(BaseModel):
 
     @computed_field(examples=["fixed-187-191-8-145.totalplay.net"])
     @cached_property
-    def primary_hostname(self) -> Optional[str]:
+    def primary_hostname(self) -> str | None:
         if self.hostnames:
             return self.hostnames[0]
 
@@ -35,7 +36,7 @@ class RDNSResult(BaseModel):
 
     @computed_field(examples=["totalplay.net"])
     @cached_property
-    def primary_domain(self) -> Optional[str]:
+    def primary_domain(self) -> str | None:
         if self.primary_hostname:
             return tldextract.extract(
                 self.primary_hostname

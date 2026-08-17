@@ -1,4 +1,4 @@
-from typing import List
+from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
@@ -10,7 +10,7 @@ class SynchronizeGlobalVarsMsg(BaseModel):
 
     # Specifies the key / subkey to be acted upon.
     #  For example ["mrpq", 123] would apply to GLOBAL_VARS["mrpq"][123]
-    key_path: List[str] = Field()
+    key_path: list[str] = Field()
     # e.g. GLOBAL_VARS["mrpq"].pop(123, None)
     pop: bool = Field(default=False)
     # e.g. GLOBAL_VARS["mrpq"][123].clear()

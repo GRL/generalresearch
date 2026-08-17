@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timezone
 from enum import Enum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Self, Set
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 
@@ -33,13 +33,13 @@ class ProdegeUserQuestionAnswer(BaseModel):
     #   for "anonymous" users, which are represented by a list of question
     #   answers not associated with an actual user. No default b/c we must
     #   explicitly set the field to None.
-    user_id: Optional[PositiveInt] = Field(lt=MAX_INT32)
+    user_id: PositiveInt | None = Field(lt=MAX_INT32)
     question_id: ProdegeQuestionIdType = Field()
 
     # This is optional b/c we do not need it when writing these to the
     #   db. When these are fetched from the db for use in yield-management,
     #   we read this field from the prodege_question table.
-    question_type: Optional[ProdegeQuestionType] = Field(default=None)
+    question_type: ProdegeQuestionType | None = Field(default=None)
 
     # This may be a pipe-separated string if the question_type is multi. regex means any chars except capital letters
     option_id: str = Field(pattern=r"^[^A-Z]*$")
@@ -58,10 +58,10 @@ class ProdegeUserQuestionAnswer(BaseModel):
     )
 
     @cached_property
-    def options_ids(self) -> Set[str]:
+    def options_ids(self) -> set[str]:
         return set(self.option_id.split("|"))
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", exclude={"question_type"})
         d["created"] = self.created.replace(tzinfo=None)
         return d
@@ -122,8 +122,8 @@ class ProdegeQuestion(MarketplaceQuestion):
     question_text: str = Field(max_length=1024, min_length=1)
     question_type: ProdegeQuestionType = Field(frozen=True)
     # This comes from the API category, but is not great (most are "Consumer Lifestyle")
-    tags: Optional[str] = Field(default=None, frozen=True)
-    options: Optional[List[ProdegeQuestionOption]] = Field(default=None, min_length=1)
+    tags: str | None = Field(default=None, frozen=True)
+    options: list[ProdegeQuestionOption] | None = Field(default=None, min_length=1)
     source: Literal[Source.PRODEGE] = Source.PRODEGE
 
     @property
@@ -139,9 +139,7 @@ class ProdegeQuestion(MarketplaceQuestion):
         return self
 
     @classmethod
-    def from_api(
-        cls, d: Dict[str, Any], country_iso: str
-    ) -> Optional["ProdegeQuestion"]:
+    def from_api(cls, d: dict[str, Any], country_iso: str) -> "ProdegeQuestion" | None:
         """
         :param d: Raw response from API
         """
@@ -152,7 +150,7 @@ class ProdegeQuestion(MarketplaceQuestion):
             return None
 
     @classmethod
-    def _from_api(cls, d: Dict[str, Any], country_iso: str) -> "ProdegeQuestion":
+    def _from_api(cls, d: dict[str, Any], country_iso: str) -> "ProdegeQuestion":
         # The API has no concept of language at all. Questions for a country
         # are returned both in english and other languages. Questions do have
         # a field 'country_specific', and if True, that generally means the
@@ -185,7 +183,7 @@ class ProdegeQuestion(MarketplaceQuestion):
         return cls.model_validate(d)
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> "ProdegeQuestion":
+    def from_db(cls, d: dict[str, Any]) -> "ProdegeQuestion":
         options = None
         if d["options"]:
             options = [
@@ -210,7 +208,7 @@ class ProdegeQuestion(MarketplaceQuestion):
             tags=d.get("tags"),
         )
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", by_alias=True)
         d["options"] = json.dumps(d["options"])
         return d

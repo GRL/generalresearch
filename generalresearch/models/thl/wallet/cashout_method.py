@@ -4,7 +4,7 @@ import hashlib
 import logging
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -62,22 +62,22 @@ class CashoutMethodBase(BaseModel):
         default="USD",
         description="The currency of the cashout. Only USD is supported.",
     )
-    original_currency: Optional[Currency] = Field(
+    original_currency: Currency | None = Field(
         default=None,
         description="The base currency of the money paid out. This is used for "
         "e.g. sending an Amazon UK gift card",
     )
     # This also is used for the PayoutEvent.request_data
-    data: Union[
-        PaypalCashoutMethodData,
-        TangoCashoutMethodData,
-        CashMailCashoutMethodData,
-        AmtCashoutMethodData,
-    ] = Field(discriminator="type")
+    data: (
+        PaypalCashoutMethodData
+        | TangoCashoutMethodData
+        | CashMailCashoutMethodData
+        | AmtCashoutMethodData
+    ) = Field(discriminator="type")
     description: str = Field(
         description="The description of the cashout method.", default=""
     )
-    image_url: Optional[HttpsUrlStr] = Field(
+    image_url: HttpsUrlStr | None = Field(
         description="Link to an image to display", default=None
     )
     max_value: PositiveInt = Field(
@@ -93,18 +93,18 @@ class CashoutMethodBase(BaseModel):
     type: PayoutType = Field(
         description=PayoutType.as_openapi_with_value_descriptions(),
     )
-    ext_id: Optional[str] = Field(
+    ext_id: str | None = Field(
         default=None,
         description="An external ID. Can be shown to a user to disambiguate "
         "a user's possibly multiple methods",
     )
-    usd_exchange_rate: Optional[float] = Field(default=None)
-    max_value_usd: Optional[USDCent] = Field(
+    usd_exchange_rate: float | None = Field(default=None)
+    max_value_usd: USDCent | None = Field(
         default=None,
         description="(In lowest unit of USD), "
         "The maximum amount that can be cashed out in one transaction.",
     )
-    min_value_usd: Optional[USDCent] = Field(
+    min_value_usd: USDCent | None = Field(
         default=None,
         description="(In lowest unit of USD), "
         "The minimum amount that can be cashed out in one transaction.",
@@ -138,7 +138,7 @@ class CashoutMethodBase(BaseModel):
 
 
 class CashoutMethod(CashoutMethodBase):
-    user: Optional[User] = Field(
+    user: User | None = Field(
         default=None,
         description="If set, this cashout method is custom for this user. For example"
         "a user may have a paypal cashout method with their paypal"
@@ -163,11 +163,11 @@ class CashoutMethod(CashoutMethodBase):
 
 
 class CashoutMethodOut(CashoutMethodBase):
-    product_id: Optional[UUIDStr] = Field(
+    product_id: UUIDStr | None = Field(
         default=None, examples=["4fe381fb7186416cb443a38fa66c6557"]
     )
 
-    product_user_id: Optional[str] = Field(
+    product_user_id: str | None = Field(
         default=None,
         min_length=3,
         max_length=128,
@@ -189,12 +189,12 @@ class CashoutMethodOut(CashoutMethodBase):
 
 class USDeliveryAddress(BaseModel):
     name_or_attn: str = Field(min_length=1, max_length=50)
-    company: Optional[str] = Field(
+    company: str | None = Field(
         default=None,
         min_length=1,
         max_length=50,
     )
-    phone_number: Optional[str] = Field(
+    phone_number: str | None = Field(
         default=None,
         min_length=10,
         max_length=10,
@@ -231,13 +231,13 @@ class TangoCashoutMethodData(BaseModel):
     type: Literal[PayoutType.TANGO] = Field(default=PayoutType.TANGO)
     utid: str = Field(description="tango utid")
     # TODO: Can't be CountryISOLike because it appears to be allcaps
-    countries: List[str] = Field()
+    countries: list[str] = Field()
     value_type: Literal["variable", "fixed"] = Field()
     disclaimer: str = Field(default="")
     terms: str = Field(default="")
 
     @field_validator("countries", mode="after")
-    def countries_case(cls, countries: List[str]) -> List[str]:
+    def countries_case(cls, countries: list[str]) -> list[str]:
         return [x.lower() for x in countries]
 
 
@@ -246,7 +246,7 @@ class AmtCashoutMethodData(BaseModel):
 
 
 class CashoutMethodsResponse(StatusResponse):
-    cashout_methods: List[CashoutMethodOut] = Field()
+    cashout_methods: list[CashoutMethodOut] = Field()
 
 
 class DeliveryStatus(str, Enum):
@@ -279,37 +279,37 @@ class ShippingMethod(str, Enum):
 # This goes in the PayoutEvent.order_data
 class CashMailOrderData(BaseModel):
     type: Literal[PayoutType.CASH_IN_MAIL] = Field(default=PayoutType.CASH_IN_MAIL)
-    shipping_cost: Optional[PositiveInt] = Field(
+    shipping_cost: PositiveInt | None = Field(
         description="(USD cents) The shipping cost. This amount get charged to the BP.",
         strict=True,
     )
-    tracking_number: Optional[str] = Field(
+    tracking_number: str | None = Field(
         default=None,
         min_length=1,
         max_length=50,
     )
-    shipping_method: Optional[ShippingMethod] = Field(
+    shipping_method: ShippingMethod | None = Field(
         default=None,
         min_length=1,
         max_length=50,
         description="Standard, express, etc.",
     )
-    carrier: Optional[ShippingCarrier] = Field(
+    carrier: ShippingCarrier | None = Field(
         default=None,
         min_length=1,
         max_length=50,
         description="Name of the shipping company, e.g., USPS, FedEx, DHL",
     )
-    ship_date: Optional[AwareDatetimeISO] = Field(default=None)
-    estimated_delivery_date: Optional[AwareDatetimeISO] = Field(default=None)
-    delivery_status: Optional[DeliveryStatus] = Field(
+    ship_date: AwareDatetimeISO | None = Field(default=None)
+    estimated_delivery_date: AwareDatetimeISO | None = Field(default=None)
+    delivery_status: DeliveryStatus | None = Field(
         default=None,
         min_length=1,
         max_length=50,
         description="Current status of delivery, e.g., pending, in "
         "transit, delivered",
     )
-    last_updated: Optional[AwareDatetimeISO] = Field(
+    last_updated: AwareDatetimeISO | None = Field(
         default=None,
         description="Timestamp of the last status update",
     )
@@ -364,7 +364,7 @@ class CashoutRequestInfo(BaseModel):
     Payout. This is used only in the API response.
     """
 
-    id: Optional[UUIDStr] = Field(
+    id: UUIDStr | None = Field(
         description="Unique ID for this cashout. This may be NULL if the "
         "status is REJECTED or FAILED, which may happen if the "
         "request is invalid.",
@@ -374,13 +374,13 @@ class CashoutRequestInfo(BaseModel):
         description="This is the name of the cashout method.",
         examples=["Visa® Prepaid Card USD"],
     )
-    message: Optional[str] = Field(default=None)
-    status: Optional[PayoutStatus] = Field(
+    message: str | None = Field(default=None)
+    status: PayoutStatus | None = Field(
         default=PayoutStatus.PENDING,
         description=PayoutStatus.as_openapi(),
         examples=[PayoutStatus.PENDING],
     )
-    transaction_info: Optional[Dict[str, Any]] = Field(default=None)
+    transaction_info: dict[str, Any] | None = Field(default=None)
 
 
 class CashoutRequestResponse(StatusResponse):

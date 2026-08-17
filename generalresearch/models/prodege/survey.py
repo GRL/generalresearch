@@ -7,7 +7,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Type
+from typing import Any, Literal, Type
 
 from pydantic import (
     BaseModel,
@@ -52,10 +52,10 @@ class ProdegeCondition(MarketplaceCondition):
     model_config = ConfigDict(populate_by_name=True)
 
     question_id: ProdegeQuestionIdType = Field()
-    values: List[str] = Field(validation_alias="precodes")
+    values: list[str] = Field(validation_alias="precodes")
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> "ProdegeCondition":
+    def from_api(cls, d: dict[str, Any]) -> "ProdegeCondition":
         assert d["operator"] in {
             "OR",
             "NOT",
@@ -97,7 +97,7 @@ class ProdegeQuota(BaseModel):
         description="The total number of allowed responses that remain from the sample_size",
         validation_alias="number_of_respondents",
     )
-    condition_hashes: List[str] = Field(min_length=0, default_factory=list)
+    condition_hashes: list[str] = Field(min_length=0, default_factory=list)
     # Each quota can have a different calculation type, instead of on the survey
     calculation_type: TaskCalculationType = Field(
         description="Indicates whether the targets are counted per Complete or Survey Start",
@@ -105,10 +105,10 @@ class ProdegeQuota(BaseModel):
     )
     quota_id: CoercedStr = Field()
     # If the parent_quota_id is None, then this is a parent. There can be multiple parent quotas.
-    parent_quota_id: Optional[CoercedStr] = Field()
+    parent_quota_id: CoercedStr | None = Field()
 
     # ISO 3166-1 alpha-2 (two-letter codes, lowercase)
-    country_iso: Optional[str] = Field(
+    country_iso: str | None = Field(
         max_length=2, min_length=2, pattern=r"^[a-z]{2}$", default=None
     )
 
@@ -135,7 +135,7 @@ class ProdegeQuota(BaseModel):
         return "1"
 
     @property
-    def marketplace_genders(self) -> Dict[Gender, Optional[MarketplaceCondition]]:
+    def marketplace_genders(self) -> dict[Gender, MarketplaceCondition | None]:
         return {
             Gender.MALE: ProdegeCondition(
                 question_id="3",
@@ -151,7 +151,7 @@ class ProdegeQuota(BaseModel):
         }
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> "ProdegeQuota":
+    def from_api(cls, d: dict[str, Any]) -> "ProdegeQuota":
         # the API doesn't handle None's correctly? idk
         if d["parent_quota_id"] == 0:
             d["parent_quota_id"] = None
@@ -166,7 +166,7 @@ class ProdegeQuota(BaseModel):
         return cls.model_validate(d)
 
     def passes(
-        self, criteria_evaluation: Dict[str, Optional[bool]], country_iso: str
+        self, criteria_evaluation: dict[str, bool | None], country_iso: str
     ) -> bool:
         # Passes means we 1) meet all conditions (aka "match") AND 2) the quota is open.
         return self.is_open and self.matches(
@@ -174,7 +174,7 @@ class ProdegeQuota(BaseModel):
         )
 
     def matches(
-        self, criteria_evaluation: Dict[str, Optional[bool]], country_iso: str
+        self, criteria_evaluation: dict[str, bool | None], country_iso: str
     ) -> bool:
         # Match means we meet all conditions.
         # We can "match" a quota that is closed. In that case, we would
@@ -187,7 +187,7 @@ class ProdegeQuota(BaseModel):
         return self.country_iso is None or self.country_iso == country_iso
 
     def passes_verbose(
-        self, criteria_evaluation: Dict[str, Optional[bool]], country_iso: str
+        self, criteria_evaluation: dict[str, bool | None], country_iso: str
     ) -> bool:
         print(f"quota.is_open: {self.is_open}")
         print(
@@ -202,8 +202,8 @@ class ProdegeQuota(BaseModel):
         )
 
     def passes_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]], country_iso: str
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None], country_iso: str
+    ) -> tuple[bool | None, set[str]]:
         # Passes back "passes" (T/F/none) and a list of unknown criterion hashes
         if self.is_open is False:
             return False, set()
@@ -246,10 +246,10 @@ class ProdegeUserPastParticipation(BaseModel):
     survey_id: str = Field(min_length=1, max_length=16, pattern=r"^[0-9]+$")
     started: AwareDatetimeISO = Field()
     # This is what is returned in the redirect in the url param "status".
-    ext_status_code_1: Optional[ProdgeRedirectStatus] = Field(default=None)
+    ext_status_code_1: ProdgeRedirectStatus | None = Field(default=None)
 
     @property
-    def participation_types(self) -> Set[ProdegePastParticipationType]:
+    def participation_types(self) -> set[ProdegePastParticipationType]:
         # If the survey is filtering completes, then only a complete
         #   counts. But if the survey is filtering on clicks, then a person
         #   who got a complete ALSO did click. And so, the logic here is that
@@ -286,8 +286,8 @@ class ProdegePastParticipation(BaseModel):
     survey_ids: AlphaNumStrSet = Field(validation_alias="participation_project_ids")
     filter_type: InclExcl = Field()
     # API has a mistake. We treat 0 as null
-    in_past_days: Optional[int] = Field(default=None)
-    participation_types: List[ProdegePastParticipationType] = Field()
+    in_past_days: int | None = Field(default=None)
+    participation_types: list[ProdegePastParticipationType] = Field()
 
     """
     e.g. Anyone who got a complete in either of these projects in the past 7 days, 
@@ -299,7 +299,7 @@ class ProdegePastParticipation(BaseModel):
     """
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> "ProdegePastParticipation":
+    def from_api(cls, d: dict[str, Any]) -> "ProdegePastParticipation":
         # the API doesn't handle None's correctly? idk
         if d["in_past_days"] == 0:
             d["in_past_days"] = None
@@ -323,7 +323,7 @@ class ProdegePastParticipation(BaseModel):
         )
 
     def is_eligible(
-        self, user_participations: List[ProdegeUserPastParticipation]
+        self, user_participations: list[ProdegeUserPastParticipation]
     ) -> bool:
         if self.filter_type == "include":
             # User is only eligible if they HAVE participated. Return True as soon as they match anything.
@@ -383,12 +383,12 @@ class ProdegeSurvey(MarketplaceTask):
     # have to store it in the db if we see it. In API res, these are called
     # "loi" and "actual_ir", but the actual IR is only actually the actual
     # IR if the "phases" is "actual" :facepalm:
-    bid_loi: Optional[int] = Field(default=None, le=120 * 60)
-    bid_ir: Optional[float] = Field(default=None, ge=0, le=1)
-    actual_loi: Optional[int] = Field(default=None, le=120 * 60)
-    actual_ir: Optional[float] = Field(default=None, ge=0, le=1)
+    bid_loi: int | None = Field(default=None, le=120 * 60)
+    bid_ir: float | None = Field(default=None, ge=0, le=1)
+    actual_loi: int | None = Field(default=None, le=120 * 60)
+    actual_ir: float | None = Field(default=None, ge=0, le=1)
     # Unclear what the difference is bw IR and conversion
-    conversion_rate: Optional[float] = Field(default=None, ge=0, le=1)
+    conversion_rate: float | None = Field(default=None, ge=0, le=1)
 
     entrance_url: str = Field(
         description="The link survey respondents should be sent to",
@@ -396,12 +396,12 @@ class ProdegeSurvey(MarketplaceTask):
     )
 
     # This described time-based click rate limiting.
-    max_clicks_settings: Optional[ProdegeMaxClicksSetting] = Field(default=None)
+    max_clicks_settings: ProdegeMaxClicksSetting | None = Field(default=None)
     # This describes the project/surveygroup exclusions
-    past_participation: Optional[ProdegePastParticipation] = Field(default=None)
+    past_participation: ProdegePastParticipation | None = Field(default=None)
     # These describe the panelist exclusions/inclusions
-    include_psids: Optional[Set[UUIDStr]] = Field(default=None)
-    exclude_psids: Optional[Set[UUIDStr]] = Field(default=None)
+    include_psids: set[UUIDStr] | None = Field(default=None)
+    exclude_psids: set[UUIDStr] | None = Field(default=None)
 
     # There are no "qualifications" per se. Instead, everyone has the match a
     # parent quota (and its children) qualifications: List[str] =
@@ -409,23 +409,23 @@ class ProdegeSurvey(MarketplaceTask):
 
     # The eligibility is somewhat complex, with parent and children quotas.
     # Going to keep it flat here.
-    quotas: List[ProdegeQuota] = Field(default_factory=list)
+    quotas: list[ProdegeQuota] = Field(default_factory=list)
 
     source: Literal[Source.PRODEGE] = Field(default=Source.PRODEGE)
 
-    used_question_ids: Set[ProdegeQuestionIdType] = Field(default_factory=set)
+    used_question_ids: set[ProdegeQuestionIdType] = Field(default_factory=set)
 
     # This is a "special" key to store all conditions that are used (as
     # "condition_hashes") throughout this survey. In the reduced representation
     # of this task (nearly always, for db i/o, in global_vars) this field will
     # be null.
-    conditions: Optional[Dict[str, ProdegeCondition]] = Field(default=None)
+    conditions: dict[str, ProdegeCondition] = Field(default=None)
 
     # These do not come from the API. We set them.
-    created: Optional[AwareDatetimeISO] = Field(
+    created: AwareDatetimeISO | None = Field(
         description="when we created this survey in our system", default=None
     )
-    updated: Optional[AwareDatetimeISO] = Field(default=None)
+    updated: AwareDatetimeISO | None = Field(default=None)
 
     @property
     def internal_id(self) -> str:
@@ -494,7 +494,7 @@ class ProdegeSurvey(MarketplaceTask):
         return "1"
 
     @property
-    def marketplace_genders(self) -> Dict[Gender, Optional[MarketplaceCondition]]:
+    def marketplace_genders(self) -> dict[Gender, MarketplaceCondition | None]:
         return {
             Gender.MALE: ProdegeCondition(
                 question_id="3", values=["1"], value_type=ConditionValueType.LIST
@@ -510,7 +510,7 @@ class ProdegeSurvey(MarketplaceTask):
         return round(float(v), 2)
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> Optional["ProdegeSurvey"]:
+    def from_api(cls, d: dict[str, Any]) -> "ProdegeSurvey" | None:
         try:
             return cls._from_api(d)
         except Exception as e:
@@ -518,7 +518,7 @@ class ProdegeSurvey(MarketplaceTask):
             return None
 
     @classmethod
-    def _from_api(cls, d: Dict[str, Any]) -> "ProdegeSurvey":
+    def _from_api(cls, d: dict[str, Any]) -> "ProdegeSurvey":
 
         # Handle phases. keys in api response are 'loi' and 'actual_ir'
         if d["phases"]["loi_phase"] == "actual":
@@ -575,14 +575,14 @@ class ProdegeSurvey(MarketplaceTask):
 
     @computed_field
     @cached_property
-    def all_hashes(self) -> Set[str]:
+    def all_hashes(self) -> set[str]:
         s = set()
         for q in self.quotas:
             s.update(set(q.condition_hashes))
         return s
 
     @property
-    def quotas_verbose(self) -> List[List[Dict[str, Any]]]:
+    def quotas_verbose(self) -> list[list[dict[str, Any]]]:
         assert self.conditions is not None, "conditions must be set"
         res = []
         for quota_group in self.quotas:
@@ -625,7 +625,7 @@ class ProdegeSurvey(MarketplaceTask):
 
         return o1 == o2
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(
             mode="json",
             exclude={
@@ -655,7 +655,7 @@ class ProdegeSurvey(MarketplaceTask):
         return d
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> "ProdegeSurvey":
+    def from_db(cls, d: dict[str, Any]) -> "ProdegeSurvey":
         d["created"] = d["created"].replace(tzinfo=timezone.utc)
         d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
         d["quotas"] = json.loads(d["quotas"])
@@ -675,7 +675,7 @@ class ProdegeSurvey(MarketplaceTask):
 
     def passes_quotas(
         self,
-        criteria_evaluation: Dict[str, Optional[bool]],
+        criteria_evaluation: dict[str, bool | None],
         country_iso: str,
         verbose: bool = False,
     ) -> bool:
@@ -721,8 +721,8 @@ class ProdegeSurvey(MarketplaceTask):
 
     def passes_child_quotas(
         self,
-        criteria_evaluation: Dict[str, Optional[bool]],
-        child_quotas: List[ProdegeQuota],
+        criteria_evaluation: dict[str, bool | None],
+        child_quotas: list[ProdegeQuota],
         country_iso: str,
         verbose: bool = False,
     ) -> bool:
@@ -753,14 +753,14 @@ class ProdegeSurvey(MarketplaceTask):
         return passes
 
     def determine_eligibility(
-        self, criteria_evaluation: Dict[str, Optional[bool]], country_iso: str
+        self, criteria_evaluation: dict[str, bool | None], country_iso: str
     ) -> bool:
         return self.is_open and self.passes_quotas(
             criteria_evaluation, country_iso=country_iso
         )
 
     def print_eligibility(
-        self, criteria_evaluation: Dict[str, Optional[bool]], country_iso: str
+        self, criteria_evaluation: dict[str, bool | None], country_iso: str
     ) -> None:
         print(f"is_open: {self.is_open}")
         print("passes_quotas")
@@ -769,5 +769,3 @@ class ProdegeSurvey(MarketplaceTask):
                 criteria_evaluation, country_iso=country_iso, verbose=True
             )
         )
-
-        return None

@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import subprocess
-from typing import Optional, List
 
 from generalresearch.models.network.nmap.parser import parse_nmap_xml
 from generalresearch.models.network.nmap.result import NmapResult
@@ -11,8 +12,8 @@ def build_nmap_command(
     no_ping: bool = True,
     enable_advanced: bool = True,
     timing: int = 4,
-    ports: Optional[str] = None,
-    top_ports: Optional[int] = None,
+    ports: str | None = None,
+    top_ports: int | None = None,
 ) -> str:
     # e.g. "nmap -Pn -T4 -A --top-ports 1000 -oX - scanme.nmap.org"
     # https://linux.die.net/man/1/nmap

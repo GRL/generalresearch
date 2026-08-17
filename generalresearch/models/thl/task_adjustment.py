@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
@@ -55,8 +56,8 @@ class TaskAdjustmentEvent(BaseModel):
     # Same thing as with adjusted_status, the amount is the "amount the cpi
     # is changing by"!!
 
-    amount: Optional[Decimal] = Field(lt=1000, ge=-1000, default=None)
-    ext_status_code: Optional[str] = Field(default=None, max_length=32)
+    amount: Decimal | None = Field(lt=1000, ge=-1000, default=None)
+    ext_status_code: str | None = Field(default=None, max_length=32)
 
     wall_uuid: UUIDStr = Field(description="The wall event being adjusted")
 

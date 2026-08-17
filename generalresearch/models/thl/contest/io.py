@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
-from typing import Union
 from uuid import uuid4
 
 from generalresearch.models.thl.contest.definitions import ContestType
@@ -29,9 +30,7 @@ user_model_cls = {
     ContestType.MILESTONE: MilestoneUserView,
     ContestType.LEADERBOARD: LeaderboardContestUserView,
 }
-ContestCreate = Union[
-    RaffleContestCreate, LeaderboardContestCreate, MilestoneContestCreate
-]
+ContestCreate = RaffleContestCreate | LeaderboardContestCreate | MilestoneContestCreate
 from generalresearch.models.thl.contest.contest import Contest
 
 

@@ -1,4 +1,4 @@
-from typing import Optional
+from __future__ import annotations
 
 from pydantic import BaseModel, Field, computed_field, model_validator
 
@@ -13,7 +13,7 @@ class StatisticalSummary(BaseModel):
 
     min: int = Field()
     max: int = Field()
-    mean: Optional[int] = Field(default=None)
+    mean: int | None = Field(default=None)
     q1: int = Field()
     q2: int = Field()
     q3: int = Field()

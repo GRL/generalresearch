@@ -1,26 +1,28 @@
+from __future__ import annotations
+
 import xml.etree.cElementTree as ET
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Tuple, Optional
+from typing import Any
 
 from generalresearch.models.network.definitions import IPProtocol
 from generalresearch.models.network.nmap.result import (
     NmapHostname,
-    NmapResult,
-    NmapPort,
-    PortState,
-    PortStateReason,
-    NmapService,
-    NmapScript,
-    NmapPortStats,
-    NmapScanType,
+    NmapHostScript,
     NmapHostState,
     NmapHostStatusReason,
-    NmapHostScript,
-    NmapOSMatch,
     NmapOSClass,
+    NmapOSMatch,
+    NmapPort,
+    NmapPortStats,
+    NmapResult,
+    NmapScanInfo,
+    NmapScanType,
+    NmapScript,
+    NmapService,
     NmapTrace,
     NmapTraceHop,
-    NmapScanInfo,
+    PortState,
+    PortStateReason,
 )
 
 
@@ -109,7 +111,7 @@ class NmapXmlParser:
         return NmapScanInfo.model_validate(data)
 
     @classmethod
-    def _parse_runstats(cls, root: ET.Element) -> Dict:
+    def _parse_runstats(cls, root: ET.Element) -> dict:
         runstats = root.find("runstats")
         if runstats is None:
             return {}
@@ -129,7 +131,7 @@ class NmapXmlParser:
         }
 
     @classmethod
-    def _parse_nmaprun(cls, nmaprun_el: ET.Element) -> Dict:
+    def _parse_nmaprun(cls, nmaprun_el: ET.Element) -> dict:
         nmap_data = dict()
         nmaprun = dict(nmaprun_el.attrib)
         nmap_data["command_line"] = nmaprun["args"]
@@ -141,7 +143,7 @@ class NmapXmlParser:
         return nmap_data
 
     @classmethod
-    def _parse_xml_host(cls, host_el: ET.Element) -> Dict:
+    def _parse_xml_host(cls, host_el: ET.Element) -> dict:
         """
         Receives a <host> XML tag representing a scanned host with
         its services.
@@ -207,15 +209,15 @@ class NmapXmlParser:
         return data
 
     @classmethod
-    def _parse_os_matches(cls, host_el: ET.Element) -> List[NmapOSMatch] | None:
+    def _parse_os_matches(cls, host_el: ET.Element) -> list[NmapOSMatch] | None:
         os_elem = host_el.find("os")
         if os_elem is None:
             return None
 
-        matches: List[NmapOSMatch] = []
+        matches: list[NmapOSMatch] = []
 
         for m in os_elem.findall("osmatch"):
-            classes: List[NmapOSClass] = []
+            classes: list[NmapOSClass] = []
 
             for c in m.findall("osclass"):
                 cpes = [e.text.strip() for e in c.findall("cpe") if e.text]
@@ -245,7 +247,7 @@ class NmapXmlParser:
         return matches or None
 
     @classmethod
-    def _parse_hostnames(cls, hostnames_el: ET.Element) -> List[NmapHostname]:
+    def _parse_hostnames(cls, hostnames_el: ET.Element) -> list[NmapHostname]:
         """
         Parses the hostnames element.
         e.g. <hostnames>
@@ -269,11 +271,11 @@ class NmapXmlParser:
     @classmethod
     def _parse_xml_ports(
         cls, ports_elem: ET.Element
-    ) -> Tuple[List[NmapPort], NmapPortStats]:
+    ) -> tuple[list[NmapPort], NmapPortStats]:
         """
         Parses the list of scanned services from a targeted host.
         """
-        ports: List[NmapPort] = []
+        ports: list[NmapPort] = []
         stats = NmapPortStats()
 
         # handle extraports first
@@ -319,7 +321,7 @@ class NmapXmlParser:
             "output": output,
         }
 
-        elements: Dict[str, Any] = {}
+        elements: dict[str, Any] = {}
 
         # handle <elem key="...">value</elem>
         for elem in script_elem.findall(".//elem"):
@@ -373,7 +375,7 @@ class NmapXmlParser:
         return NmapPort.model_validate(port)
 
     @classmethod
-    def _parse_trace(cls, host_elem: ET.Element) -> Optional[NmapTrace]:
+    def _parse_trace(cls, host_elem: ET.Element) -> NmapTrace | None:
         trace_elem = host_elem.find("trace")
         if trace_elem is None:
             return None
@@ -381,7 +383,7 @@ class NmapXmlParser:
         port_attr = trace_elem.attrib.get("port")
         proto_attr = trace_elem.attrib.get("proto")
 
-        hops: List[NmapTraceHop] = []
+        hops: list[NmapTraceHop] = []
 
         for hop_elem in trace_elem.findall("hop"):
             ttl = hop_elem.attrib.get("ttl")

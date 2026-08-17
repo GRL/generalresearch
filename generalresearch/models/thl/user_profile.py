@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import hashlib
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import (
     BaseModel,
@@ -21,19 +23,17 @@ from generalresearch.models.thl.user_streak import UserStreak
 class UserMetadata(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    user_id: SkipJsonSchema[Optional[PositiveInt]] = Field(
+    user_id: SkipJsonSchema[PositiveInt | None] = Field(
         exclude=True, default=None, lt=MAX_INT32
     )
 
-    email_address: Optional[EmailStr] = Field(
-        default=None, examples=["contact@mail.com"]
-    )
+    email_address: EmailStr | None = Field(default=None, examples=["contact@mail.com"])
 
     @computed_field
     def email_md5(
         self,
     ) -> Annotated[
-        Optional[str],
+        str | None,
         Field(
             min_length=32,
             max_length=32,
@@ -50,7 +50,7 @@ class UserMetadata(BaseModel):
     def email_sha1(
         self,
     ) -> Annotated[
-        Optional[str],
+        str | None,
         Field(
             min_length=40,
             max_length=40,
@@ -66,7 +66,7 @@ class UserMetadata(BaseModel):
     def email_sha256(
         self,
     ) -> Annotated[
-        Optional[str],
+        str | None,
         Field(
             min_length=64,
             max_length=64,
@@ -80,7 +80,7 @@ class UserMetadata(BaseModel):
             return None
         return hashlib.sha256(self.email_address.encode("utf-8")).hexdigest()
 
-    def to_db(self) -> Dict[str, Any]:
+    def to_db(self) -> dict[str, Any]:
         res = self.model_dump(mode="json")
         res["user_id"] = self.user_id
         return res
@@ -107,7 +107,7 @@ class UserProfile(UserMetadata):
 
     user: User = Field()
 
-    marketplace_pids: Dict[Source, UUIDStr] = Field(
+    marketplace_pids: dict[Source, UUIDStr] = Field(
         default_factory=dict,
         description="User's PID in marketplaces",
         examples=[
@@ -119,4 +119,4 @@ class UserProfile(UserMetadata):
         ],
     )
 
-    streaks: List[UserStreak] = Field(default_factory=list)
+    streaks: list[UserStreak] = Field(default_factory=list)

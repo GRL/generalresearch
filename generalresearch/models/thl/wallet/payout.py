@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import json
+from collections.abc import Collection
 from datetime import datetime, timezone
-from typing import Any, Collection, Dict, List, Optional, Union
+from typing import Any
 from uuid import uuid4
 
 from pydantic import (
@@ -35,8 +38,8 @@ class PayoutEvent(BaseModel, validate_assignment=True):
     # These two fields are copied here from the LedgerAccount through the
     #   debit_account_uuid for convenience. They will get populated if the
     #   PayoutEventManager retrieves a PayoutEvent from the db.
-    account_reference_type: Optional[str] = Field(default=None)
-    account_reference_uuid: Optional[UUIDStr] = Field(default=None)
+    account_reference_type: str | None = Field(default=None)
+    account_reference_uuid: UUIDStr | None = Field(default=None)
 
     # References a row in the account_cashoutmethod table. This is the
     #   cashout method that was used to request this payout. (A cashout is
@@ -46,7 +49,7 @@ class PayoutEvent(BaseModel, validate_assignment=True):
     # By default, this will just be the cashout_method.name. This also is
     #   populated from the db and so does not need to be set (there is no
     #   `description` field in event_payout)
-    description: Optional[str] = Field(default=None)
+    description: str | None = Field(default=None)
     created: AwareDatetimeISO = Field(
         default_factory=lambda: datetime.now(tz=timezone.utc)
     )
@@ -67,18 +70,18 @@ class PayoutEvent(BaseModel, validate_assignment=True):
     )
 
     # Used for holding an external, payout-type-specific identifier
-    ext_ref_id: Optional[str] = Field(default=None)
+    ext_ref_id: str | None = Field(default=None)
     payout_type: PayoutType = Field(
         description=PayoutType.as_openapi(), examples=[PayoutType.ACH]
     )
 
     # Stores payout-type-specific information that is used to request this
     #   payout from the external provider.
-    request_data: Dict[str, Any] = Field(default_factory=dict)
+    request_data: dict[str, Any] = Field(default_factory=dict)
 
     # Stores payout-type-specific order information that is returned from
     #   the external payout provider.
-    order_data: Optional[Union[Dict[str, Any], CashMailOrderData]] = Field(default=None)
+    order_data: dict[str, Any] | CashMailOrderData | None = Field(default=None)
 
     @field_validator("payout_type", mode="before")
     @classmethod
@@ -93,8 +96,8 @@ class PayoutEvent(BaseModel, validate_assignment=True):
     def update(
         self,
         status: PayoutStatus,
-        ext_ref_id: Optional[str] = None,
-        order_data: Optional[Dict[str, Any]] = None,
+        ext_ref_id: str | None = None,
+        order_data: dict[str, Any] | None = None,
     ) -> None:
         # These 3 things are the only modifiable attributes
         self.check_status_change_allowed(status)
@@ -128,7 +131,7 @@ class PayoutEvent(BaseModel, validate_assignment=True):
         else:
             raise ValueError("this shouldn't happen")
 
-    def model_dump_mysql(self, *args, **kwargs) -> Dict[str, Any]:
+    def model_dump_mysql(self, *args, **kwargs) -> dict[str, Any]:
         d = self.model_dump(mode="json", *args, **kwargs)
         if "created" in d:
             d["created"] = self.created.replace(tzinfo=None)
@@ -166,7 +169,7 @@ class BPPayoutEvent(BaseModel):
         examples=[531],
     )
 
-    status: Optional[PayoutStatus] = Field(
+    status: PayoutStatus | None = Field(
         default=PayoutStatus.PENDING,
         description=PayoutStatus.as_openapi(),
         examples=[PayoutStatus.COMPLETE],
@@ -186,9 +189,9 @@ class BPPayoutEvent(BaseModel):
     @staticmethod
     def from_pe(
         payout_events: Collection[PayoutEvent],
-        account_product_mapping: Dict[str, str],
-        order_by="ASC",
-    ) -> List["BPPayoutEvent"]:
+        account_product_mapping: dict[str, str],
+        order_by: str = "ASC",
+    ) -> list["BPPayoutEvent"]:
         res = []
         for pe in payout_events:
             bp_pe = BPPayoutEvent.model_validate(

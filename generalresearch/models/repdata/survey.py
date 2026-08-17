@@ -6,7 +6,7 @@ import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import Any, Dict, List, Literal, Optional, Set, Type
+from typing import Any, Literal, Type
 from uuid import UUID
 
 from pydantic import (
@@ -54,13 +54,13 @@ class RepDataCondition(MarketplaceCondition):
         pattern=r"^[0-9]+$",
         validation_alias="StandardGlobalQuestionID",
     )
-    values: List[str] = Field(min_length=1, validation_alias="PreCodes")
+    values: list[str] = Field(min_length=1, validation_alias="PreCodes")
     value_type: Literal[ConditionValueType.LIST] = Field(
         default=ConditionValueType.LIST
     )
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> "RepDataCondition":
+    def from_api(cls, d: dict[str, Any]) -> "RepDataCondition":
         if d["Condition"] == "Is":
             d["logical_operator"] = LogicalOperator.OR
             d["negate"] = False
@@ -86,7 +86,7 @@ class RepDataQuota(BaseModel):
     )
     quota_uuid: UUIDStr = Field(validation_alias="QuotaUd")
     name: str = Field(validation_alias="QuotaName")
-    desired_count: Optional[int] = Field(
+    desired_count: int | None = Field(
         default=None,
         validation_alias="Quota",
         description="Desired completes or starts (depending on calculation_type)",
@@ -95,15 +95,15 @@ class RepDataQuota(BaseModel):
         validation_alias="QuotaAchieved",
         description="Achieved completes or starts (depending on calculation_type)",
     )
-    remaining_count: Optional[int] = Field(
+    remaining_count: int | None = Field(
         validation_alias="QuotaRemaining",
         description="Completes or starts remaining (depending on calculation_type). Should "
         "be used as the indicator for whether more respondents are needed to a "
         "specific quota. If QuotaRemaining value = 0, then pause. If None, then the quota"
         "is completely open (i.e. infinity). Unclear if this is true though (see .is_open)",
     )
-    conditions: List[RepDataCondition] = Field(min_length=1)
-    condition_hashes: List[str] = Field(min_length=1, default_factory=list)
+    conditions: list[RepDataCondition] = Field(min_length=1)
+    condition_hashes: list[str] = Field(min_length=1, default_factory=list)
 
     @field_validator("quota_uuid", mode="before")
     @classmethod
@@ -137,7 +137,7 @@ class RepDataQuota(BaseModel):
         d = self.model_dump(mode="json", exclude={"conditions"})
         return RepDataHashedQuota.model_validate(d)
 
-    def passes(self, criteria_evaluation: Dict[str, Optional[bool]]) -> Optional[bool]:
+    def passes(self, criteria_evaluation: dict[str, bool | None]) -> bool | None:
         # We have to match all conditions within the quota.
         return self.is_open and all(
             criteria_evaluation.get(c) for c in self.condition_hashes
@@ -162,12 +162,12 @@ class RepDataStream(MarketplaceTask):
         validation_alias="CalculationType",
     )
 
-    qualifications: List[RepDataCondition] = Field(min_length=1)
-    qualification_hashes: List[str] = Field(min_length=1, default_factory=list)
-    quotas: List[RepDataQuota] = Field(min_length=1)
-    hashed_quotas: List[RepDataHashedQuota] = Field(min_length=1, default_factory=list)
+    qualifications: list[RepDataCondition] = Field(min_length=1)
+    qualification_hashes: list[str] = Field(min_length=1, default_factory=list)
+    quotas: list[RepDataQuota] = Field(min_length=1)
+    hashed_quotas: list[RepDataHashedQuota] = Field(min_length=1, default_factory=list)
 
-    used_question_ids: Set[str] = Field(default_factory=set)
+    used_question_ids: set[str] = Field(default_factory=set)
 
     # Note: The API returns both Expected and ExpectedStreamCompletes which are the same
     expected_count: int = Field(
@@ -182,7 +182,7 @@ class RepDataStream(MarketplaceTask):
     )
 
     cpi: Decimal = Field(gt=0, le=100, validation_alias="CPI")
-    days_in_field: Optional[int] = Field(validation_alias="DaysInField", default=None)
+    days_in_field: int | None = Field(validation_alias="DaysInField", default=None)
 
     # # -------------- # #
     #  Below here: these fields are useless because it is our own data.
@@ -275,14 +275,14 @@ class RepDataStream(MarketplaceTask):
 
     @computed_field
     @cached_property
-    def all_hashes(self) -> Set[str]:
+    def all_hashes(self) -> set[str]:
         s = set(self.qualification_hashes.copy())
         for q in self.hashed_quotas:
             s.update(set(q.condition_hashes))
         return s
 
     @property
-    def all_conditions(self) -> List[RepDataCondition]:
+    def all_conditions(self) -> list[RepDataCondition]:
         cs = self.qualifications.copy()
         for quota in self.quotas:
             cs.extend(quota.conditions.copy())
@@ -312,7 +312,7 @@ class RepDataStream(MarketplaceTask):
         return "42"
 
     @property
-    def marketplace_genders(self) -> Dict[Gender, Optional[MarketplaceCondition]]:
+    def marketplace_genders(self) -> dict[Gender, MarketplaceCondition | None]:
         return {
             Gender.MALE: RepDataCondition(
                 question_id="43",
@@ -362,7 +362,7 @@ class RepDataStreamHashed(RepDataStream):
 
     @classmethod
     def from_db(
-        cls, res: Dict[str, Any], survey: RepDataSurveyHashed
+        cls, res: dict[str, Any], survey: RepDataSurveyHashed
     ) -> "RepDataStreamHashed":
         # We need certain fields copied over here so that a stream can exist
         # independent of the survey
@@ -408,18 +408,18 @@ class RepDataSurvey(BaseModel):
         validation_alias="PII", description="Indicates whether PII is collected"
     )
 
-    allowed_devices: List[DeviceType] = Field(
+    allowed_devices: list[DeviceType] = Field(
         min_length=1, validation_alias="Device Compatibility"
     )
 
-    streams: List[RepDataStream] = Field(min_length=1)
-    hashed_streams: List[RepDataStreamHashed] = Field(
+    streams: list[RepDataStream] = Field(min_length=1)
+    hashed_streams: list[RepDataStreamHashed] = Field(
         min_length=1, default_factory=list
     )
 
     # These do not come from the API. We set them ourselves
-    created: Optional[AwareDatetimeISO] = Field(default=None)
-    last_updated: Optional[AwareDatetimeISO] = Field(default=None)
+    created: AwareDatetimeISO | None = Field(default=None)
+    last_updated: AwareDatetimeISO | None = Field(default=None)
 
     @field_validator("survey_uuid", "project_uuid", mode="before")
     @classmethod
@@ -434,7 +434,7 @@ class RepDataSurvey(BaseModel):
         return data
 
     @field_validator("allowed_devices", mode="after")
-    def sort_allowed_devices(cls, values: List[str]):
+    def sort_allowed_devices(cls, values: list[str]):
         return sorted(values)
 
     @property
@@ -452,14 +452,14 @@ class RepDataSurvey(BaseModel):
         return self.survey_status == RepDataStatus.LIVE
 
     @property
-    def all_hashes(self) -> Set[str]:
+    def all_hashes(self) -> set[str]:
         s = set()
         for stream in self.hashed_streams:
             s.update(stream.all_hashes)
         return s
 
     @property
-    def all_conditions(self) -> List[RepDataCondition]:
+    def all_conditions(self) -> list[RepDataCondition]:
         cs = list()
         for stream in self.streams:
             cs.extend(stream.all_conditions)
@@ -472,7 +472,7 @@ class RepDataSurvey(BaseModel):
         return ",".join(map(str, sorted([d.value for d in self.allowed_devices])))
 
     @classmethod
-    def from_api(cls, survey_response) -> Optional["RepDataSurvey"]:
+    def from_api(cls, survey_response) -> "RepDataSurvey" | None:
         """
         :param survey_response: Raw response from API
         """
@@ -518,7 +518,7 @@ class RepDataSurvey(BaseModel):
     def is_changed(self, other) -> bool:
         return not self.is_unchanged(other)
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         return self.to_hashed_survey().to_mysql()
 
     def to_hashed_survey(self) -> "RepDataSurveyHashed":
@@ -533,7 +533,7 @@ class RepDataSurveyHashed(RepDataSurvey):
     streams: None = Field(default=None, exclude=True)
 
     @classmethod
-    def from_db(cls, res: Dict[str, Any]) -> "RepDataSurveyHashed":
+    def from_db(cls, res: dict[str, Any]) -> "RepDataSurveyHashed":
         res["allowed_devices"] = [
             DeviceType(int(x)) for x in res["allowed_devices"].split(",")
         ]
@@ -542,7 +542,7 @@ class RepDataSurveyHashed(RepDataSurvey):
         res["last_updated"] = res["last_updated"].replace(tzinfo=timezone.utc)
         return cls.model_validate(res)
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", by_alias=True, exclude={"hashed_streams"})
         d["allowed_devices"] = ",".join(
             map(str, sorted([d.value for d in self.allowed_devices]))

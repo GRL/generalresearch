@@ -4,7 +4,7 @@ import logging
 import math
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import List, Literal
+from typing import Literal
 from uuid import UUID, uuid3
 
 import pandas as pd
@@ -117,7 +117,7 @@ class Leaderboard(BaseModel):
         description="The total number of rows in the leaderboard.", examples=[2]
     )
 
-    rows: List[LeaderboardRow] = Field(
+    rows: list[LeaderboardRow] = Field(
         default_factory=list,
         examples=[
             [
@@ -342,4 +342,4 @@ class LeaderboardWinner(BaseModel):
 
 
 class LeaderboardWinnerResponse(StatusResponse):
-    winners: List[LeaderboardWinner] = Field(default_factory=list)
+    winners: list[LeaderboardWinner] = Field(default_factory=list)

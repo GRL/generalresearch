@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from abc import ABC
-from typing import Collection, Dict, List, Literal, Optional
+from collections.abc import Collection
+from typing import Literal
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -16,7 +17,7 @@ class MarketplaceSummary(BaseModel):
     inventory: MarketplaceInventorySummary = Field(
         description="Inventory of the marketplace"
     )
-    user_activity: Optional[str] = Field(
+    user_activity: str | None = Field(
         description="User activity of the marketplace", default=None
     )
 
@@ -24,32 +25,32 @@ class MarketplaceSummary(BaseModel):
 class MarketplaceInventorySummary(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
-    live_tasks: List[CountStat] = Field(
+    live_tasks: list[CountStat] = Field(
         default_factory=list,
         description="The count of tasks that are currently live",
     )
-    live_gen_pop_tasks: List[CountStat] = Field(
+    live_gen_pop_tasks: list[CountStat] = Field(
         default_factory=list,
         description="The count of gen-pop tasks that are currently live",
     )
-    tasks_created: List[CountStat] = Field(
+    tasks_created: list[CountStat] = Field(
         default_factory=list,
         description="The count of tasks created",
     )
-    required_finishes: List[CountStat] = Field(
+    required_finishes: list[CountStat] = Field(
         default_factory=list,
         description="Number of finishes needed across all live tasks",
     )
 
-    payout: List[StatisticalSummaryStat] = Field(
+    payout: list[StatisticalSummaryStat] = Field(
         default_factory=list,
         description="The distribution of payouts for all live tasks",
     )
-    expected_duration: List[StatisticalSummaryStat] = Field(
+    expected_duration: list[StatisticalSummaryStat] = Field(
         default_factory=list,
         description="The distribution of expected durations for all live tasks",
     )
-    required_finishes_per_task: List[StatisticalSummaryStat] = Field(
+    required_finishes_per_task: list[StatisticalSummaryStat] = Field(
         default_factory=list,
         description="The distribution of required finishes on all live tasks",
     )
@@ -59,7 +60,7 @@ FacetKey = Literal["country_iso", "day", "month"]
 
 
 class Stat(BaseModel, ABC):
-    facet: Dict[FacetKey, str | int | float] = Field(
+    facet: dict[FacetKey, str | int | float] = Field(
         examples=[{"country_iso": "us"}], description="The grouping criteria"
     )
 

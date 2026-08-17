@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Iterator, Literal, Optional, Tuple, Union
+from typing import Any, Iterator, Literal
 
 from pydantic import (
     BaseModel,
@@ -23,30 +25,30 @@ class UserQuestionAnswer(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True)
 
-    user_id: Optional[PositiveInt] = Field(lt=MAX_INT32, default=None)
+    user_id: PositiveInt | None = Field(lt=MAX_INT32, default=None)
     question_id: UUIDStr = Field()
-    answer: Tuple[str, ...] = Field()
+    answer: tuple[str, ...] = Field()
     timestamp: AwareDatetimeISO = Field(
         default_factory=lambda: datetime.now(tz=timezone.utc)
     )
 
-    country_iso: Union[CountryISO, Literal["xx"]] = Field()
-    language_iso: Union[LanguageISO, Literal["xxx"]] = Field()
+    country_iso: CountryISO | Literal["xx"] = Field()
+    language_iso: LanguageISO | Literal["xxx"] = Field()
 
     # Store a property code associated with this question_id. e.g. "gr:hispanic" or "d:192"
     property_code: str = Field()
     # Stores any question answers that are calculated from this answer
-    calc_answers: Optional[Dict[str, Tuple[str, ...]]] = Field(default=None)
+    calc_answers: dict[str, tuple[str, ...]] | None = Field(default=None)
 
     @field_validator("calc_answers")
-    def sorted_calc_answers(cls, calc_answers) -> Optional[Dict[str, Tuple[str, ...]]]:
+    def sorted_calc_answers(cls, calc_answers) -> dict[str, tuple[str, ...]] | None:
         if calc_answers is None:
             return None
 
         return {k: tuple(sorted(v)) for k, v in calc_answers.items()}
 
     @field_validator("calc_answers")
-    def validate_keys(cls, calc_answers) -> Optional[Dict[str, Tuple[str, ...]]]:
+    def validate_keys(cls, calc_answers) -> dict[str, tuple[str, ...]] | None:
         if calc_answers is None:
             return None
 
@@ -55,7 +57,7 @@ class UserQuestionAnswer(BaseModel):
         ), "calc_answers expects the keys to be in format source:question_code"
         return calc_answers
 
-    def model_dump_mysql(self, session_id: Optional[str] = None) -> Dict[str, Any]:
+    def model_dump_mysql(self, session_id: str | None = None) -> dict[str, Any]:
         d = self.model_dump(mode="json", exclude={"calc_answers", "timestamp"})
         d["answer"] = json.dumps(self.answer)
         # Note naming inconsistency here: calc_answer/s
@@ -84,7 +86,7 @@ class UserQuestionAnswer(BaseModel):
     def __hash__(self) -> int:
         return hash((self.question_id, self.answer, self.timestamp))
 
-    def validate_question_answer(self, question: UpkQuestion) -> Tuple[bool, str]:
+    def validate_question_answer(self, question: UpkQuestion) -> tuple[bool, str]:
         """
         Returns (is_valid, error_message).
         """
@@ -143,7 +145,7 @@ class MarketplaceResearchProfileQuestion(BaseModel):
         description="# the question id/code on the marketplace", min_length=1
     )
     source: Source = Field()  # the one or two-letter marketplace code
-    answer: Tuple[str, ...] = Field(min_length=1)
+    answer: tuple[str, ...] = Field(min_length=1)
     timestamp: AwareDatetimeISO = Field()
     country_iso: CountryISO = Field()
     language_iso: LanguageISO = Field()

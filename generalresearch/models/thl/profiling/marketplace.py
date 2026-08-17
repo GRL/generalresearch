@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from functools import cached_property
-from typing import Any, Dict, Optional, Set, Tuple
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, computed_field
 
@@ -37,7 +39,7 @@ class MarketplaceQuestion(BaseModel, ABC):
     # Refers to a Category that we annotate. The info is stored in different
     #   dbs, so it may not be possible to retrieve the Category from the id,
     #   so we just store the id here.
-    category_id: Optional[UUIDStr] = Field(default=None)
+    category_id: UUIDStr | None = Field(default=None)
 
     # # This doesn't work
     # @property
@@ -58,7 +60,7 @@ class MarketplaceQuestion(BaseModel, ABC):
         return f"{self.source.value}:{self.internal_id}"
 
     @property
-    def _key(self) -> Tuple[str, CountryISOLike, LanguageISOLike]:
+    def _key(self) -> tuple[str, CountryISOLike, LanguageISOLike]:
         """This uniquely identifies a question in a locale. There is a unique
         index on this in the db. e.g. (question_id, country_iso, language_iso)
         """
@@ -68,7 +70,7 @@ class MarketplaceQuestion(BaseModel, ABC):
     def to_upk_question(self): ...
 
     @computed_field
-    def num_options(self) -> Optional[int]:
+    def num_options(self) -> int | None:
         return len(self.options) if self.options is not None else None
 
     def __hash__(self):
@@ -96,7 +98,7 @@ class MarketplaceUserQuestionAnswer(BaseModel):
     #   "anonymous" users, which are represented by a list of question answers
     #   not associated with an actual user. No default b/c we must explicitly
     #   set the field to None.
-    user_id: Optional[PositiveInt] = Field(lt=MAX_INT32)
+    user_id: PositiveInt | None = Field(lt=MAX_INT32)
 
     question_id: str = Field()
 
@@ -104,7 +106,7 @@ class MarketplaceUserQuestionAnswer(BaseModel):
     #   these are fetched from the db for use in yield-management, we read this
     #   field from the marketplace's question table.
     #   This should be overloaded in each implementation !!!
-    question_type: Optional[str] = Field(default=None)
+    question_type: str | None = Field(default=None)
 
     # This may be a pipe-separated string if the question_type is multi. Regex
     #   means any chars except capital letters
@@ -116,14 +118,14 @@ class MarketplaceUserQuestionAnswer(BaseModel):
     language_iso: LanguageISO = Field(frozen=True)
 
     @cached_property
-    def options_ids(self) -> Set[str]:
+    def options_ids(self) -> set[str]:
         return set(self.option_id.split("|"))
 
     @property
     def pre_code(self) -> str:
         return self.option_id
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", exclude={"question_type"})
         d["created"] = self.created.replace(tzinfo=None)
         return d

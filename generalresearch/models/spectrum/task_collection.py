@@ -1,4 +1,4 @@
-from typing import Dict, List, Set
+from __future__ import annotations
 
 import pandas as pd
 from pandera import Check, Column, DataFrameSchema, Index
@@ -12,8 +12,8 @@ from generalresearch.models.thl.survey.task_collection import (
     create_empty_df_from_schema,
 )
 
-COUNTRY_ISOS: Set[str] = Localelator().get_all_countries()
-LANGUAGE_ISOS: Set[str] = Localelator().get_all_languages()
+COUNTRY_ISOS: set[str] = Localelator().get_all_countries()
+LANGUAGE_ISOS: set[str] = Localelator().get_all_languages()
 
 SpectrumTaskCollectionSchema = DataFrameSchema(
     columns={
@@ -43,8 +43,8 @@ SpectrumTaskCollectionSchema = DataFrameSchema(
         "created_api": Column(dtype=pd.DatetimeTZDtype(tz="UTC")),
         "modified_api": Column(dtype=pd.DatetimeTZDtype(tz="UTC")),
         "updated": Column(dtype=pd.DatetimeTZDtype(tz="UTC")),
-        "used_question_ids": Column(List[str]),
-        "all_hashes": Column(List[str]),  # set >> list for column support
+        "used_question_ids": Column(list[str]),
+        "all_hashes": Column(list[str]),  # set >> list for column support
     },
     checks=[],
     index=Index(
@@ -60,10 +60,10 @@ SpectrumTaskCollectionSchema = DataFrameSchema(
 
 
 class SpectrumTaskCollection(TaskCollection):
-    items: List[SpectrumSurvey]
+    items: list[SpectrumSurvey]
     _schema = SpectrumTaskCollectionSchema
 
-    def to_rows(self, s: SpectrumSurvey) -> List[Dict]:
+    def to_rows(self, s: SpectrumSurvey) -> list[dict]:
         fields = [
             "survey_name",
             "status",

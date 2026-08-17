@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing_extensions import Self
@@ -64,7 +64,7 @@ class LucidQuestion(MarketplaceQuestion):
     question_type: LucidQuestionType = Field(
         description="The type of question asked", frozen=True
     )
-    options: Optional[List[LucidQuestionOption]] = Field(
+    options: list[LucidQuestionOption] | None = Field(
         default=None, min_length=1, frozen=True
     )
 
@@ -94,7 +94,7 @@ class LucidQuestion(MarketplaceQuestion):
         return options
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> Self:
+    def from_db(cls, d: dict[str, Any]) -> Self:
         options = None
         if d["options"]:
             options = [

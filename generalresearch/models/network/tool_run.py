@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from enum import StrEnum
-from typing import Optional, Literal
+from typing import Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, PositiveInt
@@ -13,10 +15,10 @@ from generalresearch.models.network.mtr.result import MTRResult
 from generalresearch.models.network.nmap.result import NmapResult
 from generalresearch.models.network.rdns.result import RDNSResult
 from generalresearch.models.network.tool_run_command import (
-    ToolRunCommand,
+    MTRRunCommand,
     NmapRunCommand,
     RDNSRunCommand,
-    MTRRunCommand,
+    ToolRunCommand,
 )
 
 
@@ -48,7 +50,7 @@ class ToolRun(BaseModel):
     A run of a networking tool against one host/ip.
     """
 
-    id: Optional[PositiveInt] = Field(default=None)
+    id: PositiveInt | None = Field(default=None)
 
     ip: IPvAnyAddressStr = Field()
     scan_group_id: UUIDStr = Field(default_factory=lambda: uuid4().hex)
@@ -57,8 +59,8 @@ class ToolRun(BaseModel):
     tool_version: str = Field()
 
     started_at: AwareDatetimeISO = Field()
-    finished_at: Optional[AwareDatetimeISO] = Field(default=None)
-    status: Optional[Status] = Field(default=None)
+    finished_at: AwareDatetimeISO | None = Field(default=None)
+    status: Status | None = Field(default=None)
 
     raw_command: str = Field()
 

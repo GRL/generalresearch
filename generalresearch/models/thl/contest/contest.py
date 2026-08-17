@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from uuid import uuid4
 
 from pydantic import (
@@ -41,7 +41,7 @@ class ContestBase(BaseModel, ABC):
     name: str = Field(
         max_length=128, description="Name of contest. Can be displayed to user."
     )
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None,
         max_length=2048,
         description="Description of contest. Can be displayed to user.",
@@ -53,18 +53,18 @@ class ContestBase(BaseModel, ABC):
 
     end_condition: ContestEndCondition = Field()
     """Defines the conditions to win one or more prizes once the contest is ended"""
-    prizes: List[ContestPrize] = Field(default_factory=list, min_length=1)
+    prizes: list[ContestPrize] = Field(default_factory=list, min_length=1)
 
     starts_at: AwareDatetimeISO = Field(
         description="When the contest starts",
         default_factory=lambda: datetime.now(tz=timezone.utc),
     )
 
-    terms_and_conditions: Optional[HttpUrl] = Field(default=None)
+    terms_and_conditions: HttpUrl | None = Field(default=None)
 
     status: ContestStatus = Field(default=ContestStatus.ACTIVE)
 
-    country_isos: Optional[CountryISOs] = Field(
+    country_isos: CountryISOs | None = Field(
         description="Contest is restricted to these countries. If null, all countries are allowed",
         default=None,
     )
@@ -80,7 +80,7 @@ class ContestBase(BaseModel, ABC):
 
 
 class Contest(ContestBase):
-    id: Optional[int] = Field(
+    id: int | None = Field(
         default=None,
         exclude=True,
         description="pk in db",
@@ -100,17 +100,17 @@ class Contest(ContestBase):
         "entries being created/modified",
     )
 
-    ended_at: Optional[AwareDatetimeISO] = Field(
+    ended_at: AwareDatetimeISO | None = Field(
         default=None,
         description="When the contest ended",
     )
 
-    end_reason: Optional[ContestEndReason] = Field(
+    end_reason: ContestEndReason | None = Field(
         default=None,
         description="The reason the contest ended",
     )
 
-    all_winners: Optional[List[ContestWinner]] = Field(
+    all_winners: list[ContestWinner] | None = Field(
         default=None,
         exclude=True,
         description="All prize winners of this contest",
@@ -136,7 +136,7 @@ class Contest(ContestBase):
     #             return True
     #     return False
 
-    def should_end(self) -> Tuple[bool, Optional[ContestEndReason]]:
+    def should_end(self) -> tuple[bool, ContestEndReason | None]:
         if self.status == ContestStatus.ACTIVE:
             if self.end_condition.ends_at:
                 if datetime.now(tz=timezone.utc) >= self.end_condition.ends_at:
@@ -145,12 +145,13 @@ class Contest(ContestBase):
         return False, None
 
     @abstractmethod
-    def select_winners(self) -> Optional[List[ContestWinner]]: ...
+    def select_winners(self) -> list[ContestWinner] | None: ...
 
     def end_contest(self) -> None:
         e, reason = self.should_end()
         if not e:
-            return None
+            return
+
         # todo: Acquire a lock here, b/c this next part involves randomness
         #   so we can't have it happen more than once
         winners = self.select_winners()
@@ -169,7 +170,7 @@ class Contest(ContestBase):
             )
         return None
 
-    def model_dump_mysql(self, **kwargs) -> Dict[str, Any]:
+    def model_dump_mysql(self, **kwargs) -> dict[str, Any]:
         d = self.model_dump(mode="json", **kwargs)
 
         d["created_at"] = self.created_at
@@ -183,7 +184,7 @@ class Contest(ContestBase):
         return d
 
     @classmethod
-    def model_validate_mysql(cls, data: Dict[str, Any]) -> Self:
+    def model_validate_mysql(cls, data: dict[str, Any]) -> Self:
         data = {k: v for k, v in data.items() if k in cls.model_fields.keys()}
         if isinstance(data["end_condition"], dict):
             data["end_condition"] = ContestEndCondition.model_validate(
@@ -204,12 +205,12 @@ class ContestUserView(Contest):
 
     # TODO: this could show a more detailed ContestWinner model, maybe
     # including like shipping status or whatever
-    user_winnings: List[ContestWinner] = Field(
+    user_winnings: list[ContestWinner] = Field(
         description="The prizes won in this contest by the requested user",
         default_factory=list,
     )
 
-    def is_user_eligible(self, country_iso: str) -> Tuple[bool, str]:
+    def is_user_eligible(self, country_iso: str) -> tuple[bool, str]:
         now = datetime.now(tz=timezone.utc)
 
         assert country_iso.lower() == country_iso

@@ -1,4 +1,6 @@
-from typing import Any, Dict, Literal
+from __future__ import annotations
+
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -6,7 +8,7 @@ from pydantic import BaseModel, Field
 class OfferWallBehavior(BaseModel):
     id: str = Field()
     name: str = Field()
-    kwargs: Dict[str, Any] = Field(default_factory=dict)
+    kwargs: dict[str, Any] = Field(default_factory=dict)
 
 
 OFFERWALL_BEHAVIOR_PRESETS = [

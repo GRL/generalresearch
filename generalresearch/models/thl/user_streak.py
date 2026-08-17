@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from datetime import date, datetime, timedelta
 from enum import Enum
-from typing import Optional, Tuple
 
 import pandas as pd
 from pydantic import (
@@ -63,7 +64,7 @@ class UserStreak(BaseModel):
         ser_json_timedelta="float", validate_assignment=True, extra="forbid"
     )
 
-    user_id: SkipJsonSchema[Optional[PositiveInt]] = Field(
+    user_id: SkipJsonSchema[PositiveInt | None] = Field(
         exclude=True, default=None, lt=MAX_INT32
     )
     country_iso: CountryISO = Field()
@@ -75,7 +76,7 @@ class UserStreak(BaseModel):
     current_streak: NonNegativeInt = Field()
     longest_streak: NonNegativeInt = Field()
     state: StreakState = Field()
-    last_fulfilled_period_start: Optional[date] = Field(default=None)
+    last_fulfilled_period_start: date | None = Field(default=None)
 
     @computed_field()
     @property
@@ -92,17 +93,17 @@ class UserStreak(BaseModel):
 
     @computed_field()
     @property
-    def current_period_bounds(self) -> Tuple[AwareDatetime, AwareDatetime]:
+    def current_period_bounds(self) -> tuple[AwareDatetime, AwareDatetime]:
         return self.get_period_bounds(datetime.now(tz=self.timezone).date())
 
     @computed_field()
     @property
-    def last_fulfilled_period_bounds(self) -> Optional[Tuple[datetime, datetime]]:
+    def last_fulfilled_period_bounds(self) -> tuple[datetime, datetime] | None:
         return self.get_period_bounds(self.last_fulfilled_period_start)
 
     @computed_field()
     @property
-    def time_remaining_in_period(self) -> Optional[timedelta]:
+    def time_remaining_in_period(self) -> timedelta | None:
         # Time left to continue your streak
         if self.state in {StreakState.BROKEN, StreakState.ACTIVE}:
             return None
@@ -129,9 +130,7 @@ class UserStreak(BaseModel):
         ), "Current streak can't be longer than longest streak"
         return self
 
-    def get_period_bounds(
-        self, start_date: date
-    ) -> Optional[Tuple[datetime, datetime]]:
+    def get_period_bounds(self, start_date: date) -> tuple[datetime, datetime] | None:
         """
         Returns (period_start_local, period_end_local)
         Both timezone-aware.

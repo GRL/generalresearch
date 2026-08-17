@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import copy
 import json
 import logging
-from typing import List
 
 import pandas as pd
 from pandera import DataFrameSchema
@@ -24,7 +25,7 @@ class TaskCollection(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # overload this with the correct type!
-    items: List[MarketplaceTask]
+    items: list[MarketplaceTask]
     df: pd.DataFrame = Field(default_factory=pd.DataFrame)
 
     # overload this with the correct schema!

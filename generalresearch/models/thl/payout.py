@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import json
 from datetime import datetime, timezone
-from typing import Collection, Dict, List, Optional
+from typing import Collection
 from uuid import uuid4
 
 from pydantic import (
@@ -70,25 +72,25 @@ class PayoutEvent(BaseModel):
         examples=[531],
     )
 
-    status: Optional[PayoutStatus] = Field(
+    status: PayoutStatus | None = Field(
         default=PayoutStatus.PENDING,
         description=PayoutStatus.as_openapi(),
         examples=[PayoutStatus.COMPLETE],
     )
 
     # Used for holding an external, payout-type-specific identifier
-    ext_ref_id: Optional[str] = Field(default=None)
+    ext_ref_id: str | None = Field(default=None)
     payout_type: PayoutType = Field(
         description=PayoutType.as_openapi(), examples=[PayoutType.ACH]
     )
 
-    request_data: Dict = Field(
+    request_data: dict = Field(
         default_factory=dict,
         description="Stores payout-type-specific information that is used to "
         "request this payout from the external provider.",
     )
 
-    order_data: Optional[Dict | CashMailOrderData] = Field(
+    order_data: dict | CashMailOrderData | None = Field(
         default=None,
         description="Stores payout-type-specific order information that is "
         "returned from the external payout provider.",
@@ -97,8 +99,8 @@ class PayoutEvent(BaseModel):
     def update(
         self,
         status: PayoutStatus,
-        ext_ref_id: Optional[str] = None,
-        order_data: Optional[Dict] = None,
+        ext_ref_id: str | None = None,
+        order_data: dict | None = None,
     ) -> None:
 
         self.check_status_change_allowed(status)
@@ -108,15 +110,13 @@ class PayoutEvent(BaseModel):
         self.ext_ref_id = ext_ref_id
         self.order_data = order_data
 
-        return None
-
     def check_status_change_allowed(self, status: PayoutStatus) -> None:
 
         # We may not be changing the status when this method gets called. It's
         #   possible to be called when we're updating other attributes so
         #   allow immediate bypass if it isn't actually different.
         if self.status == status:
-            return None
+            return
 
         if self.status in {
             PayoutStatus.REJECTED,
@@ -144,7 +144,7 @@ class PayoutEvent(BaseModel):
 
     # --- ORM ---
 
-    def model_dump_mysql(self, *args, **kwargs) -> Dict:
+    def model_dump_mysql(self, *args, **kwargs) -> dict:
         d = self.model_dump(mode="json", *args, **kwargs)
 
         if "created" in d:
@@ -171,13 +171,13 @@ class UserPayoutEvent(PayoutEvent):
     #   Requires joining on:
     #       - accounting_cashoutmethod
     #       - ledger_account
-    account_reference_type: Optional[str] = Field(default=None)
-    account_reference_uuid: Optional[UUIDStr] = Field(default=None)
+    account_reference_type: str | None = Field(default=None)
+    account_reference_uuid: UUIDStr | None = Field(default=None)
 
     # By default, this will just be the cashout_method.name. This also is
     #   populated from the db and so does not need to be set (there is no
     #   `description` field in event_payout)
-    description: Optional[str] = Field(default=None)
+    description: str | None = Field(default=None)
 
     @field_validator("payout_type", mode="before")
     @classmethod
@@ -226,14 +226,14 @@ class BrokerageProductPayoutEvent(PayoutEvent):
     def from_payout_event(
         cls,
         pe: PayoutEvent,
-        account_product_mapping: Optional[Dict[UUIDStr, UUIDStr]] = None,
-        redis_config: Optional[RedisConfig] = None,
+        account_product_mapping: dict[UUIDStr, UUIDStr] | None = None,
+        redis_config: RedisConfig | None = None,
     ) -> Self:
         # TODO!: prevent re-assignment, rework this...
 
         if account_product_mapping is None:
             rc = redis_config.create_redis_client()
-            account_product_mapping: Dict = rc.hgetall(name="pem:account_to_product")
+            account_product_mapping: dict = rc.hgetall(name="pem:account_to_product")
             assert isinstance(account_product_mapping, dict)
             assert pe.uuid in account_product_mapping.keys()
 
@@ -246,14 +246,14 @@ class BrokerageProductPayoutEvent(PayoutEvent):
         cls,
         payout_events: Collection[PayoutEvent],
         order_by=OrderBy,
-        account_product_mapping: Optional[Dict[UUIDStr, UUIDStr]] = None,
-        redis_config: Optional[RedisConfig] = None,
-    ) -> List[Self]:
+        account_product_mapping: dict[UUIDStr, UUIDStr] | None = None,
+        redis_config: RedisConfig | None = None,
+    ) -> list[Self]:
         # TODO!: prevent re-assignment, rework this...
 
         if account_product_mapping is None:
             rc = redis_config.create_redis_client()
-            account_product_mapping: Dict = rc.hgetall(name="pem:account_to_product")
+            account_product_mapping: dict = rc.hgetall(name="pem:account_to_product")
             assert isinstance(account_product_mapping, dict)
 
         res = []
@@ -278,7 +278,7 @@ class BrokerageProductPayoutEvent(PayoutEvent):
 class BusinessPayoutEvent(BaseModel):
     """A single ACH or Wire event to a Business Bank Account"""
 
-    bp_payouts: List[BrokerageProductPayoutEvent] = Field(
+    bp_payouts: list[BrokerageProductPayoutEvent] = Field(
         description="Here is the list of Brokerage Product Payouts that"
         "this Business Payout includes.",
         min_length=1,
@@ -326,7 +326,7 @@ class BusinessPayoutEvent(BaseModel):
     @computed_field(
         title="External Reference ID",
         description="ACH Transaction ID",
-        return_type=Optional[str],
+        return_type=str | None,
     )
     @property
     def ext_ref_id(self):

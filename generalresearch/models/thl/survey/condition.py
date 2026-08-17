@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import hashlib
 from abc import ABC
 from enum import Enum
 from functools import cached_property
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from pydantic import (
     BaseModel,
@@ -60,18 +62,18 @@ class MarketplaceCondition(BaseModel, ABC):
     negate: bool = Field(default=False)
 
     # ---- These fields should be overridden in the implementor ---
-    question_id: Optional[str] = Field(frozen=True)
-    values: List[str] = Field()
+    question_id: str | None = Field(frozen=True)
+    values: list[str] = Field()
 
     # These question_ids get converted to list value types
-    _CONVERT_LIST_TO_RANGE: List[str] = PrivateAttr(default_factory=list)
+    _CONVERT_LIST_TO_RANGE: list[str] = PrivateAttr(default_factory=list)
 
     @field_validator("values", mode="after")
-    def sort_values(cls, values: List[str]):
+    def sort_values(cls, values: list[str]):
         return sorted(values)
 
     @field_validator("values", mode="after")
-    def check_values_lower(cls, values: List[str]):
+    def check_values_lower(cls, values: list[str]):
         assert values == [s.lower() for s in values], "values must be lowercase"
         return values
 
@@ -210,7 +212,7 @@ class MarketplaceCondition(BaseModel, ABC):
         return sum(len(v) for v in self.values)
 
     @cached_property
-    def values_ranges(self) -> List[Tuple[float, float]]:
+    def values_ranges(self) -> list[tuple[float, float]]:
         assert (
             self.value_type == ConditionValueType.RANGE
         ), "only call this method when value_type is RANGE"
@@ -227,11 +229,11 @@ class MarketplaceCondition(BaseModel, ABC):
         return hashlib.md5(s.encode()).hexdigest()[:7]
 
     @classmethod
-    def from_mysql(cls, d: Dict[str, Any]) -> Self:
+    def from_mysql(cls, d: dict[str, Any]) -> Self:
         d["values"] = d["values"][1:-1].split("|") if d["values"][1:-1] else []
         return cls.model_validate(d)
 
-    def to_mysql(self) -> Dict[str, str]:
+    def to_mysql(self) -> dict[str, str]:
         # This is what is stored in the xxx_criterion table
         d = self.model_dump(
             mode="json",
@@ -274,9 +276,9 @@ class MarketplaceCondition(BaseModel, ABC):
 
     def evaluate_criterion(
         self,
-        user_qas: Dict[str, Set[str]],
-        user_groups: Optional[Set[str]] = None,
-    ) -> Optional[bool]:
+        user_qas: dict[str, set[str]],
+        user_groups: set[str] | None = None,
+    ) -> bool | None:
         """Given this user's MRPQs, do they "pass" this criterion?
 
         :param user_qas: user's quals. Looks like {'qid1': {'ans1', 'ans2'}}

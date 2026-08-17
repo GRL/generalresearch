@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import statistics
 from datetime import timedelta
 from decimal import Decimal
 from string import Formatter
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 from uuid import uuid4
 
 import numpy as np
@@ -218,7 +220,7 @@ class MergeTableFeatures(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def set_completion_time_log(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+    def set_completion_time_log(cls, data: dict[str, Any]) -> dict[str, Any]:
         # This isn't actually in the merge table
         data["COMPLETION_TIME_LOG"] = np.log(data["COMPLETION_TIME"])
         return data
@@ -238,7 +240,7 @@ class TaskResult(BaseModel):
     )
     source: Source = Field()
     country_iso: CountryISO = Field()
-    buyer_id: Optional[str] = Field(min_length=1, max_length=32, default=None)
+    buyer_id: str | None = Field(min_length=1, max_length=32, default=None)
 
     # todo: GRS is allowed to be 0, but all the others can't. make a validator
     cpi: Decimal = Field(ge=0, le=100, decimal_places=5, max_digits=7)
@@ -246,7 +248,7 @@ class TaskResult(BaseModel):
     # Only GRS tasks will have this set. All other marketplaces will have
     #   to make a grpc call to generate this. This is a str b/c it is actually
     #   a format string.
-    entry_link: Optional[str] = Field(
+    entry_link: str | None = Field(
         default=None,
         examples=[
             "https://{domain}/session/?39057c8b=c4ed212601494f8c8836e38a55102d10&c184efc0=test&0bb50182={mid}"
@@ -327,12 +329,12 @@ class ScoredTaskResult(TaskResult, MergeTableFeatures):
 
     # The set of marketplace's question codes (internal id) that are unknown.
     # This should only be set it SoftPairResultType is conditional
-    unknown_mp_question_ids: Optional[Set[str]] = Field(default=None)
+    unknown_mp_question_ids: set[str] | None = Field(default=None)
 
     # Question ids (from marketplace_question table) for the questions that
     # will be asked (that would fulfill the unknown questions specified in
     # unknown_mp_question_ids)
-    unknown_question_ids: Optional[Set[UUIDStr]] = Field(default=None)
+    unknown_question_ids: set[UUIDStr] | None = Field(default=None)
 
     # ---- Soft Pair end ----
 
@@ -343,7 +345,7 @@ class ScoredTaskResult(TaskResult, MergeTableFeatures):
         return Decimal(v).quantize(Decimal("0.00000"))
 
     @property
-    def unknown_mp_qids(self) -> Optional[Set[str]]:
+    def unknown_mp_qids(self) -> set[str] | None:
         # marketplace's curie-formatted question IDs that are unknown
         return (
             {self.source + ":" + q for q in self.unknown_mp_question_ids}
@@ -351,14 +353,14 @@ class ScoredTaskResult(TaskResult, MergeTableFeatures):
             else None
         )
 
-    def to_row(self) -> Dict[str, Any]:
+    def to_row(self) -> dict[str, Any]:
         d = self.model_dump(mode="json")
         d["id_code"] = self.id_code
         return d
 
 
 class ScoredTaskResults(BaseModel):
-    tasks: List[ScoredTaskResult] = Field()
+    tasks: list[ScoredTaskResult] = Field()
 
     @property
     def availability_count(self) -> NonNegativeInt:
@@ -375,7 +377,7 @@ class ScoredTaskResults(BaseModel):
         df["cpi"] = df["cpi"].astype(float)
         return df
 
-    def take_top(self, n=100) -> List[ScoredTaskResult]:
+    def take_top(self, n=100) -> list[ScoredTaskResult]:
         return sorted(self.tasks, key=lambda x: x.score, reverse=True)[:n]
 
 
@@ -395,7 +397,7 @@ class OfferwallBucket(BaseModel):
         examples=["5ba2fe5010cc4d078fc3cc0b0cc264c3"],
         default_factory=lambda: uuid4().hex,
     )
-    uri: Optional[HttpsUrl] = Field(
+    uri: HttpsUrl | None = Field(
         examples=[
             "https://task.generalresearch.com/api/v1/52d3f63b2709/797df4136c604a6c8599818296aae6d1/?i"
             "=5ba2fe5010cc4d078fc3cc0b0cc264c3&b=test&66482fb=e7baf5e"
@@ -404,13 +406,13 @@ class OfferwallBucket(BaseModel):
         default=None,
     )
 
-    tasks: List[ScoredTaskResult] = Field()
+    tasks: list[ScoredTaskResult] = Field()
 
-    category: List[CategoryAssociation] = Field(default_factory=list)
+    category: list[CategoryAssociation] = Field(default_factory=list)
 
     # Used only in marketplace offerwall
-    source: Optional[Source] = Field(default=None)
-    source_name: Optional[str] = Field(default=None)
+    source: Source | None = Field(default=None)
+    source_name: str | None = Field(default=None)
 
     # Normally these are calculated. However, in some offerwalls we duplicate
     #   buckets, so they're not "true" calculated values.
@@ -420,7 +422,7 @@ class OfferwallBucket(BaseModel):
         description="Custom: Min payout across all tasks",
         default=None,
     )
-    custom_q1_duration: Optional[float] = Field(
+    custom_q1_duration: float | None = Field(
         description="Custom: Q1 loi across all tasks",
         default=None,
         gt=0,
@@ -429,11 +431,11 @@ class OfferwallBucket(BaseModel):
 
     quality_score: float = Field(default=0)
 
-    eligibility_criteria: Optional[Tuple[SurveyEligibilityCriterion, ...]] = Field(
+    eligibility_criteria: tuple[SurveyEligibilityCriterion, ...] | None = Field(
         description="The reasons the user is eligible for tasks in this bucket",
         default=None,
     )
-    eligibility_explanation: Optional[str] = Field(
+    eligibility_explanation: str | None = Field(
         default=None,
         description="Human-readable text explaining a user's eligibility for tasks in this bucket",
         examples=[
@@ -442,7 +444,7 @@ class OfferwallBucket(BaseModel):
     )
 
     @property
-    def missing_questions(self) -> Set[UUIDStr]:
+    def missing_questions(self) -> set[UUIDStr]:
         # Used only in softpair.
         # The question id is the question's uuid (in the marketplace_question table / UpkQuestion.id)
         # It is just the set union of task.softpair.question_ids for all tasks in this bucket.
@@ -461,12 +463,12 @@ class OfferwallBucket(BaseModel):
         return float(np.sqrt((score**2).sum()))
 
     @property
-    def payout(self) -> Optional[Decimal]:
+    def payout(self) -> Decimal | None:
         # The payout is the Min payout across all tasks
         return min([x.payout for x in self.tasks], default=None)
 
     @property
-    def loi(self) -> Optional[float]:
+    def loi(self) -> float | None:
         # The loi is the Max LOI across all tasks
         return max([x.loi for x in self.tasks], default=None)
 
@@ -487,7 +489,7 @@ class OfferwallBucket(BaseModel):
         return self.duration_summary.max
 
     @property
-    def sns(self) -> List[str]:
+    def sns(self) -> list[str]:
         return [t.id_code for t in self.tasks]
 
     @property
@@ -541,7 +543,7 @@ class OfferwallBucket(BaseModel):
         )
 
     @property
-    def eligibility(self) -> Optional[SoftPairResultType]:
+    def eligibility(self) -> SoftPairResultType | None:
         # We're assuming there is never a conditional or ineligible survey
         #   after a unconditional. There can be unconditional surveys
         #   after conditional surveys, in which case the bucket is still
@@ -558,7 +560,7 @@ class OfferwallBucket(BaseModel):
                 raise ValueError(f"Unexpected pair_type {pair_type}")
 
     @property
-    def eligibility_str(self) -> Optional[Eligibility]:
+    def eligibility_str(self) -> Eligibility | None:
         return (
             {
                 SoftPairResultType.UNCONDITIONAL: "unconditional",
@@ -586,7 +588,7 @@ class OfferwallBucket(BaseModel):
         )
 
     def generate_bucket_entry_url(
-        self, user: User, request_id: Optional[str] = None
+        self, user: User, request_id: str | None = None
     ) -> None:
         product_id = user.product_id
         product_user_id = user.product_user_id
@@ -600,8 +602,6 @@ class OfferwallBucket(BaseModel):
             self.uri = generate_offerwall_entry_url(
                 base_enter_url, self.id, product_user_id, request_id=request_id
             )
-
-        return None
 
     # def __repr__(self):
     #     exclude = {
@@ -646,7 +646,7 @@ class OfferwallBase(BaseModel):
         default_factory=lambda: uuid4().hex,
     )
     offerwall_type: OfferWallType = Field()
-    buckets: List[OfferwallBucket] = Field()
+    buckets: list[OfferwallBucket] = Field()
 
     # Note: this != the sum(len(tasks) in buckets) b/c we filter out a lot
     availability_count: int = Field(default=0, description="Number of available tasks")
@@ -660,7 +660,7 @@ class OfferwallBase(BaseModel):
         examples=[7],
         default=0,
     )
-    offerwall_reasons: List[OfferwallReason] = Field(
+    offerwall_reasons: list[OfferwallReason] = Field(
         default_factory=list,
         description=(
             "Explanations describing why so many or few opportunities are available."
@@ -670,7 +670,7 @@ class OfferwallBase(BaseModel):
 
     # Contains the full info about any questions in any bucket's
     #   missing_questions.
-    questions: List[UpkQuestion] = Field(default_factory=list)
+    questions: list[UpkQuestion] = Field(default_factory=list)
 
     @property
     def offerwall_type_class(self) -> OfferWallTypeClass:
@@ -683,5 +683,3 @@ class OfferwallBase(BaseModel):
     def generate_bucket_entry_urls(self, user: User, request_id: str) -> None:
         for bucket in self.buckets:
             bucket.generate_bucket_entry_url(user=user, request_id=request_id)
-
-        return None

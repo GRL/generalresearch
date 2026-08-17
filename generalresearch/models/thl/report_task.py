@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import random
 from collections import defaultdict
-from typing import Collection, List, Optional
+from collections.abc import Collection
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -21,7 +23,7 @@ REPORT_PRIORITY = defaultdict(
 
 def prioritize_report_values(
     report_values: Collection[ReportValue],
-) -> Optional[ReportValue]:
+) -> ReportValue | None:
     if not report_values:
         return None
     report_values = list(set(report_values))
@@ -39,7 +41,7 @@ class ReportTask(BaseModel):
         examples=["app-user-9329ebd"],
     )
 
-    reasons: List[ReportValue] = Field(
+    reasons: list[ReportValue] = Field(
         description=ReportValue.as_openapi_with_value_descriptions(),
         examples=[[3, 4]],
         default_factory=list,

@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from enum import StrEnum
 from ipaddress import ip_address, ip_network
-from typing import Optional
 
 CGNAT_NET = ip_network("100.64.0.0/10")
 
@@ -36,7 +37,7 @@ class IPKind(StrEnum):
     UNSPECIFIED = "unspecified"
 
 
-def get_ip_kind(ip: Optional[str]) -> Optional[IPKind]:
+def get_ip_kind(ip: str | None) -> IPKind | None:
     if not ip:
         return None
 

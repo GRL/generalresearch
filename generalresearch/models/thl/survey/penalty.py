@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import abc
 from datetime import datetime, timezone
-from typing import List, Literal, Union
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 from typing_extensions import Annotated
@@ -60,4 +62,4 @@ Penalty = Annotated[
     Union[BPSurveyPenalty, TeamSurveyPenalty],
     Field(discriminator="kind"),
 ]
-PenaltyListAdapter = TypeAdapter(List[Penalty])
+PenaltyListAdapter = TypeAdapter(list[Penalty])

@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Set
 
 from generalresearch.models import Source
 from generalresearch.models.thl.survey.condition import (
@@ -33,14 +34,14 @@ class SoftPairResult:
     pair_type: SoftPairResultType
     source: Source
     survey_id: str
-    conditions: Optional[Set[MarketplaceCondition]] = None
+    conditions: set[MarketplaceCondition] | None = None
 
     @property
     def survey_sid(self) -> str:
         return self.source + ":" + self.survey_id
 
     @property
-    def grpc_string(self) -> Optional[str]:
+    def grpc_string(self) -> str | None:
         # This is what is expected by thl-grpc in a mp_pb2.MPOpportunityIDListSoftPairing response (grpc)
         if self.pair_type == SoftPairResultType.UNCONDITIONAL:
             return self.survey_id
@@ -60,7 +61,7 @@ class SoftPairResultOut:
     pair_type: SoftPairResultType
     source: Source
     survey_id: str
-    question_ids: Optional[Set[str]] = None
+    question_ids: set[str] | None = None
 
     @property
     def survey_sid(self) -> str:

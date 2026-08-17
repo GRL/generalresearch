@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import timezone
 from decimal import Decimal
-from typing import Any, Dict, List, Literal, Optional, Set, Tuple, Type
+from typing import Any, Literal, Type
 
 from more_itertools import flatten
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
@@ -37,7 +37,7 @@ locale_helper = Localelator()
 class SpectrumCondition(MarketplaceCondition):
     model_config = ConfigDict(populate_by_name=True, frozen=False, extra="ignore")
 
-    question_id: Optional[CoercedStr] = Field(
+    question_id: CoercedStr | None = Field(
         min_length=1,
         max_length=16,
         pattern=r"^[0-9]+$",
@@ -65,7 +65,7 @@ class SpectrumCondition(MarketplaceCondition):
         return self
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> "SpectrumCondition":
+    def from_api(cls, d: dict[str, Any]) -> "SpectrumCondition":
         """Ranges can get returns with a key "units" indicating years or
         months. This is ridiculous, and we don't ask for birthdate, so we
         can't really get month accuracy. Normalize to years.
@@ -98,7 +98,7 @@ class SpectrumQuota(BaseModel):
         description="Number of completes currently available in the quota. If "
         "the value is 0, any respondent matching this quota will be rejected."
     )
-    condition_hashes: List[str] = Field(min_length=0, default_factory=list)
+    condition_hashes: list[str] = Field(min_length=0, default_factory=list)
 
     # API also returns remaining & achieved, but these are supplier-scoped.
     # There is no explicit status. The quota is closed if the count is 0
@@ -114,23 +114,23 @@ class SpectrumQuota(BaseModel):
         return self.remaining_count >= min_open_spots
 
     @classmethod
-    def from_api(cls, d: Dict) -> Self:
+    def from_api(cls, d: dict) -> Self:
         d["remaining_count"] = d["quantities"]["currently_open"]
         return cls.model_validate(d)
 
-    def passes(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Passes means we 1) meet all conditions (aka "match") AND 2) the
         # quota is open.
         return self.is_open and self.matches(criteria_evaluation)
 
-    def matches(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def matches(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Matches means we meet all conditions. We can "match" a quota that is
         # closed. In that case, we would not be eligible for the survey.
         return all(criteria_evaluation.get(c) for c in self.condition_hashes)
 
     def matches_optional(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Optional[bool]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> bool | None:
         # We need to know if any conditions are unknown to avoid matching a
         # full quota. If any fail, then we know we fail regardless of any
         # being unknown.
@@ -142,8 +142,8 @@ class SpectrumQuota(BaseModel):
         return True
 
     def matches_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Passes back "matches" (T/F/none) and a list of unknown criterion hashes
         hash_evals = {
             cell: criteria_evaluation.get(cell) for cell in self.condition_hashes
@@ -188,7 +188,7 @@ class SpectrumSurvey(MarketplaceTask):
     # called "survey_grouping" in API. If a respondent has previously taken any
     #   of these surveys, they will be excluded if that survey was taken in
     #   the exclusion_period.
-    survey_exclusions: Optional[AlphaNumStrSet] = Field(
+    survey_exclusions: AlphaNumStrSet | None = Field(
         description="list of excluded survey ids", default=None
     )
     exclusion_period: int = Field(default=30, description="in days")
@@ -200,16 +200,16 @@ class SpectrumSurvey(MarketplaceTask):
     #   when we update the db, we must not overwrite this with NULL.
     # API key: "survey_performance"
 
-    bid_loi: Optional[int] = Field(default=None, le=120 * 60)
-    bid_ir: Optional[float] = Field(default=None, ge=0, le=1)
-    overall_loi: Optional[int] = Field(default=None, le=120 * 60)
-    overall_ir: Optional[float] = Field(default=None, ge=0, le=1)
-    last_block_loi: Optional[int] = Field(default=None, le=120 * 60)
-    last_block_ir: Optional[float] = Field(default=None, ge=0, le=1)
+    bid_loi: int | None = Field(default=None, le=120 * 60)
+    bid_ir: float | None = Field(default=None, ge=0, le=1)
+    overall_loi: int | None = Field(default=None, le=120 * 60)
+    overall_ir: float | None = Field(default=None, ge=0, le=1)
+    last_block_loi: int | None = Field(default=None, le=120 * 60)
+    last_block_ir: float | None = Field(default=None, ge=0, le=1)
 
     # Undocumented. They sent us an email indicating that this is the last time
     # there was a complete for all suppliers on this survey.
-    project_last_complete_date: Optional[AwareDatetimeISO] = Field(default=None)
+    project_last_complete_date: AwareDatetimeISO | None = Field(default=None)
 
     # ISO 3166-1 alpha-2 (two-letter codes, lowercase)
     country_iso: str = Field(
@@ -224,21 +224,21 @@ class SpectrumSurvey(MarketplaceTask):
     # list is an exclude or include list. If incl_excl = 1, the survey has an
     # include list, and only those in the list are eligible. This list gets
     # updated everytime someone on the list takes the survey.
-    include_psids: Optional[UUIDStrSet] = Field(default=None)
-    exclude_psids: Optional[UUIDStrSet] = Field(default=None)
+    include_psids: UUIDStrSet | None = Field(default=None)
+    exclude_psids: UUIDStrSet | None = Field(default=None)
 
-    qualifications: List[str] = Field(default_factory=list)
-    quotas: List[SpectrumQuota] = Field(default_factory=list)
+    qualifications: list[str] = Field(default_factory=list)
+    quotas: list[SpectrumQuota] = Field(default_factory=list)
 
     source: Literal[Source.SPECTRUM] = Field(default=Source.SPECTRUM)
 
-    used_question_ids: Set[AlphaNumStr] = Field(default_factory=set)
+    used_question_ids: set[AlphaNumStr] = Field(default_factory=set)
 
     # This is a "special" key to store all conditions that are used (as
     #   "condition_hashes") throughout this survey. In the reduced
     #   representation of this task (nearly always, for db i/o, in
     #   global_vars) this field will be null.
-    conditions: Optional[Dict[str, SpectrumCondition]] = Field(default=None)
+    conditions: dict[str, SpectrumCondition] | None = Field(default=None)
 
     # These come from the API
     created_api: AwareDatetimeISO = Field(
@@ -250,7 +250,7 @@ class SpectrumSurvey(MarketplaceTask):
     )
 
     # This does not come from the API. We set it when we update this in the db.
-    updated: Optional[AwareDatetimeISO] = Field(default=None)
+    updated: AwareDatetimeISO | None = Field(default=None)
 
     @property
     def internal_id(self) -> str:
@@ -270,7 +270,7 @@ class SpectrumSurvey(MarketplaceTask):
 
     @computed_field
     @property
-    def all_hashes(self) -> Set[str]:
+    def all_hashes(self) -> set[str]:
         s = set(self.qualifications)
         for q in self.quotas:
             s.update(set(q.condition_hashes))
@@ -305,7 +305,7 @@ class SpectrumSurvey(MarketplaceTask):
         return "212"
 
     @property
-    def marketplace_genders(self) -> Dict[Gender, Optional[MarketplaceCondition]]:
+    def marketplace_genders(self) -> dict[Gender, MarketplaceCondition | None]:
         return {
             Gender.MALE: SpectrumCondition(
                 question_id="211",
@@ -321,7 +321,7 @@ class SpectrumSurvey(MarketplaceTask):
         }
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> Optional["SpectrumSurvey"]:
+    def from_api(cls, d: dict[str, Any]) -> "SpectrumSurvey" | None:
         try:
             return cls._from_api(d)
         except Exception as e:
@@ -329,7 +329,7 @@ class SpectrumSurvey(MarketplaceTask):
             return None
 
     @classmethod
-    def _from_api(cls, d: Dict[str, Any]) -> Self:
+    def _from_api(cls, d: dict[str, Any]) -> Self:
         assert d["click_balancing"] in {0, 1}, "unknown click_balancing value"
         d["calculation_type"] = (
             TaskCalculationType.STARTS
@@ -366,7 +366,7 @@ class SpectrumSurvey(MarketplaceTask):
             exclude={"updated", "conditions"}
         )
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(
             mode="json",
             exclude={
@@ -388,7 +388,7 @@ class SpectrumSurvey(MarketplaceTask):
         return d
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> Self:
+    def from_db(cls, d: dict[str, Any]) -> Self:
         d["created_api"] = d["created_api"].replace(tzinfo=timezone.utc)
         d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
         d["modified_api"] = d["modified_api"].replace(tzinfo=timezone.utc)
@@ -415,14 +415,14 @@ class SpectrumSurvey(MarketplaceTask):
     """
 
     def passes_qualifications(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, bool | None]
     ) -> bool:
         # We have to match all quals
         return all(criteria_evaluation.get(q) for q in self.qualifications)
 
     def passes_qualifications_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Passes back "passes" (T/F/none) and a list of unknown criterion hashes
         hash_evals = {q: criteria_evaluation.get(q) for q in self.qualifications}
         # We have to match all. So if any are False, we know we don't pass
@@ -435,7 +435,7 @@ class SpectrumSurvey(MarketplaceTask):
             return None, {cell for cell, ev in hash_evals.items() if ev is None}
         return True, set()
 
-    def passes_quotas(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes_quotas(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # We have to match at least 1 quota, but they can NOT match a quota
         # where currently_open=0
         any_pass = False
@@ -450,8 +450,8 @@ class SpectrumSurvey(MarketplaceTask):
         return any_pass
 
     def passes_quotas_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # We have to match at least 1 quota, but they can NOT match a quota
         #   where currently_open=0
         quota_eval = {
@@ -488,7 +488,7 @@ class SpectrumSurvey(MarketplaceTask):
         return False, set()
 
     def determine_eligibility(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, bool | None]
     ) -> bool:
         return (
             self.is_open
@@ -497,8 +497,8 @@ class SpectrumSurvey(MarketplaceTask):
         )
 
     def determine_eligibility_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         if self.is_open is False:
             return False, set()
         pass_quals, h_quals = self.passes_qualifications_soft(criteria_evaluation)

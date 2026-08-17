@@ -1,19 +1,20 @@
+from __future__ import annotations
+
 import re
 from functools import cached_property
 from ipaddress import ip_address
-from typing import List, Optional
 
 import tldextract
 from pydantic import (
-    Field,
-    field_validator,
     BaseModel,
     ConfigDict,
-    model_validator,
+    Field,
     computed_field,
+    field_validator,
+    model_validator,
 )
 
-from generalresearch.models.network.definitions import IPProtocol, get_ip_kind, IPKind
+from generalresearch.models.network.definitions import IPKind, IPProtocol, get_ip_kind
 
 HOST_RE = re.compile(r"^(?P<hostname>.+?) \((?P<ip>[^)]+)\)$")
 
@@ -23,7 +24,7 @@ class MTRHop(BaseModel):
 
     hop: int = Field(alias="count")
     host: str
-    asn: Optional[int] = Field(default=None, alias="ASN")
+    asn: int | None = Field(default=None, alias="ASN")
 
     loss_pct: float = Field(alias="Loss%")
     sent: int = Field(alias="Snt")
@@ -34,10 +35,10 @@ class MTRHop(BaseModel):
     worst_ms: float = Field(alias="Wrst")
     stdev_ms: float = Field(alias="StDev")
 
-    hostname: Optional[str] = Field(
+    hostname: str | None = Field(
         default=None, examples=["fixed-187-191-8-145.totalplay.net"]
     )
-    ip: Optional[str] = None
+    ip: str | None = None
 
     @field_validator("asn", mode="before")
     @classmethod
@@ -74,7 +75,7 @@ class MTRHop(BaseModel):
         return self
 
     @cached_property
-    def ip_kind(self) -> Optional[IPKind]:
+    def ip_kind(self) -> IPKind | None:
         return get_ip_kind(self.ip)
 
     @cached_property
@@ -85,7 +86,7 @@ class MTRHop(BaseModel):
 
     @computed_field(examples=["totalplay.net"])
     @cached_property
-    def domain(self) -> Optional[str]:
+    def domain(self) -> str | None:
         if self.hostname:
             return tldextract.extract(self.hostname).top_domain_under_public_suffix
 
@@ -120,9 +121,9 @@ class MTRResult(BaseModel):
     # Protocol used for the traceroute
     protocol: IPProtocol = Field(default=IPProtocol.ICMP)
     # The target port number for TCP/SCTP/UDP traces
-    port: Optional[int] = Field(default=None)
+    port: int | None = Field(default=None)
 
-    hops: List[MTRHop] = Field()
+    hops: list[MTRHop] = Field()
 
     def model_dump_postgres(self):
         # Writes for the network_mtr table

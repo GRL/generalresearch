@@ -1,18 +1,18 @@
+from __future__ import annotations
+
 from datetime import datetime, timezone
-from typing import Optional
 from uuid import uuid4
 
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.network.rdns.command import (
-    run_rdns,
     get_dig_version,
-    build_rdns_command,
+    run_rdns,
 )
 from generalresearch.models.network.tool_run import (
-    ToolName,
-    ToolClass,
-    Status,
     RDNSRun,
+    Status,
+    ToolClass,
+    ToolName,
 )
 from generalresearch.models.network.tool_run_command import (
     RDNSRunCommand,
@@ -20,7 +20,7 @@ from generalresearch.models.network.tool_run_command import (
 )
 
 
-def execute_rdns(ip: str, scan_group_id: Optional[UUIDStr] = None):
+def execute_rdns(ip: str, scan_group_id: UUIDStr | None = None):
     started_at = datetime.now(tz=timezone.utc)
     tool_version = get_dig_version()
     config = RDNSRunCommand(options=RDNSRunCommandOptions(ip=ip))

@@ -1,5 +1,4 @@
 from pydantic import Field
-
 from typing_extensions import Annotated
 
 LucidQuestionIdType = Annotated[

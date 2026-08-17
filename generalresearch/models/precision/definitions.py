@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 # These were sent to us in an excel file. Copied here because we don't use excel files
 # also available here: https://integrations.precisionsample.com/api.html#API%20Lookup%20Document
 # https://integrations.precisionsample.com/PS_GetProjects_API_Lookup_values.xlsx
-
 from generalresearch.locales import Localelator
 
 locales = Localelator()

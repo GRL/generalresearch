@@ -4,7 +4,7 @@ import copy
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
@@ -76,7 +76,7 @@ class AgeGroup(Enum):
         return self.label
 
 
-def calculate_demographic_metrics(opps: List[MarketplaceTask]) -> List:
+def calculate_demographic_metrics(opps: list[MarketplaceTask]) -> list:
     """
     Measurement: marketplace_survey_demographics
     tags: source (marketplace)
@@ -146,8 +146,8 @@ def calculate_demographic_metrics(opps: List[MarketplaceTask]) -> List:
 
 
 def calculate_used_question_metrics(
-    opps: List[MarketplaceTask], qid_label: Dict[str, str]
-) -> List[Dict[str, Any]]:
+    opps: list[MarketplaceTask], qid_label: dict[str, str]
+) -> list[dict[str, Any]]:
     """
     Measurement: marketplace_survey_targeting
     tags: source (marketplace), "type", country (all and individual)

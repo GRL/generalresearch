@@ -4,7 +4,7 @@ import logging
 import math
 from datetime import timedelta
 from decimal import Decimal
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -57,9 +57,9 @@ class CategoryAssociation(BaseModel):
         examples=["People & Society"],
     )
 
-    adwords_id: Optional[str] = Field(default=None, max_length=8, examples=["14"])
+    adwords_id: str | None = Field(default=None, max_length=8, examples=["14"])
 
-    adwords_label: Optional[str] = Field(
+    adwords_label: str | None = Field(
         default=None, max_length=255, examples=["People & Society"]
     )
 
@@ -151,7 +151,7 @@ class BucketBase(BaseModel):
     def censor(self):
         if not hasattr(self, "contents"):
             return
-        contents: List[BucketTask] = self.contents
+        contents: list[BucketTask] = self.contents
         for content in contents:
             content.censor()
 
@@ -171,41 +171,41 @@ class Bucket(BaseModel):
         arbitrary_types_allowed=True,
     )
 
-    name: Optional[str] = Field(default=None)
-    description: Optional[str] = Field(default=None)
+    name: str | None = Field(default=None)
+    description: str | None = Field(default=None)
 
     # pydantic serializes this to seconds
-    loi_min: Optional[timedelta] = Field(strict=True, default=None)
-    loi_max: Optional[timedelta] = Field(strict=True, default=None)
-    loi_mean: Optional[timedelta] = Field(strict=True, default=None)
-    loi_q1: Optional[timedelta] = Field(strict=True, default=None)
-    loi_q2: Optional[timedelta] = Field(strict=True, default=None)
-    loi_q3: Optional[timedelta] = Field(strict=True, default=None)
+    loi_min: timedelta | None = Field(strict=True, default=None)
+    loi_max: timedelta | None = Field(strict=True, default=None)
+    loi_mean: timedelta | None = Field(strict=True, default=None)
+    loi_q1: timedelta | None = Field(strict=True, default=None)
+    loi_q2: timedelta | None = Field(strict=True, default=None)
+    loi_q3: timedelta | None = Field(strict=True, default=None)
 
     # Decimal USD. This should not have more than 2 decimal places.
     #   There is no way to make this "strict" and optional, so
     #   we have a separate pre-validator
-    user_payout_min: Optional[Decimal] = Field(default=None, lt=1000, gt=0)
-    user_payout_max: Optional[Decimal] = Field(default=None, lt=1000, gt=0)
-    user_payout_q1: Optional[Decimal] = Field(default=None, lt=1000, gt=0)
-    user_payout_q2: Optional[Decimal] = Field(default=None, lt=1000, gt=0)
-    user_payout_q3: Optional[Decimal] = Field(default=None, lt=1000, gt=0)
-    user_payout_mean: Optional[Decimal] = Field(default=None, lt=1000, gt=0)
+    user_payout_min: Decimal | None = Field(default=None, lt=1000, gt=0)
+    user_payout_max: Decimal | None = Field(default=None, lt=1000, gt=0)
+    user_payout_q1: Decimal | None = Field(default=None, lt=1000, gt=0)
+    user_payout_q2: Decimal | None = Field(default=None, lt=1000, gt=0)
+    user_payout_q3: Decimal | None = Field(default=None, lt=1000, gt=0)
+    user_payout_mean: Decimal | None = Field(default=None, lt=1000, gt=0)
 
-    quality_score: Optional[float] = Field(default=None)
+    quality_score: float | None = Field(default=None)
 
-    category: List[CategoryAssociation] = Field(default_factory=list)
+    category: CategoryAssociation | None = Field(default_factory=list)
 
-    contents: Optional[List[BucketTask]] = Field(default=None)
+    contents: list[BucketTask] | None = Field(default=None)
 
     # This could store things like "is_recontact=False"
-    metadata: Dict[str, Union[str, float, bool, int]] = Field(default_factory=dict)
+    metadata: dict[str, str | float | bool | int] = Field(default_factory=dict)
 
-    eligibility_criteria: Optional[Tuple[SurveyEligibilityCriterion, ...]] = Field(
+    eligibility_criteria: tuple[SurveyEligibilityCriterion, ...] | None = Field(
         description="The reasons the user is eligible for tasks in this bucket",
         default=None,
     )
-    eligibility_explanation: Optional[str] = Field(
+    eligibility_explanation: str | None = Field(
         default=None,
         description="Human-readable text explaining a user's eligibility for tasks in this bucket",
         examples=[
@@ -300,12 +300,12 @@ class Bucket(BaseModel):
 
     @field_validator("category")
     @classmethod
-    def check_category(cls, v: List[CategoryAssociation]) -> List[CategoryAssociation]:
+    def check_category(cls, v: list[CategoryAssociation]) -> list[CategoryAssociation]:
         assert sum(c.p for c in v) == 1, "sum of category score must be 1"
         return v
 
     @classmethod
-    def parse_from_offerwall(cls, bucket: Dict):
+    def parse_from_offerwall(cls, bucket: dict):
         """
         This isn't really consistent across all offerwalls... Handle three cases:
             Could be {'payout': {'min': 123}}, or {'min_payout': 123} or {'payout': 123}
@@ -324,7 +324,7 @@ class Bucket(BaseModel):
             return cls()
 
     @classmethod
-    def parse_from_offerwall_style1(cls, bucket: Dict):
+    def parse_from_offerwall_style1(cls, bucket: dict):
         # {'min_payout': 123}
         return cls(
             user_payout_min=cls.usd_cents_to_decimal(bucket["min_payout"]),
@@ -360,7 +360,7 @@ class Bucket(BaseModel):
         )
 
     @classmethod
-    def parse_from_offerwall_style2(cls, bucket: Dict[str, Any]):
+    def parse_from_offerwall_style2(cls, bucket: dict[str, Any]):
         # {'payout': {'min': 123}}
         loi_min_sec = bucket.get("duration", {}).get("min")
         loi_max_sec = bucket.get("duration", {}).get("max")
@@ -385,7 +385,7 @@ class Bucket(BaseModel):
         )
 
     @classmethod
-    def parse_from_offerwall_style3(cls, bucket: Dict[str, Any]):
+    def parse_from_offerwall_style3(cls, bucket: dict[str, Any]):
         # {'payout': 123, 'duration': 123}
         return cls(
             user_payout_min=cls.usd_cents_to_decimal(bucket["payout"]),
@@ -399,13 +399,13 @@ class Bucket(BaseModel):
         )
 
     @staticmethod
-    def usd_cents_to_decimal(v: Optional[int]) -> Optional[Decimal]:
+    def usd_cents_to_decimal(v: int | None) -> Decimal | None:
         if v is None:
             return None
         return Decimal(Decimal(int(v)) / Decimal(100))
 
     @staticmethod
-    def decimal_to_usd_cents(d: Optional[Decimal]) -> Optional[Decimal]:
+    def decimal_to_usd_cents(d: Decimal | None) -> Decimal | None:
         if d is None:
             return None
         return round(d * Decimal(100), 2)
@@ -421,7 +421,7 @@ class DurationSummary(StatisticalSummary):
     q1: int = Field(gt=0, le=60 * 90)
     q2: int = Field(gt=0, le=60 * 90)
     q3: int = Field(gt=0, le=60 * 90)
-    mean: Optional[int] = Field(gt=0, le=60 * 90, default=None)
+    mean: int | None = Field(gt=0, le=60 * 90, default=None)
 
     model_config = {
         "json_schema_extra": {
@@ -460,7 +460,7 @@ class PayoutSummaryDecimal(StatisticalSummary):
     q1: Decimal = Field(gt=0, le=100)
     q2: Decimal = Field(gt=0, le=100)
     q3: Decimal = Field(gt=0, le=100)
-    mean: Optional[Decimal] = Field(gt=0, le=100, default=None)
+    mean: Decimal | None = Field(gt=0, le=100, default=None)
 
 
 class PayoutSummary(StatisticalSummary):
@@ -471,7 +471,7 @@ class PayoutSummary(StatisticalSummary):
     q1: int = Field(gt=0, le=10000)
     q2: int = Field(gt=0, le=10000)
     q3: int = Field(gt=0, le=10000)
-    mean: Optional[int] = Field(gt=0, le=10000, default=None)
+    mean: int | None = Field(gt=0, le=10000, default=None)
 
     model_config = {
         "json_schema_extra": {
@@ -514,45 +514,43 @@ class SurveyEligibilityCriterion(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True)
 
-    question_id: Optional[UUIDStr] = Field(
-        examples=["71a367fb71b243dc89f0012e0ec91749"]
-    )
-    property_code: Optional[PropertyCode] = Field(examples=["c:73629"])
+    question_id: UUIDStr | None = Field(examples=["71a367fb71b243dc89f0012e0ec91749"])
+    property_code: PropertyCode | None = Field(examples=["c:73629"])
     question_text: str = Field(
         examples=[
             "What company administers the retirement plan for your current employer?"
         ]
     )
     # The answer(s) that were considered qualifying
-    qualifying_answer: Tuple[str, ...] = Field(
+    qualifying_answer: tuple[str, ...] = Field(
         description="User answer(s) that satisfied at least one eligibility rule",
         examples=["121"],
     )
-    qualifying_answer_label: Optional[Tuple[str, ...]] = Field(
+    qualifying_answer_label: tuple[str, ...] | None = Field(
         examples=["Fidelity Investments"]
     )
-    explanation: Optional[str] = Field(
+    explanation: str | None = Field(
         default=None,
         description="Human-readable text explaining how a user's answer to this question affects eligibility",
         examples=[
             "The company that administers your employer's retirement plan is **Fidelity Investments**."
         ],
     )
-    explanation_fragment: Optional[str] = Field(
+    explanation_fragment: str | None = Field(
         default=None,
         exclude=True,
         description="For internal use",
         examples=["who's retirement plan is administered by **Fidelity Investments**"],
     )
     # Rank more "interesting"/rare/salient criterion first.
-    rank: Optional[NonNegativeInt] = Field(
+    rank: NonNegativeInt | None = Field(
         default=None,
         description="Lower values are shown more prominently in the UI",
     )
 
 
 class TopNBucket(BucketBase):
-    category: List[CategoryAssociation] = Field(default_factory=list)
+    category: list[CategoryAssociation] = Field(default_factory=list)
     duration: DurationSummary = Field()
     payout: PayoutSummary = Field()
     quality_score: float = Field(
@@ -586,8 +584,8 @@ class SingleEntryBucket(BucketBase):
 
 
 class TopNPlusBucket(BucketBase):
-    category: List[CategoryAssociation] = Field(default_factory=list)
-    contents: List[BucketTask] = Field()
+    category: list[CategoryAssociation] = Field(default_factory=list)
+    contents: list[BucketTask] = Field()
     duration: DurationSummary = Field()
     payout: PayoutSummary = Field()
     quality_score: float = Field()
@@ -595,11 +593,11 @@ class TopNPlusBucket(BucketBase):
         description="This will always be 'USD'", default="USD", examples=["USD"]
     )
 
-    eligibility_criteria: Tuple[SurveyEligibilityCriterion, ...] = Field(
+    eligibility_criteria: tuple[SurveyEligibilityCriterion, ...] = Field(
         description="The reasons the user is eligible for tasks in this bucket",
         default_factory=tuple,
     )
-    eligibility_explanation: Optional[str] = Field(
+    eligibility_explanation: str | None = Field(
         default=None,
         description="Human-readable text explaining a user's eligibility for tasks in this bucket",
         examples=[
@@ -643,8 +641,8 @@ class TopNPlusBucket(BucketBase):
 
 
 class TopNPlusRecontactBucket(BucketBase):
-    category: List[CategoryAssociation] = Field(default_factory=list)
-    contents: List[BucketTask] = Field()
+    category: list[CategoryAssociation] = Field(default_factory=list)
+    contents: list[BucketTask] = Field()
     duration: DurationSummary = Field()
     payout: PayoutSummary = Field()
     quality_score: float = Field()
@@ -670,17 +668,17 @@ class TopNPlusRecontactBucket(BucketBase):
 
 
 class SoftPairBucket(BucketBase):
-    uri: Optional[HttpsUrl] = Field(
+    uri: HttpsUrl | None = Field(
         examples=[None],
         description="The URL to send a respondent into. Must not edit this URL in any way. If the eligibility is "
         "conditional or ineligible, the uri will be null.",
     )
 
-    category: List[CategoryAssociation] = Field(default_factory=list)
-    contents: List[BucketTask] = Field()
+    category: list[CategoryAssociation] = Field(default_factory=list)
+    contents: list[BucketTask] = Field()
 
     eligibility: Eligibility = Field(examples=["conditional"])
-    missing_questions: List[str] = Field(
+    missing_questions: list[str] = Field(
         default_factory=list, examples=[["fb20fd4773304500b39c4f6de0012a5a"]]
     )
     loi: int = Field(description="this is the max loi of the contents", examples=[612])
@@ -695,8 +693,8 @@ class SoftPairBucket(BucketBase):
 
 
 class MarketplaceBucket(BucketBase):
-    category: List[CategoryAssociation] = Field(default_factory=list)
-    contents: List[BucketTask] = Field()
+    category: list[CategoryAssociation] = Field(default_factory=list)
+    contents: list[BucketTask] = Field()
     duration: DurationSummary = Field()
     payout: PayoutSummary = Field()
     source: SourceName = Field(
@@ -744,7 +742,7 @@ class OneShotOfferwallBucket(BaseModel):
 
 class OneShotSoftPairOfferwallBucket(OneShotOfferwallBucket):
     eligibility: Eligibility = Field(examples=["conditional"])
-    missing_questions: List[str] = Field(
+    missing_questions: list[str] = Field(
         default_factory=list, examples=[["fb20fd4773304500b39c4f6de0012a5a"]]
     )
 

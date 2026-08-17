@@ -4,7 +4,7 @@ import logging
 import random
 from collections import defaultdict
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Literal
 
 from pydantic import (
     ConfigDict,
@@ -72,9 +72,9 @@ class RaffleContest(RaffleContestCreate, Contest):
         json_schema_extra=_example_raffle,
     )
 
-    entries: List[ContestEntry] = Field(default_factory=list, exclude=True)
+    entries: list[ContestEntry] = Field(default_factory=list, exclude=True)
 
-    current_amount: Union[int, USDCent] = Field(
+    current_amount: int | USDCent = Field(
         default=0, description="Sum of all entry amounts"
     )
     current_participants: int = Field(
@@ -82,7 +82,7 @@ class RaffleContest(RaffleContestCreate, Contest):
     )
 
     @field_validator("entries", mode="after")
-    def sort_entries(cls, v: List[ContestEntry]):
+    def sort_entries(cls, v: list[ContestEntry]):
         return sorted(v, key=lambda x: x.created_at)
 
     @model_validator(mode="after")
@@ -116,7 +116,7 @@ class RaffleContest(RaffleContestCreate, Contest):
                 )
         return self
 
-    def select_winners(self) -> List["ContestWinner"]:
+    def select_winners(self) -> list["ContestWinner"]:
         from generalresearch.models.thl.contest import ContestWinner
 
         assert self.is_complete(), "contest must be complete to select a winner"
@@ -146,7 +146,7 @@ class RaffleContest(RaffleContestCreate, Contest):
 
         return winners
 
-    def should_end(self) -> Tuple[bool, Optional["ContestEndReason"]]:
+    def should_end(self) -> tuple[bool, "ContestEndReason" | None]:
         res, msg = super().should_end()
         if res:
             return res, msg
@@ -157,7 +157,7 @@ class RaffleContest(RaffleContestCreate, Contest):
         return False, None
 
     @staticmethod
-    def select_winner(user_amount: Dict[int, int]) -> int:
+    def select_winner(user_amount: dict[int, int]) -> int:
         """
         user_amount: Dict[user_id, amount], is total entry count for each user,
          e.g. {1111: 5, 2222: 1, 3333: 2}
@@ -186,10 +186,10 @@ class RaffleContest(RaffleContestCreate, Contest):
     def get_current_participants(self) -> int:
         return len({entry.user.user_id for entry in self.entries})
 
-    def get_current_amount(self) -> Union[int, USDCent]:
+    def get_current_amount(self) -> int | USDCent:
         return sum([x.amount for x in self.entries])
 
-    def get_user_amount(self, product_user_id: str) -> Union[int, USDCent]:
+    def get_user_amount(self, product_user_id: str) -> int | USDCent:
         # Sum of this user's amounts
         return sum(
             e.amount for e in self.entries if e.user.product_user_id == product_user_id
@@ -206,13 +206,13 @@ class RaffleContest(RaffleContestCreate, Contest):
             return True
         return False
 
-    def model_dump_mysql(self) -> Dict[str, Any]:
+    def model_dump_mysql(self) -> dict[str, Any]:
         d = super().model_dump_mysql()
         d["entry_rule"] = self.entry_rule.model_dump_json()
         return d
 
     @classmethod
-    def model_validate_mysql(cls, data: Dict) -> Self:
+    def model_validate_mysql(cls, data: dict) -> Self:
         data["entry_rule"] = ContestEntryRule.model_validate(data["entry_rule"])
         return super().model_validate_mysql(data)
 
@@ -224,10 +224,10 @@ class RaffleUserView(RaffleContest, ContestUserView):
         json_schema_extra=_example_raffle_user_view,
     )
 
-    user_amount: Union[int, USDCent] = Field(
+    user_amount: int | USDCent = Field(
         description="The total amount this user has entered"
     )
-    user_amount_today: Union[int, USDCent] = Field(
+    user_amount_today: int | USDCent = Field(
         description="The total amount this user has entered in the past 24 hours"
     )
 
@@ -252,7 +252,7 @@ class RaffleUserView(RaffleContest, ContestUserView):
         "end condition."
     )
     @property
-    def projected_win_probability(self) -> Optional[float]:
+    def projected_win_probability(self) -> float | None:
         if self.end_condition.target_entry_amount is None:
             return None
 
@@ -266,7 +266,7 @@ class RaffleUserView(RaffleContest, ContestUserView):
     # Not sure how to return this in api response, too confusing. Maybe use later.
     # Left for tests only.
     @property
-    def current_prize_count_probability(self) -> Dict[int, float]:
+    def current_prize_count_probability(self) -> int | float:
         # M: Population size (total entry amount)
         M = self.current_amount
         # n: number of success states (user's entry amount)
@@ -278,7 +278,7 @@ class RaffleUserView(RaffleContest, ContestUserView):
         probs = {k: hypergeom.pmf(k, M, n, N) for k in range(1, N + 1)}
         return probs
 
-    def is_entry_eligible(self, entry: ContestEntry) -> Tuple[bool, str]:
+    def is_entry_eligible(self, entry: ContestEntry) -> tuple[bool, str]:
         if self.entry_rule.max_entry_amount_per_user:
             if (
                 self.user_amount + entry.amount
@@ -292,7 +292,7 @@ class RaffleUserView(RaffleContest, ContestUserView):
                 return False, "Entry would exceed max amount per user per day."
         return True, ""
 
-    def is_user_eligible(self, country_iso: str) -> Tuple[bool, str]:
+    def is_user_eligible(self, country_iso: str) -> tuple[bool, str]:
         passes, msg = super().is_user_eligible(country_iso=country_iso)
         if not passes:
             return False, msg

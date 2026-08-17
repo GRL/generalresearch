@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 # https://integrations.precisionsample.com/api.html#Get%20Questions
 import json
 import logging
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Self
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -65,7 +67,7 @@ class PrecisionQuestionType(str, Enum):
 
 class PrecisionUserQuestionAnswer(MarketplaceUserQuestionAnswer):
     question_id: PrecisionQuestionID = Field()
-    question_type: Optional[PrecisionQuestionType] = Field(default=None)
+    question_type: PrecisionQuestionType | None = Field(default=None)
     # Was this answer synchronized with precision's user profile API?
     synced: bool = Field(default=False)
 
@@ -74,16 +76,16 @@ class PrecisionQuestion(MarketplaceQuestion):
     question_id: PrecisionQuestionID = Field(
         description="The unique identifier for the qualification"
     )
-    question_name: Optional[str] = Field(default=None, max_length=128)
+    question_name: str | None = Field(default=None, max_length=128)
     question_text: str = Field(
         max_length=1024, min_length=1, description="The text shown to respondents"
     )
     question_type: PrecisionQuestionType = Field(frozen=True)
-    options: Optional[List[PrecisionQuestionOption]] = Field(default=None, min_length=1)
+    options: list[PrecisionQuestionOption] | None = Field(default=None, min_length=1)
     # This comes from the API field ProfileName. idk what the possible values are, looks like:
     #   'Personal Profile', 'Work Profile', 'Auto Profile', 'Medical Profile', 'Travel & Entertainment'.
     # I don't know what, if anything, this is used for.
-    profile: Optional[str] = Field(default=None, frozen=True)
+    profile: str | None = Field(default=None, frozen=True)
     source: Literal[Source.PRECISION] = Source.PRECISION
 
     @property
@@ -91,7 +93,7 @@ class PrecisionQuestion(MarketplaceQuestion):
         return self.question_id
 
     @field_validator("question_text", mode="after")
-    def remove_nbsp(cls, s: Optional[str]):
+    def remove_nbsp(cls, s: str | None):
         return string_utils.remove_nbsp(s)
 
     @model_validator(mode="after")
@@ -104,7 +106,7 @@ class PrecisionQuestion(MarketplaceQuestion):
         return self
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any]) -> Optional["PrecisionQuestion"]:
+    def from_api(cls, d: dict[str, Any]) -> "PrecisionQuestion" | None:
         """
         :param d: Raw response from API
         """
@@ -115,7 +117,7 @@ class PrecisionQuestion(MarketplaceQuestion):
             return None
 
     @classmethod
-    def _from_api(cls, d: Dict[str, Any]) -> "PrecisionQuestion":
+    def _from_api(cls, d: dict[str, Any]) -> "PrecisionQuestion":
         question_type = PrecisionQuestionType.from_api(d["question_type_name"])
         # sometimes an empty option is returned .... ?
         options = [
@@ -137,7 +139,7 @@ class PrecisionQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> "PrecisionQuestion":
+    def from_db(cls, d: dict[str, Any]) -> "PrecisionQuestion":
         options = None
         if d["options"]:
             options = [
@@ -156,7 +158,7 @@ class PrecisionQuestion(MarketplaceQuestion):
             category_id=d.get("category_id"),
         )
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", by_alias=True)
         d["options"] = json.dumps(d["options"])
         return d

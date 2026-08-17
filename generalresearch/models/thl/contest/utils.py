@@ -1,4 +1,6 @@
-from typing import TYPE_CHECKING, Dict, List
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from generalresearch.currency import USDCent
@@ -18,8 +20,8 @@ def censor_product_user_id(user: "User") -> str:
 
 
 def distribute_leaderboard_prizes(
-    prizes: List["USDCent"], leaderboard_rows: List["LeaderboardRow"]
-) -> Dict[str, "USDCent"]:
+    prizes: list["USDCent"], leaderboard_rows: list["LeaderboardRow"]
+) -> dict[str, "USDCent"]:
     """
     Distributes leaderboard prizes among tied users.
     The prizes for the tied places are pooled together and divided

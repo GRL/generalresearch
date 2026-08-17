@@ -1,4 +1,4 @@
-from typing import List, Set
+from __future__ import annotations
 
 import pandas as pd
 from pandera import Check, Column, DataFrameSchema, Index
@@ -11,8 +11,8 @@ from generalresearch.models.thl.survey.task_collection import (
     create_empty_df_from_schema,
 )
 
-COUNTRY_ISOS: Set[str] = Localelator().get_all_countries()
-LANGUAGE_ISOS: Set[str] = Localelator().get_all_languages()
+COUNTRY_ISOS: set[str] = Localelator().get_all_countries()
+LANGUAGE_ISOS: set[str] = Localelator().get_all_languages()
 
 bid_stats_columns = {
     "system_conversion": Column(float, Check.between(0, 1), nullable=True),
@@ -54,8 +54,8 @@ bid_columns = {
 }
 quota_columns = {
     "cpi": Column(float, Check.between(min_value=0, max_value=100)),
-    "used_question_ids": Column(List[str]),
-    "all_hashes": Column(List[str]),  # set >> list for column support
+    "used_question_ids": Column(list[str]),
+    "all_hashes": Column(list[str]),  # set >> list for column support
 }
 
 columns = (
@@ -84,7 +84,7 @@ MorningTaskCollectionSchema = DataFrameSchema(
 
 
 class MorningTaskCollection(TaskCollection):
-    items: List[MorningBid]
+    items: list[MorningBid]
     _schema = MorningTaskCollectionSchema
 
     def to_rows(self, bid: MorningBid):

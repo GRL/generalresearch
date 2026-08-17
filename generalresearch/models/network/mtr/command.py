@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import subprocess
-from typing import List, Optional
 
 from generalresearch.models.network.definitions import IPProtocol
 from generalresearch.models.network.mtr.parser import parse_mtr_output
@@ -17,9 +18,9 @@ PROTOCOLS_W_PORT = {IPProtocol.TCP, IPProtocol.UDP, IPProtocol.SCTP}
 
 def build_mtr_command(
     ip: str,
-    protocol: Optional[IPProtocol] = None,
-    port: Optional[int] = None,
-    report_cycles: int = 10,
+    protocol: IPProtocol | None = None,
+    port: int | None = None,
+    report_cycles: int | None = 10,
 ) -> str:
     # https://manpages.ubuntu.com/manpages/focal/man8/mtr.8.html
     # e.g. "mtr -r -c 2 -b -z -j -T -P 443 74.139.70.149"
@@ -67,4 +68,6 @@ def run_mtr(config: MTRRunCommand) -> MTRResult:
         check=False,
     )
     raw = proc.stdout.strip()
-    return parse_mtr_output(raw, protocol=config.options.protocol, port=config.options.port)
+    return parse_mtr_output(
+        raw, protocol=config.options.protocol, port=config.options.port
+    )

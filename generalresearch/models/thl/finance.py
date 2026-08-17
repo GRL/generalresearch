@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import random
 from datetime import timezone
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pandas as pd
@@ -51,7 +53,7 @@ class POPFinancial(BaseModel):
     """
 
     # --- Tracking / Tagging ---
-    product_id: Optional[UUIDStr] = Field(default=None, examples=[uuid4().hex])
+    product_id: UUIDStr | None = Field(default=None, examples=[uuid4().hex])
 
     time: AwareDatetimeISO = Field(
         description="The starting time block for the respective 'Period' that"
@@ -77,7 +79,7 @@ class POPFinancial(BaseModel):
         examples=[adjustment_example],
     )
 
-    adjustment_types: List[AdjustmentType] = Field()
+    adjustment_types: list[AdjustmentType] = Field()
 
     expense: int = Field(
         description="For Product accounts that are setup with Respondent payouts,"
@@ -101,8 +103,8 @@ class POPFinancial(BaseModel):
 
     @staticmethod
     def list_from_pandas(
-        input_data: pd.DataFrame, accounts: List["LedgerAccount"]
-    ) -> List["POPFinancial"]:
+        input_data: pd.DataFrame, accounts: list["LedgerAccount"]
+    ) -> list["POPFinancial"]:
         """
         This list can either be for a Product or a Business. The difference
         is that the list of accounts will either be len()=1 (Product) or
@@ -183,8 +185,8 @@ class ProductBalances(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
     # --- Tracking / Tagging ---
-    product_id: Optional[UUIDStr] = Field(default=None, examples=[uuid4().hex])
-    last_event: Optional[AwareDatetimeISO] = Field(default=None)
+    product_id: UUIDStr | None = Field(default=None, examples=[uuid4().hex])
+    last_event: AwareDatetimeISO | None = Field(default=None)
 
     # --- Numeric ---
 
@@ -539,11 +541,11 @@ class ProductBalances(BaseModel):
 
 
 class BusinessBalances(BaseModel):
-    product_balances: List[ProductBalances] = Field(default_factory=list)
+    product_balances: list[ProductBalances] = Field(default_factory=list)
 
     # --- Validators ---
     @field_validator("product_balances")
-    def required_product_ids(cls, v: List[ProductBalances]):
+    def required_product_ids(cls, v: list[ProductBalances]):
         """The BusinessBalances needs to be able to distinguish between all
         the child Products; in order to do this, we need to assert that
         they all explicitly are set
@@ -863,7 +865,7 @@ class BusinessBalances(BaseModel):
         from generalresearch.managers.thl.product import ProductManager
 
         pm = ProductManager(pg_config=thl_pg_config)
-        products: List[Product] = pm.get_by_uuids(
+        products: list[Product] = pm.get_by_uuids(
             product_uuids=[pb.product_id for pb in product_balances]
         )
         sorted_products_uuids = [
