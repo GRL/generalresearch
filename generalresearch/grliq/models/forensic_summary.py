@@ -8,6 +8,7 @@ from typing import (
     get_args,
     get_origin,
     get_type_hints,
+    Optional,
 )
 
 import numpy as np
@@ -56,7 +57,7 @@ class UserForensicSummary(BaseModel):
     )
 
     # These must be nullable in case a user has 0 attempts!
-    category_result_summary: GrlIqForensicCategorySummary | = Field(
+    category_result_summary: GrlIqForensicCategorySummary | None= Field(
         default=None
     )
     checker_result_summary: GrlIqCheckerResultsSummary | None = Field(default=None)
