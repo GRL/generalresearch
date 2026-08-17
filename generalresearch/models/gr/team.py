@@ -84,7 +84,7 @@ class Membership(BaseModel):
     team_id: SkipJsonSchema[PositiveInt] = Field()
 
     # prefetch attributes
-    team: SkipJsonSchema["Team" | None] = Field(default=None)
+    team: SkipJsonSchema["Team | None"] = Field(default=None)
 
     # --- Validators ---
 
@@ -158,7 +158,7 @@ class Team(BaseModel):
         ds: "GRLDatasets",
         client: Client,
         mnt_gr_api: Path,
-        enriched_session: "EnrichedSessionMerge" | None = None,
+        enriched_session: "EnrichedSessionMerge | None" = None,
     ) -> None:
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
@@ -203,7 +203,7 @@ class Team(BaseModel):
         ds: "GRLDatasets",
         client: Client,
         mnt_gr_api: Path,
-        enriched_wall: "EnrichedWallMerge" | None = None,
+        enriched_wall: "EnrichedWallMerge | None" = None,
     ) -> None:
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
@@ -281,8 +281,8 @@ class Team(BaseModel):
         client: "Client",
         ds: "GRLDatasets",
         mnt_gr_api: Path | str,
-        enriched_session: "EnrichedSessionMerge" | None = None,
-        enriched_wall: "EnrichedWallMerge" | None = None,
+        enriched_session: "EnrichedSessionMerge | None" = None,
+        enriched_wall: "EnrichedWallMerge | None" = None,
     ) -> None:
         ex_secs = 60 * 60 * 24 * 3  # 3 days
 

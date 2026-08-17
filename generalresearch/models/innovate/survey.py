@@ -261,7 +261,7 @@ class InnovateSurvey(MarketplaceTask):
         return data
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "InnovateSurvey" | None:
+    def from_api(cls, d: dict[str, Any]) -> "InnovateSurvey | None":
         try:
             return cls._from_api(d)
         except Exception as e:

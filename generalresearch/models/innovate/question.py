@@ -142,7 +142,7 @@ class InnovateQuestion(MarketplaceQuestion):
     @classmethod
     def from_api(
         cls, d: dict, country_iso: str, language_iso: str
-    ) -> "InnovateQuestion" | None:
+    ) -> "InnovateQuestion | None":
         """
         :param d: Raw response from API
         :param country_iso:

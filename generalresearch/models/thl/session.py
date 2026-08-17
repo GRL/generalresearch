@@ -983,7 +983,7 @@ class Session(BaseModel):
 
     def determine_payments(
         self,
-        thl_ledger_manager: "ThlLedgerManager" | None = None,
+        thl_ledger_manager: "ThlLedgerManager | None" = None,
     ) -> tuple[Decimal, Decimal, Decimal, Decimal | None]:
         # How much we should get paid by the MPs for all completes in this
         #   session (usually 0 or 1 completes)

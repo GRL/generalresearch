@@ -139,7 +139,7 @@ class ProdegeQuestion(MarketplaceQuestion):
         return self
 
     @classmethod
-    def from_api(cls, d: dict[str, Any], country_iso: str) -> "ProdegeQuestion" | None:
+    def from_api(cls, d: dict[str, Any], country_iso: str) -> "ProdegeQuestion | None":
         """
         :param d: Raw response from API
         """

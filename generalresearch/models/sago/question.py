@@ -173,7 +173,7 @@ class SagoQuestion(MarketplaceQuestion):
     @classmethod
     def from_api(
         cls, d: dict[str, Any], country_iso: str, language_iso: str
-    ) -> "SagoQuestion" | None:
+    ) -> "SagoQuestion | None":
         """
         :param d: Raw response from API
         :param country_iso:

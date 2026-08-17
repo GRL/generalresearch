@@ -252,7 +252,7 @@ class SpectrumQuestion(MarketplaceQuestion):
     @classmethod
     def from_api(
         cls, d: dict[str, Any], country_iso: str, language_iso: str
-    ) -> "SpectrumQuestion" | None:
+    ) -> "SpectrumQuestion | None":
         # To not pollute our logs, we know we are skipping any question that
         #   meets the following conditions:
         if not SpectrumQuestionType.from_api(d["type"]):

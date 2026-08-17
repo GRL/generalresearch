@@ -259,7 +259,7 @@ class SagoSurvey(MarketplaceTask):
         }
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "SagoSurvey" | None:
+    def from_api(cls, d: dict[str, Any]) -> "SagoSurvey | None":
         try:
             return cls._from_api(d)
         except Exception as e:

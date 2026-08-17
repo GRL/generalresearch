@@ -84,7 +84,7 @@ class BusinessBankAccount(BaseModel):
     # 'business' is a Class with values that are fetched from the DB.
     #   Initialization is deferred until it is actually needed
     #   (see .prefetch_business())
-    business: SkipJsonSchema["Business" | None] = Field(default=None)
+    business: SkipJsonSchema["Business | None"] = Field(default=None)
 
     transfer_method: TransferMethod = Field(
         description=TransferMethod.as_openapi(),

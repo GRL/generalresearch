@@ -941,7 +941,7 @@ class Product(BaseModel, validate_assignment=True):
 
     # Initialization is deferred until unless it's called
     # (see .prebuild_***())
-    balance: "ProductBalances" | None = Field(
+    balance: "ProductBalances | None" = Field(
         default=None, description="Product Balance"
     )
 
@@ -1061,7 +1061,7 @@ class Product(BaseModel, validate_assignment=True):
         thl_lm: "ThlLedgerManager",
         ds: "GRLDatasets",
         client: Client,
-        pop_ledger: "PopLedgerMerge" | None = None,
+        pop_ledger: "PopLedgerMerge | None" = None,
     ) -> None:
         """
         This returns the Product's Balances that are calculated across
@@ -1142,7 +1142,7 @@ class Product(BaseModel, validate_assignment=True):
         thl_lm: "ThlLedgerManager",
         ds: "GRLDatasets",
         client: Client,
-        pop_ledger: "PopLedgerMerge" | None = None,
+        pop_ledger: "PopLedgerMerge | None" = None,
     ) -> None:
         """This is very similar to the Product POP Financial endpoint; however,
         it returns more than one item for a single time interval. This is

@@ -146,7 +146,7 @@ class RaffleContest(RaffleContestCreate, Contest):
 
         return winners
 
-    def should_end(self) -> tuple[bool, "ContestEndReason" | None]:
+    def should_end(self) -> tuple[bool, "ContestEndReason | None"]:
         res, msg = super().should_end()
         if res:
             return res, msg

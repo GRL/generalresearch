@@ -106,7 +106,7 @@ class PrecisionQuestion(MarketplaceQuestion):
         return self
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "PrecisionQuestion" | None:
+    def from_api(cls, d: dict[str, Any]) -> "PrecisionQuestion | None":
         """
         :param d: Raw response from API
         """

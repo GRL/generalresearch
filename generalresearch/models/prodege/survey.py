@@ -510,7 +510,7 @@ class ProdegeSurvey(MarketplaceTask):
         return round(float(v), 2)
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "ProdegeSurvey" | None:
+    def from_api(cls, d: dict[str, Any]) -> "ProdegeSurvey | None":
         try:
             return cls._from_api(d)
         except Exception as e:

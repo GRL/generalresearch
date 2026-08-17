@@ -472,7 +472,7 @@ class RepDataSurvey(BaseModel):
         return ",".join(map(str, sorted([d.value for d in self.allowed_devices])))
 
     @classmethod
-    def from_api(cls, survey_response) -> "RepDataSurvey" | None:
+    def from_api(cls, survey_response) -> "RepDataSurvey | None":
         """
         :param survey_response: Raw response from API
         """
