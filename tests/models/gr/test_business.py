@@ -134,7 +134,7 @@ class TestBusiness:
         assert "Not Loaded" in res2
 
         business.prefetch_products(thl_pg_config=thl_web_rr)
-        business.prefetch_bp_accounts(lm=lm, thl_pg_config=thl_web_rr)
+        business.prefetch_bp_accounts(thl_lm=thl_lm, thl_pg_config=thl_web_rr)
         res3 = str(business)
         assert "Products: 2" in res3
         assert "Ledger Accounts: 2" in res3
@@ -376,7 +376,7 @@ class TestBusiness:
         self,
         business,
         thl_web_rr,
-        lm,
+        thl_lm,
         mnt_filepath,
         client_no_amm,
         pop_ledger_merge,
@@ -384,7 +384,7 @@ class TestBusiness:
         assert business.pop_financial is None
         business.prebuild_pop_financial(
             thl_pg_config=thl_web_rr,
-            lm=lm,
+            thl_lm=thl_lm,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
@@ -393,7 +393,7 @@ class TestBusiness:
 
     def test_bp_accounts(self, business, lm, thl_web_rr, product_factory, thl_lm):
         assert business.bp_accounts is None
-        business.prefetch_bp_accounts(lm=lm, thl_pg_config=thl_web_rr)
+        business.prefetch_bp_accounts(thl_lm=thl_lm, thl_pg_config=thl_web_rr)
         assert business.bp_accounts == []
 
         from generalresearch.models.thl.product import Product
@@ -401,7 +401,7 @@ class TestBusiness:
         p1: Product = product_factory(business=business)
         thl_lm.get_account_or_create_bp_wallet(product=p1)
 
-        business.prefetch_bp_accounts(lm=lm, thl_pg_config=thl_web_rr)
+        business.prefetch_bp_accounts(thl_lm=thl_lm, thl_pg_config=thl_web_rr)
         assert len(business.bp_accounts) == 1
 
 

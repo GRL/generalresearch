@@ -194,7 +194,7 @@ class Business(BaseModel):
     )
 
     tax_number: str | None = Field(default=None, max_length=20)
-    contact: "BusinessContact" | None = Field(default=None)
+    contact: "BusinessContact | None" = Field(default=None)
 
     # Initialization is deferred until it is actually needed
     # (see .prefetch_***())
@@ -205,7 +205,7 @@ class Business(BaseModel):
 
     # Initialization is deferred until unless it's called
     # (see .prebuild_***())
-    balance: "BusinessBalances" | None = Field(default=None, name="Business Balance")
+    balance: "BusinessBalances | None" = Field(default=None, name="Business Balance")
 
     payouts_total_str: str | None = Field(default=None)
     payouts_total: USDCent | None = Field(default=None)
@@ -299,17 +299,40 @@ class Business(BaseModel):
         bam = BusinessBankAccountManager(pg_config=pg_config)
         self.bank_accounts = bam.get_by_business_id(business_id=self.id)
 
-    def prefetch_bp_accounts(self, lm: LedgerManager, thl_pg_config: PostgresConfig):
+    def prefetch_bp_accounts(
+        self, thl_lm: ThlLedgerManager, thl_pg_config: PostgresConfig
+    ):
         # We need to prefetch the Products everytime because there is no way
         #   of knowing if a new Product has been added since the last time it
         #   ran.
         self.prefetch_products(thl_pg_config=thl_pg_config)
+        product_lookup = {p.uuid: p for p in self.products}
 
-        accounts = lm.get_accounts_if_exists(
+        accounts = thl_lm.get_accounts_if_exists(
             qualified_names=[
-                f"{lm.currency.value}:bp_wallet:{bpid}" for bpid in self.product_uuids
+                f"{thl_lm.currency.value}:bp_wallet:{bpid}"
+                for bpid in self.product_uuids
             ]
         )
+
+        # They should exist, but create a wallet account if it doesn't...
+        bp_account = {a.reference_uuid for a in accounts}
+        refresh = False
+        for product_uuid in self.product_uuids:
+            if product_uuid not in bp_account:
+                refresh = True
+                logging.exception(
+                    f"Business {self.uuid} does not have a BP Wallet Account for Product {product_uuid}. Creating..."
+                )
+                product = product_lookup[product_uuid]
+                thl_lm.get_account_or_create_bp_wallet(product=product)
+        if refresh:
+            accounts = thl_lm.get_accounts_if_exists(
+                qualified_names=[
+                    f"{thl_lm.currency.value}:bp_wallet:{bpid}"
+                    for bpid in self.product_uuids
+                ]
+            )
 
         assert len(accounts) == len(self.product_uuids)
 
@@ -323,7 +346,7 @@ class Business(BaseModel):
         lm: "LedgerManager",
         ds: "GRLDatasets",
         client: Client,
-        pop_ledger: "PopLedgerMerge" | None = None,
+        pop_ledger: "PopLedgerMerge | None" = None,
         at_timestamp: AwareDatetime | None = None,
     ) -> None:
         """
@@ -440,10 +463,10 @@ class Business(BaseModel):
     def prebuild_pop_financial(
         self,
         thl_pg_config: PostgresConfig,
-        lm: "LedgerManager",
+        thl_lm: "ThlLedgerManager",
         ds: "GRLDatasets",
         client: Client,
-        pop_ledger: "PopLedgerMerge" | None = None,
+        pop_ledger: "PopLedgerMerge | None" = None,
     ) -> None:
         """This is very similar to the Product POP Financial endpoint; however,
         it returns more than one item for a single time interval. This is
@@ -451,7 +474,7 @@ class Business(BaseModel):
         financial activity within that time window.
         """
         if self.bp_accounts is None:
-            self.prefetch_bp_accounts(lm=lm, thl_pg_config=thl_pg_config)
+            self.prefetch_bp_accounts(thl_lm=thl_lm, thl_pg_config=thl_pg_config)
 
         from generalresearch.models.admin.request import (
             ReportRequest,
@@ -498,7 +521,7 @@ class Business(BaseModel):
         ds: "GRLDatasets",
         client: Client,
         mnt_gr_api: Path,
-        enriched_session: "EnrichedSessionMerge" | None = None,
+        enriched_session: "EnrichedSessionMerge | None" = None,
     ) -> None:
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
@@ -543,7 +566,7 @@ class Business(BaseModel):
         ds: "GRLDatasets",
         client: Client,
         mnt_gr_api: Path,
-        enriched_wall: "EnrichedWallMerge" | None = None,
+        enriched_wall: "EnrichedWallMerge | None" = None,
     ) -> None:
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
@@ -621,9 +644,9 @@ class Business(BaseModel):
         thl_lm: "ThlLedgerManager",
         bpem: "BusinessPayoutEventManager",
         mnt_gr_api: Path | str,
-        pop_ledger: "PopLedgerMerge" | None = None,
-        enriched_session: "EnrichedSessionMerge" | None = None,
-        enriched_wall: "EnrichedWallMerge" | None = None,
+        pop_ledger: "PopLedgerMerge | None" = None,
+        enriched_session: "EnrichedSessionMerge | None" = None,
+        enriched_wall: "EnrichedWallMerge | None" = None,
     ) -> None:
         LOG.debug(f"Business.set_cache({self.uuid=})")
 
@@ -633,7 +656,7 @@ class Business(BaseModel):
         self.prefetch_teams(pg_config=pg_config)
         self.prefetch_products(thl_pg_config=thl_web_rr)
         self.prefetch_bank_accounts(pg_config=pg_config)
-        self.prefetch_bp_accounts(lm=lm, thl_pg_config=thl_web_rr)
+        self.prefetch_bp_accounts(thl_lm=thl_lm, thl_pg_config=thl_web_rr)
 
         self.prebuild_balance(
             thl_pg_config=thl_web_rr,
@@ -645,7 +668,7 @@ class Business(BaseModel):
         self.prebuild_payouts(thl_pg_config=thl_web_rr, thl_lm=thl_lm, bpem=bpem)
         self.prebuild_pop_financial(
             thl_pg_config=thl_web_rr,
-            lm=lm,
+            thl_lm=thl_lm,
             ds=ds,
             client=client,
             pop_ledger=pop_ledger,
