@@ -4,7 +4,6 @@ import ipaddress
 from datetime import datetime, timezone
 from typing import Any, Literal
 
-import geoip2.models
 from faker import Faker
 from pydantic import (
     BaseModel,
@@ -122,47 +121,6 @@ class IPGeoname(BaseModel):
     def from_mysql(cls, d: dict[str, Any]) -> Self:
         d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
 
-        return cls.model_validate(d)
-
-    @classmethod
-    def from_insights(cls, res: geoip2.models.Insights) -> Self:
-        geoname_id = res.city.geoname_id
-        # Some ips don't have city level specificity. grab the first subdivision if it exists
-        if geoname_id is None and len(res.subdivisions) > 0:
-            geoname_id = res.subdivisions[0].geoname_id
-        elif geoname_id is None:
-            # No city, no subdivision, use the country
-            geoname_id = res.country.geoname_id
-        # Some ips have a city but no subdivisions (41.33.89.99)
-        d = {
-            "geoname_id": geoname_id,
-            "continent_code": res.continent.code,
-            "continent_name": res.continent.name,
-            "country_iso": res.country.iso_code,
-            "country_name": res.country.name,
-            "city_name": res.city.name,
-            "metro_code": res.location.metro_code,
-            "time_zone": res.location.time_zone,
-            "is_in_european_union": res.country.is_in_european_union,
-            "subdivision_1_iso": None,
-            "subdivision_1_name": None,
-            "subdivision_2_iso": None,
-            "subdivision_2_name": None,
-        }
-        if len(res.subdivisions) > 0:
-            d.update(
-                {
-                    "subdivision_1_iso": res.subdivisions[0].iso_code,
-                    "subdivision_1_name": res.subdivisions[0].name,
-                }
-            )
-        if len(res.subdivisions) > 1:
-            d.update(
-                {
-                    "subdivision_2_iso": res.subdivisions[1].iso_code,
-                    "subdivision_2_name": res.subdivisions[1].name,
-                }
-            )
         return cls.model_validate(d)
 
 
@@ -300,49 +258,6 @@ class IPInformation(BaseModel):
         d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
 
         return cls.model_validate(d)
-
-    @classmethod
-    def from_insights(cls, res: geoip2.models.Insights) -> Self:
-        geoname_id = res.city.geoname_id
-        # Some ips don't have city level specificity. grab the first subdivision if it exists
-        if geoname_id is None and len(res.subdivisions) > 0:
-            geoname_id = res.subdivisions[0].geoname_id
-        elif geoname_id is None:
-            # No city, no subdivision, use the country
-            geoname_id = res.country.geoname_id
-        return cls.model_validate(
-            {
-                "ip": res.traits.ip_address,
-                "network": str(res.traits.network),
-                "geoname_id": geoname_id,
-                "country_iso": res.country.iso_code.upper(),
-                "registered_country_iso": (
-                    res.registered_country.iso_code.upper()
-                    if res.registered_country.iso_code
-                    else None
-                ),
-                "is_anonymous": res.traits.is_anonymous,
-                "is_anonymous_vpn": res.traits.is_anonymous_vpn,
-                "is_hosting_provider": res.traits.is_hosting_provider,
-                "is_public_proxy": res.traits.is_public_proxy,
-                "is_tor_exit_node": res.traits.is_tor_exit_node,
-                "is_residential_proxy": res.traits.is_residential_proxy,
-                "autonomous_system_number": res.traits.autonomous_system_number,
-                "autonomous_system_organization": res.traits.autonomous_system_organization,
-                "domain": res.traits.domain,
-                "isp": res.traits.isp,
-                "mobile_country_code": res.traits.mobile_country_code,
-                "mobile_network_code": res.traits.mobile_network_code,
-                "organization": res.traits.organization,
-                "static_ip_score": res.traits.static_ip_score,
-                "user_type": res.traits.user_type,
-                # IP-specific location that may be different for different IPs in the same City
-                "postal_code": res.postal.code,
-                "latitude": res.location.latitude,
-                "longitude": res.location.longitude,
-                "accuracy_radius": res.location.accuracy_radius,
-            }
-        )
 
 
 class GeoIPInformation(IPInformation, IPGeoname):
