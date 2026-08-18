@@ -59,16 +59,16 @@ class Currency(str, Enum):
 
 
 CURRENCY_FORMATTER = {
-    "USD": lambda x: "${:,.2f}".format(x / 100),
-    "CAD": lambda x: "${:,.2f} CAD".format(x / 100),
-    "GBP": lambda x: "{:,.2f} £".format(x / 100),
-    "EUR": lambda x: "€{:,.2f}".format(x / 100),
-    "INR": lambda x: "₹{:,.2f}".format(x / 100),
-    "AUD": lambda x: "${:,.2f} AUD".format(x / 100),
-    "PLN": lambda x: "{:,.2f} zł".format(x / 100),
-    "SEK": lambda x: "{:,.2f} kr".format(x / 100),
-    "SGD": lambda x: "${:,.2f} SGD".format(x / 100),
-    "MXN": lambda x: "${:,.2f} MXN".format(x / 100),
+    "USD": lambda x: f"${x / 100:,.2f}",
+    "CAD": lambda x: f"${x / 100:,.2f} CAD",
+    "GBP": lambda x: f"{x / 100:,.2f} £",
+    "EUR": lambda x: f"€{x / 100:,.2f}",
+    "INR": lambda x: f"₹{x / 100:,.2f}",
+    "AUD": lambda x: f"${x / 100:,.2f} AUD",
+    "PLN": lambda x: f"{x / 100:,.2f} zł",
+    "SEK": lambda x: f"{x / 100:,.2f} kr",
+    "SGD": lambda x: f"${x / 100:,.2f} SGD",
+    "MXN": lambda x: f"${x / 100:,.2f} MXN",
 }
 
 # The max value user can redeem in one go in foreign currencies. should be < $250

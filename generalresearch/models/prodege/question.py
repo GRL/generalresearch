@@ -139,7 +139,7 @@ class ProdegeQuestion(MarketplaceQuestion):
         return self
 
     @classmethod
-    def from_api(cls, d: dict[str, Any], country_iso: str) -> "ProdegeQuestion | None":
+    def from_api(cls, d: dict[str, Any], country_iso: str) -> ProdegeQuestion | None:
         """
         :param d: Raw response from API
         """
@@ -150,7 +150,7 @@ class ProdegeQuestion(MarketplaceQuestion):
             return None
 
     @classmethod
-    def _from_api(cls, d: dict[str, Any], country_iso: str) -> "ProdegeQuestion":
+    def _from_api(cls, d: dict[str, Any], country_iso: str) -> ProdegeQuestion:
         # The API has no concept of language at all. Questions for a country
         # are returned both in english and other languages. Questions do have
         # a field 'country_specific', and if True, that generally means the
@@ -183,7 +183,7 @@ class ProdegeQuestion(MarketplaceQuestion):
         return cls.model_validate(d)
 
     @classmethod
-    def from_db(cls, d: dict[str, Any]) -> "ProdegeQuestion":
+    def from_db(cls, d: dict[str, Any]) -> ProdegeQuestion:
         options = None
         if d["options"]:
             options = [
@@ -213,7 +213,7 @@ class ProdegeQuestion(MarketplaceQuestion):
         d["options"] = json.dumps(d["options"])
         return d
 
-    def to_upk_question(self) -> "UpkQuestion":
+    def to_upk_question(self) -> UpkQuestion:
         from generalresearch.models.thl.profiling.upk_question import (
             UpkQuestion,
             UpkQuestionChoice,

@@ -85,7 +85,7 @@ class TaskCalculationType(str, Enum):
     STARTS = "STARTS"
 
     @classmethod
-    def from_api(cls, v: str) -> "TaskCalculationType":
+    def from_api(cls, v: str) -> TaskCalculationType:
         return {
             "complete": cls.COMPLETES,
             "completes": cls.COMPLETES,
@@ -97,11 +97,11 @@ class TaskCalculationType(str, Enum):
         }[v.lower()]
 
     @classmethod
-    def prodege_from_api(cls, v: int) -> "TaskCalculationType":
+    def prodege_from_api(cls, v: int) -> TaskCalculationType:
         return {1: cls.COMPLETES, 2: cls.STARTS}[v]
 
     @classmethod
-    def innovate_from_api(cls, v: int) -> "TaskCalculationType":
+    def innovate_from_api(cls, v: int) -> TaskCalculationType:
         return {0: cls.COMPLETES, 1: cls.STARTS}[v]
 
 

@@ -66,7 +66,7 @@ class InnovateCondition(MarketplaceCondition):
     values: list[Annotated[str, Field(max_length=128)]] = Field()
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "InnovateCondition":
+    def from_api(cls, d: dict[str, Any]) -> InnovateCondition:
         d["logical_operator"] = LogicalOperator.OR
         d["value_type"] = ConditionValueType.LIST
         d["negate"] = False
@@ -261,7 +261,7 @@ class InnovateSurvey(MarketplaceTask):
         return data
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "InnovateSurvey | None":
+    def from_api(cls, d: dict[str, Any]) -> InnovateSurvey | None:
         try:
             return cls._from_api(d)
         except Exception as e:
@@ -269,7 +269,7 @@ class InnovateSurvey(MarketplaceTask):
             return None
 
     @classmethod
-    def _from_api(cls, d: dict[str, Any]) -> "InnovateSurvey":
+    def _from_api(cls, d: dict[str, Any]) -> InnovateSurvey:
         d["conditions"] = dict()
 
         # If we haven't hit the "detail" endpoint, we won't get this
@@ -329,7 +329,7 @@ class InnovateSurvey(MarketplaceTask):
         )
         return f"{self.__repr_name__()}({repr_str})"
 
-    def is_unchanged(self, other: "InnovateSurvey") -> bool:
+    def is_unchanged(self, other: InnovateSurvey) -> bool:
         # Avoiding overloading __eq__ because it looks kind of complicated? I
         # want to be explicit that this is not testing object equivalence,
         # just that the objects don't require any db updates. We also exclude

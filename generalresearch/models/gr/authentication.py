@@ -112,11 +112,11 @@ class GRUser(BaseModel):
     )
 
     # prefetch attributes
-    businesses: list["Business"] | None = Field(default=None)
-    teams: list["Team"] | None = Field(default=None)
-    products: list["Product"] | None = Field(default=None)
-    token: "GRToken | None" = Field(default=None)
-    claims: "Claims | None" = Field(default=None)
+    businesses: list[Business] | None = Field(default=None)
+    teams: list[Team] | None = Field(default=None)
+    products: list[Product] | None = Field(default=None)
+    token: GRToken | None = Field(default=None)
+    claims: Claims | None = Field(default=None)
 
     def prefetch_claims(
         self, token: str, key: dict[str, Any], audience: str, issuer: AnyHttpUrl
@@ -192,7 +192,7 @@ class GRUser(BaseModel):
         tm = GRTokenManager(pg_config=pg_config)
         self.token = tm.get_by_user_id(user_id=self.id)
 
-    def __eq__(self, other: "GRUser") -> bool:
+    def __eq__(self, other: GRUser) -> bool:
         return self.id == other.id
 
     # --- Validations ---
@@ -327,7 +327,7 @@ class GRToken(BaseModel):
     user_id: PositiveInt = Field()
 
     # --- prefetch field ---
-    user: "GRUser | None" = Field(default=None)
+    user: GRUser | None = Field(default=None)
 
     @property
     def sso(self) -> bool:
@@ -348,7 +348,7 @@ class GRToken(BaseModel):
 
         self.user = gr_um.get_by_id(gr_user_id=self.user_id)
 
-    def __eq__(self, other: "GRToken") -> bool:
+    def __eq__(self, other: GRToken) -> bool:
         return self.key == other.key
 
     @field_validator("created", mode="before")

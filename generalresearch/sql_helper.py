@@ -131,7 +131,7 @@ def decode_uuids(row: dict[str, Any]) -> dict[str, Any]:
 class SqlHelper(SqlConnector):
 
     def __init__(self, dsn: Optional[DataBaseDsn] = None, **kwargs):
-        super(SqlHelper, self).__init__(dsn, **kwargs)
+        super().__init__(dsn, **kwargs)
 
     def execute_sql_query(
         self, query: str, params: dict[str, Any] | None = None, commit: bool = False

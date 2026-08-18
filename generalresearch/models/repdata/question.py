@@ -161,7 +161,7 @@ class RepDataQuestion(MarketplaceQuestion):
     @classmethod
     def from_api(
         cls, d: dict[str, Any], country_iso: str, language_iso: str
-    ) -> "RepDataQuestion | None":
+    ) -> RepDataQuestion | None:
         """
         :param d: Raw response from API
         """
@@ -174,7 +174,7 @@ class RepDataQuestion(MarketplaceQuestion):
     @classmethod
     def _from_api(
         cls, d: dict[str, Any], country_iso: str, language_iso: str
-    ) -> "RepDataQuestion":
+    ) -> RepDataQuestion:
         d["QualificationType"] = RepDataQuestionType.from_api(d["QualificationType"])
         # zip code/age has a placeholder invalid option for some reason
         if d["QualificationType"] == RepDataQuestionType.TEXT_ENTRY:
@@ -191,7 +191,7 @@ class RepDataQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: dict[str, Any]) -> "RepDataQuestion":
+    def from_db(cls, d: dict[str, Any]) -> RepDataQuestion:
         options = None
         if d["options"]:
             options = [
@@ -217,7 +217,7 @@ class RepDataQuestion(MarketplaceQuestion):
         d["options"] = json.dumps(d["options"])
         return d
 
-    def to_upk_question(self) -> "UpkQuestion":
+    def to_upk_question(self) -> UpkQuestion:
         from generalresearch.models.thl.profiling.upk_question import (
             UpkQuestion,
             UpkQuestionChoice,

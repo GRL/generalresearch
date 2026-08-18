@@ -189,7 +189,7 @@ class LeaderboardManager:
         )
         self.redis_client.expire(self.key, time=self.expiration)
 
-    def hit(self, session: "Session") -> None:
+    def hit(self, session: Session) -> None:
         user = session.user
         match self.board_code:
             case LeaderboardCode.COMPLETE_COUNT:

@@ -33,8 +33,8 @@ class MembershipManager(PostgresManager):
 
     def create(
         self,
-        team: "Team",
-        gr_user: "GRUser",
+        team: Team,
+        gr_user: GRUser,
         privilege: MembershipPrivilege = MembershipPrivilege.READ,
     ) -> Membership:
         membership = Membership(
@@ -142,7 +142,7 @@ class TeamManager(PostgresManagerWithRedis):
 
     def get_or_create(
         self, uuid: UUIDStr | None = None, name: str | None = None
-    ) -> "Team":
+    ) -> Team:
 
         team = self.get_by_uuid(team_uuid=uuid)
 
@@ -151,7 +151,7 @@ class TeamManager(PostgresManagerWithRedis):
 
         return self.create(uuid=uuid, name=name or "< Unknown >")
 
-    def get_all(self) -> list["Team"]:
+    def get_all(self) -> list[Team]:
         from generalresearch.models.gr.team import Team
 
         with self.pg_config.make_connection() as conn:
@@ -166,7 +166,7 @@ class TeamManager(PostgresManagerWithRedis):
 
     def create_dummy(
         self, uuid: UUIDStr | None = None, name: str | None = None
-    ) -> "Team":
+    ) -> Team:
         uuid = uuid or uuid4().hex
         name = name or f"name-{uuid4().hex[:12]}"
 
@@ -176,7 +176,7 @@ class TeamManager(PostgresManagerWithRedis):
         self,
         name: str,
         uuid: UUIDStr | None = None,
-    ) -> "Team":
+    ) -> Team:
         from generalresearch.models.gr.team import Team
 
         team = Team.model_validate({"uuid": uuid or uuid4().hex, "name": name})
@@ -197,7 +197,7 @@ class TeamManager(PostgresManagerWithRedis):
 
         return team
 
-    def add_user(self, team: "Team", gr_user: "GRUser") -> "Membership":
+    def add_user(self, team: Team, gr_user: GRUser) -> Membership:
         """Create a Membership between a GRUser and a Team"""
 
         team.prefetch_gr_users(pg_config=self.pg_config, redis_config=self.redis_config)
@@ -209,7 +209,7 @@ class TeamManager(PostgresManagerWithRedis):
 
         return mm.create(team=team, gr_user=gr_user)
 
-    def add_business(self, team: "Team", business: "Business") -> None:
+    def add_business(self, team: Team, business: Business) -> None:
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(
@@ -225,7 +225,7 @@ class TeamManager(PostgresManagerWithRedis):
                 )
             conn.commit()
 
-    def get_by_uuid(self, team_uuid: UUIDStr) -> "Team" | None:
+    def get_by_uuid(self, team_uuid: UUIDStr) -> Team | None:
         from generalresearch.models.gr.team import Team
 
         with self.pg_config.make_connection() as conn:
@@ -247,7 +247,7 @@ class TeamManager(PostgresManagerWithRedis):
 
         return Team.model_validate(res)
 
-    def get_by_id(self, team_id: PositiveInt) -> "Team" | None:
+    def get_by_id(self, team_id: PositiveInt) -> Team | None:
         from generalresearch.models.gr.team import Team
 
         with self.pg_config.make_connection() as conn:
@@ -269,7 +269,7 @@ class TeamManager(PostgresManagerWithRedis):
 
         return Team.model_validate(res)
 
-    def get_by_user(self, gr_user: "GRUser") -> list["Team"]:
+    def get_by_user(self, gr_user: GRUser) -> list[Team]:
         from generalresearch.models.gr.team import Team
 
         with self.pg_config.make_connection() as conn:

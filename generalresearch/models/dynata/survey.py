@@ -98,7 +98,7 @@ class DynataCondition(MarketplaceCondition):
     tag: str | None = Field(default=None, max_length=36)
 
     @classmethod
-    def from_api(cls, cell: dict[str, Any]) -> "DynataCondition":
+    def from_api(cls, cell: dict[str, Any]) -> DynataCondition:
         """
         We perform some preprocessing before calling this to pull in the data from COLLECTION cells.
         """

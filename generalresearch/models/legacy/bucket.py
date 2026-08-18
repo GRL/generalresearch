@@ -439,7 +439,7 @@ class DurationSummary(StatisticalSummary):
     }
 
     @classmethod
-    def from_bucket(cls, bucket: Bucket) -> "DurationSummary":
+    def from_bucket(cls, bucket: Bucket) -> DurationSummary:
         return cls(
             min=bucket.loi_min.total_seconds(),
             max=bucket.loi_max.total_seconds(),
@@ -624,7 +624,7 @@ class TopNPlusBucket(BucketBase):
         return tuple(sorted(criteria, key=lambda c: c.rank))
 
     @classmethod
-    def from_bucket(cls, bucket: Bucket) -> "TopNPlusBucket":
+    def from_bucket(cls, bucket: Bucket) -> TopNPlusBucket:
         return cls.model_validate(
             {
                 "id": bucket.id,

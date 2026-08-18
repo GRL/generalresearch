@@ -110,7 +110,7 @@ class LucidQuestion(MarketplaceQuestion):
             options=options,
         )
 
-    def to_upk_question(self) -> "UpkQuestion":
+    def to_upk_question(self) -> UpkQuestion:
         from generalresearch.models.thl.profiling.upk_question import (
             UpkQuestion,
             UpkQuestionChoice,

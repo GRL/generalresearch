@@ -121,7 +121,7 @@ class GRLDatasets(BaseModel):
                 assert access(path=p, mode=R_OK), f"Cannot read {p}"
         return self
 
-    def archive_path(self, enum_type: Union["MergeType", "DFCollectionType"]) -> Path:
+    def archive_path(self, enum_type: Union[MergeType, DFCollectionType]) -> Path:
         """
         TODO: Extend this so that it takes any type of Enum and that
             inputs in the correct parent dir for the respective Enum
@@ -135,7 +135,7 @@ class GRLDatasets(BaseModel):
             pjoin(self.data_src, self.incite.point, folder, str(enum_type.value))
         )
 
-    def has_data(self, enum_type: Union["MergeType", "DFCollectionType"]) -> bool:
+    def has_data(self, enum_type: Union[MergeType, DFCollectionType]) -> bool:
         path_dir = self.archive_path(enum_type=enum_type)
         if isdir(path_dir):
             return bool(listdir(path_dir))
@@ -596,7 +596,7 @@ class CollectionBase(BaseModel):
         first_match = True
 
         for idx, item in enumerate(self.items):
-            item: "DFCollectionItem"
+            item: DFCollectionItem
 
             # TODO: This appears to be a bug. It should be using the
             #   IntervalRange overlaps approach  - Max 2024-06-07

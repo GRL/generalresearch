@@ -72,7 +72,7 @@ class IPRecord(BaseModel):
 
     # On a top-level, this should be an empty list if there are no forwarded_ip.
     #   Within a forwarded_ip record, this should be None.
-    forwarded_ip_records: list["IPRecord"] | None = Field(default=None, description="")
+    forwarded_ip_records: list[IPRecord] | None = Field(default=None, description="")
 
     information: GeoIPInformation | None = Field(default=None)
 

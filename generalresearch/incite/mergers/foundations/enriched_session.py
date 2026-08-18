@@ -231,7 +231,7 @@ class EnrichedSessionMerge(MergeCollection):
 
     def to_admin_response(
         self,
-        rr: "ReportRequest",
+        rr: ReportRequest,
         client: Client,
         product_ids: list[UUIDStr] | None = None,
         user: User | None = None,

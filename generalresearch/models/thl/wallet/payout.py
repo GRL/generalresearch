@@ -191,7 +191,7 @@ class BPPayoutEvent(BaseModel):
         payout_events: Collection[PayoutEvent],
         account_product_mapping: dict[str, str],
         order_by: str = "ASC",
-    ) -> list["BPPayoutEvent"]:
+    ) -> list[BPPayoutEvent]:
         res = []
         for pe in payout_events:
             bp_pe = BPPayoutEvent.model_validate(

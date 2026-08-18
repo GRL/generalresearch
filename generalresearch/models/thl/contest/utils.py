@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from generalresearch.models.thl.user import User
 
 
-def censor_product_user_id(user: "User") -> str:
+def censor_product_user_id(user: User) -> str:
     s = user.product_user_id
 
     if len(s) >= 24:
@@ -20,8 +20,8 @@ def censor_product_user_id(user: "User") -> str:
 
 
 def distribute_leaderboard_prizes(
-    prizes: list["USDCent"], leaderboard_rows: list["LeaderboardRow"]
-) -> dict[str, "USDCent"]:
+    prizes: list[USDCent], leaderboard_rows: list[LeaderboardRow]
+) -> dict[str, USDCent]:
     """
     Distributes leaderboard prizes among tied users.
     The prizes for the tied places are pooled together and divided

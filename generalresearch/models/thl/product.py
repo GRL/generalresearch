@@ -416,7 +416,7 @@ class UserWalletConfig(BaseModel):
     # This field could go in supported_payout_types ---v
     amt: bool = Field(default=False, description="Uses Amazon Mechanical Turk")
 
-    supported_payout_types: set["PayoutType"] = Field(
+    supported_payout_types: set[PayoutType] = Field(
         default={PayoutType.CASH_IN_MAIL, PayoutType.TANGO, PayoutType.PAYPAL}
     )
 
@@ -430,8 +430,8 @@ class UserWalletConfig(BaseModel):
 
     @field_serializer("supported_payout_types", when_used="json")
     def serialize_supported_payout_types_in_order(
-        self, supported_payout_types: set["PayoutType"]
-    ) -> set["PayoutType"]:
+        self, supported_payout_types: set[PayoutType]
+    ) -> set[PayoutType]:
         return set(sorted(supported_payout_types))
 
     @field_validator("min_cashout", mode="after")
@@ -888,7 +888,7 @@ class Product(BaseModel, validate_assignment=True):
         "Payments for this Product's activity.",
     )
 
-    tags: set["SupplierTag"] = Field(
+    tags: set[SupplierTag] = Field(
         default_factory=set,
         description="Tags which are used to annotate supplier traffic",
     )
@@ -941,19 +941,19 @@ class Product(BaseModel, validate_assignment=True):
 
     # Initialization is deferred until unless it's called
     # (see .prebuild_***())
-    balance: "ProductBalances | None" = Field(
+    balance: ProductBalances | None = Field(
         default=None, description="Product Balance"
     )
 
     payouts_total_str: str | None = Field(default=None)
     payouts_total: USDCent | None = Field(default=None)
-    payouts: list["BrokerageProductPayoutEvent"] | None = Field(
+    payouts: list[BrokerageProductPayoutEvent] | None = Field(
         default=None,
         description="Product Payouts. These are the ACH or Wire payments that were sent to the"
         "Business on behalf of this specific Product",
     )
 
-    pop_financial: list["POPFinancial"] | None = Field(default=None)
+    pop_financial: list[POPFinancial] | None = Field(default=None)
     bp_account: LedgerAccount | None = Field(default=None)
 
     # --- Validators ---
@@ -1050,7 +1050,7 @@ class Product(BaseModel, validate_assignment=True):
         return f"product-{self.uuid}"
 
     # --- Prefetch ---
-    def prefetch_bp_account(self, thl_lm: "ThlLedgerManager") -> None:
+    def prefetch_bp_account(self, thl_lm: ThlLedgerManager) -> None:
         account = thl_lm.get_account_or_create_bp_wallet(product=self)
         self.bp_account = account
 
@@ -1058,10 +1058,10 @@ class Product(BaseModel, validate_assignment=True):
 
     def prebuild_balance(
         self,
-        thl_lm: "ThlLedgerManager",
-        ds: "GRLDatasets",
+        thl_lm: ThlLedgerManager,
+        ds: GRLDatasets,
         client: Client,
-        pop_ledger: "PopLedgerMerge | None" = None,
+        pop_ledger: PopLedgerMerge | None = None,
     ) -> None:
         """
         This returns the Product's Balances that are calculated across
@@ -1139,10 +1139,10 @@ class Product(BaseModel, validate_assignment=True):
 
     def prebuild_pop_financial(
         self,
-        thl_lm: "ThlLedgerManager",
-        ds: "GRLDatasets",
+        thl_lm: ThlLedgerManager,
+        ds: GRLDatasets,
         client: Client,
-        pop_ledger: "PopLedgerMerge | None" = None,
+        pop_ledger: PopLedgerMerge | None = None,
     ) -> None:
         """This is very similar to the Product POP Financial endpoint; however,
         it returns more than one item for a single time interval. This is
@@ -1200,8 +1200,8 @@ class Product(BaseModel, validate_assignment=True):
 
     def prebuild_payouts(
         self,
-        thl_lm: "ThlLedgerManager",
-        bp_pem: "BrokerageProductPayoutEventManager",
+        thl_lm: ThlLedgerManager,
+        bp_pem: BrokerageProductPayoutEventManager,
     ) -> None:
         LOG.debug(f"Product.prebuild_payouts({self.uuid=})")
         from generalresearch.models.thl.ledger import OrderBy
@@ -1311,10 +1311,10 @@ class Product(BaseModel, validate_assignment=True):
     # --- Methods ---
     def set_cache(
         self,
-        thl_lm: "ThlLedgerManager",
-        ds: "GRLDatasets",
+        thl_lm: ThlLedgerManager,
+        ds: GRLDatasets,
         client: Client,
-        bp_pem: "BrokerageProductPayoutEventManager",
+        bp_pem: BrokerageProductPayoutEventManager,
         redis_config: RedisConfig,
         pop_ledger: PopLedgerMerge | None = None,
     ) -> None:

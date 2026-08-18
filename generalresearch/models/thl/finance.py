@@ -38,7 +38,7 @@ class AdjustmentType(BaseModel):
         "Source of Tasks."
     )
 
-    adjustment: "SessionAdjustedStatus" = Field(
+    adjustment: SessionAdjustedStatus = Field(
         description=SessionAdjustedStatus.as_openapi(),
         examples=[SessionAdjustedStatus.ADJUSTED_TO_FAIL.value],
     )
@@ -103,8 +103,8 @@ class POPFinancial(BaseModel):
 
     @staticmethod
     def list_from_pandas(
-        input_data: pd.DataFrame, accounts: list["LedgerAccount"]
-    ) -> list["POPFinancial"]:
+        input_data: pd.DataFrame, accounts: list[LedgerAccount]
+    ) -> list[POPFinancial]:
         """
         This list can either be for a Product or a Business. The difference
         is that the list of accounts will either be len()=1 (Product) or
@@ -282,7 +282,7 @@ class ProductBalances(BaseModel):
 
     # --- Validate ---
     @model_validator(mode="after")
-    def check_unknown_fields(self) -> "ProductBalances":
+    def check_unknown_fields(self) -> ProductBalances:
         """
         I don't fully understand what these fields are supposed to be
         when looking at bp_wallet accounts. However, I know that they're
@@ -469,7 +469,7 @@ class ProductBalances(BaseModel):
         return_type="USDCent",
     )
     @property
-    def recoup(self) -> "USDCent":
+    def recoup(self) -> USDCent:
         from generalresearch.currency import USDCent
 
         if self.balance >= 0:
@@ -504,7 +504,7 @@ class ProductBalances(BaseModel):
     @staticmethod
     def from_pandas(
         input_data: pd.DataFrame | pd.Series,
-    ) -> "ProductBalances":
+    ) -> ProductBalances:
         LOG.debug(f"ProductBalances.from_pandas(input_data={input_data.shape})")
 
         if isinstance(input_data, pd.Series):
@@ -788,7 +788,7 @@ class BusinessBalances(BaseModel):
         return_type="USDCent",
     )
     @property
-    def recoup(self) -> "USDCent":
+    def recoup(self) -> USDCent:
         """Returns the sum of this Business' recouped amount from any
         children Products.
         """
@@ -824,9 +824,9 @@ class BusinessBalances(BaseModel):
     @staticmethod
     def from_pandas(
         input_data: pd.DataFrame,
-        accounts: List["LedgerAccount"],
+        accounts: List[LedgerAccount],
         thl_pg_config: PostgresConfig,
-    ) -> "BusinessBalances":
+    ) -> BusinessBalances:
         LOG.debug(f"BusinessBalances.from_pandas(input_data={input_data.shape})")
 
         from generalresearch.incite.schemas.mergers.pop_ledger import (

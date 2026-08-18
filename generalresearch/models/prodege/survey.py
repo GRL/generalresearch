@@ -55,7 +55,7 @@ class ProdegeCondition(MarketplaceCondition):
     values: list[str] = Field(validation_alias="precodes")
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "ProdegeCondition":
+    def from_api(cls, d: dict[str, Any]) -> ProdegeCondition:
         assert d["operator"] in {
             "OR",
             "NOT",
@@ -151,7 +151,7 @@ class ProdegeQuota(BaseModel):
         }
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "ProdegeQuota":
+    def from_api(cls, d: dict[str, Any]) -> ProdegeQuota:
         # the API doesn't handle None's correctly? idk
         if d["parent_quota_id"] == 0:
             d["parent_quota_id"] = None
@@ -299,7 +299,7 @@ class ProdegePastParticipation(BaseModel):
     """
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "ProdegePastParticipation":
+    def from_api(cls, d: dict[str, Any]) -> ProdegePastParticipation:
         # the API doesn't handle None's correctly? idk
         if d["in_past_days"] == 0:
             d["in_past_days"] = None
@@ -510,7 +510,7 @@ class ProdegeSurvey(MarketplaceTask):
         return round(float(v), 2)
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "ProdegeSurvey | None":
+    def from_api(cls, d: dict[str, Any]) -> ProdegeSurvey | None:
         try:
             return cls._from_api(d)
         except Exception as e:
@@ -518,7 +518,7 @@ class ProdegeSurvey(MarketplaceTask):
             return None
 
     @classmethod
-    def _from_api(cls, d: dict[str, Any]) -> "ProdegeSurvey":
+    def _from_api(cls, d: dict[str, Any]) -> ProdegeSurvey:
 
         # Handle phases. keys in api response are 'loi' and 'actual_ir'
         if d["phases"]["loi_phase"] == "actual":
@@ -655,7 +655,7 @@ class ProdegeSurvey(MarketplaceTask):
         return d
 
     @classmethod
-    def from_db(cls, d: dict[str, Any]) -> "ProdegeSurvey":
+    def from_db(cls, d: dict[str, Any]) -> ProdegeSurvey:
         d["created"] = d["created"].replace(tzinfo=timezone.utc)
         d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
         d["quotas"] = json.loads(d["quotas"])

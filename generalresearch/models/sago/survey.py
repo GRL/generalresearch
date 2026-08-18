@@ -49,7 +49,7 @@ class SagoCondition(MarketplaceCondition):
     _CONVERT_LIST_TO_RANGE = ["59"]
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "SagoCondition":
+    def from_api(cls, d: dict[str, Any]) -> SagoCondition:
         d["logical_operator"] = LogicalOperator.OR
         d["value_type"] = ConditionValueType(d["value_type"])
         d["negate"] = False
@@ -259,7 +259,7 @@ class SagoSurvey(MarketplaceTask):
         }
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "SagoSurvey | None":
+    def from_api(cls, d: dict[str, Any]) -> SagoSurvey | None:
         try:
             return cls._from_api(d)
         except Exception as e:
@@ -267,7 +267,7 @@ class SagoSurvey(MarketplaceTask):
             return None
 
     @classmethod
-    def _from_api(cls, d: dict[str, Any]) -> "SagoSurvey":
+    def _from_api(cls, d: dict[str, Any]) -> SagoSurvey:
         return cls.model_validate(d)
 
     def __repr__(self) -> str:

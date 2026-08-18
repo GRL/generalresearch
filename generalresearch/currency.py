@@ -44,21 +44,21 @@ class USDCent(int):
 
     def __add__(self, other):
         assert isinstance(other, USDCent)
-        res = super(USDCent, self).__add__(other)
+        res = super().__add__(other)
         return self.__class__(res)
 
     def __sub__(self, other):
         assert isinstance(other, USDCent)
-        res = super(USDCent, self).__sub__(other)
+        res = super().__sub__(other)
         return self.__class__(res)
 
     def __mul__(self, other):
         assert isinstance(other, USDCent)
-        res = super(USDCent, self).__mul__(other)
+        res = super().__mul__(other)
         return self.__class__(res)
 
     def __abs__(self):
-        res = super(USDCent, self).__abs__()
+        res = super().__abs__()
         return self.__class__(res)
 
     def __truediv__(self, other):
@@ -85,7 +85,7 @@ class USDCent(int):
         return Decimal(int(self) / 100).quantize(Decimal(".01"))
 
     def to_usd_str(self) -> str:
-        return "${:,.2f}".format(float(self.to_usd()))
+        return f"${float(self.to_usd()):,.2f}"
 
 
 class USDMill(int):
@@ -112,21 +112,21 @@ class USDMill(int):
 
     def __add__(self, other):
         assert isinstance(other, USDMill)
-        res = super(USDMill, self).__add__(other)
+        res = super().__add__(other)
         return self.__class__(res)
 
     def __sub__(self, other):
         assert isinstance(other, USDMill)
-        res = super(USDMill, self).__sub__(other)
+        res = super().__sub__(other)
         return self.__class__(res)
 
     def __mul__(self, other):
         assert isinstance(other, USDMill)
-        res = super(USDMill, self).__mul__(other)
+        res = super().__mul__(other)
         return self.__class__(res)
 
     def __abs__(self):
-        res = super(USDMill, self).__abs__()
+        res = super().__abs__()
         return self.__class__(res)
 
     def __truediv__(self, other):
@@ -153,4 +153,4 @@ class USDMill(int):
         return Decimal(int(self) / 1_000).quantize(Decimal(".001"))
 
     def to_usd_str(self) -> str:
-        return "${:,.3f}".format(float(self.to_usd()))
+        return f"${float(self.to_usd()):,.3f}"

@@ -60,7 +60,7 @@ class RepDataCondition(MarketplaceCondition):
     )
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "RepDataCondition":
+    def from_api(cls, d: dict[str, Any]) -> RepDataCondition:
         if d["Condition"] == "Is":
             d["logical_operator"] = LogicalOperator.OR
             d["negate"] = False
@@ -363,7 +363,7 @@ class RepDataStreamHashed(RepDataStream):
     @classmethod
     def from_db(
         cls, res: dict[str, Any], survey: RepDataSurveyHashed
-    ) -> "RepDataStreamHashed":
+    ) -> RepDataStreamHashed:
         # We need certain fields copied over here so that a stream can exist
         # independent of the survey
         res["country_iso"] = survey.country_iso
@@ -472,7 +472,7 @@ class RepDataSurvey(BaseModel):
         return ",".join(map(str, sorted([d.value for d in self.allowed_devices])))
 
     @classmethod
-    def from_api(cls, survey_response) -> "RepDataSurvey | None":
+    def from_api(cls, survey_response) -> RepDataSurvey | None:
         """
         :param survey_response: Raw response from API
         """
@@ -486,7 +486,7 @@ class RepDataSurvey(BaseModel):
             return None
 
     @classmethod
-    def _from_api(cls, survey_response) -> "RepDataSurvey":
+    def _from_api(cls, survey_response) -> RepDataSurvey:
         d = survey_response.copy()
         d["country_iso"] = locale_helper.get_country_iso(d["SurveyCountry"].lower())
         d["language_iso"] = locale_helper.get_language_iso(d["SurveyLanguage"].lower())
@@ -521,7 +521,7 @@ class RepDataSurvey(BaseModel):
     def to_mysql(self) -> dict[str, Any]:
         return self.to_hashed_survey().to_mysql()
 
-    def to_hashed_survey(self) -> "RepDataSurveyHashed":
+    def to_hashed_survey(self) -> RepDataSurveyHashed:
         d = self.model_dump(mode="json", exclude={"streams"})
         return RepDataSurveyHashed(**d)
 
@@ -533,7 +533,7 @@ class RepDataSurveyHashed(RepDataSurvey):
     streams: None = Field(default=None, exclude=True)
 
     @classmethod
-    def from_db(cls, res: dict[str, Any]) -> "RepDataSurveyHashed":
+    def from_db(cls, res: dict[str, Any]) -> RepDataSurveyHashed:
         res["allowed_devices"] = [
             DeviceType(int(x)) for x in res["allowed_devices"].split(",")
         ]

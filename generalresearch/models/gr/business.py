@@ -84,7 +84,7 @@ class BusinessBankAccount(BaseModel):
     # 'business' is a Class with values that are fetched from the DB.
     #   Initialization is deferred until it is actually needed
     #   (see .prefetch_business())
-    business: SkipJsonSchema["Business | None"] = Field(default=None)
+    business: SkipJsonSchema[Business | None] = Field(default=None)
 
     transfer_method: TransferMethod = Field(
         description=TransferMethod.as_openapi(),
@@ -194,18 +194,18 @@ class Business(BaseModel):
     )
 
     tax_number: str | None = Field(default=None, max_length=20)
-    contact: "BusinessContact | None" = Field(default=None)
+    contact: BusinessContact | None = Field(default=None)
 
     # Initialization is deferred until it is actually needed
     # (see .prefetch_***())
-    addresses: list["BusinessAddress"] | None = Field(default=None)
-    teams: list["Team"] | None = Field(default=None)
-    products: list["Product"] | None = Field(default=None)
-    bank_accounts: list["BusinessBankAccount"] | None = Field(default=None)
+    addresses: list[BusinessAddress] | None = Field(default=None)
+    teams: list[Team] | None = Field(default=None)
+    products: list[Product] | None = Field(default=None)
+    bank_accounts: list[BusinessBankAccount] | None = Field(default=None)
 
     # Initialization is deferred until unless it's called
     # (see .prebuild_***())
-    balance: "BusinessBalances | None" = Field(default=None, name="Business Balance")
+    balance: BusinessBalances | None = Field(default=None, name="Business Balance")
 
     payouts_total_str: str | None = Field(default=None)
     payouts_total: USDCent | None = Field(default=None)
@@ -343,10 +343,10 @@ class Business(BaseModel):
     def prebuild_balance(
         self,
         thl_pg_config: PostgresConfig,
-        lm: "LedgerManager",
-        ds: "GRLDatasets",
+        lm: LedgerManager,
+        ds: GRLDatasets,
         client: Client,
-        pop_ledger: "PopLedgerMerge | None" = None,
+        pop_ledger: PopLedgerMerge | None = None,
         at_timestamp: AwareDatetime | None = None,
     ) -> None:
         """
@@ -438,7 +438,7 @@ class Business(BaseModel):
     def prebuild_payouts(
         self,
         thl_pg_config: PostgresConfig,
-        thl_lm: "ThlLedgerManager",
+        thl_lm: ThlLedgerManager,
         bpem: BusinessPayoutEventManager,
     ) -> None:
         LOG.debug(f"Business.prebuild_payouts({self.uuid=})")
@@ -463,10 +463,10 @@ class Business(BaseModel):
     def prebuild_pop_financial(
         self,
         thl_pg_config: PostgresConfig,
-        thl_lm: "ThlLedgerManager",
-        ds: "GRLDatasets",
+        thl_lm: ThlLedgerManager,
+        ds: GRLDatasets,
         client: Client,
-        pop_ledger: "PopLedgerMerge | None" = None,
+        pop_ledger: PopLedgerMerge | None = None,
     ) -> None:
         """This is very similar to the Product POP Financial endpoint; however,
         it returns more than one item for a single time interval. This is
@@ -518,10 +518,10 @@ class Business(BaseModel):
     def prebuild_enriched_session_parquet(
         self,
         thl_pg_config: PostgresConfig,
-        ds: "GRLDatasets",
+        ds: GRLDatasets,
         client: Client,
         mnt_gr_api: Path,
-        enriched_session: "EnrichedSessionMerge | None" = None,
+        enriched_session: EnrichedSessionMerge | None = None,
     ) -> None:
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
@@ -556,17 +556,17 @@ class Business(BaseModel):
         try:
             test = pd.read_parquet(path, engine="pyarrow")
         except Exception as e:
-            raise IOError(f"Parquet verification failed: {e}")
+            raise OSError(f"Parquet verification failed: {e}")
 
         return None
 
     def prebuild_enriched_wall_parquet(
         self,
         thl_pg_config: PostgresConfig,
-        ds: "GRLDatasets",
+        ds: GRLDatasets,
         client: Client,
         mnt_gr_api: Path,
-        enriched_wall: "EnrichedWallMerge | None" = None,
+        enriched_wall: EnrichedWallMerge | None = None,
     ) -> None:
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
@@ -601,7 +601,7 @@ class Business(BaseModel):
         try:
             test = pd.read_parquet(path, engine="pyarrow")
         except Exception as e:
-            raise IOError(f"Parquet verification failed: {e}")
+            raise OSError(f"Parquet verification failed: {e}")
 
         return None
 
@@ -638,15 +638,15 @@ class Business(BaseModel):
         pg_config: PostgresConfig,
         thl_web_rr: PostgresConfig,
         redis_config: RedisConfig,
-        client: "Client",
-        ds: "GRLDatasets",
-        lm: "LedgerManager",
-        thl_lm: "ThlLedgerManager",
-        bpem: "BusinessPayoutEventManager",
+        client: Client,
+        ds: GRLDatasets,
+        lm: LedgerManager,
+        thl_lm: ThlLedgerManager,
+        bpem: BusinessPayoutEventManager,
         mnt_gr_api: Path | str,
-        pop_ledger: "PopLedgerMerge | None" = None,
-        enriched_session: "EnrichedSessionMerge | None" = None,
-        enriched_wall: "EnrichedWallMerge | None" = None,
+        pop_ledger: PopLedgerMerge | None = None,
+        enriched_session: EnrichedSessionMerge | None = None,
+        enriched_wall: EnrichedWallMerge | None = None,
     ) -> None:
         LOG.debug(f"Business.set_cache({self.uuid=})")
 

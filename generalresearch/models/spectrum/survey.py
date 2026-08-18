@@ -65,7 +65,7 @@ class SpectrumCondition(MarketplaceCondition):
         return self
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "SpectrumCondition":
+    def from_api(cls, d: dict[str, Any]) -> SpectrumCondition:
         """Ranges can get returns with a key "units" indicating years or
         months. This is ridiculous, and we don't ask for birthdate, so we
         can't really get month accuracy. Normalize to years.
@@ -321,7 +321,7 @@ class SpectrumSurvey(MarketplaceTask):
         }
 
     @classmethod
-    def from_api(cls, d: dict[str, Any]) -> "SpectrumSurvey | None":
+    def from_api(cls, d: dict[str, Any]) -> SpectrumSurvey | None:
         try:
             return cls._from_api(d)
         except Exception as e:

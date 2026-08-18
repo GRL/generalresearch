@@ -67,7 +67,7 @@ class UserQuestionAnswer(BaseModel):
         d["session_id"] = session_id
         return d
 
-    def get_mrpqs(self) -> Iterator["MarketplaceResearchProfileQuestion"]:
+    def get_mrpqs(self) -> Iterator[MarketplaceResearchProfileQuestion]:
         for k, v in self.calc_answers.items():
             source, question_code = k.split(":", 1)
             yield MarketplaceResearchProfileQuestion(

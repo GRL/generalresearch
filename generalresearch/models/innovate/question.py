@@ -142,7 +142,7 @@ class InnovateQuestion(MarketplaceQuestion):
     @classmethod
     def from_api(
         cls, d: dict, country_iso: str, language_iso: str
-    ) -> "InnovateQuestion | None":
+    ) -> InnovateQuestion | None:
         """
         :param d: Raw response from API
         :param country_iso:
@@ -158,7 +158,7 @@ class InnovateQuestion(MarketplaceQuestion):
     @classmethod
     def _from_api(
         cls, d: dict, country_iso: str, language_iso: str
-    ) -> "InnovateQuestion":
+    ) -> InnovateQuestion:
         # Question AGE returns options even though its marked as a text entry (but only in some locales)
         d["QuestionKey"] = d["QuestionKey"].lower()
         if d["QuestionKey"] == "age":
@@ -185,7 +185,7 @@ class InnovateQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: dict[str, Any]) -> "InnovateQuestion":
+    def from_db(cls, d: dict[str, Any]) -> InnovateQuestion:
 
         options = None
         if d["options"]:
@@ -212,7 +212,7 @@ class InnovateQuestion(MarketplaceQuestion):
         d["options"] = json.dumps(d["options"])
         return d
 
-    def to_upk_question(self) -> "UpkQuestion":
+    def to_upk_question(self) -> UpkQuestion:
         from generalresearch.models.thl.profiling.upk_question import (
             UpkQuestion,
             UpkQuestionChoice,

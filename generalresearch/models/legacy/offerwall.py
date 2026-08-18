@@ -203,7 +203,7 @@ class SoftPairOfferwall(OfferWall):
 
     buckets: list[SoftPairBucket] = Field(default_factory=list)
 
-    question_info: dict[str, "UpkQuestion"] = Field(
+    question_info: dict[str, UpkQuestion] = Field(
         default_factory=dict,
         examples=[
             # {

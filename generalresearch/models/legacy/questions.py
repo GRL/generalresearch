@@ -217,7 +217,7 @@ class UserQuestionAnswers(BaseModel):
         return v
 
     # --- Prefetch ---
-    def prefetch_user(self, um: "UserManager") -> None:
+    def prefetch_user(self, um: UserManager) -> None:
         from generalresearch.models.thl.user import User
 
         res: User | None = um.get_user_if_exists(
@@ -229,7 +229,7 @@ class UserQuestionAnswers(BaseModel):
 
         self.user = res
 
-    def prefetch_wall(self, wm: "WallManager") -> None:
+    def prefetch_wall(self, wm: WallManager) -> None:
         from generalresearch.models import Source
         from generalresearch.models.thl.session import Wall
 

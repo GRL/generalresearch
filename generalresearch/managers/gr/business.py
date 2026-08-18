@@ -30,7 +30,7 @@ class BusinessBankAccountManager(PostgresManager):
         self,
         business_id: PositiveInt,
         uuid: UUIDStr | None = None,
-        transfer_method: "TransferMethod" | None = None,
+        transfer_method: TransferMethod | None = None,
         account_number: str | None = None,
         routing_number: str | None = None,
         iban: str | None = None,
@@ -52,12 +52,12 @@ class BusinessBankAccountManager(PostgresManager):
         self,
         business_id: PositiveInt,
         uuid: UUIDStr,
-        transfer_method: "TransferMethod",
+        transfer_method: TransferMethod,
         account_number: str | None = None,
         routing_number: str | None = None,
         iban: str | None = None,
         swift: str | None = None,
-    ) -> "BusinessBankAccount":
+    ) -> BusinessBankAccount:
         from generalresearch.models.gr.business import BusinessBankAccount
 
         ba = BusinessBankAccount.model_validate(
@@ -94,7 +94,7 @@ class BusinessBankAccountManager(PostgresManager):
         ba.id = ba_id
         return ba
 
-    def get_by_business_id(self, business_id: UUIDStr) -> List["BusinessBankAccount"]:
+    def get_by_business_id(self, business_id: UUIDStr) -> List[BusinessBankAccount]:
         from generalresearch.models.gr.business import BusinessBankAccount
 
         with self.pg_config.make_connection() as conn:
@@ -158,7 +158,7 @@ class BusinessAddressManager(PostgresManager):
         postal_code: str | None = None,
         phone_number: PhoneNumber | None = None,
         country: str | None = None,
-    ) -> "BusinessAddress":
+    ) -> BusinessAddress:
         from generalresearch.models.gr.business import BusinessAddress
 
         ba = BusinessAddress.model_validate(
@@ -217,10 +217,10 @@ class BusinessManager(PostgresManagerWithRedis):
         self,
         uuid: UUIDStr,
         name: str | None = None,
-        team: "Team" | None = None,
-        kind: "BusinessType" | None = None,
+        team: Team | None = None,
+        kind: BusinessType | None = None,
         tax_number: str | None = None,
-    ) -> "Business":
+    ) -> Business:
         """
         Warning: this ** does not ** update the name, team, kind, tax_number
             values if they differ from what was passed in for the
@@ -241,10 +241,10 @@ class BusinessManager(PostgresManagerWithRedis):
         self,
         uuid: UUIDStr | None = None,
         name: str | None = None,
-        team: "Team" | None = None,
-        kind: "BusinessType" | None = None,
+        team: Team | None = None,
+        kind: BusinessType | None = None,
         tax_number: str | None = None,
-    ) -> "Business":
+    ) -> Business:
         from random import randint
 
         uuid = uuid or uuid4().hex
@@ -258,11 +258,11 @@ class BusinessManager(PostgresManagerWithRedis):
     def create(
         self,
         name: str,
-        kind: "BusinessType" | None = None,
+        kind: BusinessType | None = None,
         uuid: UUIDStr | None = None,
-        team: "Team" | None = None,
+        team: Team | None = None,
         tax_number: str | None = None,
-    ) -> "Business":
+    ) -> Business:
         """
         Behavior: does this raise on duplicate?
         """
@@ -304,7 +304,7 @@ class BusinessManager(PostgresManagerWithRedis):
 
         return business
 
-    def get_all(self) -> list["Business"]:
+    def get_all(self) -> list[Business]:
         """WARNING: This should be access by the /god/ page only, and only
             used by GRUser.is_staff as it doesn't provide any authentication
             on it's own. This is used because the .get_by_team_id() and
@@ -338,7 +338,7 @@ class BusinessManager(PostgresManagerWithRedis):
     def get_by_team(
         self,
         team_id: PositiveInt,
-    ) -> list["Business"]:
+    ) -> list[Business]:
 
         # conn: psycopg.Connection = GR_POSTGRES_C.make_connection()
         with self.pg_config.make_connection() as conn:
@@ -369,7 +369,7 @@ class BusinessManager(PostgresManagerWithRedis):
     def get_by_user_id(
         self,
         user_id: PositiveInt,
-    ) -> list["Business"]:
+    ) -> list[Business]:
         from generalresearch.models.gr.business import Business
 
         with self.pg_config.make_connection() as conn:
@@ -448,7 +448,7 @@ class BusinessManager(PostgresManagerWithRedis):
     def get_by_uuid(
         self,
         business_uuid: UUIDStr,
-    ) -> "Business" | None:
+    ) -> Business | None:
         from generalresearch.models.gr.business import Business
 
         assert UUID(hex=business_uuid).hex == business_uuid
@@ -476,7 +476,7 @@ class BusinessManager(PostgresManagerWithRedis):
         # data["contact"] = BusinessContact.model_validate(data)
         return Business.model_validate(data)
 
-    def get_by_id(self, business_id: PositiveInt) -> "Business" | None:
+    def get_by_id(self, business_id: PositiveInt) -> Business | None:
         from generalresearch.models.gr.business import Business
 
         assert isinstance(business_id, int)

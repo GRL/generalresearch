@@ -84,7 +84,7 @@ class Membership(BaseModel):
     team_id: SkipJsonSchema[PositiveInt] = Field()
 
     # prefetch attributes
-    team: SkipJsonSchema["Team | None"] = Field(default=None)
+    team: SkipJsonSchema[Team | None] = Field(default=None)
 
     # --- Validators ---
 
@@ -112,10 +112,10 @@ class Team(BaseModel):
     name: str = Field(max_length=255, examples=["Team ABC"])
 
     # prefetch attributes
-    memberships: SkipJsonSchema[list["Membership"] | None] = Field(default=None)
-    gr_users: SkipJsonSchema[list["GRUser"] | None] = Field(default=None)
-    businesses: SkipJsonSchema[list["Business"] | None] = Field(default=None)
-    products: SkipJsonSchema[list["Product"] | None] = Field(default=None)
+    memberships: SkipJsonSchema[list[Membership] | None] = Field(default=None)
+    gr_users: SkipJsonSchema[list[GRUser] | None] = Field(default=None)
+    businesses: SkipJsonSchema[list[Business] | None] = Field(default=None)
+    products: SkipJsonSchema[list[Product] | None] = Field(default=None)
 
     # --- Prefetch Methods ---
 
@@ -155,10 +155,10 @@ class Team(BaseModel):
     def prebuild_enriched_session_parquet(
         self,
         thl_pg_config: PostgresConfig,
-        ds: "GRLDatasets",
+        ds: GRLDatasets,
         client: Client,
         mnt_gr_api: Path,
-        enriched_session: "EnrichedSessionMerge | None" = None,
+        enriched_session: EnrichedSessionMerge | None = None,
     ) -> None:
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
@@ -193,17 +193,17 @@ class Team(BaseModel):
         try:
             _ = pd.read_parquet(path, engine="pyarrow")
         except Exception as e:
-            raise IOError(f"Parquet verification failed: {e}")
+            raise OSError(f"Parquet verification failed: {e}")
 
         return
 
     def prebuild_enriched_wall_parquet(
         self,
         thl_pg_config: PostgresConfig,
-        ds: "GRLDatasets",
+        ds: GRLDatasets,
         client: Client,
         mnt_gr_api: Path,
-        enriched_wall: "EnrichedWallMerge | None" = None,
+        enriched_wall: EnrichedWallMerge | None = None,
     ) -> None:
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
@@ -238,7 +238,7 @@ class Team(BaseModel):
         try:
             _ = pd.read_parquet(path, engine="pyarrow")
         except Exception as e:
-            raise IOError(f"Parquet verification failed: {e}")
+            raise OSError(f"Parquet verification failed: {e}")
 
         return None
 
@@ -278,11 +278,11 @@ class Team(BaseModel):
         pg_config: PostgresConfig,
         thl_web_rr: PostgresConfig,
         redis_config: RedisConfig,
-        client: "Client",
-        ds: "GRLDatasets",
+        client: Client,
+        ds: GRLDatasets,
         mnt_gr_api: Path | str,
-        enriched_session: "EnrichedSessionMerge | None" = None,
-        enriched_wall: "EnrichedWallMerge | None" = None,
+        enriched_session: EnrichedSessionMerge | None = None,
+        enriched_wall: EnrichedWallMerge | None = None,
     ) -> None:
         ex_secs = 60 * 60 * 24 * 3  # 3 days
 

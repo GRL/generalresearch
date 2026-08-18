@@ -88,14 +88,14 @@ class User(BaseModel):
 
     # --- Prefetch Fields ---
     audit_log: list[AuditLog] | None = Field(default=None)
-    transactions: list["LedgerTransaction"] | None = Field(default=None)
-    location_history: list["GeoIPInformation"] | None = Field(default=None)
+    transactions: list[LedgerTransaction] | None = Field(default=None)
+    location_history: list[GeoIPInformation] | None = Field(default=None)
 
     # --- Prebuild Fields ---
     # session: Optional[List] = Field(default=None)
     # wall: Optional[List] = Field(default=None)
 
-    def __eq__(self, other: "User"):
+    def __eq__(self, other: User):
         return (
             self.product_id == other.product_id
             and self.product_user_id == other.product_user_id
@@ -143,14 +143,14 @@ class User(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def check_identifiable(self) -> "User":
+    def check_identifiable(self) -> User:
         if not self.is_identifiable:
             raise ValueError("User is not identifiable")
 
         return self
 
     @model_validator(mode="after")
-    def check_created_first(self) -> "User":
+    def check_created_first(self) -> User:
         # TODO: require the created value comes before, or is equal to the
         #   last_seen
         created = self.created
@@ -279,10 +279,10 @@ class User(BaseModel):
             pm = ProductManager(pg_config=pg_config)
             self.product = pm.get_by_uuid(product_uuid=self.product_id)
 
-    def prefetch_audit_log(self, audit_log_manager: "AuditLogManager") -> None:
+    def prefetch_audit_log(self, audit_log_manager: AuditLogManager) -> None:
         self.audit_log = audit_log_manager.filter_by_user_id(user_id=self.user_id)
 
-    def prefetch_transactions(self, thl_lm: "ThlLedgerManager") -> None:
+    def prefetch_transactions(self, thl_lm: ThlLedgerManager) -> None:
         account = thl_lm.get_account_or_create_user_wallet(user=self)
         self.transactions = thl_lm.get_tx_filtered_by_account(account_uuid=account.uuid)
 

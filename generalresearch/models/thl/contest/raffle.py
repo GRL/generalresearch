@@ -116,7 +116,7 @@ class RaffleContest(RaffleContestCreate, Contest):
                 )
         return self
 
-    def select_winners(self) -> list["ContestWinner"]:
+    def select_winners(self) -> list[ContestWinner]:
         from generalresearch.models.thl.contest import ContestWinner
 
         assert self.is_complete(), "contest must be complete to select a winner"
@@ -146,7 +146,7 @@ class RaffleContest(RaffleContestCreate, Contest):
 
         return winners
 
-    def should_end(self) -> tuple[bool, "ContestEndReason | None"]:
+    def should_end(self) -> tuple[bool, ContestEndReason | None]:
         res, msg = super().should_end()
         if res:
             return res, msg

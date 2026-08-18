@@ -37,7 +37,7 @@ def retry(
                 try:
                     return f(*args, **kwargs)
                 except exceptions as e:
-                    msg = "{}, Retrying in {} seconds...".format(e, mdelay)
+                    msg = f"{e}, Retrying in {mdelay} seconds..."
                     if logger:
                         logger.warning(msg)
                     else:

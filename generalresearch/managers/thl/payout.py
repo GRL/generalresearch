@@ -653,7 +653,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         thl_ledger_manager: ThlLedgerManager,
         product_uuids: Collection[UUIDStr],
         order_by: OrderBy | None = OrderBy.ASC,
-    ) -> list["BrokerageProductPayoutEvent"]:
+    ) -> list[BrokerageProductPayoutEvent]:
         """This is a terrible name, but it returns the
         BPPayoutEvent model type rather than a list of PayoutEvents.
 
@@ -988,7 +988,7 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
         thl_ledger_manager: ThlLedgerManager,
         product_uuids: Collection[UUIDStr],
         order_by: OrderBy | None = OrderBy.ASC,
-    ) -> list["BusinessPayoutEvent"]:
+    ) -> list[BusinessPayoutEvent]:
         res = self.get_bp_bp_payout_events_for_products(
             thl_ledger_manager=thl_ledger_manager,
             product_uuids=product_uuids,
@@ -999,8 +999,8 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
 
     @staticmethod
     def from_bp_payout_events(
-        bp_payout_events: Collection["BrokerageProductPayoutEvent"],
-    ) -> list["BusinessPayoutEvent"]:
+        bp_payout_events: Collection[BrokerageProductPayoutEvent],
+    ) -> list[BusinessPayoutEvent]:
         if len(bp_payout_events) == 0:
             return []
 

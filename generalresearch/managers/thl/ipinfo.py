@@ -178,7 +178,7 @@ class IPGeonameManager(PostgresManager):
 
         return instance
 
-    def get_by_id(self, geoname_id: PositiveInt) -> "IPGeoname":
+    def get_by_id(self, geoname_id: PositiveInt) -> IPGeoname:
         return self.fetch_geoname_ids(filter_ids=[geoname_id])[0]
 
     def fetch_geoname_ids(
@@ -256,7 +256,7 @@ class IPInformationManager(PostgresManager):
         latitude: Decimal | None = None,
         longitude: Decimal | None = None,
         accuracy_radius: int | None = None,
-    ) -> "IPInformation":
+    ) -> IPInformation:
         return self.create(
             ip=ip or fake.ipv4_public(),
             geoname_id=geoname_id,
@@ -338,7 +338,7 @@ class IPInformationManager(PostgresManager):
         latitude: Decimal | None = None,
         longitude: Decimal | None = None,
         accuracy_radius: int | None = None,
-    ) -> "IPInformation":
+    ) -> IPInformation:
 
         instance = IPInformation.model_validate(
             {
@@ -425,7 +425,7 @@ class IPInformationManager(PostgresManager):
         """
         self.pg_config.execute_write(query, params=data)
 
-    def get_ip_info(self, ip: IPvAnyAddressStr) -> "IPInformation" | None:
+    def get_ip_info(self, ip: IPvAnyAddressStr) -> IPInformation | None:
         res = self.fetch_ip_information(filter_ips=[ip])
         if len(res) != 1:
             return None
@@ -435,7 +435,7 @@ class IPInformationManager(PostgresManager):
     def fetch_ip_information(
         self,
         filter_ips: list[IPvAnyAddressStr],
-    ) -> list["IPInformation"]:
+    ) -> list[IPInformation]:
 
         if len(filter_ips) == 0:
             return []
@@ -456,7 +456,7 @@ class IPInformationManager(PostgresManager):
         self,
         c: Cursor,
         filter_ips: list[IPvAnyAddressStr],
-    ) -> list["IPInformation"]:
+    ) -> list[IPInformation]:
         """
         IPs are converted to normalized form (/64 network exploded) for DB lookup,
             and are then matched back to the original queried form for return.

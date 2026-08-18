@@ -24,14 +24,14 @@ if TYPE_CHECKING:
     )
 
 
-def generate_condition_mp_payment(wall: "Wall") -> Callable[..., bool]:
+def generate_condition_mp_payment(wall: Wall) -> Callable[..., bool]:
     """This returns a function that checks if the payment for this wall event
     exists already. This function gets run after we acquire a lock. It
     should return True if we want to continue (create a tx).
     """
     wall_uuid = wall.uuid
 
-    def _condition(lm: "LedgerManager") -> bool:
+    def _condition(lm: LedgerManager) -> bool:
         tag = f"{lm.currency.value}:mp_payment:{wall_uuid}"
         txs = lm.get_tx_ids_by_tag(tag=tag)
         return len(txs) == 0
@@ -39,14 +39,14 @@ def generate_condition_mp_payment(wall: "Wall") -> Callable[..., bool]:
     return _condition
 
 
-def generate_condition_bp_payment(session: "Session") -> Callable[..., bool]:
+def generate_condition_bp_payment(session: Session) -> Callable[..., bool]:
     """This returns a function that checks if the payment for this Session
     exists already. This function gets run after we acquire a lock. It
     should return True if we want to continue (create a tx).
     """
     session_uuid = session.uuid
 
-    def _condition(lm: "LedgerManager") -> bool:
+    def _condition(lm: LedgerManager) -> bool:
         tag = f"{lm.currency.value}:bp_payment:{session_uuid}"
         txs_ids = lm.get_tx_ids_by_tag(tag=tag)
         return len(txs_ids) == 0
@@ -59,7 +59,7 @@ def generate_condition_tag_exists(tag: str) -> Callable[..., bool]:
     exists. It should return True if we want to continue (create a tx).
     """
 
-    def _condition(lm: "LedgerManager") -> bool:
+    def _condition(lm: LedgerManager) -> bool:
         txs_ids = lm.get_tx_ids_by_tag(tag=tag)
         return len(txs_ids) == 0
 
@@ -67,7 +67,7 @@ def generate_condition_tag_exists(tag: str) -> Callable[..., bool]:
 
 
 def generate_condition_bp_payout(
-    product: "Product",
+    product: Product,
     amount: USDCent,
     payoutevent_uuid: UUIDStr,
     skip_one_per_day_check: bool = False,
@@ -76,7 +76,7 @@ def generate_condition_bp_payout(
     created = datetime.now(tz=timezone.utc)
 
     def _condition(
-        lm: "ThlLedgerManager",
+        lm: ThlLedgerManager,
     ) -> tuple[bool, str]:
         bp_wallet_account = lm.get_account_or_create_bp_wallet(product=product)
         tag = f"{lm.currency.value}:bp_payout:{payoutevent_uuid}"
@@ -124,7 +124,7 @@ def generate_condition_user_payout_request(
     if min_balance is not None:
         assert isinstance(min_balance, int)
 
-    def _condition(lm: "ThlLedgerManager") -> bool:
+    def _condition(lm: ThlLedgerManager) -> bool:
         tag = f"{lm.currency.value}:user_payout:{payoutevent_uuid}:request"
         txs_ids = lm.get_tx_ids_by_tag(tag)
 
@@ -159,7 +159,7 @@ def generate_condition_enter_contest(
     """
     assert isinstance(min_balance, USDCent), "balance must be USDCent"
 
-    def _condition(lm: "ThlLedgerManager") -> tuple[bool, str]:
+    def _condition(lm: ThlLedgerManager) -> tuple[bool, str]:
         txs_ids = lm.get_tx_ids_by_tag(tag)
         if len(txs_ids) != 0:
             logger.info(f"{tag} failed condition check duplicate transaction")
@@ -190,7 +190,7 @@ def generate_condition_user_payout_action(
     :param action: should be in {'complete', 'cancel'}
     """
 
-    def _condition(lm: "ThlLedgerManager") -> bool:
+    def _condition(lm: ThlLedgerManager) -> bool:
         tag = f"{lm.currency.value}:user_payout:{payoutevent_uuid}:{action}"
         txs_ids = lm.get_tx_ids_by_tag(tag)
         if len(txs_ids) != 0:

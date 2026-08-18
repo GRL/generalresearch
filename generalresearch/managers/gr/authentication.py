@@ -27,7 +27,7 @@ class GRUserManager(PostgresManagerWithRedis):
         self,
         sub: str | None = None,
         is_superuser: bool = False,
-    ) -> "GRUser":
+    ) -> GRUser:
         sub = sub or f"{uuid4().hex}-{uuid4().hex}"
 
         return self.create(
@@ -39,7 +39,7 @@ class GRUserManager(PostgresManagerWithRedis):
         self,
         sub: str,
         is_superuser: bool = False,
-    ) -> "GRUser":
+    ) -> GRUser:
         from generalresearch.models.gr.authentication import GRUser
 
         now = datetime.now(tz=timezone.utc)
@@ -68,7 +68,7 @@ class GRUserManager(PostgresManagerWithRedis):
         instance.id = gr_user_id
         return instance
 
-    def get_by_id(self, gr_user_id: int) -> "GRUser" | None:
+    def get_by_id(self, gr_user_id: int) -> GRUser | None:
         from generalresearch.models.gr.authentication import GRUser
 
         with self.pg_config.make_connection() as conn:
@@ -96,7 +96,7 @@ class GRUserManager(PostgresManagerWithRedis):
         assert isinstance(gr_user, GRUser), "GRUser not serialized correctly"
         return gr_user
 
-    def get_by_sub(self, sub: str, raises=True) -> "GRUser" | None:
+    def get_by_sub(self, sub: str, raises=True) -> GRUser | None:
         from generalresearch.models.gr.authentication import GRUser
 
         with self.pg_config.make_connection() as conn:
@@ -128,10 +128,10 @@ class GRUserManager(PostgresManagerWithRedis):
         assert isinstance(gr_user, GRUser), "GRUser not serialized correctly"
         return gr_user
 
-    def get_by_sub_or_create(self, sub: str) -> "GRUser":
+    def get_by_sub_or_create(self, sub: str) -> GRUser:
         return self.get_by_sub(sub=sub, raises=False) or self.create(sub=sub)
 
-    def get_all(self) -> list["GRUser"]:
+    def get_all(self) -> list[GRUser]:
         from generalresearch.models.gr.authentication import GRUser
 
         with self.pg_config.make_connection() as conn:
@@ -144,7 +144,7 @@ class GRUserManager(PostgresManagerWithRedis):
 
         return [GRUser.from_postgresql(i) for i in res]
 
-    def get_by_team(self, team_id: PositiveInt) -> list["GRUser"]:
+    def get_by_team(self, team_id: PositiveInt) -> list[GRUser]:
         from generalresearch.models.gr.authentication import GRUser
 
         with self.pg_config.make_connection() as conn:
@@ -169,7 +169,7 @@ class GRUserManager(PostgresManagerWithRedis):
         return [GRUser.model_validate(item) for item in res]
 
     def list_product_uuids(
-        self, user: "GRUser", thl_pg_config: PostgresConfig
+        self, user: GRUser, thl_pg_config: PostgresConfig
     ) -> list[UUIDStr] | None:
         if user.business_uuids is None:
             LOG.warning("prefetch not run")
@@ -195,7 +195,7 @@ class GRTokenManager(PostgresManager):
         audience: str | None = None,
         issuer: AnyHttpUrl | str | None = None,
         gr_redis_config: RedisConfig | None = None,
-    ) -> "GRToken":
+    ) -> GRToken:
         """Return the GRToken for this API Token.
 
         :param api_key: an api value from http header
@@ -290,7 +290,7 @@ class GRTokenManager(PostgresManager):
 
         return
 
-    def get_by_user_id(self, user_id: PositiveInt) -> "GRToken" | None:
+    def get_by_user_id(self, user_id: PositiveInt) -> GRToken | None:
         # django authtoken_token table has (user_id) UNIQUE constraint
         # therefore, this will only return 0 or 1 GRTokens
         from generalresearch.models.gr.authentication import GRToken

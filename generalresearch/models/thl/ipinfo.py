@@ -267,7 +267,7 @@ class IPInformation(BaseModel):
         return self.is_anonymous is None
 
     @property
-    def geoname(self) -> "IPGeoname | None":
+    def geoname(self) -> IPGeoname | None:
         return self._geoname or None
 
     def normalize_ip(self):

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import xml.etree.cElementTree as ET
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from typing import Any
 
@@ -49,7 +49,7 @@ class NmapXmlParser:
         try:
             root = ET.fromstring(nmap_data)
         except Exception as e:
-            emsg = "Wrong XML structure: cannot parse data: {0}".format(e)
+            emsg = f"Wrong XML structure: cannot parse data: {e}"
             raise NmapParserException(emsg)
 
         if root.tag != "nmaprun":

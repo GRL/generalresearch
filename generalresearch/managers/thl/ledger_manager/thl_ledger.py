@@ -181,15 +181,15 @@ class ThlLedgerManager(LedgerManager):
 
     def get_account_or_create_contest_wallet(
         self, contest: RaffleContest
-    ) -> "LedgerAccount":
+    ) -> LedgerAccount:
         assert isinstance(contest, RaffleContest), "Must provide a RaffleContest"
         return self.get_account_or_create_contest_wallet_by_uuid(
             contest_uuid=contest.uuid
         )
 
     def get_or_create_bp_pending_payout_account(
-        self, product: "Product"
-    ) -> "LedgerAccount":
+        self, product: Product
+    ) -> LedgerAccount:
         """
         Used exclusively for BP with managed user wallets. This account
             holds funds that a BP's users have requested as payouts but are
@@ -211,7 +211,7 @@ class ThlLedgerManager(LedgerManager):
 
         return self.get_account_or_create(account=account)
 
-    def get_account_task_complete_revenue(self) -> "LedgerAccount":
+    def get_account_task_complete_revenue(self) -> LedgerAccount:
         res = self.get_account(
             qualified_name=f"{self.currency.value}:revenue:task_complete"
         )
@@ -219,7 +219,7 @@ class ThlLedgerManager(LedgerManager):
 
         return res
 
-    def get_account_cash(self) -> "LedgerAccount":
+    def get_account_cash(self) -> LedgerAccount:
         res = self.get_account(qualified_name=f"{self.currency.value}:cash")
         assert res is not None, "Cash account does not exist"
 
@@ -1719,7 +1719,7 @@ class ThlLedgerManager(LedgerManager):
     def create_tx_milestone_winner(
         self,
         contest: MilestoneContest,
-        winners: list["ContestWinner"],
+        winners: list[ContestWinner],
         skip_flag_check: bool | None = False,
     ) -> LedgerTransaction:
         """
