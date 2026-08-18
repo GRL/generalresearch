@@ -1,20 +1,21 @@
 import subprocess
 
-from generalresearch.models.network.definitions import IPProtocol
-from generalresearch.models.network.nmap.execute import execute_nmap
 import faker
 
+from generalresearch.managers.network.tool_run import ToolRunManager
+from generalresearch.models.network.definitions import IPProtocol
+from generalresearch.models.network.nmap.execute import execute_nmap
 from generalresearch.models.network.nmap.result import PortState
-from generalresearch.models.network.tool_run import ToolName, ToolClass
+from generalresearch.models.network.tool_run import ToolClass, ToolName
 
 fake = faker.Faker()
 
 
-def resolve(host):
+def resolve(host: str):
     return subprocess.check_output(["dig", host, "+short"]).decode().strip()
 
 
-def test_execute_nmap_scanme(toolrun_manager):
+def test_execute_nmap_scanme(toolrun_manager: ToolRunManager):
     ip = resolve("scanme.nmap.org")
 
     run = execute_nmap(ip=ip, top_ports=None, ports="20-30", enable_advanced=False)

@@ -1,16 +1,20 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Callable
 
 import pytest
 
 from generalresearch.models import Source
+from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import (
-    Wall,
+    Session,
+    SessionAdjustedStatus,
     Status,
     StatusCode1,
+    Wall,
     WallAdjustedStatus,
-    SessionAdjustedStatus,
 )
+from generalresearch.models.thl.user import User
 
 started1 = datetime(2023, 1, 1, tzinfo=timezone.utc)
 started2 = datetime(2023, 1, 1, 0, 10, 0, tzinfo=timezone.utc)
@@ -25,14 +29,18 @@ adj_ts3 = datetime(2023, 2, 4, tzinfo=timezone.utc)
 class TestProductAdjustments:
 
     @pytest.mark.parametrize("payout", [".6", "1", "1.8", "2", "500.0000"])
-    def test_determine_bp_payment_no_rounding(self, product_factory, payout):
+    def test_determine_bp_payment_no_rounding(
+        self, product_factory: Callable[..., Product], payout
+    ):
         p1 = product_factory(commission_pct=Decimal("0.05"))
         res = p1.determine_bp_payment(thl_net=Decimal(payout))
         assert isinstance(res, Decimal)
         assert res == Decimal(payout) * Decimal("0.95")
 
     @pytest.mark.parametrize("payout", [".01", ".05", ".5"])
-    def test_determine_bp_payment_rounding(self, product_factory, payout):
+    def test_determine_bp_payment_rounding(
+        self, product_factory: Callable[..., Product], payout
+    ):
         p1 = product_factory(commission_pct=Decimal("0.05"))
         res = p1.determine_bp_payment(thl_net=Decimal(payout))
         assert isinstance(res, Decimal)
@@ -41,7 +49,7 @@ class TestProductAdjustments:
 
 class TestSessionAdjustments:
 
-    def test_status_complete(self, session_factory, user):
+    def test_status_complete(self, session_factory: Callable[..., Session], user: User):
         # Completed Session with 2 wall events
         s1 = session_factory(
             user=user,
@@ -64,7 +72,9 @@ class TestSessionAdjustments:
 
 class TestAdjustments:
 
-    def test_finish_with_status(self, session_factory, user, session_manager):
+    def test_finish_with_status(
+        self, session_factory: Callable[..., Session], user: User, session_manager
+    ):
         # Completed Session with 2 wall events
         s1 = session_factory(
             user=user,
@@ -86,7 +96,9 @@ class TestAdjustments:
 
         assert Decimal("0.95") == payout
 
-    def test_never_adjusted(self, session_factory, user, session_manager):
+    def test_never_adjusted(
+        self, session_factory: Callable[..., Session], user: User, session_manager
+    ):
         s1 = session_factory(
             user=user,
             wall_count=5,
@@ -115,7 +127,11 @@ class TestAdjustments:
         assert s1.adjusted_timestamp is None
 
     def test_adjustment_wall_values(
-        self, session_factory, user, session_manager, wall_manager
+        self,
+        session_factory: Callable[..., Session],
+        user: User,
+        session_manager,
+        wall_manager,
     ):
         # Completed Session with 2 wall events
         s1 = session_factory(
@@ -162,7 +178,11 @@ class TestAdjustments:
         assert s1.adjusted_user_payout is None
 
     def test_adjustment_session_values(
-        self, wall_manager, session_manager, session_factory, user
+        self,
+        wall_manager,
+        session_manager,
+        session_factory: Callable[..., Session],
+        user: User,
     ):
         # Completed Session with 2 wall events
         s1 = session_factory(
@@ -202,7 +222,11 @@ class TestAdjustments:
         assert s1.adjusted_user_payout is None
 
     def test_double_adjustment_session_values(
-        self, wall_manager, session_manager, session_factory, user
+        self,
+        wall_manager,
+        session_manager,
+        session_factory: Callable[..., Session],
+        user: User,
     ):
         # Completed Session with 2 wall events
         s1 = session_factory(
@@ -251,7 +275,11 @@ class TestAdjustments:
         assert s1.adjusted_user_payout is None
 
     def test_double_adjustment_sm_vs_db_values(
-        self, wall_manager, session_manager, session_factory, user
+        self,
+        wall_manager,
+        session_manager,
+        session_factory: Callable[..., Session],
+        user: User,
     ):
         # Completed Session with 2 wall events
         s1 = session_factory(
@@ -314,7 +342,11 @@ class TestAdjustments:
             ) == w_db.model_dump_json(exclude={"cpi", "req_cpi"})
 
     def test_double_adjustment_double_completes(
-        self, wall_manager, session_manager, session_factory, user
+        self,
+        wall_manager,
+        session_manager,
+        session_factory: Callable[..., Session],
+        user: User,
     ):
         # Completed Session with 2 wall events
         s1 = session_factory(
@@ -384,7 +416,12 @@ class TestAdjustments:
         assert adj_ts3 == s1.adjusted_timestamp
 
     def test_complete_to_fail(
-        self, session_factory, user, session_manager, wall_manager, utc_hour_ago
+        self,
+        session_factory: Callable[..., Session],
+        user: User,
+        session_manager,
+        wall_manager,
+        utc_hour_ago: datetime,
     ):
         s1 = session_factory(
             user=user,
@@ -422,6 +459,7 @@ class TestAdjustments:
         assert Status.FAIL == new_status
         assert Decimal(0) == new_payout
 
+        assert isinstance(user.product, Product)
         assert not user.product.user_wallet_config.enabled
         assert new_user_payout is None
 
@@ -477,7 +515,12 @@ class TestAdjustments:
         # assert Decimal("0.24") == s1.adjusted_user_payout
         assert s1.adjusted_user_payout is None
 
-    def test_complete_to_fail_to_complete(self, user, session_factory, utc_hour_ago):
+    def test_complete_to_fail_to_complete(
+        self,
+        user: User,
+        session_factory: Callable[..., Session],
+        utc_hour_ago: datetime,
+    ):
         # Setup: Complete, then adjust it to fail
         s1 = session_factory(
             user=user,
@@ -529,7 +572,10 @@ class TestAdjustments:
         assert s1.adjusted_user_payout is None
 
     def test_complete_to_fail_to_complete_adj(
-        self, user, session_factory, utc_hour_ago
+        self,
+        user: User,
+        session_factory: Callable[..., Session],
+        utc_hour_ago: datetime,
     ):
         s1 = session_factory(
             user=user,
@@ -634,7 +680,12 @@ class TestAdjustments:
         # assert Decimal("0.48") == s.adjusted_user_payout
         assert s1.adjusted_user_payout is None
 
-    def test_fail_to_complete_to_fail(self, user, session_factory, utc_hour_ago):
+    def test_fail_to_complete_to_fail(
+        self,
+        user: User,
+        session_factory: Callable[..., Session],
+        utc_hour_ago: datetime,
+    ):
         # End with an abandon
         s1 = session_factory(
             user=user,

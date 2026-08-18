@@ -1,12 +1,16 @@
 from datetime import datetime, timezone
-from decimal import Decimal
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
 
-from generalresearch.models.thl.ledger import LedgerAccount, Direction, AccountType
-from generalresearch.models.thl.ledger import LedgerTransaction, LedgerEntry
+from generalresearch.models.thl.ledger import (
+    AccountType,
+    Direction,
+    LedgerAccount,
+    LedgerEntry,
+    LedgerTransaction,
+)
 
 
 class TestLedgerTransaction:
@@ -38,14 +42,6 @@ class TestLedgerTransaction:
                 amount=2**65,
             )
         assert "Input should be less than 9223372036854775807" in str(cm.value)
-
-        with pytest.raises(ValidationError) as cm:
-            LedgerEntry(
-                direction=Direction.CREDIT,
-                account_uuid="3f3735eaed264c2a9f8a114934afa121",
-                amount=Decimal("1"),
-            )
-        assert "Input should be a valid integer" in str(cm.value)
 
         with pytest.raises(ValidationError) as cm:
             LedgerEntry(

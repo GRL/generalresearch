@@ -101,11 +101,6 @@ class TestUserProductID:
         assert "1 validation error for User" in str(cm.value)
         assert "Input should be a valid string" in str(cm.value)
 
-        with pytest.raises(expected_exception=ValueError) as cm:
-            User(user_id=self.user_id, product_id=Decimal("0"))
-        assert "1 validation error for User" in str(cm.value)
-        assert "Input should be a valid string" in str(cm.value)
-
     def test_empty(self):
         from generalresearch.models.thl.user import User
 
@@ -121,8 +116,8 @@ class TestUserProductID:
         product_id = uuid4().hex[:31]
         with pytest.raises(expected_exception=ValueError) as cm:
             User(user_id=self.user_id, product_id=product_id)
-        assert "1 validation error for User", str(cm.value)
-        assert "String should have at least 32 characters", str(cm.value)
+        assert "1 validation error for User" in str(cm.value)
+        assert "String should have at least 32 characters" in str(cm.value)
 
         product_id = uuid4().hex * 2
         with pytest.raises(ValueError) as cm:

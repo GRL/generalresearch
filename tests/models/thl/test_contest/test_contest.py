@@ -1,4 +1,8 @@
+from typing import Callable
+
 import pytest
+
+from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
 
 
@@ -11,13 +15,13 @@ class TestContest:
     """
 
     @pytest.fixture(scope="function")
-    def user_1(self, user_factory, product) -> User:
+    def user_1(self, user_factory: Callable[..., User], product: Product) -> User:
         return user_factory(product=product)
 
     @pytest.fixture(scope="function")
-    def user_2(self, user_factory, product) -> User:
+    def user_2(self, user_factory: Callable[..., User], product: Product) -> User:
         return user_factory(product=product)
 
     @pytest.fixture(scope="function")
-    def user_3(self, user_factory, product) -> User:
+    def user_3(self, user_factory: Callable[..., User], product: Product) -> User:
         return user_factory(product=product)

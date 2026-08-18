@@ -473,7 +473,7 @@ class MorningBid(MorningTaskStatistics):
     def is_changed(self, other) -> bool:
         return not self.is_unchanged(other)
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(
             mode="json",
             exclude={
@@ -547,14 +547,14 @@ class MorningBid(MorningTaskStatistics):
         return False, None, None
 
     def determine_eligibility(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, Optional[bool]]
     ) -> Optional[str]:
         if not self.is_open:
             return None
         return self.passes_quotas(criteria_evaluation)
 
     def determine_eligibility_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, Optional[bool]]
     ) -> Tuple[Optional[bool], Optional[List[str]], Optional[Set[str]]]:
         if not self.is_open:
             return False, None, None

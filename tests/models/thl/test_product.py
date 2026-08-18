@@ -826,22 +826,18 @@ class TestProductBalance:
 
     def test_not_inconsistent(
         self,
-        product,
+        product: Product,
         mnt_filepath,
-        thl_lm,
-        client_no_amm,
-        thl_redis_config,
-        brokerage_product_payout_event_manager,
+        thl_lm: ThlLedgerManager,
+        client_no_amm: DaskClient,
         delete_ledger_db,
         create_main_accounts,
         delete_df_collection,
         ledger_collection,
-        business,
-        user_factory,
-        product_factory,
+        user_factory: Callable[..., User],
         session_with_tx_factory,
-        pop_ledger_merge,
-        start,
+        pop_ledger_merge: PopLedgerMerge,
+        start: datetime,
         bp_payout_factory,
         payout_event_manager,
     ):
@@ -905,22 +901,16 @@ class TestProductPOPFinancial:
         self,
         product,
         mnt_filepath,
-        thl_lm,
+        thl_lm: ThlLedgerManager,
         client_no_amm,
-        thl_redis_config,
-        brokerage_product_payout_event_manager,
         delete_ledger_db,
         create_main_accounts,
         delete_df_collection,
         ledger_collection,
-        business,
-        user_factory,
-        product_factory,
+        user_factory: Callable[..., User],
         session_with_tx_factory,
-        pop_ledger_merge,
-        start,
-        bp_payout_factory,
-        payout_event_manager,
+        pop_ledger_merge: PopLedgerMerge,
+        start: datetime,
     ):
         # This is very similar to the test_complete_payout_pq_inconsistent
         #   test, however this time we're only going to assign the payout
@@ -984,22 +974,20 @@ class TestProductCache:
 
     def test_basic(
         self,
-        product,
+        product: Product,
         mnt_filepath,
         thl_lm,
-        client_no_amm,
+        client_no_amm: DaskClient,
         thl_redis_config,
         brokerage_product_payout_event_manager,
         delete_ledger_db,
         create_main_accounts,
         delete_df_collection,
         ledger_collection,
-        business,
-        user_factory,
-        product_factory,
+        user_factory: Callable[..., User],
         session_with_tx_factory,
-        pop_ledger_merge,
-        start,
+        pop_ledger_merge: PopLedgerMerge,
+        start: datetime,
     ):
         # Now let's load it up and actually test some things
         delete_ledger_db()
@@ -1008,7 +996,7 @@ class TestProductCache:
 
         # Confirm the default / null behavior
         rc = thl_redis_config.create_redis_client()
-        res: Optional[str] = rc.get(product.cache_key)
+        res: str | None = rc.get(product.cache_key)
         assert res is None
         with pytest.raises(expected_exception=AssertionError):
             product.set_cache(
@@ -1043,13 +1031,14 @@ class TestProductCache:
         )
 
         # Fetch from cache and assert the instance loaded from redis
-        res: Optional[str] = rc.get(product.cache_key)
+        res: str | None = rc.get(product.cache_key)
         assert isinstance(res, str)
         from generalresearch.models.thl.ledger import LedgerAccount
 
         assert isinstance(product.bp_account, LedgerAccount)
 
         p1: Product = Product.model_validate_json(res)
+        assert isinstance(p1.balance, ProductBalances)
         assert p1.balance.product_id == product.uuid
         assert p1.balance.payout_usd_str == "$0.71"
         assert p1.balance.retainer_usd_str == "$0.17"
@@ -1057,22 +1046,20 @@ class TestProductCache:
 
     def test_neg_balance_cache(
         self,
-        product,
+        product: Product,
         mnt_filepath,
         thl_lm,
-        client_no_amm,
+        client_no_amm: DaskClient,
         thl_redis_config,
         brokerage_product_payout_event_manager,
         delete_ledger_db,
         create_main_accounts,
         delete_df_collection,
         ledger_collection,
-        business,
-        user_factory,
-        product_factory,
+        user_factory: Callable[..., User],
         session_with_tx_factory,
-        pop_ledger_merge,
-        start,
+        pop_ledger_merge: PopLedgerMerge,
+        start: datetime,
         bp_payout_factory,
         payout_event_manager,
         adj_to_fail_with_tx_factory,

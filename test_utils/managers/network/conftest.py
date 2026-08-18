@@ -1,5 +1,5 @@
 import os
-from datetime import timedelta, datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -10,13 +10,13 @@ from generalresearch.models.network.definitions import IPProtocol
 from generalresearch.models.network.mtr.parser import parse_mtr_output
 from generalresearch.models.network.nmap.parser import parse_nmap_xml
 from generalresearch.models.network.rdns.parser import parse_rdns_output
-from generalresearch.models.network.tool_run import NmapRun, Status, RDNSRun, MTRRun
+from generalresearch.models.network.tool_run import MTRRun, NmapRun, RDNSRun, Status
 from generalresearch.models.network.tool_run_command import (
     MTRRunCommand,
     MTRRunCommandOptions,
-    RDNSRunCommand,
     NmapRunCommand,
     NmapRunCommandOptions,
+    RDNSRunCommand,
     RDNSRunCommandOptions,
 )
 

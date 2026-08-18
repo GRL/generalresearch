@@ -2,20 +2,20 @@ import json
 
 from generalresearch.models import Source
 from generalresearch.models.legacy.bucket import (
-    TopNPlusBucket,
-    SurveyEligibilityCriterion,
+    BucketTask,
     DurationSummary,
     PayoutSummary,
-    BucketTask,
+    SurveyEligibilityCriterion,
+    TopNPlusBucket,
 )
 
 
 class TestOfferwallTopNAndStarwall:
     def test_45b7228a7(self):
         from generalresearch.models.legacy.offerwall import (
+            StarwallOfferWallResponse,
             TopNOfferWall,
             TopNOfferWallResponse,
-            StarwallOfferWallResponse,
         )
         from tests.models.legacy.data import (
             RESPONSE_45b7228a7,
@@ -31,8 +31,8 @@ class TestOfferwallTopNAndStarwall:
 
     def test_b145b803(self):
         from generalresearch.models.legacy.offerwall import (
-            TopNPlusOfferWallResponse,
             StarwallPlusOfferWallResponse,
+            TopNPlusOfferWallResponse,
         )
         from tests.models.legacy.data import (
             RESPONSE_b145b803,
@@ -44,8 +44,8 @@ class TestOfferwallTopNAndStarwall:
 
     def test_d48cce47(self):
         from generalresearch.models.legacy.offerwall import (
-            TopNPlusBlockOfferWallResponse,
             StarwallPlusBlockOfferWallResponse,
+            TopNPlusBlockOfferWallResponse,
         )
         from tests.models.legacy.data import (
             RESPONSE_b145b803,
@@ -62,12 +62,12 @@ class TestOfferwallTopNAndStarwall:
 
     def test_1e5f0af8(self):
         from generalresearch.models.legacy.offerwall import (
-            TopNPlusBlockRecontactOfferWallResponse,
             StarwallPlusBlockRecontactOfferWallResponse,
+            TopNPlusBlockRecontactOfferWallResponse,
         )
         from tests.models.legacy.data import (
-            RESPONSE_d48cce47,
             RESPONSE_1e5f0af8,
+            RESPONSE_d48cce47,
         )
 
         res = json.loads(RESPONSE_1e5f0af8)
@@ -149,7 +149,6 @@ class TestMarketplace:
         from generalresearch.models.legacy.offerwall import (
             MarketplaceOfferwallResponse,
         )
-
         from tests.models.legacy.data import (
             RESPONSE_5fa23085,
         )
@@ -175,8 +174,8 @@ class TestTimebucks:
             TimeBucksBlockOfferwallResponse,
         )
         from tests.models.legacy.data import (
-            RESPONSE_1705e4f8,
             RESPONSE_0af0f7ec,
+            RESPONSE_1705e4f8,
         )
 
         res = json.loads(RESPONSE_0af0f7ec)

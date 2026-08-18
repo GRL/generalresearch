@@ -24,12 +24,12 @@ class TestUserQuestionAnswers:
         session_factory,
         utc_hour_ago,
     ):
-        from generalresearch.models.thl.session import Session, Wall
-        from generalresearch.models.thl.user import User
         from generalresearch.models import Source
         from generalresearch.models.legacy.questions import (
             UserQuestionAnswers,
         )
+        from generalresearch.models.thl.session import Session, Wall
+        from generalresearch.models.thl.user import User
 
         u: User = user_factory(product=product)
 
@@ -161,10 +161,7 @@ class TestUserQuestionAnswers:
 
     def test_allow_answer_failures_silent(
         self,
-        product_manager,
         user_manager,
-        session_manager,
-        wall_manager,
         product,
         user_factory,
         utc_hour_ago,
@@ -176,11 +173,11 @@ class TestUserQuestionAnswers:
         that one QuestionAnswerIn without "loosing" any of the other
         QuestionAnswerIn items that they provided.
         """
-        from generalresearch.models.thl.session import Session, Wall
-        from generalresearch.models.thl.user import User
         from generalresearch.models.legacy.questions import (
             UserQuestionAnswers,
         )
+        from generalresearch.models.thl.session import Session, Wall
+        from generalresearch.models.thl.user import User
 
         u: User = user_factory(product=product)
 

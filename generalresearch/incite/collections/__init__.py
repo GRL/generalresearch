@@ -582,10 +582,9 @@ class DFCollectionItem(CollectionItemBase):
         return self.to_archive(ddf=ddf, is_partial=False, overwrite=overwrite)
 
     def clear_corrupt_archive(self):
-        if self.has_archive(include_empty=False):
-            if not self.valid_archive(self.path):
-                LOG.warning(f"invalid archive, deleting: {self.path}")
-                self.delete_archive(self.path)
+        if self.has_archive(include_empty=False) and not self.valid_archive(self.path):
+            LOG.warning(f"invalid archive, deleting: {self.path}")
+            self.delete_archive(self.path)
 
 
 class DFCollection(CollectionBase):
