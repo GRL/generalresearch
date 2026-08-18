@@ -1,7 +1,8 @@
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from random import randint, choice as rand_choice
+from random import choice as rand_choice
+from random import randint
 from uuid import uuid4
 
 import pytest
@@ -315,7 +316,7 @@ class TestUserUUID:
 
         with pytest.raises(ValueError) as cm:
             User(user_id=self.user_id, uuid=Decimal("0"))
-        assert "1 validation error for User", str(cm.value)
+        assert "1 validation error for User" in str(cm.value)
         assert "Input should be a valid string" in str(cm.value)
 
     def test_empty(self):
@@ -323,8 +324,8 @@ class TestUserUUID:
 
         with pytest.raises(ValueError) as cm:
             User(user_id=self.user_id, uuid="")
-        assert "1 validation error for User", str(cm.value)
-        assert "String should have at least 32 characters", str(cm.value)
+        assert "1 validation error for User" in str(cm.value)
+        assert "String should have at least 32 characters" in str(cm.value)
 
     def test_invalid_len(self):
         from generalresearch.models.thl.user import User

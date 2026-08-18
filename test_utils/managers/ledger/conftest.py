@@ -586,7 +586,6 @@ def session_with_tx_factory(
 ) -> Callable[..., "Session"]:
 
     from generalresearch.models.thl.session import (
-        Session,
         Status,
         StatusCode1,
     )
@@ -661,7 +660,7 @@ def adj_to_fail_with_tx_factory(
         # This is defined in `thl-grpc/thl/user_quality_history/recons.py:150`
         #   so we can't use it as part of this test anyway to add rows to the
         #   thl_taskadjustment table anyway.. until we created a
-        #   TaskAdjustment Manager to put into py-utils!
+        #   TaskAdjustment Manager to put into generalresearch!
 
         # create_task_adjustment_event(
         #     wall,

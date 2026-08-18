@@ -383,7 +383,7 @@ class ScoredTaskResults(BaseModel):
 
 class OfferwallBucket(BaseModel):
     """
-    See also py-utils: models.legacy.bucket: Bucket. That is used only in
+    See also generalresearch: models.legacy.bucket: Bucket. That is used only in
     handling API responses. This class is used internally to handle offerwall
     creation/management.
     """

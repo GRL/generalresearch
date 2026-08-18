@@ -9,8 +9,12 @@ class TestUpkQuestion:
             UPKImportance,
         )
 
-        ui = UPKImportance(task_score=1, task_count=None)
-        ui = UPKImportance(task_score=0)
+        res = UPKImportance(task_score=1, task_count=None)
+        assert isinstance(res, UPKImportance)
+
+        res = UPKImportance(task_score=0)
+        assert isinstance(res, UPKImportance)
+
         with pytest.raises(ValidationError) as e:
             UPKImportance(task_score=-1)
         assert "Input should be greater than or equal to 0" in str(e.value)
@@ -27,11 +31,11 @@ class TestUpkQuestion:
 
     def test_mc(self):
         from generalresearch.models.thl.profiling.upk_question import (
+            UpkQuestion,
             UpkQuestionChoice,
+            UpkQuestionConfigurationMC,
             UpkQuestionSelectorMC,
             UpkQuestionType,
-            UpkQuestion,
-            UpkQuestionConfigurationMC,
         )
 
         q = UpkQuestion(
@@ -123,12 +127,12 @@ class TestUpkQuestion:
 
     def test_te(self):
         from generalresearch.models.thl.profiling.upk_question import (
-            UpkQuestionType,
-            UpkQuestion,
-            UpkQuestionSelectorTE,
-            UpkQuestionValidation,
             PatternValidation,
+            UpkQuestion,
             UpkQuestionConfigurationTE,
+            UpkQuestionSelectorTE,
+            UpkQuestionType,
+            UpkQuestionValidation,
         )
 
         q = UpkQuestion(
@@ -223,10 +227,10 @@ class TestUpkQuestion:
 
     def test_order(self):
         from generalresearch.models.thl.profiling.upk_question import (
+            UpkQuestion,
             UpkQuestionChoice,
             UpkQuestionSelectorMC,
             UpkQuestionType,
-            UpkQuestion,
             order_exclusive_options,
         )
 
@@ -296,7 +300,7 @@ class TestUpkQuestionValidateAnswer:
         answer = ("0", "1")
         assert question.validate_question_answer(answer) == (
             False,
-            "Single Answer MC question with >1 selected " "answers",
+            "Single Answer MC question with >1 selected answers",
         )
 
     def test_validate_answer_MA(self):

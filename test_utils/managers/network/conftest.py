@@ -43,7 +43,7 @@ def toolrun_manager(thl_web_rw) -> ToolRunManager:
 @pytest.fixture(scope="session")
 def nmap_raw_output(request) -> str:
     fp = os.path.join(request.config.rootpath, "data/nmaprun1.xml")
-    with open(fp, "r") as f:
+    with open(fp) as f:
         data = f.read()
     return data
 
@@ -107,7 +107,7 @@ def rdns_run(rdns_result, scan_group_id):
 @pytest.fixture(scope="session")
 def mtr_raw_output(request):
     fp = os.path.join(request.config.rootpath, "data/mtr_fatbeam.json")
-    with open(fp, "r") as f:
+    with open(fp) as f:
         data = f.read()
     return data
 

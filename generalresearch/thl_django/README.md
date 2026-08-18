@@ -17,7 +17,7 @@ pip install generalresearch[django]
 
 (e.g. editable install recommended during development)
 ```bash
-pip install -e '/path/to/project/py-utils[django]'
+pip install -e '/path/to/project/generalresearch[django]'
 ```
 
 

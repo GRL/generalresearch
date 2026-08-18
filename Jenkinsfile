@@ -11,7 +11,7 @@ pipeline {
     }
 
     environment {
-        VENV = "${env.WORKSPACE}/py-utils-venv"
+        VENV = "${env.WORKSPACE}/generalresearch-venv"
         SPECTRUM_CARER_VENV = "${env.WORKSPACE}/thl-spectrum-carer-venv"
         GRLIQ_CARER_VENV = "${env.WORKSPACE}/grliq-carer-venv"
         GR_CARER_VENV = "${env.WORKSPACE}/gr-carer-venv"
@@ -26,7 +26,7 @@ pipeline {
                 axes {
                     axis {
                         name 'PYTHON_VERSION'
-                        values 'python3.13', 'python3.12', 'python3.11', 'python3.10'
+                        values 'python3.14' 'python3.13', 'python3.12', 'python3.11', 'python3.10'
                     }
                 }
 
@@ -99,13 +99,13 @@ pipeline {
                                 sh 'pwd -P'
                             }
 
-                            dir("py-utils:$PYTHON_VERSION/") {
+                            dir("generalresearch:$PYTHON_VERSION/") {
                                 checkout scmGit(
                                     branches: [[name: env.BRANCH_NAME]],
                                     extensions: [ cloneOption(shallow: true) ],
                                     userRemoteConfigs: [
                                         [credentialsId:  'abdeb570-b708-44f3-b857-8a6b06ed9822',
-                                         url: 'ssh://code.g-r-l.com:6611/py-utils']
+                                         url: 'ssh://code.g-r-l.com:6611/generalresearch']
                                     ],
                                 )
                             }
@@ -147,7 +147,7 @@ pipeline {
 
                     stage('Env & Migration') {
                         steps {
-                            dir("py-utils:$PYTHON_VERSION/") {
+                            dir("generalresearch:$PYTHON_VERSION/") {
                                 sh "/usr/local/bin/$PYTHON_VERSION -m venv $VENV-$PYTHON_VERSION"
                                 sh "$VENV-$PYTHON_VERSION/bin/pip install -U setuptools wheel pip"
                                 sh "$VENV-$PYTHON_VERSION/bin/pip install -r requirements.txt"
@@ -205,7 +205,7 @@ pipeline {
                             expression { return true }
                         }
                         steps {
-                            dir("py-utils:$PYTHON_VERSION") {
+                            dir("generalresearch:$PYTHON_VERSION") {
                                 sh "$VENV-$PYTHON_VERSION/bin/pytest -v tests/sql_helper.py"
                             }
                         }
@@ -216,7 +216,7 @@ pipeline {
                             expression { return true }
                         }
                         steps {
-                            dir("py-utils:$PYTHON_VERSION") {
+                            dir("generalresearch:$PYTHON_VERSION") {
                                 sh "$VENV-$PYTHON_VERSION/bin/pytest -v tests/models"
                             }
                         }
@@ -224,7 +224,7 @@ pipeline {
 
                     stage('managers') {
                         steps {
-                            dir("py-utils:$PYTHON_VERSION") {
+                            dir("generalresearch:$PYTHON_VERSION") {
                                 sh "$VENV-$PYTHON_VERSION/bin/pytest -v tests/managers"
                             }
                         }
@@ -232,7 +232,7 @@ pipeline {
 
                     stage('wall_status_codes') {
                         steps {
-                            dir("py-utils:$PYTHON_VERSION") {
+                            dir("generalresearch:$PYTHON_VERSION") {
                                 sh "$VENV-$PYTHON_VERSION/bin/pytest -v tests/wall_status_codes"
                             }
                         }
@@ -240,7 +240,7 @@ pipeline {
 
                     stage('wxet') {
                         steps {
-                            dir("py-utils:$PYTHON_VERSION") {
+                            dir("generalresearch:$PYTHON_VERSION") {
                                 sh "$VENV-$PYTHON_VERSION/bin/pytest -v tests/wxet"
                             }
                         }
@@ -248,7 +248,7 @@ pipeline {
 
                     stage('grliq') {
                         steps {
-                            dir("py-utils:$PYTHON_VERSION") {
+                            dir("generalresearch:$PYTHON_VERSION") {
                                 sh "$VENV-$PYTHON_VERSION/bin/pytest -v tests/grliq"
                             }
                         }
@@ -256,7 +256,7 @@ pipeline {
 
                     stage('incite') {
                         steps {
-                            dir("py-utils:$PYTHON_VERSION") {
+                            dir("generalresearch:$PYTHON_VERSION") {
                                 sh "$VENV-$PYTHON_VERSION/bin/pytest -v tests/incite"
                             }
                         }

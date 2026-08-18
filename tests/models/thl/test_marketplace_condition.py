@@ -7,8 +7,8 @@ class TestMarketplaceCondition:
     def test_list_or(self):
         from generalresearch.models import LogicalOperator
         from generalresearch.models.thl.survey.condition import (
-            MarketplaceCondition,
             ConditionValueType,
+            MarketplaceCondition,
         )
 
         user_qas = {"q1": {"a2"}}
@@ -48,8 +48,8 @@ class TestMarketplaceCondition:
     def test_list_or_negate(self):
         from generalresearch.models import LogicalOperator
         from generalresearch.models.thl.survey.condition import (
-            MarketplaceCondition,
             ConditionValueType,
+            MarketplaceCondition,
         )
 
         user_qas = {"q1": {"a2"}}
@@ -89,8 +89,8 @@ class TestMarketplaceCondition:
     def test_list_and(self):
         from generalresearch.models import LogicalOperator
         from generalresearch.models.thl.survey.condition import (
-            MarketplaceCondition,
             ConditionValueType,
+            MarketplaceCondition,
         )
 
         user_qas = {"q1": {"a1", "a2"}}
@@ -139,8 +139,8 @@ class TestMarketplaceCondition:
     def test_list_and_negate(self):
         from generalresearch.models import LogicalOperator
         from generalresearch.models.thl.survey.condition import (
-            MarketplaceCondition,
             ConditionValueType,
+            MarketplaceCondition,
         )
 
         user_qas = {"q1": {"a1", "a2"}}
@@ -180,8 +180,8 @@ class TestMarketplaceCondition:
     def test_ranges(self):
         from generalresearch.models import LogicalOperator
         from generalresearch.models.thl.survey.condition import (
-            MarketplaceCondition,
             ConditionValueType,
+            MarketplaceCondition,
         )
 
         user_qas = {"q1": {"2", "50"}}
@@ -247,8 +247,8 @@ class TestMarketplaceCondition:
     def test_ranges_to_list(self):
         from generalresearch.models import LogicalOperator
         from generalresearch.models.thl.survey.condition import (
-            MarketplaceCondition,
             ConditionValueType,
+            MarketplaceCondition,
         )
 
         user_qas = {"q1": {"2", "50"}}
@@ -267,8 +267,8 @@ class TestMarketplaceCondition:
     def test_ranges_infinity(self):
         from generalresearch.models import LogicalOperator
         from generalresearch.models.thl.survey.condition import (
-            MarketplaceCondition,
             ConditionValueType,
+            MarketplaceCondition,
         )
 
         user_qas = {"q1": {"2", "50"}}
@@ -310,8 +310,8 @@ class TestMarketplaceCondition:
 
     def test_answered(self):
         from generalresearch.models.thl.survey.condition import (
-            MarketplaceCondition,
             ConditionValueType,
+            MarketplaceCondition,
         )
 
         user_qas = {"q1": {"a2"}}
@@ -346,8 +346,8 @@ class TestMarketplaceCondition:
 
     def test_invite(self):
         from generalresearch.models.thl.survey.condition import (
-            MarketplaceCondition,
             ConditionValueType,
+            MarketplaceCondition,
         )
 
         user_groups = {"g1", "g2", "g3"}
@@ -357,14 +357,14 @@ class TestMarketplaceCondition:
             value_type=ConditionValueType.RECONTACT,
             values=["g1", "g4"],
         )
-        assert c.evaluate_criterion(user_qas=dict(), user_groups=user_groups)
+        assert c.evaluate_criterion(user_qas={}, user_groups=user_groups)
         c = MarketplaceCondition(
             question_id=None,
             negate=False,
             value_type=ConditionValueType.RECONTACT,
             values=["g4"],
         )
-        assert not c.evaluate_criterion(user_qas=dict(), user_groups=user_groups)
+        assert not c.evaluate_criterion(user_qas={}, user_groups=user_groups)
 
         c = MarketplaceCondition(
             question_id=None,
@@ -372,11 +372,11 @@ class TestMarketplaceCondition:
             value_type=ConditionValueType.RECONTACT,
             values=["g1", "g4"],
         )
-        assert not c.evaluate_criterion(user_qas=dict(), user_groups=user_groups)
+        assert not c.evaluate_criterion(user_qas={}, user_groups=user_groups)
         c = MarketplaceCondition(
             question_id=None,
             negate=True,
             value_type=ConditionValueType.RECONTACT,
             values=["g4"],
         )
-        assert c.evaluate_criterion(user_qas=dict(), user_groups=user_groups)
+        assert c.evaluate_criterion(user_qas={}, user_groups=user_groups)

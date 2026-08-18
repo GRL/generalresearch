@@ -62,14 +62,14 @@ class Payout(models.Model):
     # In the smallest unit of the currency being transacted. For USD, this is cents.
     amount = models.BigIntegerField(null=False)
 
-    # The allowed values for `status` are defined in py-utils:
+    # The allowed values for `status` are defined in generalresearch:
     #   generalresearch/models/thl/payout.py:PayoutStatus
     status = models.CharField(max_length=20, null=True)
 
     # Used for holding an external, payouttype-specific identifier
     ext_ref_id = models.CharField(max_length=64, null=True)
 
-    # The allowed values for `payout_type` are defined in py-utils:
+    # The allowed values for `payout_type` are defined in generalresearch:
     #   generalresearch/models/thl/payout.py:PayoutType
     payout_type = models.CharField(max_length=14)
 

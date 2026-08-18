@@ -1,26 +1,39 @@
 import os
 import shutil
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Optional
+from typing import Callable, Optional
 from uuid import uuid4
 
 import pytest
+from dask.distributed import Client as DaskClient
 from pydantic import ValidationError
 
 from generalresearch.currency import USDCent
+from generalresearch.incite import GRLDatasets
+from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
+from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+    ThlLedgerManager,
+)
+from generalresearch.managers.thl.product import ProductManager
 from generalresearch.models import Source
+from generalresearch.models.gr.business import Business
+from generalresearch.models.thl.finance import ProductBalances
 from generalresearch.models.thl.product import (
-    Product,
+    BrokerageProductPayoutEvent,
+    BrokerageProductPayoutEventManager,
+    IntegrationMode,
     PayoutConfig,
     PayoutTransformation,
+    Product,
     ProfilingConfig,
-    SourcesConfig,
-    IntegrationMode,
-    SupplyConfig,
     SourceConfig,
+    SourcesConfig,
+    SupplyConfig,
     SupplyPolicy,
 )
+from generalresearch.models.thl.session import Session
+from generalresearch.models.thl.user import User
 
 
 class TestProduct:
@@ -28,11 +41,11 @@ class TestProduct:
     def test_init(self):
         # By default, just a Pydantic instance doesn't have an id_int
         instance = Product.model_validate(
-            dict(
-                id="968a9acc79b74b6fb49542d82516d284",
-                name="test-968a9acc",
-                redirect_url="https://www.google.com/hey",
-            )
+            obj={
+                "id": "968a9acc79b74b6fb49542d82516d284",
+                "name": "test-968a9acc",
+                "redirect_url": "https://www.google.com/hey",
+            }
         )
         assert instance.id_int is None
 
@@ -40,29 +53,31 @@ class TestProduct:
         # We're not excluding anything here, only in the "*Out" variants
         assert "id_int" in res
 
-    def test_init_db(self, product_manager):
+    def test_init_db(self, product_manager: ProductManager):
         # By default, just a Pydantic instance doesn't have an id_int
         instance = product_manager.create_dummy()
         assert isinstance(instance.id_int, int)
 
         res = instance.model_dump_json()
+        assert isinstance(res, Product)
 
         # we json skip & exclude
         res = instance.model_dump()
+        assert isinstance(res, Product)
 
     def test_redirect_url(self):
         p = Product.model_validate(
-            dict(
-                id="968a9acc79b74b6fb49542d82516d284",
-                created="2023-09-21T22:13:09.274672Z",
-                commission_pct=Decimal("0.05"),
-                enabled=True,
-                sources=[{"name": "d", "active": True}],
-                name="test-968a9acc",
-                max_session_len=600,
-                team_id="8b5e94afd8a246bf8556ad9986486baa",
-                redirect_url="https://www.google.com/hey",
-            )
+            obj={
+                "id": "968a9acc79b74b6fb49542d82516d284",
+                "created": "2023-09-21T22:13:09.274672Z",
+                "commission_pct": Decimal("0.05"),
+                "enabled": True,
+                "sources": [{"name": "d", "active": True}],
+                "name": "test-968a9acc",
+                "max_session_len": 600,
+                "team_id": "8b5e94afd8a246bf8556ad9986486baa",
+                "redirect_url": "https://www.google.com/hey",
+            }
         )
 
         with pytest.raises(expected_exception=ValidationError):
@@ -99,14 +114,14 @@ class TestProduct:
         p.harmonizer_domain = "https://profile.generalresearch.com/"
         p.harmonizer_domain = "https://profile.generalresearch.com"
         assert p.harmonizer_domain == "https://profile.generalresearch.com/"
-        with pytest.raises(expected_exception=Exception):
+        with pytest.raises(expected_exception=ValueError):
             p.harmonizer_domain = ""
-        with pytest.raises(expected_exception=Exception):
+        with pytest.raises(expected_exception=ValueError):
             p.harmonizer_domain = None
-        with pytest.raises(expected_exception=Exception):
+        with pytest.raises(expected_exception=ValueError):
             # no https
             p.harmonizer_domain = "http://profile.generalresearch.com"
-        with pytest.raises(expected_exception=Exception):
+        with pytest.raises(expected_exception=ValueError):
             # "/a" at the end
             p.harmonizer_domain = "https://profile.generalresearch.com/a"
 
@@ -201,23 +216,29 @@ class TestProduct:
         assert p.calculate_user_payment(
             Decimal("0.10"), user_wallet_balance=Decimal(0)
         ) == Decimal("0.07")
+
         assert p.calculate_user_payment(
             Decimal("1.05"), user_wallet_balance=Decimal(0)
         ) == Decimal("0.97")
+
         assert p.calculate_user_payment(
             Decimal(".05"), user_wallet_balance=Decimal(1)
         ) == Decimal("0.02")
+
         # final balance will be <0, so pay the full amount
         assert p.calculate_user_payment(
             Decimal(".50"), user_wallet_balance=Decimal(-1)
         ) == p.calculate_user_payment(Decimal("0.50"))
+
         # final balance will be >0, so do the 7c rounding
-        assert p.calculate_user_payment(
+        res1 = p.calculate_user_payment(
             Decimal(".50"), user_wallet_balance=Decimal("-0.10")
-        ) == (
-            p.calculate_user_payment(Decimal(".40"), user_wallet_balance=Decimal(0))
-            - Decimal("-0.10")
         )
+        res2 = p.calculate_user_payment(
+            bp_payout=Decimal(".40"), user_wallet_balance=Decimal(0)
+        )
+        assert res2
+        assert res1 == (res2 - Decimal("-0.10"))
 
     def test_payout_xform_none(self):
         p = Product(
@@ -568,34 +589,26 @@ class TestProductFinancials:
 
     def test_balance(
         self,
-        business,
-        product_factory,
-        user_factory,
-        mnt_filepath,
-        bp_payout_factory,
-        thl_lm,
-        lm,
-        duration,
-        offset,
-        thl_redis_config,
-        start,
-        thl_web_rr,
-        brokerage_product_payout_event_manager,
-        session_with_tx_factory,
+        business: Business,
+        product_factory: Callable[..., Product],
+        user_factory: Callable[..., User],
+        mnt_filepath: GRLDatasets,
+        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        thl_lm: ThlLedgerManager,
+        start: datetime,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        session_with_tx_factory: Callable[..., Session],
         delete_ledger_db,
         create_main_accounts,
-        client_no_amm,
+        client_no_amm: DaskClient,
         ledger_collection,
-        pop_ledger_merge,
+        pop_ledger_merge: PopLedgerMerge,
         delete_df_collection,
     ):
         delete_ledger_db()
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
 
-        from generalresearch.models.thl.product import Product
-        from generalresearch.models.thl.user import User
-        from generalresearch.models.thl.finance import ProductBalances
         from generalresearch.currency import USDCent
 
         p1: Product = product_factory(business=business)
@@ -759,20 +772,16 @@ class TestProductBalance:
 
     def test_inconsistent(
         self,
-        product,
-        mnt_filepath,
-        thl_lm,
-        client_no_amm,
-        thl_redis_config,
-        brokerage_product_payout_event_manager,
+        product: Product,
+        mnt_filepath: GRLDatasets,
+        thl_lm: ThlLedgerManager,
+        client_no_amm: DaskClient,
         delete_ledger_db,
         create_main_accounts,
         delete_df_collection,
         ledger_collection,
-        business,
-        user_factory,
-        product_factory,
-        session_with_tx_factory,
+        user_factory: Callable[..., User],
+        session_with_tx_factory: Callable[..., Session],
         pop_ledger_merge,
         start,
         bp_payout_factory,

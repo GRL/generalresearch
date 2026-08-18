@@ -2,8 +2,8 @@ import pytest
 from pydantic import BaseModel
 
 from generalresearch.models.thl.payout_format import (
-    PayoutFormatType,
     PayoutFormatField,
+    PayoutFormatType,
     format_payout_format,
 )
 
@@ -20,16 +20,16 @@ class TestPayoutFormat:
         PayoutFormatTestClass(payout_format="${payout/100:.2f}")
 
         # invalid
-        with pytest.raises(expected_exception=Exception) as e:
+        with pytest.raises(expected_exception=ValueError):
             PayoutFormatTestClass(payout_format="{payout10:,.0f} Points")
 
-        with pytest.raises(expected_exception=Exception) as e:
+        with pytest.raises(expected_exception=ValueError):
             PayoutFormatTestClass(payout_format="payout:,.0f} Points")
 
-        with pytest.raises(expected_exception=Exception):
+        with pytest.raises(expected_exception=ValueError):
             PayoutFormatTestClass(payout_format="payout")
 
-        with pytest.raises(expected_exception=Exception):
+        with pytest.raises(expected_exception=ValueError):
             PayoutFormatTestClass(payout_format="{payout;import sys:.0f}")
 
     def test_payout_format(self):

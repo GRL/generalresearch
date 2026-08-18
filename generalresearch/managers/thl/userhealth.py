@@ -54,7 +54,7 @@ class UserIpHistoryManager(PostgresManagerWithRedis):
         )
 
     def get_redis_key(self, user_id: int) -> str:
-        return f"py-utils:user-ip-history:{user_id}"
+        return f"generalreserach:user-ip-history:{user_id}"
 
     def get_user_ip_records_sql(self, user_id: int) -> list[UserIPRecord]:
         # The IP metadata is ONLY for the 'ip', NOT for any forwarded ips.
