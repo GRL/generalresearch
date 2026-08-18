@@ -16,7 +16,7 @@ import pyarrow.parquet as pq
 from dask.distributed import Future
 from distributed import Client, as_completed
 from more_itertools import chunked
-from pandera import DataFrameSchema
+from pandera.pandas import DataFrameSchema
 from psycopg import Cursor
 from pydantic import Field, FilePath, ValidationInfo, field_validator
 from sentry_sdk import capture_exception

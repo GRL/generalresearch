@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd
-from pandera import Check, Column, DataFrameSchema, Index, MultiIndex
+from pandera.pandas import Check, Column, DataFrameSchema, Index, MultiIndex
 
 from generalresearch.incite.schemas import ARCHIVE_AFTER, ORDER_KEY
 from generalresearch.locales import Localelator

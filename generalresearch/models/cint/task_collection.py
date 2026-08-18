@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List
 
 import pandas as pd
-from pandera import Check, Column, DataFrameSchema, Index
+from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
 from generalresearch.models.cint.survey import CintSurvey

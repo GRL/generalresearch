@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
 
 import pandas as pd
-from pandera import Check, Column, DataFrameSchema, Index
+from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
 from generalresearch.models.prodege import ProdegeStatus

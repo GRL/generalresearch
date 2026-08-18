@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import pandas as pd
 from more_itertools import flatten
-from pandera import Check, Column, DataFrameSchema, Index
+from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.incite.schemas import ARCHIVE_AFTER, ORDER_KEY, PARTITION_ON
 from generalresearch.incite.schemas.thl_web import TxSchema

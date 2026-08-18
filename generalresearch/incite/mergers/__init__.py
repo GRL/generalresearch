@@ -9,7 +9,7 @@ from typing import List, Optional, Type
 import dask.dataframe as dd
 import pandas as pd
 from dask.distributed import Client
-from pandera import DataFrameSchema
+from pandera.pandas import DataFrameSchema
 from pydantic import Field, ValidationInfo, field_validator, model_validator
 from typing_extensions import Self
 

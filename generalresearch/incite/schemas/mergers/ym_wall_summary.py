@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from pandera import Check, Column, DataFrameSchema, Index
+from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.incite.schemas import ARCHIVE_AFTER
 from generalresearch.locales import Localelator

@@ -1,7 +1,7 @@
 from typing import Set
 
 import pandas as pd
-from pandera import Check, Column, DataFrameSchema, Index
+from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.incite.schemas import ARCHIVE_AFTER, ORDER_KEY
 from generalresearch.incite.schemas.thl_web import THLTaskAdjustmentSchema

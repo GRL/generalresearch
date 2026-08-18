@@ -31,7 +31,7 @@ import dask.dataframe as dd
 import pandas as pd
 import pyarrow.parquet as pq
 from distributed import Client
-from pandera import DataFrameSchema
+from pandera.pandas import DataFrameSchema
 from pydantic import (
     BaseModel,
     ConfigDict,

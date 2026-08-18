@@ -21,7 +21,7 @@ from distributed.utils_test import (
     loop_in_thread,
 )
 from faker import Faker
-from pandera import DataFrameSchema
+from pandera.pandas import DataFrameSchema
 from pydantic import FilePath
 
 from generalresearch.incite.base import CollectionItemBase

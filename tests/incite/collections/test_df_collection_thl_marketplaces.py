@@ -3,7 +3,7 @@ from itertools import product
 from typing import TYPE_CHECKING
 
 import pytest
-from pandera import Column, DataFrameSchema, Index
+from pandera.pandas import Column, DataFrameSchema, Index
 
 from generalresearch.incite.collections import DFCollection, DFCollectionType
 from generalresearch.incite.collections.thl_marketplaces import (

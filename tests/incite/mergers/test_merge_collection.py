@@ -3,7 +3,7 @@ from itertools import product
 
 import pandas as pd
 import pytest
-from pandera import DataFrameSchema
+from pandera.pandas import DataFrameSchema
 
 from generalresearch.incite.mergers import (
     MergeCollection,

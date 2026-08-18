@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import pandas as pd
-from pandera import Check, Column, DataFrameSchema, Index
+from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
 from generalresearch.models import TaskCalculationType

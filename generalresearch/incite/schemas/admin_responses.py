@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pandera import (
+from pandera.pandas import (
     Check,
     Column,
     DataFrameSchema,

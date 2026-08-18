@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from pandera import Check, Column, DataFrameSchema
+from pandera.pandas import Check, Column, DataFrameSchema
 
 from generalresearch.incite.schemas import ARCHIVE_AFTER, ORDER_KEY, PARTITION_ON
 from generalresearch.incite.schemas.thl_web import THLSessionSchema

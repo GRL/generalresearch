@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 import pytest
-from pandera import DataFrameSchema
+from pandera.pandas import DataFrameSchema
 
 from generalresearch.incite.collections import (
     DFCollection,

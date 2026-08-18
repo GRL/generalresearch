@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from pandera import Category, Check, Column, DataFrameSchema, Index
+from pandera.pandas import Category, Check, Column, DataFrameSchema, Index
 
 from generalresearch.incite.schemas import ARCHIVE_AFTER
 
