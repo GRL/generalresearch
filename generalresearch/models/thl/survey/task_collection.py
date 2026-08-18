@@ -5,8 +5,7 @@ import json
 import logging
 
 import pandas as pd
-from pandera import DataFrameSchema
-from pandera.errors import SchemaErrors
+import pandera.pandas as pa
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from generalresearch.models.thl.survey import MarketplaceTask
@@ -29,14 +28,14 @@ class TaskCollection(BaseModel):
     df: pd.DataFrame = Field(default_factory=pd.DataFrame)
 
     # overload this with the correct schema!
-    _schema: DataFrameSchema
+    _schema: pa.DataFrameSchema
 
     @model_validator(mode="after")
     def handle_df(self):
         df = self.to_df()
         try:
             df = self._schema.validate(df, lazy=True)
-        except SchemaErrors as exc:
+        except pa.errors.SchemaErrors as exc:
             idx = exc.failure_cases["index"]
             if len(idx) >= len(df) * 0.10:
                 raise exc
@@ -50,7 +49,7 @@ class TaskCollection(BaseModel):
     def to_df(self) -> pd.DataFrame: ...
 
 
-def create_empty_df_from_schema(schema: DataFrameSchema) -> pd.DataFrame:
+def create_empty_df_from_schema(schema: pa.DataFrameSchema) -> pd.DataFrame:
     # Create an empty df from the schema. We have to do this or else a plain empty df
     #   will fail validating non-nullable columns b/c they don't have a default.
     schema = copy.deepcopy(schema)
