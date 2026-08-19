@@ -11,6 +11,8 @@ from pydantic import (
     PositiveInt,
     computed_field,
     field_validator,
+    model_validator,
+    ConfigDict,
 )
 from typing_extensions import Self
 
@@ -45,22 +47,22 @@ class PayoutEvent(BaseModel):
         examples=["9453cd076713426cb68d05591c7145aa"],
     )
 
-    debit_account_uuid: UUIDStr = Field(
+    debit_account_uuid: UUIDStr | None = Field(
         description="The LedgerAccount.uuid that money is being requested from. "
         "Thie User or Brokerage Product is retrievable through the "
         "LedgerAccount.reference_uuid",
         examples=["18298cb1583846fbb06e4747b5310693"],
     )
 
-    cashout_method_uuid: UUIDStr = Field(
+    cashout_method_uuid: UUIDStr | None= Field(
         description="References a row in the account_cashoutmethod table. This "
         "is the cashout method that was used to request this "
         "payout. (A cashout is the same thing as a payout)",
         examples=["a6dc1fc1bf934557b952f253dee12813"],
     )
 
-    created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
+    created: AwareDatetimeISO | None = Field(
+        default = None
     )
 
     # In the smallest unit of the currency being transacted. For USD, this
@@ -276,80 +278,118 @@ class BrokerageProductPayoutEvent(PayoutEvent):
 
 
 class BusinessPayoutEvent(BaseModel):
-    """A single ACH or Wire event to a Business Bank Account"""
+    """A single payout event to a supplier Business."""
+    model_config = ConfigDict(validate_assignment=True)
 
-    bp_payouts: list[BrokerageProductPayoutEvent] = Field(
-        description="Here is the list of Brokerage Product Payouts that"
-        "this Business Payout includes.",
+    uuid: UUIDStr = Field(
+        title="Supplier Payout Unique Identifier",
+        examples=["9453cd076713426cb68d05591c7145aa"],
+    )
+
+    # Used for holding a *unique*, external, payout-type-specific identifier.
+    ext_ref_id: str = Field(title="Unique external reference ID")
+
+    business_id: UUIDStr = Field(
+        description="The Business receiving this supplier payout.",
+        examples=[uuid4().hex],
+    )
+
+    created: AwareDatetimeISO | None = Field(
+        default=None
+    )
+
+    # In the smallest unit of the currency being transacted. For USD, this
+    #   is cents.
+    amount: PositiveInt = Field(
+        lt=2**63 - 1,
+        strict=True,
+        title="Amount",
+        description="The amount issued to the supplier.",
+        examples=[1_982_343],
+    )
+
+    status: PayoutStatus = Field(
+        default=PayoutStatus.PENDING,
+        description=PayoutStatus.as_openapi(),
+        examples=[PayoutStatus.COMPLETE],
+    )
+
+    payout_type: PayoutType = Field(
+        description=PayoutType.as_openapi(), examples=[PayoutType.ACH]
+    )
+
+    request_data: dict | None = Field(
+        default=None,
+        description="Stores payout-type-specific information that is used to "
+        "request this payout from the external provider.",
+    )
+
+    order_data: dict | None = Field(
+        default=None,
+        description="Stores payout-type-specific order information that is "
+        "returned from the external payout provider.",
+    )
+
+    bp_payouts: list[BrokerageProductPayoutEvent] | None = Field(
+        default=None,
+        description="The list of Brokerage Product Payouts that this Business Payout includes",
         min_length=1,
     )
 
     @computed_field(
-        title="Amount",
-        description="The amount issued to the Bank Account",
-        examples=[19_823_43],
-        return_type=USDCent,
-    )
-    @property
-    def amount(self) -> USDCent:
-        return USDCent(sum([p.amount for p in self.bp_payouts]))
-
-    @computed_field(
         title="Amount USD Str",
-        description="The amount issued to the Bank Account as a USD string",
+        description="The amount issued to the supplier as a USD string",
         examples=["$19,823.43"],
         return_type=str,
     )
     @property
     def amount_usd_str(self) -> str:
-        return self.amount.to_usd_str()
-
-    @computed_field(
-        title="Created",
-        description="This is equal to the created time of the first"
-        "Brokerage Product Payout Event.",
-        return_type=AwareDatetimeISO,
-    )
-    @property
-    def created(self) -> AwareDatetimeISO:
-        return self.bp_payouts[0].created
-
-    @computed_field(
-        title="Line Items",
-        description="The number of sub-payments",
-        return_type=PositiveInt,
-    )
-    @property
-    def line_items(self):
-        return len(self.bp_payouts)
-
-    @computed_field(
-        title="External Reference ID",
-        description="ACH Transaction ID",
-        return_type=str | None,
-    )
-    @property
-    def ext_ref_id(self):
-        return self.bp_payouts[0].ext_ref_id
+        return USDCent(self.amount).to_usd_str()
 
     # --- Validators ---
 
+    @field_validator("payout_type", mode="before")
+    @classmethod
+    def normalize_payout_type(cls, v):
+        if isinstance(v, str):
+            try:
+                return PayoutType[v.upper()]
+            except KeyError:
+                raise ValueError(f"Invalid payout_type: {v}")
+        return v
+
     @field_validator("bp_payouts", mode="before")
     @classmethod
-    def normalize_enum(cls, v):
+    def validate_bp_payouts_type(cls, v):
         """This can be a list of Instances or Python Dictionaries depending
         on how it's initialized.
         """
 
+        if v is None:
+            return v
+
         assert isinstance(v, list)
-
-        def get_field(obj, field):
-            if isinstance(obj, dict):
-                return obj.get(field)
-            return getattr(obj, field, None)
-
-        assert all(
-            get_field(i, "ext_ref_id") == get_field(v[0], "ext_ref_id") for i in v
-        ), "Not all group values are the same"
-
         return v
+
+    @model_validator(mode="after")
+    def validate_bp_payouts(self) -> Self:
+        if not self.bp_payouts:
+            return self
+
+        bp_payout_amount = sum([p.amount for p in self.bp_payouts])
+        if bp_payout_amount != self.amount:
+            raise ValueError(
+                "BusinessPayoutEvent.amount must equal the sum of "
+                f"bp_payouts amounts ({self.amount=} {bp_payout_amount=})"
+            )
+
+        invalid_payout_types = [
+            p.payout_type for p in self.bp_payouts if p.payout_type != self.payout_type
+        ]
+        if invalid_payout_types:
+            raise ValueError(
+                "All BrokerageProductPayoutEvent.payout_type values must equal "
+                f"BusinessPayoutEvent.payout_type ({self.payout_type=})"
+            )
+
+        return self

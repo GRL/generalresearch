@@ -64,9 +64,9 @@ class SupplierPayout(models.Model):
     #   generalresearch/models/thl/payout.py:PayoutStatus
     status = models.CharField(max_length=20, null=True)
 
-    # Used for holding an external, payouttype-specific identifier.
+    # Used for holding a unique, external, payouttype-specific identifier.
     #   For ACH, this is the ACH transaction id.
-    ext_ref_id = models.CharField(max_length=64, null=True)
+    ext_ref_id = models.CharField(max_length=64, unique=True)
 
     # The allowed values for `payout_type` are defined in generalresearch:
     #   generalresearch/models/thl/payout.py:PayoutType
@@ -86,7 +86,6 @@ class SupplierPayout(models.Model):
         indexes = [
             models.Index(fields=["created"]),
             models.Index(fields=["business_id"]),
-            models.Index(fields=["ext_ref_id"]),
         ]
 
 

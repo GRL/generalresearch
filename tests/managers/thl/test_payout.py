@@ -5,6 +5,7 @@ from decimal import Decimal
 from random import choice as rand_choice, randint
 from typing import Optional
 from uuid import uuid4
+import io
 
 import pandas as pd
 import pytest
@@ -16,7 +17,10 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
 from generalresearch.managers.thl.payout import UserPayoutEventManager
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.ledger import LedgerEntry, Direction
-from generalresearch.models.thl.payout import BusinessPayoutEvent
+from generalresearch.models.thl.payout import (
+    BusinessPayoutEvent,
+    BrokerageProductPayoutEvent,
+)
 from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.ledger import LedgerAccount
@@ -708,7 +712,6 @@ class TestBusinessPayoutEventManager:
         assert int(res.deduction.sum()) == 0
 
     def test_distribute_amount(self, business_payout_event_manager):
-        import io
 
         df = pd.read_csv(
             io.StringIO(
@@ -801,6 +804,28 @@ class TestBusinessPayoutEventManager:
                 thl_lm=thl_lm,
             )
         assert "Must issue Supplier Payouts at least $100 minimum." in str(cm)
+
+        bpe = BusinessPayoutEvent(
+            business_id=business.uuid,
+            amount=USDCent(100_00),
+            payout_type=PayoutType.ACH,
+        )
+        bpe.bp_payouts = [
+            BrokerageProductPayoutEvent(
+                product_id=uuid4().hex,
+                payout_type=PayoutType.ACH,
+                amount=USDCent(47_00),
+                cashout_method_uuid=uuid4().hex,
+                debit_account_uuid=uuid4().hex,
+            ),
+            BrokerageProductPayoutEvent(
+                product_id=uuid4().hex,
+                payout_type=PayoutType.ACH,
+                amount=USDCent(53_00),
+                cashout_method_uuid=uuid4().hex,
+                debit_account_uuid=uuid4().hex,
+            ),
+        ]
 
     def test_ach_payment(
         self,

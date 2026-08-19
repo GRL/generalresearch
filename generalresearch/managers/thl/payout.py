@@ -58,11 +58,13 @@ class PayoutEventManager(PostgresManagerWithRedis):
         access
         """
 
-        res = self.pg_config.execute_sql_query(query=f"""
+        res = self.pg_config.execute_sql_query(
+            query=f"""
                 SELECT uuid, reference_uuid 
                 FROM ledger_account
                 WHERE qualified_name LIKE '{thl_lm.currency.value}:bp_wallet:%'
-            """)
+            """
+        )
         account_to_product = {i["uuid"]: i["reference_uuid"] for i in res}
         product_to_account = {i["reference_uuid"]: i["uuid"] for i in res}
 
@@ -103,13 +105,15 @@ class PayoutEventManager(PostgresManagerWithRedis):
         payout_event.update(status=status, ext_ref_id=ext_ref_id, order_data=order_data)
 
         d = payout_event.model_dump_mysql()
-        query = sql.SQL("""
+        query = sql.SQL(
+            """
         UPDATE event_payout SET 
             status = %(status)s,
             ext_ref_id = %(ext_ref_id)s,
             order_data = %(order_data)s
         WHERE uuid = %(uuid)s;
-        """)
+        """
+        )
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query=query, params=d)
@@ -715,6 +719,16 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
             skip_wallet_balance_check=skip_wallet_balance_check,
         )
 
+    def create_pending_bp_payout_events(
+        self,
+        product: Product,
+        amount: USDCent,
+        payout_type: PayoutType = PayoutType.ACH,
+        ext_ref_id: str | None = None,
+        created: AwareDatetime | None = None,
+    ):
+        pass
+
     def create_bp_payout_event(
         self,
         thl_ledger_manager: ThlLedgerManager,
@@ -936,50 +950,43 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
         tx_entry_ids = [tx_entry.id for tx_entry in tx_entries]
         # assert len(tx_entry) == len(transaction_ids)*2
 
-        # (5) Delete records
-
-        # DELETE: tx_entry
-        self.pg_config.execute_write(
-            query="""
+        # (5) Delete records (all in 1 tx)
+        with self.pg_config.make_connection() as conn:
+            with conn.cursor() as c:
+                # DELETE: tx_entry
+                c.execute("""
                 DELETE
                 FROM ledger_entry
                 WHERE transaction_id = ANY(%s)
                     AND id = ANY(%s)
-            """,
-            params=[transaction_ids, tx_entry_ids],
-        )
+                """, [transaction_ids, tx_entry_ids])
 
-        # DELETE: tx_metadata
-        self.pg_config.execute_write(
-            query="""
+                # DELETE: tx_metadata
+                c.execute("""
                 DELETE
                 FROM ledger_transactionmetadata 
                 WHERE transaction_id = ANY(%s)
                     AND id = ANY(%s)
-            """,
-            params=[transaction_ids, list(tx_metadata_ids)],
-        )
+                """, [transaction_ids, list(tx_metadata_ids)],
+                )
 
-        # DELETE: transactions
-        self.pg_config.execute_write(
-            query="""
+                # DELETE: transactions
+                c.execute("""
                 DELETE
                 FROM ledger_transaction
                 WHERE id = ANY(%s)
-            """,
-            params=[transaction_ids],
-        )
+                """, [transaction_ids])
 
-        # DELETE: event_payouts
-        self.pg_config.execute_write(
-            query="""
+                # DELETE: event_payouts
+                c.execute(
+                """
                 DELETE
                 FROM event_payout
                 WHERE ext_ref_id = %s 
                     AND uuid = ANY(%s)
-            """,
-            params=[ext_ref_id, event_payout_uuids],
-        )
+                """, [ext_ref_id, event_payout_uuids],
+                )
+            conn.commit()
 
         return None
 
@@ -1140,6 +1147,22 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
 
         return allocation
 
+    def create_business_payout_event(self, bpe: BusinessPayoutEvent):
+
+        with self.pg_config.make_connection() as conn:
+            with conn.cursor() as c:
+                # Quick check to make sure it doesn't already exist
+                c.execute("""
+                SELECT 1
+                FROM supplier_payout
+                WHERE ext_ref_id = %(ext_ref_id)s
+                """, {'ext_ref_id': bpe.ext_ref_id})
+                assert c.fetchone() is None
+
+                c.execute("""
+                """)
+
+
     def create_from_ach_or_wire(
         self,
         business: Business,
@@ -1170,92 +1193,101 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
         )
 
         assert amount > 100_00, "Must issue Supplier Payouts at least $100 minimum."
-        LOG.warning("Paying out ")
+        LOG.warning(f"Paying out {business.name} {amount.to_usd_str()}")
 
         if created:
             LOG.warning("Payouts in the past, require the parquet files to be rebuilt.")
-            assert created < datetime.now(tz=timezone.utc)
-
-        else:
-            created = datetime.now(tz=timezone.utc)
+            assert created.tzinfo == timezone.utc, "created must be UTC"
+            assert created < datetime.now(
+                tz=timezone.utc
+            ), "created must be in the past"
 
         # Gather the total amount available balance from each and put into
         #   a simple DF. We're using the available balance because we need it
-        #   to always be positive.. and we never want to get into a negative
+        #   to always be positive. We never want to get into a negative
         #   situation again, so it's best to be extra conservative.
-        res = {
+        balances = {
             pb.product_id: pb.available_balance
             for pb in business.balance.product_balances
         }
-        df = pd.DataFrame.from_dict(res, orient="index").reset_index()
+        df = pd.DataFrame.from_dict(balances, orient="index").reset_index()
         df.columns = ["product_id", "available_balance"]
 
-        res = BusinessPayoutEventManager.recoup_proportional(
+        df = BusinessPayoutEventManager.recoup_proportional(
             df=df, target_amount=business.balance.recoup
         )
 
         # Can't pay any Products that don't have a remaining balance
-        res = res[res["remaining_balance"] > 0]
+        df = df[df["remaining_balance"] > 0].copy()
 
         assert (
-            res.deduction.sum() == business.balance.recoup
+            df.deduction.sum() == business.balance.recoup
         ), "recoup_proportional failure"
 
-        res["issue_amount"] = BusinessPayoutEventManager.distribute_amount(
-            df=res, amount=amount
+        df["issue_amount"] = BusinessPayoutEventManager.distribute_amount(
+            df=df, amount=amount
         )
 
-        assert res.issue_amount.sum() == amount, "issue_amount failure"
+        assert df.issue_amount.sum() == amount, "issue_amount failure"
 
         # Can't pay any Products that don't have an issue amount
-        res = res[res["issue_amount"] > 0]
+        df = df[df["issue_amount"] > 0].copy()
 
-        recouped_amounts: list[dict[str, int]] = res[
-            ["product_id", "remaining_balance", "issue_amount"]
-        ].to_dict(orient="records")
+        amounts: dict[str, dict[str, int]] = df.set_index("product_id")[
+            ["remaining_balance", "issue_amount"]
+        ].to_dict(orient="index")
 
-        # Get all of the products at once so we're not doing it for every interation
-        products = pm.get_by_uuids(
-            product_uuids=[i["product_id"] for i in recouped_amounts]
+        products = pm.get_by_uuids(product_uuids=list(amounts.keys()))
+        product_lookup = {p.uuid: p for p in products}
+
+        bpe = BusinessPayoutEvent(
+            uuid=uuid4().hex,
+            business_id=business.uuid,
+            payout_type=PayoutType.ACH,
+            amount=amount,
+            created=created,
+            ext_ref_id=transaction_id,
+            # The ACH payment was sent! We haven't yet recorded it
+            #   in the ledger, but it was sent by the bank.
+            status=PayoutStatus.COMPLETE,
         )
 
         bp_payouts: list[BrokerageProductPayoutEvent] = []
-        for idx, item in enumerate(recouped_amounts):
-            product = next((p for p in products if p.uuid == item["product_id"]), None)
-            assert product is not None
+        for product_id, item in amounts.items():
+            product = product_lookup[product_id]
+            bp_payouts.append(BrokerageProductPayoutEvent(
+                created=created,
+                payout_type=PayoutType.ACH,
+                status=PayoutStatus.PENDING,
+                uuid=uuid4().hex,
+                amount=USDCent(item["issue_amount"]),
+                ext_ref_id=transaction_id,
+                product_id=product.uuid,
+                # We will fill these in
+                debit_account_uuid=None,
+                cashout_method_uuid=None,
+            ))
+        bpe.bp_payouts = bp_payouts
 
-            try:
-                bp_pe: BrokerageProductPayoutEvent = self.create_bp_payout_event(
-                    thl_ledger_manager=thl_lm,
-                    product=product,
-                    amount=USDCent(item["issue_amount"]),
-                    created=created + timedelta(milliseconds=idx + 1),
-                    ext_ref_id=transaction_id,
-                    skip_wallet_balance_check=True
-                )
 
-                assert bp_pe.status == PayoutStatus.COMPLETE
-                bp_payouts.append(bp_pe)
-
-            except (Exception,) as e:
-                # Cleanup bp_payouts
-                print("Exception", e)
-                return None
-
-            if bp_pe.status == PayoutStatus.FAILED:
-                sleep(1)
-
-                try:
-                    bp_pe = self.retry_create_bp_payout_event_tx(
-                        thl_ledger_manager=thl_lm,
-                        product=product,
-                        payout_event_uuid=bp_pe.uuid,
-                    )
-                    assert bp_pe.status == PayoutStatus.COMPLETE
-                    bp_payouts.append(bp_pe)
-
-                except (Exception,) as e:
-                    # Cleanup bp_payouts
-                    return None
 
         return BusinessPayoutEvent.model_validate({"bp_payouts": bp_payouts})
+
+
+# import duckdb
+# conn = duckdb.connect()
+# conn.execute("""
+# select * from read_parquet('/mnt/thl-incite/raw/df-collections/ledger/*/*.parquet')
+# where event_payout is not null
+#     and direction =1
+#     and reference_uuid in ?
+# """, [b.product_uuids])
+# df = conn.fetch_df()
+# df['ext_description'].value_counts()
+#
+# tx_ids = [35554404, 37210650]
+# conn.execute("""
+# select * from read_parquet('/mnt/thl-incite/raw/df-collections/ledger/*/*.parquet')
+# where tx_id in ?
+# """, [tx_ids])
+# df = conn.fetch_df()

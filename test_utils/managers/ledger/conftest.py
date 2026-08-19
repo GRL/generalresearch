@@ -596,8 +596,8 @@ def session_with_tx_factory(
         final_status: Status = Status.COMPLETE,
         wall_req_cpi: Decimal = Decimal(".50"),
         started: datetime = utc_hour_ago,
-    ) -> Session:
-        s: Session = session_factory(
+    ) -> "Session":
+        s: "Session" = session_factory(
             user=user,
             wall_count=2,
             final_status=final_status,
