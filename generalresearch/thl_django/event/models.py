@@ -42,6 +42,54 @@ class Bribe(models.Model):
         ]
 
 
+class SupplierPayout(models.Model):
+    """
+    Represents a payout issued to a Business that is a supplier.
+
+    event_payout rows may split this amount across multiple Product
+    wallets, but this row represents the actual external payout transaction
+    to the Business.
+    """
+
+    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True)
+
+    # The Business receiving this payout
+    business_id = models.UUIDField(null=True)
+    created = models.DateTimeField(auto_now_add=True)
+
+    # In the smallest unit of the currency being transacted. For USD, this is cents.
+    amount = models.BigIntegerField(null=False)
+
+    # The allowed values for `status` are defined in generalresearch:
+    #   generalresearch/models/thl/payout.py:PayoutStatus
+    status = models.CharField(max_length=20, null=True)
+
+    # Used for holding an external, payouttype-specific identifier.
+    #   For ACH, this is the ACH transaction id.
+    ext_ref_id = models.CharField(max_length=64, null=True)
+
+    # The allowed values for `payout_type` are defined in generalresearch:
+    #   generalresearch/models/thl/payout.py:PayoutType
+    payout_type = models.CharField(max_length=14)
+
+    # Stores payout-type-specific information that is used to request this
+    #   payout from the external provider.
+    request_data = models.JSONField(null=True)
+
+    # Stores payout-type-specific order information that is returned from
+    #   the external payout provider.
+    order_data = models.JSONField(null=True)
+
+    class Meta:
+        db_table = "supplier_payout"
+
+        indexes = [
+            models.Index(fields=["created"]),
+            models.Index(fields=["business_id"]),
+            models.Index(fields=["ext_ref_id"]),
+        ]
+
+
 class Payout(models.Model):
     """
     Money is paid out of a virtual wallet.
@@ -81,6 +129,15 @@ class Payout(models.Model):
     #   the external payout provider.
     order_data = models.JSONField(null=True)
 
+    # For Brokerage Product payouts, this references the aggregate supplier
+    #   payout transaction that this product-level split belongs to.
+    supplier_payout = models.ForeignKey(
+        SupplierPayout,
+        db_column="supplier_payout_uuid",
+        null=True,
+        on_delete=models.DO_NOTHING,
+    )
+
     class Meta:
         db_table = "event_payout"
 
@@ -88,4 +145,5 @@ class Payout(models.Model):
             models.Index(fields=["created"]),
             models.Index(fields=["debit_account_uuid"]),
             models.Index(fields=["ext_ref_id"]),
+            models.Index(fields=["supplier_payout"]),
         ]
