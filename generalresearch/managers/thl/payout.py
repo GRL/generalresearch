@@ -1231,6 +1231,7 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
                     amount=USDCent(item["issue_amount"]),
                     created=created + timedelta(milliseconds=idx + 1),
                     ext_ref_id=transaction_id,
+                    skip_wallet_balance_check=True
                 )
 
                 assert bp_pe.status == PayoutStatus.COMPLETE

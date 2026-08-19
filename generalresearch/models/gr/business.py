@@ -30,7 +30,7 @@ from generalresearch.models.custom_types import (
     UUIDStr,
     UUIDStrCoerce,
 )
-from generalresearch.models.thl.finance import POPFinancial
+from generalresearch.models.thl.finance import POPFinancial, BusinessBalances
 from generalresearch.models.thl.ledger import LedgerAccount, OrderBy
 from generalresearch.models.thl.payout import BusinessPayoutEvent
 from generalresearch.pg_helper import PostgresConfig
@@ -56,7 +56,6 @@ if TYPE_CHECKING:
         BusinessPayoutEventManager,
     )
     from generalresearch.models.gr.team import Team
-    from generalresearch.models.thl.finance import BusinessBalances
     from generalresearch.models.thl.product import Product
 
 
@@ -427,8 +426,6 @@ class Business(BaseModel):
         LOG.debug(f"Business.prebuild_balance.groupby() {df.head()}")
         df = df.groupby("account_id").sum()
 
-        from generalresearch.models.thl.finance import BusinessBalances
-
         self.balance = BusinessBalances.from_pandas(
             input_data=df, accounts=accounts, thl_pg_config=thl_pg_config
         )
@@ -650,7 +647,7 @@ class Business(BaseModel):
     ) -> None:
         LOG.debug(f"Business.set_cache({self.uuid=})")
 
-        ex_secs = 60 * 60 * 24 * 3  # 3 days
+        # ex_secs = 60 * 60 * 24 * 3  # 3 days
 
         self.prefetch_addresses(pg_config=pg_config)
         self.prefetch_teams(pg_config=pg_config)

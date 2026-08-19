@@ -16,6 +16,7 @@ from pydantic import (
     model_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
+from generalresearch.config import is_debug
 
 from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
@@ -465,6 +466,12 @@ class ProductBalances(BaseModel):
 
     @computed_field(
         title="Recoup",
+        description="The amount that must be held back to recover a negative "
+        "Product balance. This is $0.00 when the Product balance is "
+        "positive or zero; otherwise it is the absolute value of the "
+        "negative balance. Business-level payout calculations use this "
+        "amount to offset deficits from one Product against available "
+        "funds from other Products before issuing Supplier Payments.",
         examples=[282],
         return_type="USDCent",
     )
@@ -782,8 +789,11 @@ class BusinessBalances(BaseModel):
 
     @computed_field(
         title="Business Recoup Hold",
-        description="The sum amount of all Supplier Payments (eg ACH or Wire "
-        "transfers)",
+        description="The total amount held back across all child Products to "
+        "recover negative Product balances. This is the sum of each "
+        "Product's recoup amount and represents funds that should reduce "
+        "the Business's payable amount so deficits are recovered before "
+        "additional Supplier Payments are issued.",
         examples=[10_000],
         return_type="USDCent",
     )
@@ -824,7 +834,7 @@ class BusinessBalances(BaseModel):
     @staticmethod
     def from_pandas(
         input_data: pd.DataFrame,
-        accounts: List[LedgerAccount],
+        accounts: list[LedgerAccount],
         thl_pg_config: PostgresConfig,
     ) -> BusinessBalances:
         LOG.debug(f"BusinessBalances.from_pandas(input_data={input_data.shape})")
@@ -837,12 +847,12 @@ class BusinessBalances(BaseModel):
             Direction,
         )
         from generalresearch.models.thl.product import Product
+        from generalresearch.managers.thl.product import ProductManager
 
         # Validate the input accounts
         assert len(accounts) > 0, "Must provide accounts"
         assert all([a.account_type == AccountType.BP_WALLET for a in accounts])
         assert all([a.normal_balance == Direction.CREDIT for a in accounts])
-        from generalresearch.config import is_debug
 
         if not is_debug():
             assert all([a.currency == "USD" for a in accounts])
@@ -862,7 +872,6 @@ class BusinessBalances(BaseModel):
 
         # Sort the ProductBalances so that they're always in a consistent
         #   sorted order.
-        from generalresearch.managers.thl.product import ProductManager
 
         pm = ProductManager(pg_config=thl_pg_config)
         products: list[Product] = pm.get_by_uuids(
