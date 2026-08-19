@@ -4,7 +4,6 @@ from random import shuffle as rshuffle
 from generalresearch.models.thl.product import (
     UserWalletConfig,
 )
-
 from generalresearch.models.thl.wallet import PayoutType
 
 

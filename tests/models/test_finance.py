@@ -1,36 +1,36 @@
-from datetime import timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from itertools import product as iter_product
 from random import randint
+from typing import Callable
 from uuid import uuid4
 
 import pandas as pd
 import pytest
+from dask.distributed import Client as DaskClient
 
 # noinspection PyUnresolvedReferences
 from distributed.utils_test import (
-    gen_cluster,
     client_no_amm,
-    loop,
-    loop_in_thread,
-    cleanup,
-    cluster_fixture,
-    client,
 )
 from faker import Faker
 
+from generalresearch.incite.collections.thl_web import LedgerDFCollection
+from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 from generalresearch.incite.schemas.mergers.pop_ledger import (
     numerical_col_names,
 )
+from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.models.thl.finance import (
+    BusinessBalances,
     POPFinancial,
     ProductBalances,
-    BusinessBalances,
 )
-from test_utils.conftest import delete_df_collection
+from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.session import Session
+from generalresearch.models.thl.user import User
 from test_utils.incite.collections.conftest import ledger_collection
 from test_utils.incite.mergers.conftest import pop_ledger_merge
 from test_utils.managers.ledger.conftest import (
-    create_main_accounts,
     session_with_tx_factory,
 )
 
@@ -665,20 +665,12 @@ class TestProductFinanceData:
 
     def test_base(
         self,
-        client_no_amm,
-        ledger_collection,
-        pop_ledger_merge,
-        mnt_filepath,
-        session_with_tx_factory,
-        product,
-        user_factory,
-        start,
-        duration,
-        delete_df_collection,
-        thl_lm,
-        create_main_accounts,
+        product: Product,
+        user_factory: Callable[..., User],
+        start: datetime,
+        duration: timedelta,
+        thl_lm: ThlLedgerManager,
     ):
-        from generalresearch.models.thl.user import User
 
         # -- Build & Setup
         # assert ledger_collection.start is None
@@ -687,7 +679,7 @@ class TestProductFinanceData:
 
         for item in ledger_collection.items:
 
-            for s_idx in range(3):
+            for _ in range(3):
                 rand_item_time = fake.date_time_between(
                     start_date=item.start,
                     end_date=item.finish,
@@ -736,8 +728,8 @@ class TestProductFinanceData:
 
         # On this, we can assert all products are the same, and that there are
         # no overlapping time intervals
-        assert 1 == len(set(list([i.product_id for i in res])))
-        assert len(res) == len(set(list([i.time for i in res])))
+        assert 1 == len({i.product_id for i in res})
+        assert len(res) == len({i.time for i in res})
 
 
 @pytest.mark.parametrize(
@@ -753,18 +745,16 @@ class TestPOPFinancialData:
 
     def test_base(
         self,
-        client_no_amm,
-        ledger_collection,
-        pop_ledger_merge,
-        mnt_filepath,
-        user_factory,
-        product,
-        start,
-        duration,
+        client_no_amm: DaskClient,
+        ledger_collection: LedgerDFCollection,
+        pop_ledger_merge: PopLedgerMerge,
+        user_factory: Callable[..., User],
+        product: Product,
+        start: datetime,
+        duration: timedelta,
         create_main_accounts,
-        session_with_tx_factory,
-        session_manager,
-        thl_lm,
+        session_with_tx_factory: Callable[..., Session],
+        thl_lm: ThlLedgerManager,
         delete_df_collection,
         delete_ledger_db,
     ):
@@ -776,7 +766,7 @@ class TestPOPFinancialData:
         # assert ledger_collection.offset is None
 
         users = []
-        for idx in range(5):
+        for _ in range(5):
             u = user_factory(product=product)
 
             for item in ledger_collection.items:
@@ -853,25 +843,19 @@ class TestPOPFinancialData:
 class TestBusinessBalanceData:
     def test_from_pandas(
         self,
-        client_no_amm,
-        ledger_collection,
-        pop_ledger_merge,
-        user_factory,
-        product,
+        client_no_amm: DaskClient,
+        ledger_collection: LedgerDFCollection,
+        pop_ledger_merge: PopLedgerMerge,
+        user_factory: Callable[..., User],
+        product: Product,
         create_main_accounts,
-        session_factory,
-        thl_lm,
-        session_manager,
-        start,
+        thl_lm: ThlLedgerManager,
         thl_web_rr,
-        duration,
         delete_df_collection,
         delete_ledger_db,
-        session_with_tx_factory,
-        offset,
+        session_with_tx_factory: Callable[..., Session],
         rm_ledger_collection,
     ):
-        from generalresearch.models.thl.user import User
         from generalresearch.models.thl.ledger import LedgerAccount
 
         delete_ledger_db()
@@ -879,7 +863,7 @@ class TestBusinessBalanceData:
         delete_df_collection(coll=ledger_collection)
         rm_ledger_collection()
 
-        for idx in range(5):
+        for _ in range(5):
             u: User = user_factory(product=product, created=ledger_collection.start)
 
             for item in ledger_collection.items:

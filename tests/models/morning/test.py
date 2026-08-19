@@ -185,8 +185,11 @@ class TestMorningBid:
         from generalresearch.models.morning.survey import MorningBid
 
         s = MorningBid.model_validate(bid)
-        d = s.model_dump(mode="json")
-        d = s.to_mysql()
+        res = s.model_dump(mode="json")
+        assert isinstance(res, dict)
+
+        res = s.to_mysql()
+        assert isinstance(res, dict)
 
     def test_manager(self):
         # todo: credentials n stuff

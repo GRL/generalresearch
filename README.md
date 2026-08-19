@@ -1,4 +1,4 @@
-# [generalresearch](https://git.generalresearch.com/generalresearch/) &middot; [![license](https://cdn.generalresearch.com/buildStatus/icon?subject=license&status=Priority&color=blue)](./LICENSE) ![master](https://cdn.generalresearch.com/buildStatus/icon?subject=master&job=py-utils%2Fmaster) ![python](https://cdn.generalresearch.com/buildStatus/icon?subject=Python&status=3.12.11&color=blue) 
+# [generalresearch](https://git.generalresearch.com/generalresearch/) &middot; [![license](https://cdn.generalresearch.com/buildStatus/icon?subject=license&status=Priority&color=blue)](./LICENSE) ![master](https://cdn.generalresearch.com/buildStatus/icon?subject=master&job=generalresearch%2Fmaster) ![python](https://cdn.generalresearch.com/buildStatus/icon?subject=Python&status=3.12.11&color=blue) 
 
 
 
@@ -24,37 +24,37 @@ pip install --force-reinstall psycopg[binary]
  </tr>
  <tr>
     <td>
-        <img src="https://cdn.generalresearch.com/buildStatus/icon?subject=master&job=py-utils%2Fmaster">
+        <img src="https://cdn.generalresearch.com/buildStatus/icon?subject=master&job=generalresearch%2Fmaster">
     </td>
     <td>
-        <a href="https://code.g-r-l.com/py-utils/~files/v2.2.0">
-            <img src="https://cdn.generalresearch.com/buildStatus/icon?subject=2.2.0&job=py-utils%2Fv2.2.0">
+        <a href="https://code.g-r-l.com/generalresearch/~files/v2.2.0">
+            <img src="https://cdn.generalresearch.com/buildStatus/icon?subject=2.2.0&job=generalresearch%2Fv2.2.0">
         </a>
     </td>
  </tr>
  <tr>
     <td>
-        <img src="https://cdn.generalresearch.com/buildStatus/icon?subject=dev&job=py-utils%2Fdev">
+        <img src="https://cdn.generalresearch.com/buildStatus/icon?subject=dev&job=generalresearch%2Fdev">
     </td>
     <td>
-        <a href="https://code.g-r-l.com/py-utils/~files/v2.1.0">
-            <img src="https://cdn.generalresearch.com/buildStatus/icon?subject=2.1.0&job=py-utils%2Fv2.1.0">
-        </a>
-    </td>
- </tr>
- <tr>
-    <td></td>
-    <td>
-        <a href="https://code.g-r-l.com/py-utils/~files/v2.0.0">
-            <img src="https://cdn.generalresearch.com/buildStatus/icon?subject=2.0.0&job=py-utils%2Fv2.0.0">
+        <a href="https://code.g-r-l.com/generalresearch/~files/v2.1.0">
+            <img src="https://cdn.generalresearch.com/buildStatus/icon?subject=2.1.0&job=generalresearch%2Fv2.1.0">
         </a>
     </td>
  </tr>
  <tr>
     <td></td>
     <td>
-        <a href="https://code.g-r-l.com/py-utils/~files/v1.9.0">
-            <img src="https://cdn.generalresearch.com/buildStatus/icon?subject=1.9.0&job=py-utils%2Fv1.9.0">
+        <a href="https://code.g-r-l.com/generalresearch/~files/v2.0.0">
+            <img src="https://cdn.generalresearch.com/buildStatus/icon?subject=2.0.0&job=generalresearch%2Fv2.0.0">
+        </a>
+    </td>
+ </tr>
+ <tr>
+    <td></td>
+    <td>
+        <a href="https://code.g-r-l.com/generalresearch/~files/v1.9.0">
+            <img src="https://cdn.generalresearch.com/buildStatus/icon?subject=1.9.0&job=generalresearch%2Fv1.9.0">
         </a>
     </td>
  </tr>

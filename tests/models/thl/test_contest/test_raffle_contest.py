@@ -6,26 +6,26 @@ from pytest import approx
 
 from generalresearch.currency import USDCent
 from generalresearch.models.thl.contest import (
-    ContestPrize,
     ContestEndCondition,
+    ContestPrize,
 )
 from generalresearch.models.thl.contest.contest_entry import ContestEntry
 from generalresearch.models.thl.contest.definitions import (
+    ContestEndReason,
     ContestEntryType,
     ContestPrizeKind,
-    ContestType,
     ContestStatus,
-    ContestEndReason,
+    ContestType,
 )
 from generalresearch.models.thl.contest.raffle import RaffleContest
-
+from generalresearch.models.thl.product import Product
 from tests.models.thl.test_contest.test_contest import TestContest
 
 
 class TestRaffleContest(TestContest):
 
     @pytest.fixture(scope="function")
-    def raffle_contest(self, product) -> RaffleContest:
+    def raffle_contest(self, product: Product) -> RaffleContest:
         return RaffleContest(
             product_id=product.uuid,
             name=f"Raffle Contest {uuid4().hex}",

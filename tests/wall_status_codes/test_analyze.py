@@ -1,4 +1,4 @@
-from generalresearch.models.thl.definitions import StatusCode1, Status
+from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.wall_status_codes import innovate
 
 
@@ -16,43 +16,35 @@ class TestInnovate:
         assert status_code_2 is None
 
     def test_unknown(self):
-        status, status_code_1, status_code_2 = innovate.annotate_status_code(
-            "69420", None
-        )
+        status, status_code_1, _ = innovate.annotate_status_code("69420", None)
         assert Status.FAIL == status
         assert StatusCode1.UNKNOWN == status_code_1
-        status, status_code_1, status_code_2 = innovate.annotate_status_code(
-            "69420", "Speeder"
-        )
+        status, status_code_1, _ = innovate.annotate_status_code("69420", "Speeder")
         assert Status.FAIL == status
         assert StatusCode1.UNKNOWN == status_code_1
 
     def test_ps(self):
-        status, status_code_1, status_code_2 = innovate.annotate_status_code("5", None)
+        status, status_code_1, _ = innovate.annotate_status_code("5", None)
         assert Status.FAIL == status
         assert StatusCode1.PS_FAIL == status_code_1
         # The ext_status_code_2 should reclassify this as PS_FAIL
-        status, status_code_1, status_code_2 = innovate.annotate_status_code(
-            "8", "DeviceType"
-        )
+        status, status_code_1, _ = innovate.annotate_status_code("8", "DeviceType")
         assert Status.FAIL == status
         assert StatusCode1.PS_FAIL == status_code_1
         # this should be reclassified from PS_FAIL to PS_OQ
-        status, status_code_1, status_code_2 = innovate.annotate_status_code(
-            "5", "Group NA"
-        )
+        status, status_code_1, _ = innovate.annotate_status_code("5", "Group NA")
         assert Status.FAIL == status
         assert StatusCode1.PS_OVERQUOTA == status_code_1
 
     def test_dupe(self):
         # innovate calls it a quality, should be dupe
-        status, status_code_1, status_code_2 = innovate.annotate_status_code(
+        status, status_code_1, _ = innovate.annotate_status_code(
             "8", "Duplicated to token Tq2SwRVX7PUWnFunGPAYWHk"
         )
         assert Status.FAIL == status
         assert StatusCode1.PS_DUPLICATE == status_code_1
         # stay as quality
-        status, status_code_1, status_code_2 = innovate.annotate_status_code(
+        status, status_code_1, _ = innovate.annotate_status_code(
             "8", "Selected threat potential score at joblevel not allow the survey"
         )
         assert Status.FAIL == status

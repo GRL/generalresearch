@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
 
@@ -76,7 +76,7 @@ class TestWall:
             )
         assert "If status is f, status_code_1 should be in" in str(e.value)
 
-        with pytest.raises(expected_exception=ValidationError) as cm:
+        with pytest.raises(expected_exception=ValidationError):
             Wall(
                 user_id=1,
                 source=Source.DYNATA,

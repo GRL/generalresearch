@@ -4,8 +4,8 @@ from generalresearch.models.thl.soft_pair import SoftPairResult, SoftPairResultT
 
 def test_model():
     from generalresearch.models.dynata.survey import (
-        DynataCondition,
         ConditionValueType,
+        DynataCondition,
     )
 
     c1 = DynataCondition(

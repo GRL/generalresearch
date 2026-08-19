@@ -8,3 +8,4 @@ generalresearch/resources/brokerage_trust_calculated.csv
 tests/.env.test
 .env.*
 .DS_Store
+build/

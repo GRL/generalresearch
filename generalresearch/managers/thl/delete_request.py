@@ -46,7 +46,7 @@
 #         assert finish == start + 1
 
 
-# @pytest.mark.skip(reason="Moving to py-utils in 2.5.1")
+# @pytest.mark.skip(reason="Moving to generalresearch in 2.5.1")
 # class TestProductUserDeleteRequest:
 #
 #     def test_no_user_provided(self, product, business, team, gr_user):

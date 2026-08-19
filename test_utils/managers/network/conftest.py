@@ -1,5 +1,5 @@
 import os
-from datetime import timedelta, datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -10,13 +10,13 @@ from generalresearch.models.network.definitions import IPProtocol
 from generalresearch.models.network.mtr.parser import parse_mtr_output
 from generalresearch.models.network.nmap.parser import parse_nmap_xml
 from generalresearch.models.network.rdns.parser import parse_rdns_output
-from generalresearch.models.network.tool_run import NmapRun, Status, RDNSRun, MTRRun
+from generalresearch.models.network.tool_run import MTRRun, NmapRun, RDNSRun, Status
 from generalresearch.models.network.tool_run_command import (
     MTRRunCommand,
     MTRRunCommandOptions,
-    RDNSRunCommand,
     NmapRunCommand,
     NmapRunCommandOptions,
+    RDNSRunCommand,
     RDNSRunCommandOptions,
 )
 
@@ -43,7 +43,7 @@ def toolrun_manager(thl_web_rw) -> ToolRunManager:
 @pytest.fixture(scope="session")
 def nmap_raw_output(request) -> str:
     fp = os.path.join(request.config.rootpath, "data/nmaprun1.xml")
-    with open(fp, "r") as f:
+    with open(fp) as f:
         data = f.read()
     return data
 
@@ -107,7 +107,7 @@ def rdns_run(rdns_result, scan_group_id):
 @pytest.fixture(scope="session")
 def mtr_raw_output(request):
     fp = os.path.join(request.config.rootpath, "data/mtr_fatbeam.json")
-    with open(fp, "r") as f:
+    with open(fp) as f:
         data = f.read()
     return data
 

@@ -10,7 +10,7 @@ class IncExcFilterType(str, Enum, metaclass=ReprEnumMeta):
     EXCLUDE = "exclude"
 
 
-# Note: This is exactly the same as the py-utils:models/thl/definitions.py:Status.
+# Note: This is exactly the same as the generalresearch:models/thl/definitions.py:Status.
 # Keeping this because the comments (and as a result, the documentation)
 #   is slightly different, and specific to wxet.
 class WXETStatus(str, Enum, metaclass=ReprEnumMeta):

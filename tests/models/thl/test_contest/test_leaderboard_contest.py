@@ -7,8 +7,8 @@ from generalresearch.currency import USDCent
 from generalresearch.managers.leaderboard.manager import LeaderboardManager
 from generalresearch.models.thl.contest import ContestPrize
 from generalresearch.models.thl.contest.definitions import (
-    ContestType,
     ContestPrizeKind,
+    ContestType,
 )
 from generalresearch.models.thl.contest.leaderboard import (
     LeaderboardContest,
@@ -17,6 +17,7 @@ from generalresearch.models.thl.contest.utils import (
     distribute_leaderboard_prizes,
 )
 from generalresearch.models.thl.leaderboard import LeaderboardRow
+from generalresearch.models.thl.product import Product
 from tests.models.thl.test_contest.test_contest import TestContest
 
 
@@ -24,7 +25,7 @@ class TestLeaderboardContest(TestContest):
 
     @pytest.fixture
     def leaderboard_contest(
-        self, product, thl_redis, user_manager
+        self, product: Product, thl_redis, user_manager
     ) -> "LeaderboardContest":
         board_key = f"leaderboard:{product.uuid}:us:weekly:2025-05-26:complete_count"
 

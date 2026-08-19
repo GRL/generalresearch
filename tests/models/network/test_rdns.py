@@ -1,12 +1,13 @@
-from generalresearch.models.network.rdns.execute import execute_rdns
 import faker
 
-from generalresearch.models.network.tool_run import ToolName, ToolClass
+from generalresearch.managers.network.tool_run import ToolRunManager
+from generalresearch.models.network.rdns.execute import execute_rdns
+from generalresearch.models.network.tool_run import ToolClass, ToolName
 
 fake = faker.Faker()
 
 
-def test_execute_rdns_grl(toolrun_manager):
+def test_execute_rdns_grl(toolrun_manager: ToolRunManager):
     ip = "65.19.129.53"
     run = execute_rdns(ip=ip)
     assert run.tool_name == ToolName.DIG
@@ -20,7 +21,7 @@ def test_execute_rdns_grl(toolrun_manager):
     toolrun_manager.create_rdns_run(run)
 
 
-def test_execute_rdns_none(toolrun_manager):
+def test_execute_rdns_none(toolrun_manager: ToolRunManager):
     ip = fake.ipv6()
     run = execute_rdns(ip)
     result = run.parsed
