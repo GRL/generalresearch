@@ -11,9 +11,10 @@ import redis
 from _pytest.config import Config
 from dotenv import load_dotenv
 from pydantic import MariaDBDsn, PostgresDsn, TypeAdapter
+from pydantic_core import MultiHostHost
 from redis import Redis
 
-from generalresearch.models.custom_types import InternalHostname
+from generalresearch.models.custom_types import InternalHostname, PostgresDict
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
 from generalresearch.sql_helper import SqlHelper
@@ -115,32 +116,54 @@ def postgres_instance(settings: "GRLBaseSettings") -> Generator[PostgresDsn]:
     conn = connect(f"{db_path_connect}/postgres")
     conn.autocommit = True
     cur = conn.cursor()
-    cur.execute(SQL("DROP DATABASE {}").format(Identifier(db_name)))
+    cur.execute(SQL("DROP DATABASE {} WITH (FORCE)").format(Identifier(db_name)))
     cur.close()
     conn.close()
 
 
-@pytest.fixture
-def postgres_instance_host(
+@pytest.fixture(scope="session")
+def postgres_instance_dict(
     postgres_instance: PostgresDsn,
-) -> Generator[InternalHostname]:
-    host = postgres_instance.hosts()[0]["host"]
+) -> Generator[PostgresDict]:
+    host = postgres_instance.hosts()[0]
     assert host is not None
 
+    msg = "Must have full Postgres details"
+    assert host["host"], msg
+    assert host["username"], msg
+    assert host["password"], msg
+
+    assert postgres_instance.path
+
+    yield PostgresDict(
+        username=host["username"],
+        password=host["password"],
+        host=host["host"],
+        name=postgres_instance.path.lstrip("/"),
+        port=5432,
+    )
+
+
+@pytest.fixture(scope="session")
+def postgres_instance_host(
+    postgres_instance_dict: PostgresDict,
+) -> Generator[InternalHostname]:
     adapter = TypeAdapter(InternalHostname)
-    value = adapter.validate_python(host)
+    value = adapter.validate_python(postgres_instance_dict["host"])
     yield value
 
 
 @pytest.fixture(scope="session")
-def django_db_setup(postgres_instance: PostgresDsn) -> Callable[..., None]:
+def django_db_factory(
+    postgres_instance: PostgresDsn, postgres_instance_dict: PostgresDict
+) -> Callable[..., PostgresDsn]:
 
     import django
     from django.apps import apps
     from django.conf import settings as django_settings
     from django.core.management import call_command
 
-    def _inner():
+    def _inner(django_project: str = "generalresearch.thl_django"):
 
         # 1. Bootstrapping Django settings
         if not django_settings.configured:
@@ -148,40 +171,38 @@ def django_db_setup(postgres_instance: PostgresDsn) -> Callable[..., None]:
                 DATABASES={
                     "default": {
                         "ENGINE": "django.db.backends.postgresql",
-                        # PostgresDsn stores path as "/dbname"
-                        "NAME": str(postgres_instance.path).lstrip("/"),
-                        "USER": postgres_instance["username"],
-                        "PASSWORD": postgres_instance["password"],
-                        "HOST": postgres_instance["host"],
-                        "PORT": "5432",
+                        "NAME": postgres_instance_dict["name"],
+                        "USER": postgres_instance_dict["username"],
+                        "PASSWORD": postgres_instance_dict["password"],
+                        "HOST": postgres_instance_dict["host"],
+                        "PORT": postgres_instance_dict["port"],
                     }
                 },
                 INSTALLED_APPS=[
                     "django.contrib.postgres",
                     "django.contrib.contenttypes",
-                    "generalresearch.thl_django",
+                    django_project,
                 ],
             )
         django.setup()
 
-        for model in apps.get_models():
-            print(f"Discovered model: {model._meta.label}")
+        # for model in apps.get_models():
+        #     print(f"Discovered model: {model._meta.label}")
 
         # 2. Run migrations directly during fixture activation
         call_command("migrate")
+
+        # 3. Return the Dsn so the factory gives a way to connect
+        return postgres_instance
 
     return _inner
 
 
 @pytest.fixture(scope="session")
-def thl_web_rr(postgres_instance: PostgresDsn, django_db_setup) -> PostgresConfig:
-
-    # Run Migrations now.
-    # generalresearch/thl_django
-    django_db_setup()
+def thl_web_rr(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
 
     return PostgresConfig(
-        dsn=postgres_instance,
+        dsn=django_db_factory("generalresearch.thl_django"),
         connect_timeout=1,
         statement_timeout=5,
     )
@@ -193,11 +214,13 @@ def thl_web_rw(thl_web_rr: PostgresConfig) -> PostgresConfig:
 
 
 @pytest.fixture(scope="session")
-def gr_db(postgres_instance: PostgresDsn) -> PostgresConfig:
+def gr_db(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
 
-    # Run Migrations, somehow pull from other repo...
-    django_db_setup()
-    return PostgresConfig(dsn=postgres_instance, connect_timeout=1, statement_timeout=5)
+    return PostgresConfig(
+        dsn=django_db_factory("gr_carer"),
+        connect_timeout=1,
+        statement_timeout=5,
+    )
 
 
 @pytest.fixture(scope="session")

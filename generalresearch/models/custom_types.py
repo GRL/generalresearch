@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys as _sys
 from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 from uuid import UUID
@@ -18,14 +19,10 @@ from pydantic import (
 from pydantic.functional_serializers import PlainSerializer
 from pydantic.functional_validators import AfterValidator, BeforeValidator
 from pydantic.networks import IPvAnyNetwork, UrlConstraints
-from pydantic_core import Url
+from pydantic_core import MultiHostHost, Url
 from typing_extensions import Annotated
 
 from generalresearch.models import DeviceType, Source
-
-# if TYPE_CHECKING:
-#     from generalresearch.models import DeviceType
-
 
 HOSTNAME_REGEX = re.compile(
     r"^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
@@ -39,6 +36,13 @@ def validate_hostname(v: str) -> str:
 
 
 InternalHostname = Annotated[str, AfterValidator(validate_hostname)]
+
+
+class PostgresDict(MultiHostHost):
+    """The path part of this host, or `None`."""
+
+    # Databasename
+    name: str | None
 
 
 def convert_datetime_to_iso_8601_with_z_suffix(dt: datetime) -> str:

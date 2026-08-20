@@ -32,47 +32,6 @@ pipeline {
 
                 stages {
                     stage('Setup DB') {
-                        steps {
-                            script {
-                                env.DB_NAME = 'unittest-thl-' + UUID.randomUUID().toString().replace('-', '').take(12)
-                                env.THL_WEB_RW_DB = "postgres://${env.DB_USER}:${env.DB_PASSWORD}@${env.DB_POSTGRESQL_HOST}/${env.DB_NAME}"
-                                env.THL_WEB_RR_DB = env.THL_WEB_RW_DB
-                                env.THL_WEB_RO_DB = env.THL_WEB_RW_DB
-                                echo "Using database: ${env.DB_NAME}"
-
-                                env.SPECTRUM_DB_NAME = 'unittest-thl-spectrum-' + UUID.randomUUID().toString().replace('-', '').take(12)
-                                env.SPECTRUM_RW_DB = "mariadb://${env.DB_USER}:${env.DB_PASSWORD}@${env.DB_MARIA_HOST}/${env.SPECTRUM_DB_NAME}"
-                                env.SPECTRUM_RR_DB = env.SPECTRUM_RW_DB
-                                echo "Using database: ${env.SPECTRUM_DB_NAME}"
-
-                                env.GRLIQ_DB_NAME = 'unittest-grliq-' + UUID.randomUUID().toString().replace('-', '').take(12)
-                                env.GRLIQ_DB = "postgres://${env.DB_USER}:${env.DB_PASSWORD}@${env.DB_POSTGRESQL_HOST}/${env.GRLIQ_DB_NAME}"
-                                echo "Using database: ${env.GRLIQ_DB_NAME}"
-
-                                env.GR_DB_NAME = 'unittest-gr-' + UUID.randomUUID().toString().replace('-', '').take(12)
-                                env.GR_DB = "postgres://${env.DB_USER}:${env.DB_PASSWORD}@${env.DB_POSTGRESQL_HOST}/${env.GR_DB_NAME}"
-                                echo "Using database: ${env.GR_DB_NAME}"
-                            }
-
-                            sh """
-                            PGPASSWORD=${env.DB_PASSWORD} psql -h ${env.DB_POSTGRESQL_HOST} -U ${env.DB_USER} -d postgres <<EOF
-                            CREATE DATABASE "${env.DB_NAME}" WITH TEMPLATE = template0 ENCODING = 'UTF8';
-                            EOF
-                            """
-                            sh """
-                            PGPASSWORD=${env.DB_PASSWORD} psql -h ${env.DB_POSTGRESQL_HOST} -U ${env.DB_USER} -d postgres <<EOF
-                            CREATE DATABASE "${env.GRLIQ_DB_NAME}" WITH TEMPLATE = template0 ENCODING = 'UTF8';
-                            EOF
-                            """
-                            sh """
-                            PGPASSWORD=${env.DB_PASSWORD} psql -h ${env.DB_POSTGRESQL_HOST} -U ${env.DB_USER} -d postgres <<EOF
-                            CREATE DATABASE "${env.GR_DB_NAME}" WITH TEMPLATE = template0 ENCODING = 'UTF8';
-                            EOF
-                            """
-                            sh """
-                            mysql -h ${env.DB_MARIA_HOST} -u ${env.DB_USER} -p${env.DB_PASSWORD} --ssl=0 -e 'CREATE DATABASE `${env.SPECTRUM_DB_NAME}`;'
-                            """
-
                             script {
                                 env.REDIS_DB = new Random().nextInt(1024).toString()
                                 env.REDIS = "${env.REDIS}:6379/${env.REDIS_DB}"

@@ -27,6 +27,7 @@ dependencies = [
     "pytest",
     "pylibmc",
     "pymemcache",
+    "pytz",
     "redis",
     "requests",
     "scipy",

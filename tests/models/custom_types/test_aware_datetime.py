@@ -4,7 +4,7 @@ from typing import Optional
 
 import pytest
 import pytz
-from pydantic import BaseModel, ValidationError, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from generalresearch.models.custom_types import AwareDatetimeISO
 

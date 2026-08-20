@@ -9,3 +9,4 @@ tests/.env.test
 .env.*
 .DS_Store
 build/
+*.egg-info
