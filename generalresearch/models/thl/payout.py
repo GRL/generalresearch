@@ -18,7 +18,7 @@ from pydantic.json_schema import SkipJsonSchema
 from typing_extensions import Self
 
 from generalresearch.currency import USDCent
-from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr, UUIDStrCoerce
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.ledger import OrderBy
 from generalresearch.models.thl.wallet import PayoutType
@@ -42,20 +42,20 @@ class PayoutEvent(BaseModel):
         multiple BrokerageProductPayoutEvents.
     """
 
-    uuid: UUIDStr = Field(
+    uuid: UUIDStrCoerce = Field(
         title="Payout Event Unique Identifier",
         default_factory=lambda: uuid4().hex,
         examples=["9453cd076713426cb68d05591c7145aa"],
     )
 
-    debit_account_uuid: UUIDStr | None = Field(
+    debit_account_uuid: UUIDStrCoerce | None = Field(
         description="The LedgerAccount.uuid that money is being requested from. "
         "Thie User or Brokerage Product is retrievable through the "
         "LedgerAccount.reference_uuid",
         examples=["18298cb1583846fbb06e4747b5310693"],
     )
 
-    cashout_method_uuid: UUIDStr | None = Field(
+    cashout_method_uuid: UUIDStrCoerce | None = Field(
         description="References a row in the account_cashoutmethod table. This "
         "is the cashout method that was used to request this "
         "payout. (A cashout is the same thing as a payout)",
@@ -198,7 +198,7 @@ class BrokerageProductPayoutEvent(PayoutEvent):
     - created: When the Brokerage Product was paid out
     """
 
-    product_id: UUIDStr = Field(
+    product_id: UUIDStrCoerce = Field(
         description="The Brokerage Product that was paid out",
         examples=["1108d053e4fa47c5b0dbdcd03a7981e7"],
     )
@@ -221,60 +221,6 @@ class BrokerageProductPayoutEvent(PayoutEvent):
     @property
     def amount_usd_str(self) -> str:
         return self.amount_usd.to_usd_str()
-
-    # --- ORM ---
-
-    @classmethod
-    def from_payout_event(
-        cls,
-        pe: PayoutEvent,
-        account_product_mapping: dict[UUIDStr, UUIDStr] | None = None,
-        redis_config: RedisConfig | None = None,
-    ) -> Self:
-        # TODO!: prevent re-assignment, rework this...
-
-        if account_product_mapping is None:
-            rc = redis_config.create_redis_client()
-            account_product_mapping: dict = rc.hgetall(name="pem:account_to_product")
-            assert isinstance(account_product_mapping, dict)
-            assert pe.uuid in account_product_mapping.keys()
-
-        d = pe.model_dump()
-        d["product_id"] = account_product_mapping[pe.debit_account_uuid]
-        return cls.model_validate(d)
-
-    @classmethod
-    def from_payout_events(
-        cls,
-        payout_events: Collection[PayoutEvent],
-        order_by=OrderBy,
-        account_product_mapping: dict[UUIDStr, UUIDStr] | None = None,
-        redis_config: RedisConfig | None = None,
-    ) -> list[Self]:
-        # TODO!: prevent re-assignment, rework this...
-
-        if account_product_mapping is None:
-            rc = redis_config.create_redis_client()
-            account_product_mapping: dict = rc.hgetall(name="pem:account_to_product")
-            assert isinstance(account_product_mapping, dict)
-
-        res = []
-        for pe in payout_events:
-            res.append(
-                cls.from_payout_event(
-                    pe=pe, account_product_mapping=account_product_mapping
-                )
-            )
-
-        match order_by:
-            case OrderBy.ASC:
-                sorted_list = sorted(res, key=lambda x: x.created, reverse=False)
-            case OrderBy.DESC:
-                sorted_list = sorted(res, key=lambda x: x.created, reverse=True)
-            case _:
-                raise ValueError("Invalid order provided..")
-
-        return sorted_list
 
 
 class BusinessPayoutEvent(BaseModel):

@@ -1207,7 +1207,6 @@ class Product(BaseModel, validate_assignment=True):
         from generalresearch.models.thl.ledger import OrderBy
 
         self.payouts = bp_pem.get_bp_bp_payout_events_for_products(
-            thl_ledger_manager=thl_lm,
             product_uuids=[self.uuid],
             order_by=OrderBy.DESC,
         )

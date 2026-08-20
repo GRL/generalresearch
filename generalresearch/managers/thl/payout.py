@@ -398,37 +398,23 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
     def get_by_uuid(
         self,
         pe_uuid: UUIDStr,
-        # --- Support resources ---
-        account_product_mapping: dict[UUIDStr, UUIDStr] | None = None,
     ) -> BrokerageProductPayoutEvent:
 
         res = self.pg_config.execute_sql_query(
             query="""
-            SELECT  ep.uuid,
-                    ep.debit_account_uuid,
-                    ep.cashout_method_uuid, 
+            SELECT  ep.uuid, ep.debit_account_uuid, ep.cashout_method_uuid, 
                     ep.created, ep.amount, ep.status, ep.ext_ref_id, ep.payout_type, 
                     ep.request_data::jsonb,
-                    ep.order_data::jsonb
+                    ep.order_data::jsonb,
+                    la.reference_uuid as product_id
             FROM event_payout AS ep
+            JOIN ledger_account la on la.uuid = debit_account_uuid
             WHERE ep.uuid = %s
         """,
             params=[pe_uuid],
         )
         assert len(res) == 1, f"{pe_uuid} expected 1 result, got {len(res)}"
-
-        d = res[0]
-
-        # This isn't really need for creation... but we're doing it so that
-        #   it can return back a full BrokerageProductPayoutEvent instance
-        if account_product_mapping is None:
-            rc = self.redis_client
-            account_product_mapping: dict = rc.hgetall(name="pem:account_to_product")
-            assert isinstance(account_product_mapping, dict)
-
-        d["product_id"] = account_product_mapping[d["debit_account_uuid"]]
-
-        return BrokerageProductPayoutEvent.model_validate(d)
+        return BrokerageProductPayoutEvent.model_validate(res[0])
 
     @staticmethod
     def check_for_ledger_tx(
@@ -478,112 +464,78 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
 
     def filter_by(
         self,
-        reference_uuid: str | None = None,
         ext_ref_id: str | None = None,
         debit_account_uuids: Collection[UUIDStr] | None = None,
         amount: int | None = None,
         created: datetime | None = None,
         created_after: datetime | None = None,
-        product_ids: str | None = None,
-        bp_user_ids: Collection[str] | None = None,
+        product_ids: Collection[str] | None = None,
         cashout_types: Collection[PayoutType] | None = None,
         statuses: Collection[PayoutStatus] | None = None,
     ) -> list[BrokerageProductPayoutEvent]:
-        """Try to retrieve payout events by the product_id/user_uuid, amount,
-        and optionally timestamp.
+        """Try to retrieve BP payout events.
 
         WARNING: This is only on the "payout events" table and nothing to
-            do with the Ledger itself. Therefore, the product_ids query
-            doesn't return Brokerage Product Payouts (the ACH or Wire events
-            to Suppliers) as part of the query.
+            do with the Ledger itself
 
-            *** IT IS ONLY FOR USER PAYOUTS ***
-
-        Note: what used to be in thl-grpcs "ListCashoutRequests" calling
-        "list_cashout_requests" was merged into this.
+        *** IT IS ONLY FOR Brokerage Product PAYOUTS ***
         """
-        args = []
+        params = dict()
         filters = []
-        if reference_uuid:
-            # This could be a product_id or a user_uuid
-            filters.append("la.reference_uuid = %s")
-            args.append(reference_uuid)
         if ext_ref_id:
-            # This is transaction id for tracking ACH/Wires with a banking
-            #   institution
-            filters.append("ep.ext_ref_id = %s")
-            args.append(ext_ref_id)
+            # This is transaction id for tracking ACH/Wires with a banking institution
+            filters.append("ep.ext_ref_id = %(ext_ref_id)s")
+            params["ext_ref_id"] = ext_ref_id
         if debit_account_uuids:
-            # Or we could use the bp_wallet or user_wallet's account uuid
-            # instead of looking up by the product/user
-            filters.append("ep.debit_account_uuid = ANY(%s)")
-            args.append(debit_account_uuids)
+            # Or we could use the bp_wallet's account uuid
+            # instead of looking up by the product
+            filters.append("ep.debit_account_uuid = ANY(%(debit_account_uuids)s)")
+            params["debit_account_uuids"] = debit_account_uuids
         if amount:
-            filters.append("ep.amount = %s")
-            args.append(amount)
+            filters.append("ep.amount = %(amount)s")
+            params["amount"] = amount
         if created:
-            filters.append("ep.created = %s")
-            args.append(created.replace(tzinfo=None))
+            filters.append("ep.created = %(created)s")
+            params["created"] = created
         if created_after:
-            filters.append("ep.created >= %s")
-            args.append(created_after.replace(tzinfo=None))
-        if product_ids:
-            filters.append("product_id = ANY(%s)")
-            args.append(product_ids)
-        if bp_user_ids:
-            filters.append("product_user_id = ANY(%s)")
-            args.append(bp_user_ids)
-        if cashout_types:
-            filters.append("payout_type = ANY(%s)")
-            args.append([x.value for x in cashout_types])
-        if statuses:
-            filters.append("status = ANY(%s)")
-            args.append([x.value for x in statuses])
+            filters.append("ep.created >= %(created_after)s")
+            params["created_after"] = created_after
+        if product_ids is not None:
+            filters.append("la.reference_uuid = ANY(%(product_ids)s)")
+            params["product_ids"] = product_ids
+        if cashout_types is not None:
+            filters.append("payout_type = ANY(%(cashout_types)s)")
+            params["cashout_types"] = [x.value for x in cashout_types]
+        if statuses is not None:
+            filters.append("status = ANY(%(statuses)s)")
+            params["statuses"] = [x.value for x in statuses]
 
         assert len(filters) > 0, "must pass at least 1 filter"
         filter_str = " AND ".join(filters)
+        params["cashout_method_uuid"] = self.CASHOUT_METHOD_UUID
 
         res = self.pg_config.execute_sql_query(
             query=f"""
-                SELECT  ep.uuid, 
-                        ep.debit_account_uuid, 
-                        ep.cashout_method_uuid, 
-                        ep.created, 
-                        ep.amount, ep.status, ep.ext_ref_id, ep.payout_type, 
+                SELECT  ep.uuid, ep.debit_account_uuid, ep.cashout_method_uuid, 
+                        ep.created, ep.amount, ep.status, ep.ext_ref_id, 
+                        ep.payout_type, ep.supplier_payout_id,
                         ep.request_data::jsonb, ep.order_data::jsonb,
                         ac.name as description,
-                        la.reference_type as account_reference_type,
-                        la.reference_uuid as account_reference_uuid
+                        la.reference_uuid as product_id
                 FROM event_payout AS ep
                 LEFT JOIN accounting_cashoutmethod AS ac 
                     ON ep.cashout_method_uuid = ac.id 
                 LEFT JOIN ledger_account AS la
                     ON la.uuid = ep.debit_account_uuid
-                LEFT JOIN thl_user u
-                    ON la.reference_uuid = u.uuid
-                WHERE cashout_method_uuid = '{self.CASHOUT_METHOD_UUID}'
+                WHERE cashout_method_uuid = %(cashout_method_uuid)s
+                    AND la.reference_type = 'bp'
                     AND {filter_str}
             """,
-            params=args,
+            params=params,
         )
-
-        rc = self.redis_client
-        account_product_mapping = rc.hgetall(name="pem:account_to_product")
-
         pes = []
-        for d in res:
-            for k in [
-                "uuid",
-                "debit_account_uuid",
-                "account_reference_uuid",
-                "cashout_method_uuid",
-            ]:
-                if d[k] is not None:
-                    d[k] = UUID(d[k]).hex
-
-            d["product_id"] = account_product_mapping[d["debit_account_uuid"]]
-            pes.append(BrokerageProductPayoutEvent.model_validate(d))
-
+        for row in res:
+            pes.append(BrokerageProductPayoutEvent.model_validate(row))
         return pes
 
     def get_bp_payout_events_for_accounts(
@@ -596,53 +548,38 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
 
     def get_bp_bp_payout_events_for_products(
         self,
-        thl_ledger_manager: ThlLedgerManager,
         product_uuids: Collection[UUIDStr],
         order_by: OrderBy | None = OrderBy.ASC,
     ) -> list[BrokerageProductPayoutEvent]:
         """This is a terrible name, but it returns the
         BPPayoutEvent model type rather than a list of PayoutEvents.
 
-        We do this for the Supplier centric APIs where they don't know,
+        We do this for the Supplier-centric APIs where they don't know
         or care about the underlying ledger account structure.
         """
         assert len(product_uuids) > 0, "Must provide product_uuids"
-        accounts = thl_ledger_manager.get_accounts_bp_wallet_for_products(
-            product_uuids=product_uuids
+        order_by = order_by or OrderBy.ASC
+
+        payout_events = self.filter_by(
+            product_ids=product_uuids,
+            cashout_types=[PayoutType.ACH],
         )
-
-        assert len(accounts) == len(product_uuids), "Unequal Product & Account lists"
-
-        rc = self.redis_client
-        account_product_mapping = rc.hgetall(name="pem:account_to_product")
-
-        payout_events: list[BrokerageProductPayoutEvent] = (
-            self.get_bp_payout_events_for_accounts(
-                accounts=accounts,
-            )
+        payout_events = sorted(
+            payout_events, key=lambda x: x.created, reverse=order_by == OrderBy.DESC
         )
-
-        return BrokerageProductPayoutEvent.from_payout_events(
-            payout_events=payout_events,
-            account_product_mapping=account_product_mapping,
-            order_by=order_by,
-        )
+        return payout_events
 
     def retry_create_bp_payout_event_tx(
         self,
         thl_ledger_manager: ThlLedgerManager,
         product: Product,
-        payout_event_uuid: UUIDStr,
-        skip_wallet_balance_check: bool = False,
-        skip_one_per_day_check: bool = False,
+        bp_pe: BrokerageProductPayoutEvent,
     ) -> BrokerageProductPayoutEvent:
         """
         If a create_bp_payout_event call fails, this can be called with
         the associated payoutevent.
         """
-        bp_pe: BrokerageProductPayoutEvent = self.get_by_uuid(payout_event_uuid)
         assert bp_pe.status == PayoutStatus.FAILED, "Only use this on failed payouts"
-        created = bp_pe.created
 
         assert not self.check_for_ledger_tx(
             thl_ledger_manager=thl_ledger_manager,
@@ -655,10 +592,8 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
             thl_ledger_manager=thl_ledger_manager,
             bp_pe=bp_pe,
             product=product,
-            amount=bp_pe.amount_usd,
-            created=created,
-            skip_one_per_day_check=skip_one_per_day_check,
-            skip_wallet_balance_check=skip_wallet_balance_check,
+            skip_one_per_day_check=True,
+            skip_wallet_balance_check=True,
         )
 
     def create_pending_bp_payout_events(
@@ -763,134 +698,102 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
 
 class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
 
-    def update_ext_reference_ids(
-        self,
-        new_value: str,
-        current_value: str | None = None,
-    ) -> None:
+    def get_by_ext_ref_id(self, ext_ref_id: str) -> BusinessPayoutEvent:
+        res = self.pg_config.execute_sql_query(
+            """
+        SELECT
+            sp.*,
+            ep.bp_payouts
+        FROM supplier_payout sp
+        JOIN (
+            SELECT
+                ep_inner.supplier_payout_id,
+                jsonb_agg(
+                    to_jsonb(ep_inner)
+                    || jsonb_build_object('product_id', la.reference_uuid)
+                    ORDER BY ep_inner.created
+                ) AS bp_payouts
+            FROM event_payout ep_inner
+            JOIN ledger_account la
+                ON ep_inner.debit_account_uuid = la.uuid
+            GROUP BY ep_inner.supplier_payout_id
+        ) ep ON sp.id = ep.supplier_payout_id
+        WHERE sp.ext_ref_id = %(ext_ref_id)s
+        """,
+            {"ext_ref_id": ext_ref_id},
+        )
+        assert len(res) == 1, f"No Business Payout found with ext ref: {ext_ref_id}"
+        d = res[0]
+        for bp_payout in d["bp_payouts"]:
+            bp_payout["created"] = datetime.fromisoformat(bp_payout["created"])
+        bpe = BusinessPayoutEvent.model_validate(d)
+        assert (
+            bpe.bp_payouts is not None and len(bpe.bp_payouts) > 0
+        ), "No BP payouts found for this Business Payout Event. This shouldn't happen!"
+        return bpe
+
+    def validate_business_payout_in_ledger(
+        self, ext_ref_id: str, thl_lm: ThlLedgerManager
+    ):
         """
-        There are scenarios where an ACH/Wire payout event was saved with
-        a generic or anonymized reference identifier. We may want to be
-        able to go back and update all of those transaction IDs.
-
+        Check that there exist ledger TXs for the BP payouts
         """
+        bpe = self.get_by_ext_ref_id(ext_ref_id=ext_ref_id)
+        account_uuids = [bp_pe.debit_account_uuid for bp_pe in bpe.bp_payouts]
+        txs = thl_lm.get_tx_bp_payouts(account_uuids=account_uuids)
+        assert len(txs) == len(
+            bpe.bp_payouts
+        ), f"Expected {len(bpe.bp_payouts)} BP payouts but found {len(txs)}!"
+        return True
 
-        if current_value is None:
-            raise ValueError("Dangerous to do ambiguous updates")
-
-        # SELECT first to check that records exist
-        res = self.filter_by(ext_ref_id=current_value)
-        if len(res) == 0:
-            raise Warning("No event_payouts found to UPDATE")
-
-        # As of 2025, no single Business has more than 10,000 Products,
-        #   leave the limit in as an additional safeguard.
-        query = """
-            UPDATE event_payout
-            SET ext_ref_id = %s
-            WHERE ext_ref_id = %s
+    def resume_failed_business_payout(
+        self, ext_ref_id: str, thl_lm: ThlLedgerManager, pm: ProductManager
+    ):
         """
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query=query, params=[new_value, current_value])
-                assert c.rowcount < 10000
-            conn.commit()
-
-    def delete_failed_business_payout(self, ext_ref_id: str, thl_lm: ThlLedgerManager):
+        Sometimes a business payout's BP payouts fail due to multiple reasons
+        (timeouts, BP having insufficient funds, etc). Grab the PENDING
+        BP payout events and retry them.
         """
-        Sometimes ACH/Wire payouts fail due to multiple reasons (timeouts,
-        Business Product having insufficient funds, etc). This is a utility
-        method that finds all event_payouts, and deletes them with all the
-        associated:
-            (1) Transactions
-            (2) Transaction Metadata
-            (3) Transaction Entries
+        bpe = self.get_by_ext_ref_id(ext_ref_id=ext_ref_id)
+        assert bpe.id
+        assert bpe.bp_payouts
 
-        and then proceeds to delete them all in reverse order (so there is
-        no orphan / FK constraint issues).
-        """
-
-        # (1) Find all by payout_event
-        event_payouts = self.filter_by(ext_ref_id=ext_ref_id)
-        if len(event_payouts) == 0:
-            raise Warning("No event_payouts found to DELETE")
-
-        # sum([i["amount"] for i in event_payouts])/100
-        event_payout_uuids = [i.uuid for i in event_payouts]
-
-        # (2) Find all ledger_transactions
-        tags = [f"{thl_lm.currency.value}:bp_payout:{x}" for x in event_payout_uuids]
-        transactions = thl_lm.get_txs_by_tags(tags=tags)
-        transaction_ids = [tx.id for tx in transactions]
-        print("XXX1", transaction_ids)
-        # assert len(tags) == len(transactions)
-
-        # (3) Find all ledger_transactionmetadata: assert two rows per tx
-        tx_metadata_ids = thl_lm.get_tx_metadata_ids_by_txs(transactions=transactions)
-        # assert len(tx_metadata) == len(transaction_ids)*2
-
-        # (4) Find all ledger_entry: assert two rows per tx
-        tx_entries = thl_lm.get_tx_entries_by_txs(transactions=transactions)
-        tx_entry_ids = [tx_entry.id for tx_entry in tx_entries]
-        # assert len(tx_entry) == len(transaction_ids)*2
-
-        # (5) Delete records (all in 1 tx)
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                # DELETE: tx_entry
-                c.execute(
-                    """
-                DELETE
-                FROM ledger_entry
-                WHERE transaction_id = ANY(%s)
-                    AND id = ANY(%s)
-                """,
-                    [transaction_ids, tx_entry_ids],
+        if bpe.status == PayoutStatus.COMPLETE and all(
+            bp_pe.status == PayoutStatus.COMPLETE for bp_pe in bpe.bp_payouts
+        ):
+            try:
+                self.validate_business_payout_in_ledger(
+                    ext_ref_id=ext_ref_id, thl_lm=thl_lm
                 )
-
-                # DELETE: tx_metadata
-                c.execute(
-                    """
-                DELETE
-                FROM ledger_transactionmetadata 
-                WHERE transaction_id = ANY(%s)
-                    AND id = ANY(%s)
-                """,
-                    [transaction_ids, list(tx_metadata_ids)],
+            except AssertionError as e:
+                LOG.error(
+                    f"Business Payout Event {ext_ref_id} is COMPLETE but BP payouts are not in the ledger! {e}"
                 )
+                raise e
+            LOG.warning(
+                "Nothing to do! Business Payout is COMPLETE and all Brokerage Product payouts are also COMPLETE!"
+            )
+            return None
 
-                # DELETE: transactions
-                c.execute(
-                    """
-                DELETE
-                FROM ledger_transaction
-                WHERE id = ANY(%s)
-                """,
-                    [transaction_ids],
+        for bp_pe in bpe.bp_payouts:
+            if bp_pe.status == PayoutStatus.PENDING:
+                product = pm.get_by_uuid(bp_pe.product_id)
+                self.retry_create_bp_payout_event_tx(
+                    thl_ledger_manager=thl_lm, bp_pe=bp_pe, product=product
                 )
-
-                # DELETE: event_payouts
-                c.execute(
-                    """
-                DELETE
-                FROM event_payout
-                WHERE ext_ref_id = %s 
-                    AND uuid = ANY(%s)
-                """,
-                    [ext_ref_id, event_payout_uuids],
-                )
-            conn.commit()
-
+        assert all(
+            bp_pe.status == PayoutStatus.COMPLETE for bp_pe in bpe.bp_payouts
+        ), "We created all BP payouts, but the statuses are not complete?"
+        self.validate_business_payout_in_ledger(ext_ref_id=ext_ref_id, thl_lm=thl_lm)
+        self.update_business_payout_event(pk=bpe.id, status=PayoutStatus.COMPLETE)
         return None
 
     def get_business_payout_events_for_products(
         self,
-        thl_ledger_manager: ThlLedgerManager,
         product_uuids: Collection[UUIDStr],
         order_by: OrderBy | None = OrderBy.ASC,
     ) -> list[BusinessPayoutEvent]:
         res = self.get_bp_bp_payout_events_for_products(
-            thl_ledger_manager=thl_ledger_manager,
             product_uuids=product_uuids,
             order_by=order_by,
         )
@@ -1101,16 +1004,6 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
         specific Business that was paid out and how much. It then determines
         how to distribute the amount to each Brokerage Product in the
         Business.
-
-        :param business
-        :param amount
-        :param pm
-        :param thl_lm: this must have rw permissions to add transactions to
-            the ledger
-        :param created
-        :param transaction_id
-
-        :return:
         """
         assert business.balance is not None, (
             "Must provide a full version of a Business in order to calculate"
@@ -1224,6 +1117,11 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
                 skip_wallet_balance_check=True,
             )
 
+        self.update_business_payout_event(pk=bpe.id, status=PayoutStatus.COMPLETE)
+
+        return bpe
+
+    def update_business_payout_event(self, pk: int, status: PayoutStatus):
         with self.connection() as conn:
             with conn.cursor() as c:
                 c.execute(
@@ -1231,10 +1129,11 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
                 UPDATE supplier_payout
                 SET status = %(status)s
                 WHERE id = %(pk)s""",
-                    {"pk": bpe.id, "status": PayoutStatus.COMPLETE},
+                    {"pk": pk, "status": status},
                 )
-
-        return bpe
+                assert c.rowcount == 1, f"{id=} not found"
+            conn.commit()
+        return None
 
 
 # import duckdb

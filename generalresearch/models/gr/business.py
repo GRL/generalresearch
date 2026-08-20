@@ -443,7 +443,6 @@ class Business(BaseModel):
         self.prefetch_products(thl_pg_config=thl_pg_config)
 
         self.payouts = bpem.get_business_payout_events_for_products(
-            thl_ledger_manager=thl_lm,
             product_uuids=self.product_uuids,
             order_by=OrderBy.DESC,
         )

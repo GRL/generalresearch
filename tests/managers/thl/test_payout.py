@@ -9,7 +9,8 @@ import io
 
 import pandas as pd
 import pytest
-
+from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.user import User
 from generalresearch.currency import USDCent
 from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionConditionFailedError,
@@ -363,8 +364,6 @@ class TestBusinessPayoutEventManager:
         delete_ledger_db()
         create_main_accounts()
 
-        from generalresearch.models.thl.product import Product
-
         p1: Product = product_factory(business=business)
         thl_lm.get_account_or_create_bp_wallet(product=p1)
         business_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
@@ -445,9 +444,6 @@ class TestBusinessPayoutEventManager:
         delete_ledger_db()
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
-
-        from generalresearch.models.thl.product import Product
-        from generalresearch.models.thl.user import User
 
         p1: Product = product_factory(business=business)
         u1: User = user_factory(product=p1)
@@ -531,9 +527,6 @@ class TestBusinessPayoutEventManager:
         delete_ledger_db()
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
-
-        from generalresearch.models.thl.product import Product
-        from generalresearch.models.thl.user import User
 
         p1: Product = product_factory(business=business)
         u1: User = user_factory(product=p1)
@@ -762,9 +755,6 @@ class TestBusinessPayoutEventManager:
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
 
-        from generalresearch.models.thl.product import Product
-        from generalresearch.models.thl.user import User
-
         p1: Product = product_factory(business=business)
         u1: User = user_factory(product=p1)
         thl_lm.get_account_or_create_bp_wallet(product=p1)
@@ -827,6 +817,114 @@ class TestBusinessPayoutEventManager:
             ),
         ]
 
+    def test_create_from_ach_or_wire(
+        self,
+        product,
+        mnt_filepath,
+        thl_lm,
+        client_no_amm,
+        thl_redis_config,
+        payout_event_manager,
+        brokerage_product_payout_event_manager,
+        business_payout_event_manager,
+        delete_ledger_db,
+        create_main_accounts,
+        delete_df_collection,
+        ledger_collection,
+        business,
+        user_factory,
+        product_factory,
+        session_with_tx_factory,
+        pop_ledger_merge,
+        start,
+        bp_payout_factory,
+        adj_to_fail_with_tx_factory,
+        thl_web_rr,
+        lm,
+        product_manager,
+        rm_ledger_collection,
+        rm_pop_ledger_merge,
+        caplog,
+    ):
+        """Test having a Business with three products"""
+        # Now let's load it up and actually test some things
+        delete_ledger_db()
+        create_main_accounts()
+        delete_df_collection(coll=ledger_collection)
+
+        p1: Product = product_factory(business=business)
+        p2: Product = product_factory(business=business)
+        p3: Product = product_factory(business=business)
+        u1: User = user_factory(product=p1)
+        u2: User = user_factory(product=p2)
+        u3: User = user_factory(product=p3)
+        thl_lm.get_account_or_create_bp_wallet(product=p1)
+        thl_lm.get_account_or_create_bp_wallet(product=p2)
+        thl_lm.get_account_or_create_bp_wallet(product=p3)
+
+        ach_id1 = uuid4().hex
+        ach_id2 = uuid4().hex
+
+        # Product 1: Complete, Payout, Recon..
+        s1 = session_with_tx_factory(
+            user=u1,
+            wall_req_cpi=Decimal("5.00"),
+            started=start + timedelta(days=1),
+        )
+
+        # Product 2: Complete x10
+        for idx in range(15):
+            session_with_tx_factory(
+                user=u2,
+                wall_req_cpi=Decimal("7.50"),
+                started=start + timedelta(days=1, hours=2, minutes=1 + idx),
+            )
+
+        # Product 3: Complete x5
+        for idx in range(10):
+            session_with_tx_factory(
+                user=u3,
+                wall_req_cpi=Decimal("7.50"),
+                started=start + timedelta(days=1, hours=3, minutes=1 + idx),
+            )
+
+        ledger_collection.initial_load(client=None, sync=True)
+        pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
+        business.prebuild_balance(
+            thl_pg_config=thl_web_rr,
+            lm=lm,
+            ds=mnt_filepath,
+            client=client_no_amm,
+            pop_ledger=pop_ledger_merge,
+        )
+
+        bb = business.balance
+        assert bb.payout == 25 * 712 + 475  # $7.50 * .95% = $7.125 = $7.12
+        assert bb.net == (25 * 7.12 + 4.75) * 100
+
+        bp1 = business_payout_event_manager.create_from_ach_or_wire(
+            business=business,
+            amount=USDCent(bb.available_balance),
+            pm=product_manager,
+            thl_lm=thl_lm,
+            created=start + timedelta(days=1, hours=5),
+            transaction_id=ach_id1,
+        )
+        print(f"{bp1=}")
+        assert isinstance(bp1, BusinessPayoutEvent)
+        assert len(bp1.bp_payouts) == 3
+
+        with caplog.at_level(logging.WARNING):
+            business_payout_event_manager.resume_failed_business_payout(
+                ext_ref_id=ach_id1, thl_lm=thl_lm, pm=product_manager
+            )
+            assert "Nothing to do!" in caplog.text
+
+        bpe = business_payout_event_manager.get_by_ext_ref_id(ext_ref_id=ach_id1)
+
+        assert 1 == 0
+        return None
+
     def test_ach_payment(
         self,
         product,
@@ -865,9 +963,6 @@ class TestBusinessPayoutEventManager:
         delete_ledger_db()
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
-
-        from generalresearch.models.thl.product import Product
-        from generalresearch.models.thl.user import User
 
         p1: Product = product_factory(business=business)
         p2: Product = product_factory(business=business)
@@ -1072,9 +1167,6 @@ class TestBusinessPayoutEventManager:
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
 
-        from generalresearch.models.thl.product import Product
-        from generalresearch.models.thl.user import User
-
         p1: Product = product_factory(business=business)
         p2: Product = product_factory(business=business)
         p3: Product = product_factory(business=business)
@@ -1203,9 +1295,6 @@ class TestBusinessPayoutEventManager:
         delete_ledger_db()
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
-
-        from generalresearch.models.thl.product import Product
-        from generalresearch.models.thl.user import User
 
         p1: Product = product_factory(business=business)
         p2: Product = product_factory(business=business)
