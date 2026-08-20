@@ -14,6 +14,7 @@ from pydantic import (
     model_validator,
     ConfigDict,
 )
+from pydantic.json_schema import SkipJsonSchema
 from typing_extensions import Self
 
 from generalresearch.currency import USDCent
@@ -54,15 +55,15 @@ class PayoutEvent(BaseModel):
         examples=["18298cb1583846fbb06e4747b5310693"],
     )
 
-    cashout_method_uuid: UUIDStr | None= Field(
+    cashout_method_uuid: UUIDStr | None = Field(
         description="References a row in the account_cashoutmethod table. This "
         "is the cashout method that was used to request this "
         "payout. (A cashout is the same thing as a payout)",
         examples=["a6dc1fc1bf934557b952f253dee12813"],
     )
 
-    created: AwareDatetimeISO | None = Field(
-        default = None
+    created: AwareDatetimeISO = Field(
+        default_factory=lambda: datetime.now(tz=timezone.utc)
     )
 
     # In the smallest unit of the currency being transacted. For USD, this
@@ -86,8 +87,8 @@ class PayoutEvent(BaseModel):
         description=PayoutType.as_openapi(), examples=[PayoutType.ACH]
     )
 
-    request_data: dict = Field(
-        default_factory=dict,
+    request_data: dict | None = Field(
+        default=None,
         description="Stores payout-type-specific information that is used to "
         "request this payout from the external provider.",
     )
@@ -146,16 +147,15 @@ class PayoutEvent(BaseModel):
 
     # --- ORM ---
 
-    def model_dump_mysql(self, *args, **kwargs) -> dict:
-        d = self.model_dump(mode="json", *args, **kwargs)
+    def model_dump_postgres(self) -> dict:
+        d = self.model_dump(mode="json", exclude={"request_data", "order_data"})
 
-        if "created" in d:
-            d["created"] = self.created.replace(tzinfo=None)
-
-        if d.get("request_data") is not None:
-            d["request_data"] = json.dumps(self.request_data)
-
-        if d.get("order_data") is not None:
+        d["request_data"] = (
+            json.dumps(self.request_data) if self.request_data is not None else None
+        )
+        if self.order_data is None:
+            d["order_data"] = None
+        else:
             if isinstance(self.order_data, dict):
                 d["order_data"] = json.dumps(self.order_data)
             else:
@@ -279,12 +279,10 @@ class BrokerageProductPayoutEvent(PayoutEvent):
 
 class BusinessPayoutEvent(BaseModel):
     """A single payout event to a supplier Business."""
+
     model_config = ConfigDict(validate_assignment=True)
 
-    uuid: UUIDStr = Field(
-        title="Supplier Payout Unique Identifier",
-        examples=["9453cd076713426cb68d05591c7145aa"],
-    )
+    id: SkipJsonSchema[PositiveInt | None] = Field(exclude=True)
 
     # Used for holding a *unique*, external, payout-type-specific identifier.
     ext_ref_id: str = Field(title="Unique external reference ID")
@@ -294,8 +292,8 @@ class BusinessPayoutEvent(BaseModel):
         examples=[uuid4().hex],
     )
 
-    created: AwareDatetimeISO | None = Field(
-        default=None
+    created: AwareDatetimeISO = Field(
+        default_factory=lambda: datetime.now(tz=timezone.utc)
     )
 
     # In the smallest unit of the currency being transacted. For USD, this
@@ -393,3 +391,16 @@ class BusinessPayoutEvent(BaseModel):
             )
 
         return self
+
+    def model_dump_postgres(self):
+        d = self.model_dump(
+            mode="json",
+            exclude={"bp_payouts"},
+        )
+        d["request_data"] = (
+            json.dumps(self.request_data) if self.request_data is not None else None
+        )
+        d["order_data"] = (
+            json.dumps(self.order_data) if self.order_data is not None else None
+        )
+        return d

@@ -837,7 +837,7 @@ class ThlLedgerManager(LedgerManager):
             tmc.TX_TYPE: TransactionType.BP_PAYOUT,
             tmc.EVENT: payoutevent_uuid,
         }
-        # This tag might will uniquely identify this tx
+        # This tag will uniquely identify this tx
         tag = f"{self.currency.value}:bp_payout:{payoutevent_uuid}"
         cash_account = self.get_account_cash()
         bp_wallet_account = self.get_account_or_create_bp_wallet(product)

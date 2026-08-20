@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 
 import numpy as np
 import pandas as pd
-from psycopg import sql
+from psycopg import sql, Cursor
 from pydantic import AwareDatetime, NonNegativeInt, PositiveInt
 
 from generalresearch.currency import USDCent
@@ -104,7 +104,7 @@ class PayoutEventManager(PostgresManagerWithRedis):
         order_data = order_data if order_data is not None else payout_event.order_data
         payout_event.update(status=status, ext_ref_id=ext_ref_id, order_data=order_data)
 
-        d = payout_event.model_dump_mysql()
+        d = payout_event.model_dump_postgres()
         query = sql.SQL(
             """
         UPDATE event_payout SET 
@@ -476,64 +476,6 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
 
         return True
 
-    def create(
-        self,
-        uuid: UUIDStr | None = None,
-        debit_account_uuid: UUIDStr | None = None,
-        created: AwareDatetimeISO = None,
-        amount: PositiveInt = None,
-        status: PayoutStatus | None = None,
-        ext_ref_id: str | None = None,
-        payout_type: PayoutType = None,
-        request_data: dict[str, Any] | None = None,
-        order_data: dict[str, Any] | CashMailOrderData | None = None,
-        # --- Support resources ---
-        account_product_mapping: dict[UUIDStr, UUIDStr] | None = None,
-    ) -> BrokerageProductPayoutEvent:
-
-        if request_data is None:
-            request_data = dict()
-
-        # This isn't really need for creation... but we're doing it so that
-        #   it can return back a full BrokerageProductPayoutEvent instance
-        if account_product_mapping is None:
-            rc = self.redis_client
-            account_product_mapping: dict = rc.hgetall(name="pem:account_to_product")
-            assert isinstance(account_product_mapping, dict)
-        product_id = account_product_mapping[debit_account_uuid]
-
-        bp_payout_event = BrokerageProductPayoutEvent(
-            uuid=uuid or uuid4().hex,
-            debit_account_uuid=debit_account_uuid,
-            cashout_method_uuid=self.CASHOUT_METHOD_UUID,
-            created=created or datetime.now(tz=timezone.utc),
-            amount=amount,
-            status=status,
-            ext_ref_id=ext_ref_id,
-            payout_type=payout_type,
-            request_data=request_data,
-            order_data=order_data,
-            product_id=product_id,
-        )
-        d = bp_payout_event.model_dump_mysql()
-
-        self.pg_config.execute_write(
-            query="""
-            INSERT INTO event_payout (
-                uuid, debit_account_uuid, created, cashout_method_uuid, amount,
-                status, ext_ref_id, payout_type, order_data, request_data
-            ) VALUES (
-                %(uuid)s, %(debit_account_uuid)s, %(created)s, 
-                %(cashout_method_uuid)s, %(amount)s, %(status)s, 
-                %(ext_ref_id)s, %(payout_type)s, %(order_data)s, 
-                %(request_data)s
-            );
-        """,
-            params=d,
-        )
-
-        return bp_payout_event
-
     def filter_by(
         self,
         reference_uuid: str | None = None,
@@ -729,91 +671,33 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
     ):
         pass
 
-    def create_bp_payout_event(
-        self,
-        thl_ledger_manager: ThlLedgerManager,
-        product: Product,
-        amount: USDCent,
-        payout_type: PayoutType = PayoutType.ACH,
-        ext_ref_id: str | None = None,
-        created: AwareDatetime | None = None,
-        skip_wallet_balance_check: bool = False,
-        skip_one_per_day_check: bool = False,
-    ) -> BrokerageProductPayoutEvent:
-        """This should be called when a BP is paid out money from their
-            wallet. Typically, this is an ACH payment. This function creates
-            the PayoutEvent and the Ledger entries.
-
-        :param thl_ledger_manager:
-        :param product: The BP being paid. Assuming we're paying them out
-            of the balance of their USD wallet account.
-        :param amount: We're assuming everything is in USD, and we're
-            paying out a USD currency account. We could theoretically also
-            pay, for e.g. a Bitcoin account with a bitcoin transfer, but
-            this is not supported for now.
-        :param payout_type: PayoutType. default ACH
-        :param cashout_method_uuid: The entry in the
-            accounting_cashoutmethod table that records payment method
-            details. By default, the generic ACH cashout method (that has
-            no actual banking details).
-
-        :param ext_ref_id: This is a unique ID for the Supplier Payment.
-            Typically it'll be from JP Morgan Chase, but may also just be
-            random if we can retrieve anything
-
-        :param created:
-
-        :param skip_wallet_balance_check: By default, this will fail unless
-            the BP's wallet actually has the amount requested.
-
-        :param skip_one_per_day_check: Safety mechanism, checks if there
-            has already been a payout to this wallet in the past 24 hours.
-
-        :return:
-        """
-
-        assert isinstance(amount, USDCent), "Must provide a USDCent"
-
-        if created:
-            # Try to do a quick dupe check first before we create the payout event
-            pes = self.filter_by(
-                reference_uuid=product.id, amount=amount, created=created
-            )
-            if len(pes) > 0:
-                raise ValueError(f"Payout event already exists!: {pes}")
-
-        if created is None:
-            created = datetime.now(tz=timezone.utc)
-
-        # TODO: Explain why we're doing this. Why is it important to have
-        #   Payout Events when the ledger has everything that should be
-        #   needed.
-        bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
-
-        bp_pe: BrokerageProductPayoutEvent = self.create(
-            debit_account_uuid=bp_wallet.uuid,
-            payout_type=payout_type,
-            amount=amount,
-            ext_ref_id=ext_ref_id,
-            created=created,
-            status=PayoutStatus.PENDING,
-        )
-        return self._create_tx_bp_payout_from_payout_event(
-            thl_ledger_manager=thl_ledger_manager,
-            bp_pe=bp_pe,
-            product=product,
-            amount=amount,
-            created=created,
-            skip_one_per_day_check=skip_one_per_day_check,
-            skip_wallet_balance_check=skip_wallet_balance_check,
-        )
+    # def create_bp_payout_event(
+    #     self,
+    #     thl_ledger_manager: ThlLedgerManager,
+    #     product: Product,
+    #     amount: USDCent,
+    #     payout_type: PayoutType = PayoutType.ACH,
+    #     ext_ref_id: str | None = None,
+    #     created: AwareDatetime | None = None,
+    #     skip_wallet_balance_check: bool = False,
+    #     skip_one_per_day_check: bool = False,
+    # ) -> BrokerageProductPayoutEvent:
+    #
+    #     return self._create_tx_bp_payout_from_payout_event(
+    #         thl_ledger_manager=thl_ledger_manager,
+    #         bp_pe=bp_pe,
+    #         product=product,
+    #         amount=amount,
+    #         created=created,
+    #         skip_one_per_day_check=skip_one_per_day_check,
+    #         skip_wallet_balance_check=skip_wallet_balance_check,
+    #     )
 
     def _create_tx_bp_payout_from_payout_event(
         self,
         thl_ledger_manager: ThlLedgerManager,
         bp_pe: BrokerageProductPayoutEvent,
         product: Product,
-        amount: USDCent,
         created: AwareDatetime | None = None,
         skip_wallet_balance_check: bool = False,
         skip_one_per_day_check: bool = False,
@@ -824,22 +708,22 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         Handles exceptions: Check if the ledger tx actually exists or not, and set the
             payout event status accordingly.
         """
+        created = created if created else bp_pe.created
         try:
             thl_ledger_manager.create_tx_bp_payout(
                 product=product,
-                amount=amount,
+                amount=USDCent(bp_pe.amount),
                 payoutevent_uuid=bp_pe.uuid,
                 created=created,
                 skip_wallet_balance_check=skip_wallet_balance_check,
                 skip_one_per_day_check=skip_one_per_day_check,
             )
-
         except Exception as e:
             e.pe_uuid = bp_pe.uuid
             if self.check_for_ledger_tx(
                 thl_ledger_manager=thl_ledger_manager,
                 product_id=product.uuid,
-                amount=amount,
+                amount=USDCent(bp_pe.amount),
                 payout_event=bp_pe,
             ):
                 LOG.warning(f"Got exception {e} but ledger tx exists! Continuing ... ")
@@ -954,37 +838,46 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 # DELETE: tx_entry
-                c.execute("""
+                c.execute(
+                    """
                 DELETE
                 FROM ledger_entry
                 WHERE transaction_id = ANY(%s)
                     AND id = ANY(%s)
-                """, [transaction_ids, tx_entry_ids])
+                """,
+                    [transaction_ids, tx_entry_ids],
+                )
 
                 # DELETE: tx_metadata
-                c.execute("""
+                c.execute(
+                    """
                 DELETE
                 FROM ledger_transactionmetadata 
                 WHERE transaction_id = ANY(%s)
                     AND id = ANY(%s)
-                """, [transaction_ids, list(tx_metadata_ids)],
+                """,
+                    [transaction_ids, list(tx_metadata_ids)],
                 )
 
                 # DELETE: transactions
-                c.execute("""
+                c.execute(
+                    """
                 DELETE
                 FROM ledger_transaction
                 WHERE id = ANY(%s)
-                """, [transaction_ids])
+                """,
+                    [transaction_ids],
+                )
 
                 # DELETE: event_payouts
                 c.execute(
-                """
+                    """
                 DELETE
                 FROM event_payout
                 WHERE ext_ref_id = %s 
                     AND uuid = ANY(%s)
-                """, [ext_ref_id, event_payout_uuids],
+                """,
+                    [ext_ref_id, event_payout_uuids],
                 )
             conn.commit()
 
@@ -1147,30 +1040,62 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
 
         return allocation
 
-    def create_business_payout_event(self, bpe: BusinessPayoutEvent):
+    def create_business_payout_event(
+        self,
+        bpe: BusinessPayoutEvent,
+    ):
+        assert bpe.bp_payouts, "Must provide at least one BP Payout"
+        assert {bp_pe.status for bp_pe in bpe.bp_payouts} == {
+            PayoutStatus.PENDING
+        }, "All BP Payouts must be PENDING"
+        assert bpe.id is None, "Cannot create a BusinessPayoutEvent with an existing ID"
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
-                # Quick check to make sure it doesn't already exist
-                c.execute("""
-                SELECT 1
-                FROM supplier_payout
-                WHERE ext_ref_id = %(ext_ref_id)s
-                """, {'ext_ref_id': bpe.ext_ref_id})
-                assert c.fetchone() is None
-
-                c.execute("""
-                """)
-
+                # ext_ref_id has a unique constraint, so we don't need to even
+                #   do an existence check first
+                c.execute(
+                    """
+                INSERT INTO supplier_payout (
+                    business_id, created, amount,
+                    status, ext_ref_id, payout_type,
+                    request_data, order_data
+                ) VALUES (
+                    %(business_id)s, %(created)s, %(amount)s, 
+                    %(status)s, %(ext_ref_id)s, %(payout_type)s, 
+                    %(request_data)s, %(order_data)s 
+                ) RETURNING id;
+                """,
+                    bpe.model_dump_postgres(),
+                )
+                supplier_payout_pk = c.fetchone()["id"]
+                bpe.id = supplier_payout_pk
+                for bp_pe in bpe.bp_payouts:
+                    c.execute(
+                        """
+                        INSERT INTO event_payout (
+                            uuid, debit_account_uuid, created, cashout_method_uuid,
+                            amount, status, ext_ref_id, payout_type, order_data,
+                            request_data, supplier_payout_id
+                        ) VALUES (
+                            %(uuid)s, %(debit_account_uuid)s, %(created)s, %(cashout_method_uuid)s,
+                            %(amount)s, %(status)s, %(ext_ref_id)s, %(payout_type)s, %(order_data)s,
+                            %(request_data)s, %(supplier_payout_id)s
+                        );
+                        """,
+                        bp_pe.model_dump_postgres()
+                        | {"supplier_payout_id": supplier_payout_pk},
+                    )
+            conn.commit()
 
     def create_from_ach_or_wire(
         self,
         business: Business,
         amount: USDCent,
+        transaction_id: str,
         pm: ProductManager,
         thl_lm: ThlLedgerManager,
         created: datetime | None = None,
-        transaction_id: str | None = None,
     ) -> BusinessPayoutEvent | None:
         """This records a single banking transfer to a supplier. Takes a
         specific Business that was paid out and how much. It then determines
@@ -1192,7 +1117,7 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
             "the required Brokerage Product amounts."
         )
 
-        assert amount > 100_00, "Must issue Supplier Payouts at least $100 minimum."
+        assert amount >= 100_00, "Must issue Supplier Payouts at least $100 minimum."
         LOG.warning(f"Paying out {business.name} {amount.to_usd_str()}")
 
         if created:
@@ -1201,6 +1126,8 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
             assert created < datetime.now(
                 tz=timezone.utc
             ), "created must be in the past"
+        else:
+            created = datetime.now(tz=timezone.utc)
 
         # Gather the total amount available balance from each and put into
         #   a simple DF. We're using the available balance because we need it
@@ -1240,38 +1167,74 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
         products = pm.get_by_uuids(product_uuids=list(amounts.keys()))
         product_lookup = {p.uuid: p for p in products}
 
+        # Bulk version of this ---v
+        # bp_wallet = thl_lm.get_account_or_create_bp_wallet(product=product)
+        qualified_names = [
+            f"{thl_lm.currency.value}:bp_wallet:{bp.id}" for bp in products
+        ]
+        bp_wallets = thl_lm.get_accounts(qualified_names)
+        wallet_lookup = {bpw.reference_uuid: bpw.uuid for bpw in bp_wallets}
+
         bpe = BusinessPayoutEvent(
-            uuid=uuid4().hex,
+            id=None,
             business_id=business.uuid,
             payout_type=PayoutType.ACH,
             amount=amount,
             created=created,
             ext_ref_id=transaction_id,
             # The ACH payment was sent! We haven't yet recorded it
-            #   in the ledger, but it was sent by the bank.
-            status=PayoutStatus.COMPLETE,
+            #   in the ledger, but it was sent by the bank. This
+            #   is kind of ambiguous the meaning, we'll say it
+            #   is not yet COMPLETE b/c the bp payouts
+            #   haven't all been created yet.
+            status=PayoutStatus.APPROVED,
         )
 
         bp_payouts: list[BrokerageProductPayoutEvent] = []
         for product_id, item in amounts.items():
             product = product_lookup[product_id]
-            bp_payouts.append(BrokerageProductPayoutEvent(
-                created=created,
-                payout_type=PayoutType.ACH,
-                status=PayoutStatus.PENDING,
-                uuid=uuid4().hex,
-                amount=USDCent(item["issue_amount"]),
-                ext_ref_id=transaction_id,
-                product_id=product.uuid,
-                # We will fill these in
-                debit_account_uuid=None,
-                cashout_method_uuid=None,
-            ))
+            bp_payouts.append(
+                BrokerageProductPayoutEvent(
+                    created=created,
+                    payout_type=PayoutType.ACH,
+                    status=PayoutStatus.PENDING,
+                    uuid=uuid4().hex,
+                    amount=USDCent(item["issue_amount"]),
+                    ext_ref_id=transaction_id,
+                    product_id=product.uuid,
+                    cashout_method_uuid=self.CASHOUT_METHOD_UUID,
+                    debit_account_uuid=wallet_lookup[product_id],
+                )
+            )
         bpe.bp_payouts = bp_payouts
+        # The supplier_payout db row and all event_payout (BP rows) are all
+        #   created in the same DB transaction.
+        self.create_business_payout_event(bpe=bpe)
+        assert bpe.id is not None, "Something failed creating BusinessPayoutEvent"
 
+        # Now, go through each and create ledger txs. This is resumable
+        #   from the BrokerageProductPayoutEvents
+        for bp_pe in bpe.bp_payouts:
+            product = product_lookup[bp_pe.product_id]
+            self._create_tx_bp_payout_from_payout_event(
+                thl_ledger_manager=thl_lm,
+                bp_pe=bp_pe,
+                product=product,
+                skip_one_per_day_check=True,
+                skip_wallet_balance_check=True,
+            )
 
+        with self.connection() as conn:
+            with conn.cursor() as c:
+                c.execute(
+                    """
+                UPDATE supplier_payout
+                SET status = %(status)s
+                WHERE id = %(pk)s""",
+                    {"pk": bpe.id, "status": PayoutStatus.COMPLETE},
+                )
 
-        return BusinessPayoutEvent.model_validate({"bp_payouts": bp_payouts})
+        return bpe
 
 
 # import duckdb

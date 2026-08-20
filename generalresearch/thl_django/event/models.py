@@ -51,7 +51,11 @@ class SupplierPayout(models.Model):
     to the Business.
     """
 
-    uuid = models.UUIDField(default=uuid.uuid4, primary_key=True)
+    id = models.BigAutoField(primary_key=True)
+
+    # Used for holding a unique, external, payouttype-specific identifier.
+    #   For ACH, this is the ACH transaction id.
+    ext_ref_id = models.CharField(max_length=64, unique=True)
 
     # The Business receiving this payout
     business_id = models.UUIDField(null=True)
@@ -63,10 +67,6 @@ class SupplierPayout(models.Model):
     # The allowed values for `status` are defined in generalresearch:
     #   generalresearch/models/thl/payout.py:PayoutStatus
     status = models.CharField(max_length=20, null=True)
-
-    # Used for holding a unique, external, payouttype-specific identifier.
-    #   For ACH, this is the ACH transaction id.
-    ext_ref_id = models.CharField(max_length=64, unique=True)
 
     # The allowed values for `payout_type` are defined in generalresearch:
     #   generalresearch/models/thl/payout.py:PayoutType
@@ -132,7 +132,6 @@ class Payout(models.Model):
     #   payout transaction that this product-level split belongs to.
     supplier_payout = models.ForeignKey(
         SupplierPayout,
-        db_column="supplier_payout_uuid",
         null=True,
         on_delete=models.DO_NOTHING,
     )
@@ -144,5 +143,4 @@ class Payout(models.Model):
             models.Index(fields=["created"]),
             models.Index(fields=["debit_account_uuid"]),
             models.Index(fields=["ext_ref_id"]),
-            models.Index(fields=["supplier_payout"]),
         ]
