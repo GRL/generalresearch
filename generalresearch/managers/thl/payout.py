@@ -419,8 +419,6 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
     @staticmethod
     def check_for_ledger_tx(
         thl_ledger_manager: ThlLedgerManager,
-        product_id: UUIDStr,
-        amount: USDCent,
         payout_event: BrokerageProductPayoutEvent,
     ) -> bool:
         """
@@ -433,6 +431,9 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
             are found, and raises a ValueError if something is inconsistent.
         """
         tag = f"{thl_ledger_manager.currency.value}:bp_payout:{payout_event.uuid}"
+        amount = USDCent(payout_event.amount)
+        product_id = payout_event.product_id
+
         txs = thl_ledger_manager.get_tx_by_tag(tag)
 
         if not txs:
@@ -579,14 +580,20 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         If a create_bp_payout_event call fails, this can be called with
         the associated payoutevent.
         """
-        assert bp_pe.status == PayoutStatus.FAILED, "Only use this on failed payouts"
+        assert bp_pe.status in {
+            PayoutStatus.FAILED,
+            PayoutStatus.PENDING,
+        }, "Only use this on pending or failed payouts"
 
-        assert not self.check_for_ledger_tx(
-            thl_ledger_manager=thl_ledger_manager,
-            payout_event=bp_pe,
-            product_id=bp_pe.product_id,
-            amount=bp_pe.amount_usd,
-        ), "Transaction exists! You should mark the payout event status as complete"
+        if self.check_for_ledger_tx(
+            thl_ledger_manager=thl_ledger_manager, payout_event=bp_pe
+        ):
+            LOG.warning(
+                f"Transaction for {bp_pe.uuid=} {bp_pe.product_id=} already exists! "
+                f"Marking the payout event status as complete."
+            )
+            self.update(payout_event=bp_pe, status=PayoutStatus.COMPLETE)
+            return bp_pe
 
         return self._create_tx_bp_payout_from_payout_event(
             thl_ledger_manager=thl_ledger_manager,
@@ -657,8 +664,6 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
             e.pe_uuid = bp_pe.uuid
             if self.check_for_ledger_tx(
                 thl_ledger_manager=thl_ledger_manager,
-                product_id=product.uuid,
-                amount=USDCent(bp_pe.amount),
                 payout_event=bp_pe,
             ):
                 LOG.warning(f"Got exception {e} but ledger tx exists! Continuing ... ")
@@ -758,9 +763,7 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
         assert bpe.id
         assert bpe.bp_payouts
 
-        if bpe.status == PayoutStatus.COMPLETE and all(
-            bp_pe.status == PayoutStatus.COMPLETE for bp_pe in bpe.bp_payouts
-        ):
+        if all(bp_pe.status == PayoutStatus.COMPLETE for bp_pe in bpe.bp_payouts):
             try:
                 self.validate_business_payout_in_ledger(
                     ext_ref_id=ext_ref_id, thl_lm=thl_lm
@@ -768,24 +771,39 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
             except AssertionError as e:
                 LOG.error(
                     f"Business Payout Event {ext_ref_id} is COMPLETE but BP payouts are not in the ledger! {e}"
+                    f"This typically shouldn't happen, as if the ledger TX fails, the event_payout "
+                    f"status won't be COMPLETE. If it does, set all the bp statuses to FAILED, and "
+                    f"then try again. Any that do exist in the ledger will be found and marked COMPLETE."
                 )
                 raise e
-            LOG.warning(
-                "Nothing to do! Business Payout is COMPLETE and all Brokerage Product payouts are also COMPLETE!"
-            )
+            if bpe.status != PayoutStatus.COMPLETE:
+                self.update_business_payout_event(
+                    pk=bpe.id, status=PayoutStatus.COMPLETE
+                )
+                LOG.warning(
+                    "All BP payouts complete, setting Business Payout Event status to COMPLETE."
+                )
+            else:
+                LOG.warning(
+                    "Nothing to do! Business Payout is COMPLETE and all Brokerage Product payouts are also COMPLETE!"
+                )
             return None
 
         for bp_pe in bpe.bp_payouts:
-            if bp_pe.status == PayoutStatus.PENDING:
+            if bp_pe.status in {PayoutStatus.PENDING, PayoutStatus.FAILED}:
+                LOG.warning(
+                    f"Found a {bp_pe.status} BP payout event: {bp_pe.uuid} - retrying ... "
+                )
                 product = pm.get_by_uuid(bp_pe.product_id)
                 self.retry_create_bp_payout_event_tx(
                     thl_ledger_manager=thl_lm, bp_pe=bp_pe, product=product
                 )
-        assert all(
-            bp_pe.status == PayoutStatus.COMPLETE for bp_pe in bpe.bp_payouts
-        ), "We created all BP payouts, but the statuses are not complete?"
+            if bp_pe.status != PayoutStatus.COMPLETE:
+                raise ValueError(f"{bp_pe.uuid} has {bp_pe.status=}. Please check me.")
+
         self.validate_business_payout_in_ledger(ext_ref_id=ext_ref_id, thl_lm=thl_lm)
         self.update_business_payout_event(pk=bpe.id, status=PayoutStatus.COMPLETE)
+
         return None
 
     def get_business_payout_events_for_products(
