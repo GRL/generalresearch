@@ -16,6 +16,10 @@ from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
 from generalresearch.managers.base import (
     PostgresManagerWithRedis,
+    Permission,
+)
+from generalresearch.managers.thl.ledger_manager.exceptions import (
+    LedgerTransactionConditionFailedError,
 )
 from generalresearch.managers.thl.ledger_manager.thl_ledger import (
     ThlLedgerManager,
@@ -41,6 +45,8 @@ from generalresearch.models.thl.wallet.cashout_method import (
     CashMailOrderData,
     CashoutRequestInfo,
 )
+from generalresearch.pg_helper import PostgresConfig
+from generalresearch.redis_helper import RedisConfig
 
 
 class PayoutEventManager(PostgresManagerWithRedis):
@@ -50,27 +56,6 @@ class PayoutEventManager(PostgresManagerWithRedis):
         - Brokerage Product Payout Events (money to Suppliers)
 
     """
-
-    def set_account_lookup_table(self, thl_lm: ThlLedgerManager) -> None:
-        """This needs to run from grl-flow or from somewhere that has thl-redis
-        access
-        """
-
-        res = self.pg_config.execute_sql_query(
-            query=f"""
-                SELECT uuid, reference_uuid 
-                FROM ledger_account
-                WHERE qualified_name LIKE '{thl_lm.currency.value}:bp_wallet:%'
-            """
-        )
-        account_to_product = {i["uuid"]: i["reference_uuid"] for i in res}
-        product_to_account = {i["reference_uuid"]: i["uuid"] for i in res}
-
-        rc = self.redis_client
-        rc.hset(name="pem:account_to_product", mapping=account_to_product)
-        rc.hset(name="pem:product_to_account", mapping=product_to_account)
-
-        return None
 
     def get_by_uuid(self, pe_uuid: UUIDStr) -> PayoutEvent:
         res = self.pg_config.execute_sql_query(
@@ -316,7 +301,7 @@ class UserPayoutEventManager(PayoutEventManager):
             request_data=request_data or {},
             order_data=order_data,
         )
-        d = payout_event.model_dump_mysql()
+        d = payout_event.model_dump_postgres()
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
@@ -593,54 +578,18 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
             self.update(payout_event=bp_pe, status=PayoutStatus.COMPLETE)
             return bp_pe
 
-        return self._create_tx_bp_payout_from_payout_event(
+        return self.create_tx_bp_payout_from_payout_event(
             thl_ledger_manager=thl_ledger_manager,
             bp_pe=bp_pe,
             product=product,
-            skip_one_per_day_check=True,
-            skip_wallet_balance_check=True,
         )
 
-    def create_pending_bp_payout_events(
-        self,
-        product: Product,
-        amount: USDCent,
-        payout_type: PayoutType = PayoutType.ACH,
-        ext_ref_id: str | None = None,
-        created: AwareDatetime | None = None,
-    ):
-        pass
-
-    # def create_bp_payout_event(
-    #     self,
-    #     thl_ledger_manager: ThlLedgerManager,
-    #     product: Product,
-    #     amount: USDCent,
-    #     payout_type: PayoutType = PayoutType.ACH,
-    #     ext_ref_id: str | None = None,
-    #     created: AwareDatetime | None = None,
-    #     skip_wallet_balance_check: bool = False,
-    #     skip_one_per_day_check: bool = False,
-    # ) -> BrokerageProductPayoutEvent:
-    #
-    #     return self._create_tx_bp_payout_from_payout_event(
-    #         thl_ledger_manager=thl_ledger_manager,
-    #         bp_pe=bp_pe,
-    #         product=product,
-    #         amount=amount,
-    #         created=created,
-    #         skip_one_per_day_check=skip_one_per_day_check,
-    #         skip_wallet_balance_check=skip_wallet_balance_check,
-    #     )
-
-    def _create_tx_bp_payout_from_payout_event(
+    def create_tx_bp_payout_from_payout_event(
         self,
         thl_ledger_manager: ThlLedgerManager,
         bp_pe: BrokerageProductPayoutEvent,
         product: Product,
         created: AwareDatetime | None = None,
-        skip_wallet_balance_check: bool = False,
-        skip_one_per_day_check: bool = False,
     ) -> BrokerageProductPayoutEvent:
         """
         This should not be called directly.
@@ -655,22 +604,25 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
                 amount=USDCent(bp_pe.amount),
                 payoutevent_uuid=bp_pe.uuid,
                 created=created,
-                skip_wallet_balance_check=skip_wallet_balance_check,
-                skip_one_per_day_check=skip_one_per_day_check,
+                skip_wallet_balance_check=True,
+                skip_one_per_day_check=True,
             )
+        except LedgerTransactionConditionFailedError as e:
+            if e.args[0] == "duplicate tag":
+                raise ValueError(
+                    f"""Payout event already exists! {e}
+                You are trying to create a tx that already exists. We can't know
+                if this is a new payout event with the same ref id, or you're
+                trying to run the same one twice ... So not setting the existing
+                payout event to FAILED, b/c the existing one is not failed!
+                Doing nothing ...
+                """
+                ) from e
+            self.update(payout_event=bp_pe, status=PayoutStatus.FAILED)
+            raise
         except Exception as e:
-            e.pe_uuid = bp_pe.uuid
-            if self.check_for_ledger_tx(
-                thl_ledger_manager=thl_ledger_manager,
-                payout_event=bp_pe,
-            ):
-                LOG.warning(f"Got exception {e} but ledger tx exists! Continuing ... ")
-                self.update(payout_event=bp_pe, status=PayoutStatus.COMPLETE)
-                return bp_pe
-            else:
-                LOG.warning(f"Got exception {e}. No ledger tx was created.")
-                self.update(payout_event=bp_pe, status=PayoutStatus.FAILED)
-                raise e
+            self.update(payout_event=bp_pe, status=PayoutStatus.FAILED)
+            raise
 
         self.update(payout_event=bp_pe, status=PayoutStatus.COMPLETE)
         return bp_pe
@@ -700,6 +652,10 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
 
 
 class BusinessPayoutEventManager(PostgresManagerWithRedis):
+
+    def __init__(self, *arg, **kwargs):
+        super().__init__(*arg, **kwargs)
+        self.bp_pe_manager = BrokerageProductPayoutEventManager(*arg, **kwargs)
 
     def get_by_ext_ref_id(self, ext_ref_id: str) -> BusinessPayoutEvent:
         res = self.pg_config.execute_sql_query(
@@ -1145,7 +1101,7 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
                     amount=USDCent(item["issue_amount"]),
                     ext_ref_id=transaction_id,
                     product_id=product.uuid,
-                    cashout_method_uuid=self.CASHOUT_METHOD_UUID,
+                    cashout_method_uuid=self.bp_pe_manager.CASHOUT_METHOD_UUID,
                     debit_account_uuid=wallet_lookup[product_id],
                 )
             )
@@ -1159,12 +1115,10 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
         #   from the BrokerageProductPayoutEvents
         for bp_pe in bpe.bp_payouts:
             product = product_lookup[bp_pe.product_id]
-            self._create_tx_bp_payout_from_payout_event(
+            self.bp_pe_manager.create_tx_bp_payout_from_payout_event(
                 thl_ledger_manager=thl_lm,
                 bp_pe=bp_pe,
                 product=product,
-                skip_one_per_day_check=True,
-                skip_wallet_balance_check=True,
             )
 
         self.update_business_payout_event(pk=bpe.id, status=PayoutStatus.COMPLETE)

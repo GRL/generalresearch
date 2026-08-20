@@ -11,6 +11,7 @@ import pandas as pd
 import pytest
 
 from generalresearch import pg_helper
+from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
 from generalresearch.currency import USDCent
@@ -106,82 +107,43 @@ class TestPayout:
         delete_ledger_db,
         create_main_accounts,
     ):
-        delete_ledger_db()
-        create_main_accounts()
-        from generalresearch.models.thl.ledger import LedgerAccount
+        # create_bp_payout_event does not get called directly. We have tests
+        #  for the ledger methods already
+        pass
 
-        thl_lm.get_account_or_create_bp_wallet(product=product)
-        brokerage_product_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
-
-        with pytest.raises(expected_exception=LedgerTransactionConditionFailedError):
-            # wallet balance failure
-            brokerage_product_payout_event_manager.create_bp_payout_event(
-                thl_ledger_manager=thl_lm,
-                product=product,
-                amount=USDCent(100),
-                skip_wallet_balance_check=False,
-                skip_one_per_day_check=False,
-            )
-
-        # (we don't have a special method for this) Put money in the BP's account
-        amount_cents = 100
-        cash_account: LedgerAccount = thl_lm.get_account_cash()
-        bp_wallet: LedgerAccount = thl_lm.get_account_or_create_bp_wallet(
-            product=product
-        )
-
-        entries = [
-            LedgerEntry(
-                direction=Direction.DEBIT,
-                account_uuid=cash_account.uuid,
-                amount=amount_cents,
-            ),
-            LedgerEntry(
-                direction=Direction.CREDIT,
-                account_uuid=bp_wallet.uuid,
-                amount=amount_cents,
-            ),
-        ]
-
-        lm.create_tx(entries=entries)
-        assert 100 == lm.get_account_balance(account=bp_wallet)
-
-        # Then run it again for $1.00
-        brokerage_product_payout_event_manager.create_bp_payout_event(
-            thl_ledger_manager=thl_lm,
-            product=product,
+    @pytest.fixture
+    def pending_bp_pe(
+        self,
+        thl_web_rw,
+        product,
+        thl_lm: ThlLedgerManager,
+        brokerage_product_payout_event_manager,
+            utc_now
+    ) -> BrokerageProductPayoutEvent:
+        account = thl_lm.get_account_or_create_bp_wallet(product=product)
+        bp_pe = BrokerageProductPayoutEvent(
+            product_id=product.uuid,
             amount=USDCent(100),
-            skip_wallet_balance_check=False,
-            skip_one_per_day_check=False,
+            payout_type=PayoutType.ACH,
+            debit_account_uuid=account.uuid,
+            cashout_method_uuid=brokerage_product_payout_event_manager.CASHOUT_METHOD_UUID,
+            created=utc_now
         )
-        assert 0 == lm.get_account_balance(account=bp_wallet)
-
-        # Run again should without balance check, should still fail due to day check
-        with pytest.raises(LedgerTransactionConditionFailedError):
-            brokerage_product_payout_event_manager.create_bp_payout_event(
-                thl_ledger_manager=thl_lm,
-                product=product,
-                amount=USDCent(100),
-                skip_wallet_balance_check=True,
-                skip_one_per_day_check=False,
-            )
-
-        # And then we can run again skip both checks
-        pe = brokerage_product_payout_event_manager.create_bp_payout_event(
-            thl_ledger_manager=thl_lm,
-            product=product,
-            amount=USDCent(100),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
-        )
-        assert -100 == lm.get_account_balance(account=bp_wallet)
-
-        pe = brokerage_product_payout_event_manager.get_by_uuid(pe.uuid)
-        txs = lm.get_tx_filtered_by_metadata(
-            metadata_key="event_payout", metadata_value=pe.uuid
-        )
-
-        assert 1 == len(txs)
+        params = bp_pe.model_dump_postgres()
+        # This shouldn't exist. For testing only, so no supplier_payout
+        params['supplier_payout_id'] = None
+        thl_web_rw.execute_write("""
+        INSERT INTO event_payout (
+            uuid, debit_account_uuid, created, cashout_method_uuid,
+            amount, status, ext_ref_id, payout_type, order_data,
+            request_data, supplier_payout_id
+        ) VALUES (
+            %(uuid)s, %(debit_account_uuid)s, %(created)s, %(cashout_method_uuid)s,
+            %(amount)s, %(status)s, %(ext_ref_id)s, %(payout_type)s, %(order_data)s,
+            %(request_data)s, %(supplier_payout_id)s
+        );
+        """, params)
+        return bp_pe
 
     def test_create_bp_payout_quick_dupe(
         self,
@@ -193,26 +155,22 @@ class TestPayout:
         lm,
         utc_now,
         create_main_accounts,
+        pending_bp_pe,
     ):
         thl_lm.get_account_or_create_bp_wallet(product=product)
-        brokerage_product_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
 
-        brokerage_product_payout_event_manager.create_bp_payout_event(
+        brokerage_product_payout_event_manager.create_tx_bp_payout_from_payout_event(
             thl_ledger_manager=thl_lm,
+            bp_pe=pending_bp_pe,
             product=product,
-            amount=USDCent(100),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
             created=utc_now,
         )
 
         with pytest.raises(ValueError) as cm:
-            brokerage_product_payout_event_manager.create_bp_payout_event(
+            brokerage_product_payout_event_manager.create_tx_bp_payout_from_payout_event(
                 thl_ledger_manager=thl_lm,
                 product=product,
-                amount=USDCent(100),
-                skip_wallet_balance_check=True,
-                skip_one_per_day_check=True,
+                bp_pe=pending_bp_pe,
                 created=utc_now,
             )
         assert "Payout event already exists!" in str(cm.value)
@@ -297,44 +255,7 @@ class TestPayout:
 
 class TestPayoutEventManager:
 
-    def test_set_account_lookup_table(
-        self, payout_event_manager, thl_redis_config, thl_lm, delete_ledger_db
-    ):
-        delete_ledger_db()
-        rc = thl_redis_config.create_redis_client()
-        rc.delete("pem:account_to_product")
-        rc.delete("pem:product_to_account")
-        N = 5
-
-        for idx in range(N):
-            thl_lm.get_account_or_create_bp_wallet_by_uuid(product_uuid=uuid4().hex)
-
-        res = rc.hgetall(name="pem:account_to_product")
-        assert len(res.items()) == 0
-
-        res = rc.hgetall(name="pem:product_to_account")
-        assert len(res.items()) == 0
-
-        payout_event_manager.set_account_lookup_table(
-            thl_lm=thl_lm,
-        )
-
-        res = rc.hgetall(name="pem:account_to_product")
-        assert len(res.items()) == N
-
-        res = rc.hgetall(name="pem:product_to_account")
-        assert len(res.items()) == N
-
-        thl_lm.get_account_or_create_bp_wallet_by_uuid(product_uuid=uuid4().hex)
-        payout_event_manager.set_account_lookup_table(
-            thl_lm=thl_lm,
-        )
-
-        res = rc.hgetall(name="pem:account_to_product")
-        assert len(res.items()) == N + 1
-
-        res = rc.hgetall(name="pem:product_to_account")
-        assert len(res.items()) == N + 1
+    pass
 
 
 class TestBusinessPayoutEventManager:
@@ -368,7 +289,6 @@ class TestBusinessPayoutEventManager:
 
         p1: Product = product_factory(business=business)
         thl_lm.get_account_or_create_bp_wallet(product=p1)
-        business_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
 
         ach_id1 = uuid4().hex
         ach_id2 = uuid4().hex
@@ -406,8 +326,6 @@ class TestBusinessPayoutEventManager:
         )
 
         business.prebuild_payouts(
-            thl_pg_config=thl_web_rr,
-            thl_lm=thl_lm,
             bpem=business_payout_event_manager,
         )
 
@@ -1213,8 +1131,6 @@ class TestBusinessPayoutEventManager:
             pop_ledger=pop_ledger_merge,
         )
         business.prebuild_payouts(
-            thl_pg_config=thl_web_rr,
-            thl_lm=thl_lm,
             bpem=business_payout_event_manager,
         )
 
