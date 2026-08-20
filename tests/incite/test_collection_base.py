@@ -1,5 +1,6 @@
-from datetime import datetime, timezone, timedelta
-from os.path import exists as pexists, join as pjoin
+from datetime import datetime, timedelta, timezone
+from os.path import exists as pexists
+from os.path import join as pjoin
 from pathlib import Path
 from uuid import uuid4
 
@@ -244,6 +245,7 @@ class TestCollectionBaseMethodsCleanup:
 
 
 class TestCollectionBaseMethodsCleanup:
+
     @pytest.mark.skip
     def test_cleanup_partials(self, mnt_filepath):
         instance = CollectionBase(archive_path=mnt_filepath.data_src)

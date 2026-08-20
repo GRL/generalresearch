@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 
 import pytest
 import pytz
@@ -12,7 +13,7 @@ logger = logging.getLogger()
 
 
 class AwareDatetimeISOModel(BaseModel):
-    dt_optional: Optional[AwareDatetimeISO] = Field(default=None)
+    dt_optional: AwareDatetimeISO | None = Field(default=None)
     dt: AwareDatetimeISO
 
 

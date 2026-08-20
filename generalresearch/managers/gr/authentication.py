@@ -5,7 +5,6 @@ import logging
 import os
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
 
 from psycopg import sql
 from pydantic import AnyHttpUrl, PositiveInt
@@ -22,18 +21,6 @@ if TYPE_CHECKING:
 
 
 class GRUserManager(PostgresManagerWithRedis):
-
-    def create_dummy(
-        self,
-        sub: str | None = None,
-        is_superuser: bool = False,
-    ) -> GRUser:
-        sub = sub or f"{uuid4().hex}-{uuid4().hex}"
-
-        return self.create(
-            sub=sub,
-            is_superuser=is_superuser,
-        )
 
     def create(
         self,
@@ -71,18 +58,17 @@ class GRUserManager(PostgresManagerWithRedis):
     def get_by_id(self, gr_user_id: int) -> GRUser | None:
         from generalresearch.models.gr.authentication import GRUser
 
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(
-                    query="""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(
+                query="""
                     SELECT u.* 
                     FROM gr_user AS u
                     WHERE u.id = %s
                     LIMIT 1;
                 """,
-                    params=(gr_user_id,),
-                )
-                res = c.fetchone()
+                params=(gr_user_id,),
+            )
+            res = c.fetchone()
 
         if res is None:
             raise ValueError("GRUser not found")
@@ -99,18 +85,17 @@ class GRUserManager(PostgresManagerWithRedis):
     def get_by_sub(self, sub: str, raises=True) -> GRUser | None:
         from generalresearch.models.gr.authentication import GRUser
 
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(
-                    query="""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(
+                query="""
                     SELECT u.* 
                     FROM gr_user AS u
                     WHERE u.sub = %s
                     LIMIT 1;
                 """,
-                    params=(sub,),
-                )
-                res = c.fetchone()
+                params=(sub,),
+            )
+            res = c.fetchone()
 
         if raises and res is None:
             raise ValueError("GRUser not found")
@@ -134,32 +119,30 @@ class GRUserManager(PostgresManagerWithRedis):
     def get_all(self) -> list[GRUser]:
         from generalresearch.models.gr.authentication import GRUser
 
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query="""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query="""
                         SELECT u.* 
                         FROM gr_user AS u
                     """)
-                res = c.fetchall()
+            res = c.fetchall()
 
         return [GRUser.from_postgresql(i) for i in res]
 
     def get_by_team(self, team_id: PositiveInt) -> list[GRUser]:
         from generalresearch.models.gr.authentication import GRUser
 
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(
-                    query="""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(
+                query="""
                     SELECT gru.*
                     FROM common_membership AS membership
                     INNER JOIN gr_user AS gru 
                         ON gru.id = membership.user_id
                     WHERE membership.team_id = %s
                 """,
-                    params=(team_id,),
-                )
-                res = c.fetchall()
+                params=(team_id,),
+            )
+            res = c.fetchall()
 
         for item in res:
             for k, v in item.items():
@@ -176,7 +159,7 @@ class GRUserManager(PostgresManagerWithRedis):
             return None
 
         res = thl_pg_config.execute_sql_query(
-            query=f"""
+            query="""
                 SELECT bp.id
                 FROM userprofile_brokerageproduct AS bp
                 WHERE bp.business_id = ANY(%s)
@@ -240,16 +223,15 @@ class GRTokenManager(PostgresManager):
             return gr_token
 
         # API Key
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                query = sql.SQL("""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            query = sql.SQL("""
                     SELECT grk.* 
                     FROM gr_token AS grk
                     WHERE grk.key = %s
                     LIMIT 1
                 """)
-                c.execute(query=query, params=(api_key,))
-                res = c.fetchall()
+            c.execute(query=query, params=(api_key,))
+            res = c.fetchall()
 
         if len(res) == 0:
             raise Exception(f"No GRUser with token of '{api_key}'")
@@ -295,9 +277,8 @@ class GRTokenManager(PostgresManager):
         # therefore, this will only return 0 or 1 GRTokens
         from generalresearch.models.gr.authentication import GRToken
 
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                query = sql.SQL("""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            query = sql.SQL("""
                     SELECT grt.*
                     FROM gr_token AS grt
                     LEFT JOIN gr_user AS u 
@@ -306,9 +287,9 @@ class GRTokenManager(PostgresManager):
                     LIMIT 1;
                 """)
 
-                c.execute(query=query, params=(user_id,))
+            c.execute(query=query, params=(user_id,))
 
-                result = c.fetchall()
+            result = c.fetchall()
 
         if not result:
             return None

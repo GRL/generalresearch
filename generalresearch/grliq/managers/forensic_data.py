@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
-from typing import Any, Collection, Dict, List, Optional, Tuple
-from uuid import uuid4
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Any, Collection
 
 from psycopg import sql
 from pydantic import NonNegativeInt, PositiveInt
 
-from generalresearch.grliq.managers import DUMMY_GRLIQ_DATA
 from generalresearch.grliq.models.events import PointerMove, TimingData
 from generalresearch.grliq.models.forensic_data import GrlIqData
 from generalresearch.grliq.models.forensic_result import (
@@ -23,58 +23,13 @@ class GrlIqDataManager:
     def __init__(self, postgres_config: PostgresConfig):
         self.postgres_config = postgres_config
 
-    def create_dummy(
-        self,
-        is_attempt_allowed: bool = True,
-        product_id: Optional[str] = None,
-        product_user_id: Optional[str] = None,
-        uuid: Optional[str] = None,
-        mid: Optional[str] = None,
-        created_at: Optional[datetime] = None,
-    ) -> GrlIqData:
-        """
-        Creates a dummy record in the db with a GrlIqData (data), GrlIqCheckerResults (result_data),
-            and GrlIqForensicCategoryResult (category_results)
-        :param is_attempt_allowed: Whether the attempt is allowed.
-        :param product_id: product_id of user
-        :param product_user_id:  product_user_id of user
-        :param uuid: uuid for the grliq data record
-        :param mid: the thl_session:uuid / mid for the attempt.
-        :return:
-        """
-        import copy
-
-        res: GrlIqData = copy.deepcopy(DUMMY_GRLIQ_DATA[int(is_attempt_allowed)])
-
-        product_id = product_id or uuid4().hex
-        product_user_id = product_user_id or uuid4().hex
-        uuid = uuid or uuid4().hex
-        mid = mid or uuid4().hex
-        created_at = created_at or datetime.now(tz=timezone.utc)
-
-        res["data"].product_id = product_id
-        res["data"].product_user_id = product_user_id
-        res["data"].uuid = uuid
-        res["data"].mid = mid
-        res["data"].created_at = created_at
-        res["result_data"].uuid = uuid
-        res["category_result"].uuid = uuid
-
-        return self.create(
-            iq_data=res["data"],
-            result_data=res["result_data"],
-            category_result=res["category_result"],
-            fraud_score=res["category_result"].fraud_score,
-            is_attempt_allowed=res["category_result"].is_attempt_allowed(),
-        )
-
     def create(
         self,
         iq_data: GrlIqData,
-        result_data: Optional[GrlIqCheckerResults] = None,
-        category_result: Optional[GrlIqForensicCategoryResult] = None,
-        fraud_score: Optional[int] = None,
-        is_attempt_allowed: Optional[bool] = None,
+        result_data: GrlIqCheckerResults | None = None,
+        category_result: GrlIqForensicCategoryResult | None = None,
+        fraud_score: int | None = None,
+        is_attempt_allowed: bool | None = None,
     ) -> GrlIqData:
 
         data = iq_data.model_dump_sql(exclude={"events", "mouse_events", "timing_data"})
@@ -95,8 +50,7 @@ class GrlIqDataManager:
         data["fraud_score"] = fraud_score
         data["is_attempt_allowed"] = is_attempt_allowed
 
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
          INSERT INTO grliq_forensicdata
             (uuid, session_uuid, created_at, product_id, product_user_id,
             country_iso, client_ip, ua_browser_family, ua_browser_version,
@@ -112,14 +66,12 @@ class GrlIqDataManager:
             %(fingerprint)s, %(fraud_score)s, %(is_attempt_allowed)s,
             %(result_data)s, %(category_result)s)
          RETURNING id
-         """
-        )
+         """)
 
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query, data)
-                pk = c.fetchone()["id"]  # type: ignore
-                conn.commit()
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, data)
+            pk = c.fetchone()["id"]  # type: ignore
+            conn.commit()
 
         iq_data.id = pk
 
@@ -130,9 +82,9 @@ class GrlIqDataManager:
         uuid: UUIDStr,
         result_data: GrlIqCheckerResults,
         category_result: GrlIqForensicCategoryResult,
-        fingerprint: Optional[str] = None,
-        fraud_score: Optional[int] = None,
-        is_attempt_allowed: Optional[bool] = None,
+        fingerprint: str | None = None,
+        fraud_score: int | None = None,
+        is_attempt_allowed: bool | None = None,
     ) -> None:
         data = {"uuid": uuid}
         data["result_data"] = result_data.model_dump_json(exclude_none=True)
@@ -141,8 +93,7 @@ class GrlIqDataManager:
         data["fraud_score"] = fraud_score
         data["is_attempt_allowed"] = is_attempt_allowed
 
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
           UPDATE grliq_forensicdata
           SET result_data = %(result_data)s,
           category_result = %(category_result)s,
@@ -150,8 +101,7 @@ class GrlIqDataManager:
           fraud_score = %(fraud_score)s,
           is_attempt_allowed = %(is_attempt_allowed)s
           WHERE uuid = %(uuid)s
-          """
-        )
+          """)
         with self.postgres_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query, data)
@@ -161,21 +111,17 @@ class GrlIqDataManager:
                     )
                 conn.commit()
 
-        return None
-
     def update_fingerprint(self, iq_data: GrlIqData) -> None:
         # We should only run this if we modified the fingerprint algorithm
         if "fingerprint" in iq_data.__dict__:
             # make sure it's not cached
             del iq_data.__dict__["fingerprint"]
         data = {"uuid": iq_data.uuid, "fingerprint": iq_data.fingerprint}
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
          UPDATE grliq_forensicdata 
          SET fingerprint = %(fingerprint)s
          WHERE uuid = %(uuid)s
-         """
-        )
+         """)
         with self.postgres_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query, data)
@@ -189,13 +135,11 @@ class GrlIqDataManager:
         # We should only run this if we structured new fields and want to
         # back-populate them in the db
         data = {"id": iq_data.id, "data": iq_data.model_dump_sql()["data"]}
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
          UPDATE grliq_forensicdata 
          SET data = %(data)s
          WHERE id = %(id)s
-         """
-        )
+         """)
         with self.postgres_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query, data)
@@ -207,7 +151,7 @@ class GrlIqDataManager:
 
     def get_data_if_exists(
         self, forensic_uuid: UUIDStr, load_events: bool = False
-    ) -> Optional[GrlIqData]:
+    ) -> GrlIqData | None:
         try:
             return self.get_data(forensic_uuid=forensic_uuid, load_events=load_events)
         except AssertionError:
@@ -215,8 +159,8 @@ class GrlIqDataManager:
 
     def get_data(
         self,
-        forensic_id: Optional[PositiveInt] = None,
-        forensic_uuid: Optional[UUIDStr] = None,
+        forensic_id: PositiveInt | None = None,
+        forensic_uuid: UUIDStr | None = None,
         load_events: bool = False,
     ) -> GrlIqData:
         from generalresearch.grliq.managers.forensic_events import (
@@ -230,8 +174,7 @@ class GrlIqDataManager:
             # forensic items' session, 2) event_start is closest to the
             # created_at for this forensic item, and within 1 minute.
 
-            query = sql.SQL(
-                """
+            query = sql.SQL("""
                 SELECT d.id, d.data, e.events, e.mouse_events, t.timing_data
                 FROM grliq_forensicdata d
                 -- Closest event_start within 1 minute
@@ -251,16 +194,13 @@ class GrlIqDataManager:
                     ORDER BY e2.id DESC
                     LIMIT 1
                 ) t ON true
-            """
-            )
+            """)
 
         else:
-            query = sql.SQL(
-                """
+            query = sql.SQL("""
                 SELECT d.id, d.data
                 FROM grliq_forensicdata d
-            """
-            )
+            """)
 
         if forensic_id is not None:
             column_name = "id"
@@ -275,10 +215,9 @@ class GrlIqDataManager:
         limit_clause = sql.SQL(" LIMIT 1")
         q1 = sql.Composed([query, where_clause, limit_clause])
 
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query=q1, params=(param_value,))
-                x = c.fetchone()
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query=q1, params=(param_value,))
+            x = c.fetchone()
 
         assert x is not None, f"GrlIqDataManager.get_data({forensic_uuid=}) not found"
 
@@ -316,10 +255,10 @@ class GrlIqDataManager:
 
     def filter_timing_data(
         self,
-        created_between: Tuple[datetime, datetime],
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
+        created_between: tuple[datetime, datetime],
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[dict[str, Any]]:
 
         # TODO! created_between used to be marked as Optional, but it would
         #   break the query. Evaluate it's use to determine best behavior.
@@ -349,10 +288,9 @@ class GrlIqDataManager:
         {limit_str} {offset_str};
         """
 
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query, params)
-                res: List[Dict[str, Any]] = c.fetchall()  # type: ignore
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, params)
+            res: list[dict[str, Any]] = c.fetchall()  # type: ignore
 
         for x in res:
             x["timing_data"] = TimingData.model_validate(x["timing_data"])
@@ -369,47 +307,44 @@ class GrlIqDataManager:
         # This is used for filtering for other forensic posts with a certain
         #   fingerprint, in this product_id, but NOT for this user.
 
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
         SELECT COUNT(DISTINCT product_user_id) as user_count
         FROM grliq_forensicdata d
         WHERE product_id = %(product_id)s
             AND fingerprint = %(fingerprint)s
             AND product_user_id != %(product_user_id)s
             AND created_at > NOW() - INTERVAL '30 DAYS'
-        """
-        )
+        """)
         params = {
             "product_id": product_id,
             "fingerprint": fingerprint,
             "product_user_id": product_user_id_not,
         }
         # print(query)
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query, params)
-                user_count = c.fetchone()["user_count"]  # type: ignore
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, params)
+            user_count = c.fetchone()["user_count"]  # type: ignore
 
         return int(user_count)
 
     def filter_data(
         self,
-        session_uuid: Optional[str] = None,
-        fingerprint: Optional[str] = None,
-        fingerprints: Optional[Collection[str]] = None,
-        product_id: Optional[str] = None,
-        product_ids: Optional[Collection[str]] = None,
-        uuids: Optional[Collection[str]] = None,
-        created_after: Optional[datetime] = None,
-        created_before: Optional[datetime] = None,
-        created_between: Optional[Tuple[datetime, datetime]] = None,
-        user: Optional[User] = None,
-        users: Optional[Collection[User]] = None,
-        phase: Optional[Phase] = None,
+        session_uuid: str | None = None,
+        fingerprint: str | None = None,
+        fingerprints: Collection[str] | None = None,
+        product_id: str | None = None,
+        product_ids: Collection[str] | None = None,
+        uuids: Collection[str] | None = None,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+        created_between: tuple[datetime, datetime] | None = None,
+        user: User | None = None,
+        users: Collection[User] | None = None,
+        phase: Phase | None = None,
         order_by: str = "created_at DESC",
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-    ) -> List[GrlIqData]:
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[GrlIqData]:
 
         res = self.filter(
             select_str="d.id, d.data",
@@ -433,18 +368,18 @@ class GrlIqDataManager:
 
     def filter_results(
         self,
-        session_uuid: Optional[str] = None,
-        uuid: Optional[str] = None,
-        product_ids: Optional[Collection[str]] = None,
-        product_id: Optional[str] = None,
-        created_after: Optional[datetime] = None,
-        created_before: Optional[datetime] = None,
-        created_between: Optional[Tuple[datetime, datetime]] = None,
-        user: Optional[User] = None,
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
+        session_uuid: str | None = None,
+        uuid: str | None = None,
+        product_ids: Collection[str] | None = None,
+        product_id: str | None = None,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+        created_between: tuple[datetime, datetime] | None = None,
+        user: User | None = None,
+        limit: int | None = None,
+        offset: int | None = None,
         order_by: str = "created_at DESC",
-    ) -> List[GrlIqCheckerResults]:
+    ) -> list[GrlIqCheckerResults]:
         select_str = (
             "id, session_uuid, product_id, product_user_id, created_at, result_data"
         )
@@ -472,18 +407,18 @@ class GrlIqDataManager:
 
     def filter_category_results(
         self,
-        session_uuid: Optional[str] = None,
-        uuid: Optional[str] = None,
-        product_id: Optional[str] = None,
-        product_ids: Optional[Collection[str]] = None,
-        created_after: Optional[datetime] = None,
-        created_before: Optional[datetime] = None,
-        created_between: Optional[Tuple[datetime, datetime]] = None,
-        user: Optional[User] = None,
+        session_uuid: str | None = None,
+        uuid: str | None = None,
+        product_id: str | None = None,
+        product_ids: Collection[str] | None = None,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+        created_between: tuple[datetime, datetime] | None = None,
+        user: User | None = None,
         order_by: str = "created_at DESC",
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-    ) -> List[GrlIqForensicCategoryResult]:
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[GrlIqForensicCategoryResult]:
         select_str = (
             "id, session_uuid, product_id, product_user_id, created_at, category_result"
         )
@@ -506,22 +441,22 @@ class GrlIqDataManager:
 
     @staticmethod
     def make_filter_str(
-        session_uuid: Optional[str] = None,
-        fingerprint: Optional[str] = None,
-        fingerprints: Optional[Collection[str]] = None,
-        uuids: Optional[Collection[str]] = None,
-        product_id: Optional[str] = None,
-        product_ids: Optional[Collection[str]] = None,
-        created_after: Optional[datetime] = None,
-        created_before: Optional[datetime] = None,
-        created_between: Optional[Tuple[datetime, datetime]] = None,
-        user: Optional[User] = None,
-        users: Optional[Collection[User]] = None,
-        phase: Optional[Phase] = None,
-    ) -> Tuple[str, Dict[str, Any]]:
+        session_uuid: str | None = None,
+        fingerprint: str | None = None,
+        fingerprints: Collection[str] | None = None,
+        uuids: Collection[str] | None = None,
+        product_id: str | None = None,
+        product_ids: Collection[str] | None = None,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+        created_between: tuple[datetime, datetime] | None = None,
+        user: User | None = None,
+        users: Collection[User] | None = None,
+        phase: Phase | None = None,
+    ) -> tuple[str, dict[str, Any]]:
 
         filters = []
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
 
         if session_uuid:
             params["session_uuid"] = session_uuid
@@ -614,19 +549,20 @@ class GrlIqDataManager:
 
     def filter_count(
         self,
-        session_uuid: Optional[str] = None,
-        fingerprint: Optional[str] = None,
-        fingerprints: Optional[Collection[str]] = None,
-        uuids: Optional[Collection[str]] = None,
-        product_id: Optional[str] = None,
-        product_ids: Optional[Collection[str]] = None,
-        created_after: Optional[datetime] = None,
-        created_before: Optional[datetime] = None,
-        created_between: Optional[Tuple[datetime, datetime]] = None,
-        user: Optional[User] = None,
-        users: Optional[Collection[User]] = None,
-        phase: Optional[Phase] = None,
+        session_uuid: str | None = None,
+        fingerprint: str | None = None,
+        fingerprints: Collection[str] | None = None,
+        uuids: Collection[str] | None = None,
+        product_id: str | None = None,
+        product_ids: Collection[str] | None = None,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+        created_between: tuple[datetime, datetime] | None = None,
+        user: User | None = None,
+        users: Collection[User] | None = None,
+        phase: Phase | None = None,
     ) -> NonNegativeInt:
+
         filter_str, params = self.make_filter_str(
             session_uuid=session_uuid,
             fingerprint=fingerprint,
@@ -682,36 +618,35 @@ class GrlIqDataManager:
         FROM grliq_forensicdata d
         {filter_str}
         """
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query=query, params=params)
-                res = c.fetchone()
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query=query, params=params)
+            res = c.fetchone()
         return int(res["c"])
 
     def filter(
         self,
         select_str: str,
-        session_uuid: Optional[str] = None,
-        fingerprint: Optional[str] = None,
-        fingerprints: Optional[Collection[str]] = None,
-        uuids: Optional[Collection[str]] = None,
-        product_id: Optional[str] = None,
-        product_ids: Optional[Collection[str]] = None,
-        created_after: Optional[datetime] = None,
-        created_before: Optional[datetime] = None,
-        created_between: Optional[Tuple[datetime, datetime]] = None,
-        user: Optional[User] = None,
-        users: Optional[Collection[User]] = None,
-        phase: Optional[Phase] = None,
+        session_uuid: str | None = None,
+        fingerprint: str | None = None,
+        fingerprints: Collection[str] | None = None,
+        uuids: Collection[str] | None = None,
+        product_id: str | None = None,
+        product_ids: Collection[str] | None = None,
+        created_after: datetime | None = None,
+        created_before: datetime | None = None,
+        created_between: tuple[datetime, datetime] | None = None,
+        user: User | None = None,
+        users: Collection[User] | None = None,
+        phase: Phase | None = None,
         order_by: str = "created_at DESC",
-        limit: Optional[int] = None,
-        offset: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
+        limit: int | None = None,
+        offset: int | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Accepts lots of optional filters.
         """
         if not limit:
-            limit = 5000
+            limit = 5_000
 
         if not offset:
             offset = 0
@@ -746,10 +681,9 @@ class GrlIqDataManager:
             OFFSET {offset}
         """
         # print(query)
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query=query, params=params)
-                res: List[Dict[str, Any]] = c.fetchall()  # type: ignore
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query=query, params=params)
+            res: list[dict[str, Any]] = c.fetchall()  # type: ignore
 
         for x in res:
 
@@ -777,7 +711,7 @@ class GrlIqDataManager:
         return res
 
     @staticmethod
-    def temporary_add_missing_fields(d: Dict[str, Any]) -> None:
+    def temporary_add_missing_fields(d: dict[str, Any]) -> None:
         # The following fields were added recently, and so we must give them
         #   a value or old db rows won't be parseable. Once logs are backfilled
         #   then this can be removed

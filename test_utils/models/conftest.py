@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from random import choice as randchoice
 from random import randint
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Callable
 from uuid import uuid4
 
 import pytest
+from fastapi import Request
 from pydantic import AwareDatetime, PositiveInt
 
 from generalresearch.models import Source
@@ -84,26 +87,27 @@ def user(
 
 @pytest.fixture
 def user_with_wallet(
-    request, user_factory: Callable[..., "User"], product_user_wallet_yes: "Product"
-) -> "User":
+    user_factory: Callable[..., User],
+    product_user_wallet_yes: Product,
+) -> User:
     # A user on a product with user wallet enabled, but they have no money
     return user_factory(product=product_user_wallet_yes)
 
 
 @pytest.fixture
 def user_with_wallet_amt(
-    request, user_factory: Callable[..., "User"], product_amt_true: "Product"
-) -> "User":
+    user_factory: Callable[..., User], product_amt_true: Product
+) -> User:
     # A user on a product with user wallet enabled, on AMT, but they have no money
     return user_factory(product=product_amt_true)
 
 
 @pytest.fixture(scope="function")
 def user_factory(
-    user_manager: "UserManager", thl_web_rr: PostgresConfig
-) -> Callable[..., "User"]:
+    user_manager: UserManager, thl_web_rr: PostgresConfig
+) -> Callable[..., User]:
 
-    def _inner(product: "Product", created: Optional[datetime] = None) -> "User":
+    def _inner(product: Product, created: datetime | None = None) -> User:
         u = user_manager.create_dummy(product=product, created=created)
         u.prefetch_product(pg_config=thl_web_rr)
 
@@ -113,11 +117,11 @@ def user_factory(
 
 
 @pytest.fixture
-def wall_factory(wall_manager: "WallManager") -> Callable[..., "Wall"]:
+def wall_factory(wall_manager: WallManager) -> Callable[..., Wall]:
 
     def _inner(
-        session: "Session", wall_status: "Status", req_cpi: Optional[Decimal] = None
-    ) -> "Wall":
+        session: Session, wall_status: Status, req_cpi: Decimal | None = None
+    ) -> Wall:
 
         assert session.started <= datetime.now(
             tz=timezone.utc
@@ -153,9 +157,7 @@ def wall_factory(wall_manager: "WallManager") -> Callable[..., "Wall"]:
 
 
 @pytest.fixture
-def wall(
-    session: "Session", user: "User", wall_manager: "WallManager"
-) -> Optional["Wall"]:
+def wall(session: Session, user: User, wall_manager: WallManager) -> Wall | None:
     from generalresearch.models.thl.task_status import StatusCode1
 
     wall = wall_manager.create_dummy(session_id=session.id, user_id=user.user_id)
@@ -170,20 +172,20 @@ def wall(
 
 @pytest.fixture
 def session_factory(
-    wall_factory: Callable[..., "Wall"],
-    session_manager: "SessionManager",
-    wall_manager: "WallManager",
+    wall_factory: Callable[..., Wall],
+    session_manager: SessionManager,
+    wall_manager: WallManager,
     utc_hour_ago: datetime,
-) -> Callable[..., "Session"]:
+) -> Callable[..., Session]:
     from generalresearch.models.thl.session import Source
 
     def _inner(
-        user: "User",
+        user: User,
         # Wall details
         wall_count: int = 5,
         wall_req_cpi: Decimal = Decimal(".50"),
-        wall_req_cpis: Optional[List[Decimal]] = None,
-        wall_statuses: Optional[List[Status]] = None,
+        wall_req_cpis: list[Decimal] | None = None,
+        wall_statuses: list[Status] | None = None,
         wall_source: Source = Source.TESTING,
         # Session details
         final_status: Status = Status.COMPLETE,
@@ -236,24 +238,24 @@ def session_factory(
 
 @pytest.fixture(scope="function")
 def finished_session_factory(
-    session_factory: Callable[..., "Session"],
-    session_manager: "SessionManager",
+    session_factory: Callable[..., Session],
+    session_manager: SessionManager,
     utc_hour_ago: datetime,
-) -> Callable[..., "Session"]:
+) -> Callable[..., Session]:
     from generalresearch.models.thl.session import Source
 
     def _inner(
-        user: "User",
+        user: User,
         # Wall details
         wall_count: int = 5,
         wall_req_cpi: Decimal = Decimal(".50"),
-        wall_req_cpis: Optional[List[Decimal]] = None,
-        wall_statuses: Optional[List[Status]] = None,
+        wall_req_cpis: list[Decimal] | None = None,
+        wall_statuses: list[Status] | None = None,
         wall_source: Source = Source.TESTING,
         # Session details
         final_status: Status = Status.COMPLETE,
         started: datetime = utc_hour_ago,
-    ) -> "Session":
+    ) -> Session:
         s: Session = session_factory(
             user=user,
             wall_count=wall_count,
@@ -281,9 +283,8 @@ def finished_session_factory(
 
 @pytest.fixture
 def session(
-    user: "User", session_manager: "SessionManager", wall_manager: "WallManager"
-) -> "Session":
-    from generalresearch.models.thl.session import Session, Wall
+    user: User, session_manager: SessionManager, wall_manager: WallManager
+) -> Session:
 
     session: Session = session_manager.create_dummy(user=user, country_iso="us")
     wall: Wall = wall_manager.create_dummy(
@@ -297,7 +298,7 @@ def session(
 
 
 @pytest.fixture
-def product(request, product_manager: "ProductManager") -> "Product":
+def product(request: Request, product_manager: ProductManager) -> Product:
 
     team = getattr(request, "team", None)
     business = getattr(request, "business", None)
@@ -309,13 +310,13 @@ def product(request, product_manager: "ProductManager") -> "Product":
 
 
 @pytest.fixture
-def product_factory(product_manager: "ProductManager") -> Callable[..., "Product"]:
+def product_factory(product_manager: ProductManager) -> Callable[..., Product]:
 
     def _inner(
-        team: Optional["Team"] = None,
-        business: Optional["Business"] = None,
+        team: Team | None = None,
+        business: Business | None = None,
         commission_pct: Decimal = Decimal("0.05"),
-    ) -> "Product":
+    ) -> Product:
         return product_manager.create_dummy(
             team_id=team.uuid if team else None,
             business_id=business.uuid if business else None,
@@ -326,7 +327,7 @@ def product_factory(product_manager: "ProductManager") -> Callable[..., "Product
 
 
 @pytest.fixture
-def payout_config(request) -> "PayoutConfig":
+def payout_config(request: Request) -> PayoutConfig:
     from generalresearch.models.thl.product import (
         PayoutConfig,
         PayoutTransformation,
@@ -348,8 +349,8 @@ def payout_config(request) -> "PayoutConfig":
 
 @pytest.fixture
 def product_user_wallet_yes(
-    payout_config: "PayoutConfig", product_manager: "ProductManager"
-) -> "Product":
+    payout_config: PayoutConfig, product_manager: ProductManager
+) -> Product:
     from generalresearch.models.thl.product import UserWalletConfig
 
     return product_manager.create_dummy(
@@ -358,7 +359,7 @@ def product_user_wallet_yes(
 
 
 @pytest.fixture
-def product_user_wallet_no(product_manager: "ProductManager") -> "Product":
+def product_user_wallet_no(product_manager: ProductManager) -> Product:
     from generalresearch.models.thl.product import UserWalletConfig
 
     return product_manager.create_dummy(
@@ -368,8 +369,8 @@ def product_user_wallet_no(product_manager: "ProductManager") -> "Product":
 
 @pytest.fixture
 def product_amt_true(
-    product_manager: "ProductManager", payout_config: "PayoutConfig"
-) -> "Product":
+    product_manager: ProductManager, payout_config: PayoutConfig
+) -> Product:
     from generalresearch.models.thl.product import UserWalletConfig
 
     return product_manager.create_dummy(
@@ -380,19 +381,19 @@ def product_amt_true(
 
 @pytest.fixture
 def bp_payout_factory(
-    thl_lm: "ThlLedgerManager",
-    product_manager: "ProductManager",
-    business_payout_event_manager: "BusinessPayoutEventManager",
-) -> Callable[..., "BrokerageProductPayoutEvent"]:
+    thl_lm: ThlLedgerManager,
+    product_manager: ProductManager,
+    business_payout_event_manager: BusinessPayoutEventManager,
+) -> Callable[..., BrokerageProductPayoutEvent]:
 
     def _inner(
-        product: Optional["Product"] = None,
-        amount: Optional["USDCent"] = None,
-        ext_ref_id: Optional[str] = None,
-        created: Optional[AwareDatetime] = None,
+        product: Product | None = None,
+        amount: USDCent | None = None,
+        ext_ref_id: str | None = None,
+        created: AwareDatetime | None = None,
         skip_wallet_balance_check: bool = False,
         skip_one_per_day_check: bool = False,
-    ) -> "BrokerageProductPayoutEvent":
+    ) -> BrokerageProductPayoutEvent:
         from generalresearch.currency import USDCent
 
         product = product or product_manager.create_dummy()
@@ -415,43 +416,43 @@ def bp_payout_factory(
 
 
 @pytest.fixture
-def business(request, business_manager: "BusinessManager") -> "Business":
+def business(request, business_manager: BusinessManager) -> Business:
     return business_manager.create_dummy()
 
 
 @pytest.fixture
 def business_address(
-    request, business: "Business", business_address_manager: "BusinessAddressManager"
-) -> "BusinessAddress":
+    request, business: "Business", business_address_manager: BusinessAddressManager
+) -> BusinessAddress:
     return business_address_manager.create_dummy(business_id=business.id)
 
 
 @pytest.fixture
 def business_bank_account(
     request,
-    business: "Business",
-    business_bank_account_manager: "BusinessBankAccountManager",
-) -> "BusinessBankAccount":
+    business: Business,
+    business_bank_account_manager: BusinessBankAccountManager,
+) -> BusinessBankAccount:
     return business_bank_account_manager.create_dummy(business_id=business.id)
 
 
 @pytest.fixture
-def team(request, team_manager: "TeamManager") -> "Team":
+def team(request, team_manager: TeamManager) -> Team:
     return team_manager.create_dummy()
 
 
 @pytest.fixture
-def gr_user(gr_um: "GRUserManager") -> "GRUser":
+def gr_user(gr_um: GRUserManager) -> GRUser:
     return gr_um.create_dummy()
 
 
 @pytest.fixture
 def gr_user_cache(
-    gr_user: "GRUser",
+    gr_user: GRUser,
     gr_db: PostgresConfig,
     thl_web_rr: PostgresConfig,
     gr_redis_config: RedisConfig,
-) -> "GRUser":
+) -> GRUser:
     gr_user.set_cache(
         pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
     )
@@ -459,7 +460,7 @@ def gr_user_cache(
 
 
 @pytest.fixture
-def gr_user_factory(gr_um: "GRUserManager") -> Callable[..., "GRUser"]:
+def gr_user_factory(gr_um: GRUserManager) -> Callable[..., GRUser]:
 
     def _inner():
         return gr_um.create_dummy()
@@ -469,8 +470,8 @@ def gr_user_factory(gr_um: "GRUserManager") -> Callable[..., "GRUser"]:
 
 @pytest.fixture()
 def gr_user_token(
-    gr_user: "GRUser", gr_tm: "GRTokenManager", gr_db: PostgresConfig
-) -> "GRToken":
+    gr_user: GRUser, gr_tm: GRTokenManager, gr_db: PostgresConfig
+) -> GRToken:
     gr_tm.create(user_id=gr_user.id)
     gr_user.prefetch_token(pg_config=gr_db)
 
@@ -480,14 +481,14 @@ def gr_user_token(
 
 
 @pytest.fixture()
-def gr_user_token_header(gr_user_token: "GRToken") -> Dict[str, str]:
+def gr_user_token_header(gr_user_token: GRToken) -> dict[str, str]:
     return gr_user_token.auth_header
 
 
 @pytest.fixture(scope="function")
 def membership(
-    request, team: "Team", gr_user: "GRUser", team_manager: "TeamManager"
-) -> "Membership":
+    request, team: Team, gr_user: GRUser, team_manager: TeamManager
+) -> Membership:
     assert team.id, "Team must be saved"
     assert gr_user.id, "GRUser must be saved"
     return team_manager.add_user(team=team, gr_user=gr_user)
@@ -495,14 +496,14 @@ def membership(
 
 @pytest.fixture(scope="function")
 def membership_factory(
-    team: "Team",
-    gr_user: "GRUser",
-    membership_manager: "MembershipManager",
-    team_manager: "TeamManager",
-    gr_um: "GRUserManager",
-) -> Callable[..., "Membership"]:
+    team: Team,
+    gr_user: GRUser,
+    membership_manager: MembershipManager,
+    team_manager: TeamManager,
+    gr_um: GRUserManager,
+) -> Callable[..., Membership]:
 
-    def _inner(**kwargs) -> "Membership":
+    def _inner(**kwargs) -> Membership:
         _team = kwargs.get("team", team_manager.create_dummy())
         _gr_user = kwargs.get("gr_user", gr_um.create_dummy())
 
@@ -512,23 +513,23 @@ def membership_factory(
 
 
 @pytest.fixture
-def audit_log(audit_log_manager: "AuditLogManager", user: "User") -> "AuditLog":
+def audit_log(audit_log_manager: AuditLogManager, user: User) -> AuditLog:
 
     return audit_log_manager.create_dummy(user_id=user.user_id)
 
 
 @pytest.fixture
 def audit_log_factory(
-    audit_log_manager: "AuditLogManager",
-) -> Callable[..., "AuditLog"]:
+    audit_log_manager: AuditLogManager,
+) -> Callable[..., AuditLog]:
 
     def _inner(
         user_id: PositiveInt,
-        level: Optional["AuditLogLevel"] = None,
-        event_type: Optional[str] = None,
-        event_msg: Optional[str] = None,
-        event_value: Optional[float] = None,
-    ) -> "AuditLog":
+        level: AuditLogLevel | None = None,
+        event_type: str | None = None,
+        event_msg: str | None = None,
+        event_value: float | None = None,
+    ) -> AuditLog:
         return audit_log_manager.create_dummy(
             user_id=user_id,
             level=level,
@@ -541,14 +542,14 @@ def audit_log_factory(
 
 
 @pytest.fixture
-def ip_geoname(ip_geoname_manager: "IPGeonameManager") -> "IPGeoname":
+def ip_geoname(ip_geoname_manager: IPGeonameManager) -> IPGeoname:
     return ip_geoname_manager.create_dummy()
 
 
 @pytest.fixture
 def ip_information(
-    ip_information_manager: "IPInformationManager", ip_geoname: "IPGeoname"
-) -> "IPInformation":
+    ip_information_manager: IPInformationManager, ip_geoname: IPGeoname
+) -> IPInformation:
     return ip_information_manager.create_dummy(
         geoname_id=ip_geoname.geoname_id, country_iso=ip_geoname.country_iso
     )
@@ -556,10 +557,10 @@ def ip_information(
 
 @pytest.fixture
 def ip_information_factory(
-    ip_information_manager: "IPInformationManager",
-) -> Callable[..., "IPInformation"]:
+    ip_information_manager: IPInformationManager,
+) -> Callable[..., IPInformation]:
 
-    def _inner(ip: str, geoname: "IPGeoname", **kwargs) -> "IPInformation":
+    def _inner(ip: str, geoname: IPGeoname, **kwargs) -> IPInformation:
         return ip_information_manager.create_dummy(
             ip=ip,
             geoname_id=geoname.geoname_id,
@@ -572,25 +573,25 @@ def ip_information_factory(
 
 @pytest.fixture
 def ip_record(
-    ip_record_manager: "IPRecordManager", ip_geoname: "IPGeoname", user: "User"
-) -> "IPRecord":
+    ip_record_manager: IPRecordManager, ip_geoname: IPGeoname, user: User
+) -> IPRecord:
 
     return ip_record_manager.create_dummy(user_id=user.user_id)
 
 
 @pytest.fixture
 def ip_record_factory(
-    ip_record_manager: "IPRecordManager", user: "User"
-) -> Callable[..., "IPRecord"]:
+    ip_record_manager: IPRecordManager, user: User
+) -> Callable[..., IPRecord]:
 
-    def _inner(user_id: PositiveInt, ip: Optional[str] = None) -> "IPRecord":
+    def _inner(user_id: PositiveInt, ip: str | None = None) -> IPRecord:
         return ip_record_manager.create_dummy(user_id=user_id, ip=ip)
 
     return _inner
 
 
 @pytest.fixture(scope="session")
-def buyer(buyer_manager: "BuyerManager") -> "Buyer":
+def buyer(buyer_manager: BuyerManager) -> Buyer:
     buyer_code = uuid4().hex
     buyer_manager.bulk_get_or_create(source=Source.TESTING, codes=[buyer_code])
     b = Buyer(
@@ -601,7 +602,7 @@ def buyer(buyer_manager: "BuyerManager") -> "Buyer":
 
 
 @pytest.fixture(scope="session")
-def buyer_factory(buyer_manager: "BuyerManager") -> Callable[..., "Buyer"]:
+def buyer_factory(buyer_manager: BuyerManager) -> Callable[..., Buyer]:
 
     def _inner() -> Buyer:
         return buyer_manager.bulk_get_or_create(
@@ -612,7 +613,7 @@ def buyer_factory(buyer_manager: "BuyerManager") -> Callable[..., "Buyer"]:
 
 
 @pytest.fixture(scope="session")
-def survey(survey_manager: "SurveyManager", buyer: "Buyer") -> "Survey":
+def survey(survey_manager: SurveyManager, buyer: Buyer) -> "Survey":
     s = Survey(source=Source.TESTING, survey_id=uuid4().hex, buyer_code=buyer.code)
     survey_manager.create_bulk([s])
     return s
@@ -620,10 +621,10 @@ def survey(survey_manager: "SurveyManager", buyer: "Buyer") -> "Survey":
 
 @pytest.fixture(scope="session")
 def survey_factory(
-    survey_manager: "SurveyManager", buyer_factory: Callable[..., "Buyer"]
-) -> Callable[..., "Survey"]:
+    survey_manager: SurveyManager, buyer_factory: Callable[..., Buyer]
+) -> Callable[..., Survey]:
 
-    def _inner(buyer: Optional[Buyer] = None) -> "Survey":
+    def _inner(buyer: Buyer | None = None) -> Survey:
         buyer = buyer or buyer_factory()
         s = Survey(
             source=Source.TESTING,

@@ -1,4 +1,4 @@
-from typing import Dict
+from __future__ import annotations
 
 import pytz
 from cachetools import LRUCache, cached
@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 
 @cached(cache=LRUCache(maxsize=1))
-def country_timezone() -> Dict[str, ZoneInfo]:
+def country_timezone() -> dict[str, ZoneInfo]:
     """
     Most countries only have 1 tz. I am picking the most populous for the rest.
     A timezone is unique for a country, as in America/New_York and America/Toronto
