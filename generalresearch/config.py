@@ -5,9 +5,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from pydantic import DirectoryPath, Field, MariaDBDsn, PostgresDsn, RedisDsn
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from generalresearch.models.custom_types import DaskDsn, SentryDsn
+from generalresearch.models.custom_types import DaskDsn, InternalHostname, SentryDsn
 
 os.environ["DISABLE_PANDERA_IMPORT_WARNING"] = "True"
 
@@ -39,7 +39,21 @@ def is_debug() -> bool:
 
 
 class GRLBaseSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=(".env.test", ".env.testing", ".env.staging", ".env.prod"),
+        env_file_encoding="utf-8",
+        extra="allow",
+    )
+
     debug: bool = Field(default=True)
+
+    # --- Pytest ---
+
+    testing_postgres: InternalHostname | None = Field(default=None)
+    testing_postgres_user: str | None = Field(default=None)
+    testing_postgres_pass: str | None = Field(default=None)
+
+    # ---
 
     redis: RedisDsn | None = Field(default=None)
     redis_timeout: float = Field(default=0.10)

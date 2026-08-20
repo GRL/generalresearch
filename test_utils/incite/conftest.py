@@ -10,9 +10,6 @@ import pytest
 from _pytest.fixtures import SubRequest
 from faker import Faker
 
-# from test_utils.managers.ledger.conftest import session_with_tx_factory
-# from test_utils.models.conftest import session_factory
-
 if TYPE_CHECKING:
     from generalresearch.config import GRLBaseSettings
     from generalresearch.incite.base import GRLDatasets

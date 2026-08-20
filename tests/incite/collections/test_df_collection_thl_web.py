@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from collections.abc import Generator
 from datetime import datetime
 from itertools import product
 from typing import TYPE_CHECKING
@@ -11,9 +14,13 @@ from generalresearch.incite.collections import DFCollection, DFCollectionType
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
+    from generalresearch.incite.collections import (
+        DFCollectionItem,
+        DFCollectionType,
+    )
 
 
-def combo_object():
+def combo_object() -> Generator[tuple, None, None]:
     for x in product(
         [
             DFCollectionType.USER,
@@ -25,7 +32,7 @@ def combo_object():
         ],
         ["30min", "1H"],
     ):
-        yield x
+        yield from x
 
 
 @pytest.mark.parametrize(
@@ -33,7 +40,9 @@ def combo_object():
 )
 class TestDFCollection_thl_web:
 
-    def test_init(self, df_collection_data_type, offset: str, df_collection):
+    def test_init(
+        self, df_collection_data_type: DFCollectionType, offset: str, df_collection
+    ):
         assert isinstance(df_collection_data_type, DFCollectionType)
         assert isinstance(df_collection, DFCollection)
 
@@ -43,12 +52,12 @@ class TestDFCollection_thl_web:
 )
 class TestDFCollection_thl_web_Properties:
 
-    def test_items(self, df_collection_data_type, offset: str, df_collection):
+    def test_items(self, df_collection):
         assert isinstance(df_collection.items, list)
         for i in df_collection.items:
             assert i._collection == df_collection
 
-    def test__schema(self, df_collection_data_type, offset: str, df_collection):
+    def test__schema(self, df_collection):
         assert isinstance(df_collection._schema, DataFrameSchema)
 
 
@@ -58,16 +67,16 @@ class TestDFCollection_thl_web_Properties:
 class TestDFCollection_thl_web_BaseProperties:
 
     @pytest.mark.skip
-    def test__interval_range(self, df_collection_data_type, offset: str, df_collection):
+    def test__interval_range(self, df_collection):
         pass
 
-    def test_interval_start(self, df_collection_data_type, offset: str, df_collection):
+    def test_interval_start(self, df_collection):
         assert isinstance(df_collection.interval_start, datetime)
 
-    def test_interval_range(self, df_collection_data_type, offset: str, df_collection):
+    def test_interval_range(self, df_collection):
         assert isinstance(df_collection.interval_range, list)
 
-    def test_progress(self, df_collection_data_type, offset: str, df_collection):
+    def test_progress(self, df_collection):
         assert isinstance(df_collection.progress, pd.DataFrame)
 
 

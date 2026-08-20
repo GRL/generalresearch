@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import json
+import re
 from datetime import datetime, timedelta, timezone
-from typing import Any, Literal, Optional, Set
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import (
@@ -14,7 +17,7 @@ from pydantic import (
 )
 from pydantic.functional_serializers import PlainSerializer
 from pydantic.functional_validators import AfterValidator, BeforeValidator
-from pydantic.networks import UrlConstraints, IPvAnyNetwork
+from pydantic.networks import IPvAnyNetwork, UrlConstraints
 from pydantic_core import Url
 from typing_extensions import Annotated
 
@@ -24,6 +27,20 @@ from generalresearch.models import DeviceType, Source
 #     from generalresearch.models import DeviceType
 
 
+HOSTNAME_REGEX = re.compile(
+    r"^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
+)
+
+
+def validate_hostname(v: str) -> str:
+    if not HOSTNAME_REGEX.match(v):
+        raise ValueError("Invalid internal hostname format")
+    return v
+
+
+InternalHostname = Annotated[str, AfterValidator(validate_hostname)]
+
+
 def convert_datetime_to_iso_8601_with_z_suffix(dt: datetime) -> str:
     # By default, datetimes are serialized with the %f optional. We don't
     # want that because then the deserialization fails if the datetime
@@ -31,7 +48,7 @@ def convert_datetime_to_iso_8601_with_z_suffix(dt: datetime) -> str:
     return dt.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
-def convert_str_dt(v: Any) -> Optional[AwareDatetime]:
+def convert_str_dt(v: Any) -> AwareDatetime | None:
     # By default, pydantic is unable to handle tz-aware isoformat str. Attempt
     # to parse a str that was dumped using the iso8601 format with Z suffix.
     if v is not None and type(v) is str:
@@ -158,7 +175,7 @@ from_comma_sep_str = BeforeValidator(
 
 # This is a set of DeviceType, that serializes and de-serializes into a
 # (sorted) comma-separated str
-DeviceTypes = Annotated[Set[DeviceType], enum_to_comma_sep_str, from_comma_sep_str]
+DeviceTypes = Annotated[set[DeviceType], enum_to_comma_sep_str, from_comma_sep_str]
 
 # This is a set of alphanumeric strings, that serializes and de-serializes
 # into a (sorted) comma-separated str
@@ -223,9 +240,9 @@ InfluxDsn = Annotated[
     ),
 ]
 
-AlphaNumStrSet = Annotated[Set[AlphaNumStr], to_comma_sep_str, from_comma_sep_str]
-IPLikeStrSet = Annotated[Set[IPLikeStr], to_comma_sep_str, from_comma_sep_str]
-UUIDStrSet = Annotated[Set[UUIDStr], to_comma_sep_str, from_comma_sep_str]
+AlphaNumStrSet = Annotated[set[AlphaNumStr], to_comma_sep_str, from_comma_sep_str]
+IPLikeStrSet = Annotated[set[IPLikeStr], to_comma_sep_str, from_comma_sep_str]
+UUIDStrSet = Annotated[set[UUIDStr], to_comma_sep_str, from_comma_sep_str]
 
 list_models_to_json_str = PlainSerializer(
     lambda x: json.dumps([y.model_dump(mode="json") for y in x]),
