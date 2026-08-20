@@ -434,27 +434,22 @@ class Business(BaseModel):
 
     def prebuild_payouts(
         self,
-        thl_pg_config: PostgresConfig,
-        thl_lm: ThlLedgerManager,
         bpem: BusinessPayoutEventManager,
     ) -> None:
         LOG.debug(f"Business.prebuild_payouts({self.uuid=})")
 
-        self.prefetch_products(thl_pg_config=thl_pg_config)
-
-        self.payouts = bpem.get_business_payout_events_for_products(
-            product_uuids=self.product_uuids,
+        self.payouts = bpem.get_business_payout_events_for_business(
+            business_uuid=self.uuid,
             order_by=OrderBy.DESC,
         )
-
         self.prebuild_payouts_total()
+        return None
 
     def prebuild_payouts_total(self):
         assert self.payouts is not None
         self.payouts_total = USDCent(sum([po.amount for po in self.payouts]))
         self.payouts_total_str = self.payouts_total.to_usd_str()
-
-        return
+        return None
 
     def prebuild_pop_financial(
         self,

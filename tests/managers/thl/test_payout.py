@@ -9,6 +9,8 @@ import io
 
 import pandas as pd
 import pytest
+
+from generalresearch import pg_helper
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
 from generalresearch.currency import USDCent
@@ -865,26 +867,19 @@ class TestBusinessPayoutEventManager:
         ach_id1 = uuid4().hex
         ach_id2 = uuid4().hex
 
-        # Product 1: Complete, Payout, Recon..
-        s1 = session_with_tx_factory(
-            user=u1,
-            wall_req_cpi=Decimal("5.00"),
-            started=start + timedelta(days=1),
-        )
-
-        # Product 2: Complete x10
-        for idx in range(15):
+        # Product 1: Complete $10 x 20
+        for idx in range(20):
             session_with_tx_factory(
                 user=u2,
-                wall_req_cpi=Decimal("7.50"),
+                wall_req_cpi=Decimal("10.00"),
                 started=start + timedelta(days=1, hours=2, minutes=1 + idx),
             )
 
-        # Product 3: Complete x5
-        for idx in range(10):
+        # Product 2: Complete $10 x 30
+        for idx in range(30):
             session_with_tx_factory(
                 user=u3,
-                wall_req_cpi=Decimal("7.50"),
+                wall_req_cpi=Decimal("10.00"),
                 started=start + timedelta(days=1, hours=3, minutes=1 + idx),
             )
 
@@ -899,12 +894,12 @@ class TestBusinessPayoutEventManager:
         )
 
         bb = business.balance
-        assert bb.payout == 25 * 712 + 475  # $7.50 * .95% = $7.125 = $7.12
-        assert bb.net == (25 * 7.12 + 4.75) * 100
+        assert bb.payout == 475_00  # $500 * .95% = $475
+        assert bb.net == 475_00
 
         bp1 = business_payout_event_manager.create_from_ach_or_wire(
             business=business,
-            amount=USDCent(bb.available_balance),
+            amount=USDCent(100_00),
             pm=product_manager,
             thl_lm=thl_lm,
             created=start + timedelta(days=1, hours=5),
@@ -912,7 +907,19 @@ class TestBusinessPayoutEventManager:
         )
         print(f"{bp1=}")
         assert isinstance(bp1, BusinessPayoutEvent)
-        assert len(bp1.bp_payouts) == 3
+        assert len(bp1.bp_payouts) == 2
+
+        bp2 = business_payout_event_manager.create_from_ach_or_wire(
+            business=business,
+            amount=USDCent(bb.available_balance),
+            pm=product_manager,
+            thl_lm=thl_lm,
+            created=start + timedelta(days=2, hours=5),
+            transaction_id=ach_id2,
+        )
+        print(f"{bp2=}")
+        assert isinstance(bp2, BusinessPayoutEvent)
+        assert len(bp2.bp_payouts) == 2
 
         with caplog.at_level(logging.WARNING):
             business_payout_event_manager.resume_failed_business_payout(
@@ -920,7 +927,15 @@ class TestBusinessPayoutEventManager:
             )
             assert "Nothing to do!" in caplog.text
 
-        bpe = business_payout_event_manager.get_by_ext_ref_id(ext_ref_id=ach_id1)
+        # bpe = business_payout_event_manager.get_by_ext_ref_id(ext_ref_id=ach_id1)
+        # bp_pe = bpe.bp_payouts[0]
+        # thl_web_rr.execute_write(
+        #     """
+        # UPDATE event_payout
+        # SET status = %(status)s
+        # WHERE uuid = %(uuid)s""",
+        #     {"uuid": bp_pe.uuid, "status": PayoutStatus.FAILED},
+        # )
 
         assert 1 == 0
         return None

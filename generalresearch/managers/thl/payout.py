@@ -699,7 +699,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         return self.get_bp_payout_events_for_accounts(accounts=accounts)
 
 
-class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
+class BusinessPayoutEventManager(PostgresManagerWithRedis):
 
     def get_by_ext_ref_id(self, ext_ref_id: str) -> BusinessPayoutEvent:
         res = self.pg_config.execute_sql_query(
@@ -734,6 +734,54 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
             bpe.bp_payouts is not None and len(bpe.bp_payouts) > 0
         ), "No BP payouts found for this Business Payout Event. This shouldn't happen!"
         return bpe
+
+    def filter_by(
+        self,
+        business_uuids: Collection[UUIDStr] | None = None,
+    ) -> list[BusinessPayoutEvent]:
+
+        params = dict()
+        filters = []
+        if business_uuids is not None:
+            filters.append("business_id = ANY(%(business_uuids)s)")
+            params["business_uuids"] = business_uuids
+
+        assert len(filters) > 0, "must pass at least 1 filter"
+        filter_str = " AND ".join(filters)
+
+        res = self.pg_config.execute_sql_query(
+            f"""
+        SELECT
+            sp.*,
+            ep.bp_payouts
+        FROM supplier_payout sp
+        JOIN (
+            SELECT
+                ep_inner.supplier_payout_id,
+                jsonb_agg(
+                    to_jsonb(ep_inner)
+                    || jsonb_build_object('product_id', la.reference_uuid)
+                    ORDER BY ep_inner.created
+                ) AS bp_payouts
+            FROM event_payout ep_inner
+            JOIN ledger_account la
+                ON ep_inner.debit_account_uuid = la.uuid
+            GROUP BY ep_inner.supplier_payout_id
+        ) ep ON sp.id = ep.supplier_payout_id
+        WHERE {filter_str}
+        """,
+            params,
+        )
+        bpes = []
+        for row in res:
+            for bp_payout in row["bp_payouts"]:
+                bp_payout["created"] = datetime.fromisoformat(bp_payout["created"])
+            bpe = BusinessPayoutEvent.model_validate(row)
+            assert (
+                bpe.bp_payouts is not None and len(bpe.bp_payouts) > 0
+            ), "No BP payouts found for this Business Payout Event. This shouldn't happen!"
+            bpes.append(bpe)
+        return bpes
 
     def validate_business_payout_in_ledger(
         self, ext_ref_id: str, thl_lm: ThlLedgerManager
@@ -807,34 +855,17 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
 
         return None
 
-    def get_business_payout_events_for_products(
+    def get_business_payout_events_for_business(
         self,
-        product_uuids: Collection[UUIDStr],
+        business_uuid: UUIDStr,
         order_by: OrderBy | None = OrderBy.ASC,
     ) -> list[BusinessPayoutEvent]:
-        res = self.get_bp_bp_payout_events_for_products(
-            product_uuids=product_uuids,
-            order_by=order_by,
+        order_by = order_by or OrderBy.ASC
+        bpes = self.filter_by(
+            business_uuids=[business_uuid],
         )
-
-        return self.from_bp_payout_events(bp_payout_events=res)
-
-    @staticmethod
-    def from_bp_payout_events(
-        bp_payout_events: Collection[BrokerageProductPayoutEvent],
-    ) -> list[BusinessPayoutEvent]:
-        if len(bp_payout_events) == 0:
-            return []
-
-        grouped = defaultdict(list)
-        for bp_pe in bp_payout_events:
-            grouped[bp_pe.ext_ref_id].append(bp_pe)
-
-        res = []
-        for _, members in grouped.items():
-            res.append(BusinessPayoutEvent.model_validate({"bp_payouts": members}))
-
-        return res
+        bpes = sorted(bpes, key=lambda x: x.created, reverse=order_by == OrderBy.DESC)
+        return bpes
 
     @staticmethod
     def recoup_proportional(
