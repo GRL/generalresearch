@@ -2,16 +2,14 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
-from random import choice as rand_choice
-from random import randint
-from time import sleep
+from datetime import datetime, timezone
+from random import choice as rand_choice, randint
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import numpy as np
 import pandas as pd
-from psycopg import sql, Cursor
+from psycopg import sql
 from pydantic import AwareDatetime, NonNegativeInt, PositiveInt
 
 from generalresearch.currency import USDCent
@@ -741,11 +739,15 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
         self, ext_ref_id: str, thl_lm: ThlLedgerManager
     ):
         """
-        Check that there exist ledger TXs for the BP payouts
+        Check that there exist ledger TXs for the Brokerage Product payouts
+            for this Business Payout Event.
         """
         bpe = self.get_by_ext_ref_id(ext_ref_id=ext_ref_id)
-        account_uuids = [bp_pe.debit_account_uuid for bp_pe in bpe.bp_payouts]
-        txs = thl_lm.get_tx_bp_payouts(account_uuids=account_uuids)
+        tags = [
+            f"{thl_lm.currency.value}:bp_payout:{bp_pe.uuid}"
+            for bp_pe in bpe.bp_payouts
+        ]
+        txs = thl_lm.get_tx_ids_by_tags(tags=tags)
         assert len(txs) == len(
             bpe.bp_payouts
         ), f"Expected {len(bpe.bp_payouts)} BP payouts but found {len(txs)}!"
@@ -769,13 +771,12 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
                     ext_ref_id=ext_ref_id, thl_lm=thl_lm
                 )
             except AssertionError as e:
-                LOG.error(
-                    f"Business Payout Event {ext_ref_id} is COMPLETE but BP payouts are not in the ledger! {e}"
+                raise AssertionError(
+                    f"Business Payout Event {ext_ref_id} is COMPLETE but BP payouts are not in the ledger! {e} "
                     f"This typically shouldn't happen, as if the ledger TX fails, the event_payout "
                     f"status won't be COMPLETE. If it does, set all the bp statuses to FAILED, and "
                     f"then try again. Any that do exist in the ledger will be found and marked COMPLETE."
-                )
-                raise e
+                ) from e
             if bpe.status != PayoutStatus.COMPLETE:
                 self.update_business_payout_event(
                     pk=bpe.id, status=PayoutStatus.COMPLETE
