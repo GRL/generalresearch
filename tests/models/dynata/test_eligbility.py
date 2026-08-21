@@ -5,10 +5,10 @@ class TestEligibility:
 
     def test_evaluate_task_criteria(self):
         from generalresearch.models.dynata.survey import (
-            DynataQuotaGroup,
             DynataFilterGroup,
-            DynataSurvey,
+            DynataQuotaGroup,
             DynataRequirements,
+            DynataSurvey,
         )
 
         filters = [[["a", "b"], ["c", "d"]], [["e"], ["f"]]]
@@ -137,10 +137,10 @@ class TestEligibility:
 
     def test_soft_pair(self):
         from generalresearch.models.dynata.survey import (
-            DynataQuotaGroup,
             DynataFilterGroup,
-            DynataSurvey,
+            DynataQuotaGroup,
             DynataRequirements,
+            DynataSurvey,
         )
 
         filters = [[["a", "b"], ["c", "d"]], [["e"], ["f"]]]
@@ -186,7 +186,7 @@ class TestEligibility:
             }
         )
         assert task.passes_filters(criteria_evaluation)
-        passes, condition_hashes = task.passes_filters_soft(criteria_evaluation)
+        passes, _ = task.passes_filters_soft(criteria_evaluation)
         assert passes
 
         # make 'e' & 'f' None, we don't pass the 2nd filtergroup

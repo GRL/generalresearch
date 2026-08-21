@@ -30,7 +30,7 @@ from generalresearch.models.custom_types import (
     UUIDStr,
     UUIDStrCoerce,
 )
-from generalresearch.models.thl.finance import POPFinancial, BusinessBalances
+from generalresearch.models.thl.finance import BusinessBalances, POPFinancial
 from generalresearch.models.thl.ledger import LedgerAccount, OrderBy
 from generalresearch.models.thl.payout import BusinessPayoutEvent
 from generalresearch.pg_helper import PostgresConfig

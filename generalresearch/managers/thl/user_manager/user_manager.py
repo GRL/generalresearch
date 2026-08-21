@@ -4,7 +4,6 @@ import logging
 from collections.abc import Collection
 from datetime import datetime
 from functools import lru_cache
-from uuid import uuid4
 
 from pydantic import RedisDsn
 
@@ -293,25 +292,6 @@ class UserManager:
         self.set_user_inmemory_cache(user=user)
 
         return user
-
-    def create_dummy(
-        self,
-        # --- Create dummy "optional" --- #
-        product_user_id: str | None = None,
-        # --- Optional --- #
-        product_id: UUIDStr | None = None,
-        product: Product | None = None,
-        created: datetime | None = None,
-    ) -> User:
-
-        product_user_id = product_user_id or uuid4().hex
-
-        return self.create_user(
-            product_user_id=product_user_id,
-            product_id=product_id,
-            product=product,
-            created=created,
-        )
 
     def product_id_exists(self, product_id: str) -> bool:
         mysql_user_manager = self.mysql_user_manager_rr or self.mysql_user_manager

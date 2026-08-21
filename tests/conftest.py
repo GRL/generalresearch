@@ -3,8 +3,6 @@ pytest_plugins = [
     "test_utils.conftest",
     # -- GRL IQ
     "test_utils.grliq.conftest",
-    "test_utils.grliq.managers.conftest",
-    "test_utils.grliq.models.conftest",
     # -- Incite
     "test_utils.incite.conftest",
     "test_utils.incite.collections.conftest",
@@ -12,9 +10,17 @@ pytest_plugins = [
     # -- Managers
     "test_utils.managers.conftest",
     "test_utils.managers.contest.conftest",
+    "test_utils.managers.gr.conftest",
     "test_utils.managers.ledger.conftest",
     "test_utils.managers.network.conftest",
+    "test_utils.managers.thl.conftest",
     "test_utils.managers.upk.conftest",
     # -- Models
     "test_utils.models.conftest",
+    "test_utils.models.contest.conftest",
+    "test_utils.models.gr.conftest",
+    "test_utils.models.ledger.conftest",
+    "test_utils.models.network.conftest",
+    "test_utils.models.thl.conftest",
+    "test_utils.models.upk.conftest",
 ]

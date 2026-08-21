@@ -4,9 +4,8 @@ import logging
 from collections import defaultdict
 from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
-from decimal import ROUND_DOWN, Decimal
+from decimal import Decimal
 from functools import cached_property
-from random import choice as rchoice
 from uuid import uuid4
 
 from faker import Faker
@@ -93,51 +92,6 @@ class WallManager(PostgresManager):
         """
         self.pg_config.execute_write(query=query, params=d)
         return wall
-
-    def create_dummy(
-        self,
-        session_id: int | None = None,
-        user_id: int | None = None,
-        started: datetime | None = None,
-        source: Source | None = None,
-        req_survey_id: str | None = None,
-        req_cpi: Decimal | None = None,
-        buyer_id: str | None = None,
-        uuid_id: str | None = None,
-    ):
-        """To be used in tests, where we don't care about certain fields"""
-
-        user_id = user_id or fake.random_int(min=1, max=2_147_483_648)
-        started = started or fake.date_time_between(
-            start_date=datetime(year=1900, month=1, day=1, tzinfo=timezone.utc),
-            end_date=datetime.now(tz=timezone.utc),
-            tzinfo=timezone.utc,
-        )
-
-        if session_id is None:
-            from generalresearch.managers.thl.session import SessionManager
-
-            session = SessionManager(pg_config=self.pg_config).create_dummy(
-                started=started
-            )
-            session_id = session.id
-
-        source = source or rchoice(list(Source))
-        req_survey_id = req_survey_id or uuid4().hex
-        req_cpi = req_cpi or Decimal(fake.random_int(min=1, max=150) / 100).quantize(
-            Decimal(".01"), rounding=ROUND_DOWN
-        )
-
-        return self.create(
-            session_id=session_id,
-            user_id=user_id,
-            started=started,
-            source=source,
-            req_survey_id=req_survey_id,
-            req_cpi=req_cpi,
-            buyer_id=buyer_id,
-            uuid_id=uuid_id,
-        )
 
     def get_from_uuid(self, wall_uuid: UUIDStr) -> Wall:
         query = """
@@ -229,8 +183,6 @@ class WallManager(PostgresManager):
                 c.execute(query, params=d)
                 assert c.rowcount == 1
             conn.commit()
-
-        return None
 
     def get_wall_events(
         self,
@@ -365,7 +317,6 @@ class WallManager(PostgresManager):
                 c.execute(query=query, params=params)
                 assert c.rowcount == 1
             conn.commit()
-        return None
 
     def filter_count_attempted_live(self, user_id: int) -> int:
         """

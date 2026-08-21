@@ -91,40 +91,6 @@ class SessionManager(PostgresManager):
             conn.commit()
         return session
 
-    def create_dummy(
-        self,
-        # -- Create Dummy "optional" -- #
-        started: datetime | None = None,
-        user: User | None = None,
-        # -- Optional -- #
-        country_iso: str | None = None,
-        device_type: DeviceType | None = None,
-        ip: str | None = None,
-        bucket: Bucket | None = None,
-        url_metadata: dict[str, str] | None = None,
-        uuid_id: str | None = None,
-    ) -> Session:
-        """To be used in tests, where we don't care about certain fields"""
-        started = started or fake.date_time_between(
-            start_date=datetime(year=1900, month=1, day=1, tzinfo=timezone.utc),
-            end_date=datetime(year=2000, month=1, day=1, tzinfo=timezone.utc),
-            tzinfo=timezone.utc,
-        )
-        user = user or User(
-            user_id=fake.random_int(min=1, max=2_147_483_648), uuid=uuid4().hex
-        )
-
-        return self.create(
-            started=started,
-            user=user,
-            country_iso=country_iso,
-            device_type=device_type,
-            ip=ip,
-            bucket=bucket,
-            url_metadata=url_metadata,
-            uuid_id=uuid_id,
-        )
-
     def get_from_uuid(self, session_uuid: UUIDStr) -> Session:
         query = """
         SELECT  
@@ -171,7 +137,7 @@ class SessionManager(PostgresManager):
         assert len(res) == 1
         return self.session_from_mysql(res[0])
 
-    def session_from_mysql(self, d: dict) -> Session:
+    def session_from_mysql(self, d: dict[str, Any]) -> Session:
         d["id"] = d.pop("session_id")
         d["uuid"] = UUID(d.pop("session_uuid")).hex
         d["user"] = User(
@@ -282,8 +248,6 @@ class SessionManager(PostgresManager):
             """,
             params=d,
         )
-
-        return None
 
     def filter_paginated(
         self,
@@ -538,7 +502,7 @@ class SessionManager(PostgresManager):
             # We need to include the cases where status is NULL as ABANDON. We'll handle the distinction
             #   between TIMEOUT (no status, older than 90 min) and UNKNOWN (no status, newer than 90 min) later.
             params["status"] = status.value
-            filters.append(f"COALESCE(status, 'a') = %(status)s")
+            filters.append("COALESCE(status, 'a') = %(status)s")
 
         if extra_filters:
             filters.append(extra_filters)

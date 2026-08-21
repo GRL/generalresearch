@@ -1,112 +1,258 @@
 from __future__ import annotations
 
-from decimal import Decimal
-from random import randint
 from typing import Callable
 
-import faker
-from pydantic import PositiveInt
+import pytest
+from pydantic import PostgresDsn
 
-from generalresearch.managers.thl.ipinfo import IPGeonameManager, IPInformationManager
-from generalresearch.models.custom_types import IPvAnyAddressStr
-from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation, UserType
-
-fake = faker.Faker()
-
-
-def ipgeoname_factory(ipgeoname_manager: IPGeonameManager) -> Callable[..., IPGeoname]:
-
-    def _inner(
-        geoname_id: PositiveInt | None = None,
-        continent_code: str | None = None,
-        continent_name: str | None = None,
-        country_iso: str | None = None,
-        country_name: str | None = None,
-        subdivision_1_iso: str | None = None,
-        subdivision_1_name: str | None = None,
-        subdivision_2_iso: str | None = None,
-        subdivision_2_name: str | None = None,
-        city_name: str | None = None,
-        metro_code: int | None = None,
-        time_zone: str | None = None,
-        is_in_european_union: bool | None = None,
-    ) -> IPGeoname:
-
-        return ipgeoname_manager.create(
-            geoname_id=geoname_id or randint(1, 999_999_999),
-            continent_code=continent_code or "na",
-            continent_name=continent_name or "North America",
-            country_iso=country_iso or "us",
-            country_name=country_name or "United States",
-            subdivision_1_iso=subdivision_1_iso or "fl",
-            subdivision_1_name=subdivision_1_name or "Florida",
-            subdivision_2_iso=subdivision_2_iso,
-            subdivision_2_name=subdivision_2_name,
-            city_name=city_name,
-            metro_code=metro_code,
-            time_zone=time_zone,
-            is_in_european_union=is_in_european_union,
-        )
-
-    return _inner
+from generalresearch.config import GRLBaseSettings
+from generalresearch.managers.base import Permission
+from generalresearch.managers.thl.buyer import BuyerManager
+from generalresearch.managers.thl.category import CategoryManager
+from generalresearch.managers.thl.payout import (
+    BrokerageProductPayoutEventManager,
+    BusinessPayoutEventManager,
+    PayoutEventManager,
+    UserPayoutEventManager,
+)
+from generalresearch.managers.thl.product import ProductManager
+from generalresearch.managers.thl.session import SessionManager
+from generalresearch.managers.thl.task_adjustment import (
+    TaskAdjustmentManager,
+)
+from generalresearch.managers.thl.user_manager.user_manager import (
+    UserManager,
+)
+from generalresearch.managers.thl.user_manager.user_metadata_manager import (
+    UserMetadataManager,
+)
+from generalresearch.managers.thl.wall import (
+    WallCacheManager,
+    WallManager,
+)
+from generalresearch.pg_helper import PostgresConfig
+from generalresearch.redis_helper import RedisConfig
 
 
-def ipinformation_factory(
-    ipinformation_manager: IPInformationManager,
-) -> Callable[..., IPInformation]:
+@pytest.fixture(scope="session")
+def thl_web_rr(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
 
-    def _inner(
-        ip: IPvAnyAddressStr | None = None,
-        geoname_id: PositiveInt | None = None,
-        country_iso: str | None = None,
-        registered_country_iso: str | None = None,
-        is_anonymous: bool | None = None,
-        is_anonymous_vpn: bool | None = None,
-        is_hosting_provider: bool | None = None,
-        is_public_proxy: bool | None = None,
-        is_tor_exit_node: bool | None = None,
-        is_residential_proxy: bool | None = None,
-        autonomous_system_number: PositiveInt | None = None,
-        autonomous_system_organization: str | None = None,
-        domain: str | None = None,
-        isp: str | None = None,
-        mobile_country_code: str | None = None,
-        mobile_network_code: str | None = None,
-        network: str | None = None,
-        organization: str | None = None,
-        static_ip_score: float | None = None,
-        user_type: UserType | None = None,
-        postal_code: str | None = None,
-        latitude: Decimal | None = None,
-        longitude: Decimal | None = None,
-        accuracy_radius: int | None = None,
-    ) -> IPInformation:
+    return PostgresConfig(
+        dsn=django_db_factory("generalresearch.thl_django"),
+        connect_timeout=1,
+        statement_timeout=5,
+    )
 
-        return ipinformation_manager.create(
-            ip=ip or fake.ipv4_public(),
-            geoname_id=geoname_id,
-            country_iso=country_iso or fake.country_code(),
-            registered_country_iso=registered_country_iso,
-            is_anonymous=is_anonymous,
-            is_anonymous_vpn=is_anonymous_vpn,
-            is_hosting_provider=is_hosting_provider,
-            is_public_proxy=is_public_proxy,
-            is_tor_exit_node=is_tor_exit_node,
-            is_residential_proxy=is_residential_proxy,
-            autonomous_system_number=autonomous_system_number,
-            autonomous_system_organization=autonomous_system_organization,
-            domain=domain,
-            isp=isp,
-            mobile_country_code=mobile_country_code,
-            mobile_network_code=mobile_network_code,
-            network=network,
-            organization=organization,
-            static_ip_score=static_ip_score,
-            user_type=user_type,
-            postal_code=postal_code,
-            latitude=latitude,
-            longitude=longitude,
-            accuracy_radius=accuracy_radius,
-        )
 
-    return _inner
+@pytest.fixture(scope="session")
+def thl_web_rw(thl_web_rr: PostgresConfig) -> PostgresConfig:
+    return thl_web_rr
+
+
+@pytest.fixture(scope="session")
+def thl_redis_config(settings: GRLBaseSettings) -> RedisConfig:
+    return RedisConfig(
+        dsn=settings.thl_redis,
+        decode_responses=True,
+        socket_timeout=settings.redis_timeout,
+        socket_connect_timeout=settings.redis_timeout,
+    )
+
+
+@pytest.fixture(scope="session")
+def payout_event_manager(
+    thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
+) -> PayoutEventManager:
+    assert thl_web_rw.dsn.path
+    assert "/unittest-" in thl_web_rw.dsn.path
+
+    from generalresearch.managers.thl.payout import PayoutEventManager
+
+    return PayoutEventManager(
+        pg_config=thl_web_rw,
+        permissions=[Permission.CREATE, Permission.READ],
+        redis_config=thl_redis_config,
+    )
+
+
+@pytest.fixture(scope="session")
+def user_payout_event_manager(
+    thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
+) -> UserPayoutEventManager:
+    assert thl_web_rw.dsn.path
+    assert "/unittest-" in thl_web_rw.dsn.path
+
+    from generalresearch.managers.thl.payout import UserPayoutEventManager
+
+    return UserPayoutEventManager(
+        pg_config=thl_web_rw,
+        permissions=[Permission.CREATE, Permission.READ],
+        redis_config=thl_redis_config,
+    )
+
+
+@pytest.fixture(scope="session")
+def brokerage_product_payout_event_manager(
+    thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
+) -> BrokerageProductPayoutEventManager:
+    assert thl_web_rw.dsn.path
+    assert "/unittest-" in thl_web_rw.dsn.path
+
+    from generalresearch.managers.thl.payout import (
+        BrokerageProductPayoutEventManager,
+    )
+
+    return BrokerageProductPayoutEventManager(
+        pg_config=thl_web_rw,
+        permissions=[Permission.CREATE, Permission.READ],
+        redis_config=thl_redis_config,
+    )
+
+
+@pytest.fixture(scope="session")
+def business_payout_event_manager(
+    thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
+) -> BusinessPayoutEventManager:
+    assert thl_web_rw.dsn.path
+    assert "/unittest-" in thl_web_rw.dsn.path
+
+    from generalresearch.managers.thl.payout import (
+        BusinessPayoutEventManager,
+    )
+
+    return BusinessPayoutEventManager(
+        pg_config=thl_web_rw,
+        permissions=[Permission.CREATE, Permission.READ],
+        redis_config=thl_redis_config,
+    )
+
+
+@pytest.fixture(scope="session")
+def product_manager(thl_web_rw: PostgresConfig) -> ProductManager:
+    assert thl_web_rw.dsn
+    assert thl_web_rw.dsn.path
+    assert "/unittest-" in thl_web_rw.dsn.path
+
+    from generalresearch.managers.thl.product import ProductManager
+
+    return ProductManager(pg_config=thl_web_rw)
+
+
+@pytest.fixture(scope="session")
+def user_manager(
+    settings: GRLBaseSettings, thl_web_rw: PostgresConfig, thl_web_rr: PostgresConfig
+) -> UserManager:
+    assert thl_web_rw.dsn
+    assert thl_web_rw.dsn.path
+    assert thl_web_rr.dsn
+    assert thl_web_rr.dsn.path
+    assert "/unittest-" in thl_web_rw.dsn.path
+    assert "/unittest-" in thl_web_rr.dsn.path
+
+    from generalresearch.managers.thl.user_manager.user_manager import (
+        UserManager,
+    )
+
+    return UserManager(
+        pg_config=thl_web_rw,
+        pg_config_rr=thl_web_rr,
+        redis=settings.redis,
+    )
+
+
+@pytest.fixture(scope="session")
+def user_metadata_manager(thl_web_rw: PostgresConfig) -> UserMetadataManager:
+    assert thl_web_rw.dsn
+    assert thl_web_rw.dsn.path
+    assert "/unittest-" in thl_web_rw.dsn.path
+
+    from generalresearch.managers.thl.user_manager.user_metadata_manager import (
+        UserMetadataManager,
+    )
+
+    return UserMetadataManager(pg_config=thl_web_rw)
+
+
+@pytest.fixture(scope="session")
+def session_manager(thl_web_rw: PostgresConfig) -> SessionManager:
+    assert thl_web_rw.dsn
+    assert thl_web_rw.dsn.path
+    assert "/unittest-" in thl_web_rw.dsn.path
+
+    from generalresearch.managers.thl.session import SessionManager
+
+    return SessionManager(pg_config=thl_web_rw)
+
+
+@pytest.fixture(scope="session")
+def wall_manager(thl_web_rw: PostgresConfig) -> WallManager:
+    assert thl_web_rw.dsn
+    assert thl_web_rw.dsn.path
+    assert "/unittest-" in thl_web_rw.dsn.path
+
+    from generalresearch.managers.thl.wall import WallManager
+
+    return WallManager(pg_config=thl_web_rw)
+
+
+@pytest.fixture(scope="session")
+def wall_cache_manager(
+    thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
+) -> WallCacheManager:
+    # assert "/unittest-" in thl_web_rw.dsn.path
+
+    from generalresearch.managers.thl.wall import WallCacheManager
+
+    return WallCacheManager(pg_config=thl_web_rw, redis_config=thl_redis_config)
+
+
+@pytest.fixture(scope="session")
+def task_adjustment_manager(thl_web_rw: PostgresConfig) -> TaskAdjustmentManager:
+    # assert "/unittest-" in thl_web_rw.dsn.path
+
+    from generalresearch.managers.thl.task_adjustment import (
+        TaskAdjustmentManager,
+    )
+
+    return TaskAdjustmentManager(pg_config=thl_web_rw)
+
+
+@pytest.fixture(scope="session")
+def category_manager(thl_web_rw: PostgresConfig) -> CategoryManager:
+    assert thl_web_rw.dsn
+    assert thl_web_rw.dsn.path
+    assert "/unittest-" in thl_web_rw.dsn.path
+    from generalresearch.managers.thl.category import CategoryManager
+
+    return CategoryManager(pg_config=thl_web_rw)
+
+
+@pytest.fixture(scope="session")
+def buyer_manager(thl_web_rw: PostgresConfig) -> BuyerManager:
+    # assert "/unittest-" in thl_web_rw.dsn.path
+    from generalresearch.managers.thl.buyer import BuyerManager
+
+    return BuyerManager(pg_config=thl_web_rw)
+
+
+@pytest.fixture(scope="session")
+def survey_manager(thl_web_rw: PostgresConfig):
+    # assert "/unittest-" in thl_web_rw.dsn.path
+    from generalresearch.managers.thl.survey import SurveyManager
+
+    return SurveyManager(pg_config=thl_web_rw)
+
+
+@pytest.fixture(scope="session")
+def surveystat_manager(thl_web_rw: PostgresConfig):
+    # assert "/unittest-" in thl_web_rw.dsn.path
+    from generalresearch.managers.thl.survey import SurveyStatManager
+
+    return SurveyStatManager(pg_config=thl_web_rw)
+
+
+@pytest.fixture(scope="session")
+def surveypenalty_manager(thl_redis_config: RedisConfig):
+    from generalresearch.managers.thl.survey_penalty import SurveyPenaltyManager
+
+    return SurveyPenaltyManager(redis_config=thl_redis_config)

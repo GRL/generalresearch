@@ -1,4 +1,4 @@
-from datetime import timezone, datetime
+from datetime import datetime, timezone
 
 import pandas as pd
 import pytest
@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 
 class TestReportRequest:
-    def test_base(self, utc_60days_ago):
+    def test_base(self):
         from generalresearch.models.admin.request import (
             ReportRequest,
             ReportType,
@@ -24,7 +24,7 @@ class TestReportRequest:
         rr1 = ReportRequest.model_validate(
             {
                 "start": datetime(
-                    year=datetime.now().year,
+                    year=datetime.now(tz=timezone.utc).year,
                     month=1,
                     day=1,
                     hour=0,
@@ -43,7 +43,7 @@ class TestReportRequest:
         rr2 = ReportRequest.model_validate(
             {
                 "start": datetime(
-                    year=datetime.now().year,
+                    year=datetime.now(tz=timezone.utc).year,
                     month=1,
                     day=1,
                     hour=6,
@@ -81,29 +81,30 @@ class TestReportRequest:
         #  interval='1d', include_open_bucket=True,
         #  start_floor=datetime.datetime(2025, 7, 9, 0, 0, tzinfo=datetime.timezone.utc)).start_floor
 
-    def test_start_end_range(self, utc_90days_ago, utc_30days_ago):
+    def test_start_end_range(self, utc_90days_ago: datetime, utc_30days_ago: datetime):
         from generalresearch.models.admin.request import ReportRequest
 
-        with pytest.raises(expected_exception=ValidationError) as cm:
+        with pytest.raises(expected_exception=ValidationError):
             ReportRequest.model_validate(
                 {"start": utc_30days_ago, "end": utc_90days_ago}
             )
 
-        with pytest.raises(expected_exception=ValidationError) as cm:
+        with pytest.raises(expected_exception=ValidationError):
             ReportRequest.model_validate(
                 {
-                    "start": datetime(year=1990, month=1, day=1),
-                    "end": datetime(year=1950, month=1, day=1),
+                    "start": datetime(year=1990, month=1, day=1, tzinfo=timezone.utc),
+                    "end": datetime(year=1950, month=1, day=1, tzinfo=timezone.utc),
                 }
             )
 
     def test_start_end_range_tz(self):
-        from generalresearch.models.admin.request import ReportRequest
         from zoneinfo import ZoneInfo
+
+        from generalresearch.models.admin.request import ReportRequest
 
         pacific_tz = ZoneInfo("America/Los_Angeles")
 
-        with pytest.raises(expected_exception=ValidationError) as cm:
+        with pytest.raises(expected_exception=ValidationError):
             ReportRequest.model_validate(
                 {
                     "start": datetime(year=2000, month=1, day=1, tzinfo=pacific_tz),

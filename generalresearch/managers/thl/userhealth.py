@@ -4,8 +4,6 @@ import ipaddress
 from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
 from itertools import zip_longest
-from random import choice as rchoice
-from random import random
 from typing import Any
 
 import faker
@@ -184,30 +182,6 @@ class IPRecordManager(PostgresManagerWithRedis):
             permissions=self.permissions,
         )
 
-    def create_dummy(
-        self,
-        user_id: PositiveInt,
-        ip: IPvAnyAddressStr | None = None,
-        forwarded_ip1: IPvAnyAddressStr | None = None,
-        forwarded_ip2: IPvAnyAddressStr | None = None,
-        forwarded_ip3: IPvAnyAddressStr | None = None,
-        forwarded_ip4: IPvAnyAddressStr | None = None,
-        forwarded_ip5: IPvAnyAddressStr | None = None,
-        forwarded_ip6: IPvAnyAddressStr | None = None,
-    ) -> IPRecord:
-        return self.create(
-            user_id=user_id,
-            ip=ip or fake.ipv4_public(),
-            forwarded_ip1=(forwarded_ip1 or fake.ipv4_public()),
-            forwarded_ip2=(forwarded_ip2 or fake.ipv6() if random() < 0.5 else None),
-            forwarded_ip3=(
-                forwarded_ip3 or fake.ipv4_public() if random() < 0.25 else None
-            ),
-            forwarded_ip4=forwarded_ip4,
-            forwarded_ip5=forwarded_ip5,
-            forwarded_ip6=forwarded_ip6,
-        )
-
     def create_unpack(
         self,
         user_id: PositiveInt,
@@ -348,29 +322,6 @@ class IPRecordManager(PostgresManagerWithRedis):
 
 class AuditLogManager(PostgresManager):
 
-    def create_dummy(
-        self,
-        user_id: PositiveInt,
-        level: AuditLogLevel | None = None,
-        event_type: str | None = None,
-        event_msg: str | None = None,
-        event_value: float | None = None,
-    ) -> AuditLog:
-
-        event_types = {
-            "offerwall-enter.blocked",
-            "offerwall-enter.rate-limited",
-            "offerwall-enter.url-modified",
-        }
-
-        return self.create(
-            user_id=user_id,
-            level=level or rchoice(list(AuditLogLevel)),
-            event_type=event_type or rchoice(list(event_types)),
-            event_msg=event_msg,
-            event_value=event_value,
-        )
-
     def create(
         self,
         user_id: PositiveInt,
@@ -392,10 +343,9 @@ class AuditLogManager(PostgresManager):
             }
         )
 
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(
-                    query="""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(
+                query="""
                         INSERT INTO userhealth_auditlog
                         (user_id, created, level, 
                          event_type, event_msg, event_value)
@@ -403,10 +353,10 @@ class AuditLogManager(PostgresManager):
                                  %(event_type)s, %(event_msg)s, %(event_value)s)
                         RETURNING id;
                     """,
-                    params=al.model_dump_mysql(),
-                )
-                pk = c.fetchone()["id"]  # type: ignore
-                conn.commit()
+                params=al.model_dump_mysql(),
+            )
+            pk = c.fetchone()["id"]  # type: ignore
+            conn.commit()
 
         al.id = pk
         return al
@@ -536,7 +486,7 @@ class AuditLogManager(PostgresManager):
         level_ge: int | None = None,
         event_type: str | None = None,
         event_type_like: str | None = None,
-        event_msg: str | Nond = None,
+        event_msg: str | None = None,
         created_after: datetime | None = None,
     ) -> tuple[str, dict[str, Any]]:
         assert user_ids, "must pass at least 1 user_id"

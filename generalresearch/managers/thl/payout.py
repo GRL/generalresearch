@@ -3,8 +3,6 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
-from random import choice as rand_choice
-from random import randint
 from time import sleep
 from typing import Any
 from uuid import UUID, uuid4
@@ -338,53 +336,6 @@ class UserPayoutEventManager(PayoutEventManager):
             conn.commit()
 
         return payout_event
-
-    def create_dummy(
-        self,
-        uuid: UUIDStr | None = None,
-        debit_account_uuid: UUIDStr | None = None,
-        account_reference_type: str | None = None,
-        account_reference_uuid: UUIDStr | None = None,
-        cashout_method_uuid: UUIDStr | None = None,
-        description: str | None = None,
-        created: AwareDatetimeISO | None = None,
-        amount: PositiveInt | None = None,
-        status: PayoutStatus | None = None,
-        ext_ref_id: str | None = None,
-        payout_type: PayoutType | None = None,
-        request_data: dict[str, Any] | None = None,
-        order_data: dict[str, Any] | CashMailOrderData | None = None,
-    ) -> UserPayoutEvent:
-
-        debit_account_uuid = debit_account_uuid or uuid4().hex
-        cashout_method_uuid = cashout_method_uuid or uuid4().hex
-        # account_reference_type = account_reference_type or f"acct-ref-{uuid4().hex}"
-        # account_reference_uuid = account_reference_uuid or uuid4().hex
-        # cashout_method_uuid = cashout_method_uuid or uuid4().hex
-        amount = amount or randint(a=99, b=9_999)
-        status = status or rand_choice(list(PayoutStatus))
-
-        description = description or f"desc-{uuid4().hex[:12]}"
-        # ext_ref_id = ext_ref_id or f"ext-ref-{uuid4().hex[:8]}"
-        payout_type = payout_type or rand_choice(list(PayoutType))
-        request_data = request_data or {}
-        # order_data = order_data or None
-
-        return self.create(
-            uuid=uuid,
-            debit_account_uuid=debit_account_uuid,
-            account_reference_type=account_reference_type,
-            account_reference_uuid=account_reference_uuid,
-            cashout_method_uuid=cashout_method_uuid,
-            description=description,
-            created=created,
-            amount=amount,
-            status=status,
-            ext_ref_id=ext_ref_id,
-            payout_type=payout_type,
-            request_data=request_data,
-            order_data=order_data,
-        )
 
 
 class BrokerageProductPayoutEventManager(PayoutEventManager):
@@ -1231,7 +1182,7 @@ class BusinessPayoutEventManager(BrokerageProductPayoutEventManager):
                     amount=USDCent(item["issue_amount"]),
                     created=created + timedelta(milliseconds=idx + 1),
                     ext_ref_id=transaction_id,
-                    skip_wallet_balance_check=True
+                    skip_wallet_balance_check=True,
                 )
 
                 assert bp_pe.status == PayoutStatus.COMPLETE

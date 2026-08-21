@@ -1,28 +1,26 @@
+from __future__ import annotations
+
 import os
 import shutil
+import stat
+import subprocess
+import tempfile
 from datetime import datetime, timedelta, timezone
 from os.path import join as pjoin
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Generator
+from typing import Callable, Generator
 from uuid import uuid4
 
 import pytest
-import redis
 from _pytest.config import Config
 from dotenv import load_dotenv
 from pydantic import MariaDBDsn, PostgresDsn, TypeAdapter
-from pydantic_core import MultiHostHost
-from redis import Redis
 
+from generalresearch.config import GRLBaseSettings
+from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import InternalHostname, PostgresDict
 from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
 from generalresearch.sql_helper import SqlHelper
-
-if TYPE_CHECKING:
-    from generalresearch.config import GRLBaseSettings
-    from generalresearch.currency import USDCent
-    from generalresearch.models.thl.session import Status
 
 
 @pytest.fixture(scope="session")
@@ -44,7 +42,7 @@ def env_file_path(pytestconfig: Config) -> Path:
 
 
 @pytest.fixture(scope="session")
-def settings(env_file_path: Path) -> "GRLBaseSettings":
+def settings(env_file_path: Path) -> GRLBaseSettings:
     from generalresearch.config import GRLBaseSettings
 
     s = GRLBaseSettings()
@@ -64,7 +62,7 @@ def settings(env_file_path: Path) -> "GRLBaseSettings":
 
 
 @pytest.fixture(scope="session")
-def postgres_instance(settings: "GRLBaseSettings") -> Generator[PostgresDsn]:
+def postgres_instance(settings: GRLBaseSettings) -> Generator[PostgresDsn]:
     """Create a ephemeral postgresql instance for us to use during pytest.
 
     This does not create any tables, or schema definitions within the instance.
@@ -153,13 +151,61 @@ def postgres_instance_host(
     yield value
 
 
+# @pytest.fixture(scope="session")
+# def git_key_path(settings: GRLBaseSettings) -> Path:
+#     return Path('/tmp/')
+
+
+@pytest.fixture(scope="session")
+def git_key_path(
+    settings: GRLBaseSettings,
+) -> Generator[Path]:
+
+    assert settings.git_creds
+    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix="_id_rsa") as f:
+        f.write(settings.git_creds)
+        key_path = f.name
+
+    os.chmod(key_path, stat.S_IRUSR | stat.S_IWUSR)
+
+    yield Path(key_path)
+
+    os.unlink(key_path)
+
+
+@pytest.fixture(scope="session")
+def gr_models(git_key_path: Path) -> Callable[..., Path]:
+    repo_url = "ssh://code.g-r-l.com/general-research/gr-carer.git"
+    repo_path = Path("/tmp/gr-carer")
+
+    def _inner() -> Path:
+        ssh_cmd = (
+            f"ssh -i {git_key_path} "
+            "-o IdentitiesOnly=yes "
+            "-o StrictHostKeyChecking=no "  # or accept-new, see note below
+        )
+        env = {"GIT_SSH_COMMAND": ssh_cmd}
+
+        if repo_path.exists():
+            subprocess.run(["git", "-C", str(repo_path), "pull"], check=True, env=env)
+        else:
+            subprocess.run(
+                ["git", "clone", "--depth", "1", repo_url, str(repo_path)],
+                check=True,
+                env=env,
+            )
+
+        return repo_path
+
+    return _inner
+
+
 @pytest.fixture(scope="session")
 def django_db_factory(
     postgres_instance: PostgresDsn, postgres_instance_dict: PostgresDict
 ) -> Callable[..., PostgresDsn]:
 
     import django
-    from django.apps import apps
     from django.conf import settings as django_settings
     from django.core.management import call_command
 
@@ -199,46 +245,7 @@ def django_db_factory(
 
 
 @pytest.fixture(scope="session")
-def thl_web_rr(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
-
-    return PostgresConfig(
-        dsn=django_db_factory("generalresearch.thl_django"),
-        connect_timeout=1,
-        statement_timeout=5,
-    )
-
-
-@pytest.fixture(scope="session")
-def thl_web_rw(thl_web_rr: PostgresConfig) -> PostgresConfig:
-    return thl_web_rr
-
-
-@pytest.fixture(scope="session")
-def gr_db(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
-
-    return PostgresConfig(
-        dsn=django_db_factory("gr_carer"),
-        connect_timeout=1,
-        statement_timeout=5,
-    )
-
-
-@pytest.fixture(scope="session")
-def grliq_db(postgres_instance: PostgresDsn) -> PostgresConfig:
-
-    # test_words = {"localhost", "127.0.0.1", "unittest", "grliq-test"}
-    # assert any(w in str(postgres_config.dsn) for w in test_words), "check grliq postgres_config"
-    # assert "grliqdeceezpocymo" not in str(postgres_config.dsn), "check grliq postgres_config"
-
-    return PostgresConfig(
-        dsn=postgres_instance,
-        connect_timeout=1,
-        statement_timeout=5,
-    )
-
-
-@pytest.fixture(scope="session")
-def spectrum_rw(settings: "GRLBaseSettings") -> SqlHelper:
+def spectrum_rw(settings: GRLBaseSettings) -> SqlHelper:
     dsn = settings.spectrum_rw_db
     assert dsn
     assert dsn.path
@@ -254,91 +261,12 @@ def spectrum_rw(settings: "GRLBaseSettings") -> SqlHelper:
     )
 
 
-@pytest.fixture(scope="session")
-def thl_redis(settings: "GRLBaseSettings") -> "Redis":
-    # todo: this should get replaced with redisconfig (in most places)
-    # I'm not sure where this would be? in the domain name?
-    assert "unittest" in str(settings.thl_redis) or "127.0.0.1" in str(
-        settings.thl_redis
-    )
-
-    return redis.Redis.from_url(
-        **{
-            "url": str(settings.thl_redis),
-            "decode_responses": True,
-            "socket_timeout": settings.redis_timeout,
-            "socket_connect_timeout": settings.redis_timeout,
-        }
-    )
-
-
-@pytest.fixture(scope="session")
-def thl_redis_config(settings: "GRLBaseSettings") -> RedisConfig:
-    assert "unittest" in str(settings.thl_redis) or "127.0.0.1" in str(
-        settings.thl_redis
-    )
-    return RedisConfig(
-        dsn=settings.thl_redis,
-        decode_responses=True,
-        socket_timeout=settings.redis_timeout,
-        socket_connect_timeout=settings.redis_timeout,
-    )
-
-
-@pytest.fixture(scope="session")
-def gr_redis_config(settings: "GRLBaseSettings") -> "RedisConfig":
-    assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
-
-    return RedisConfig(
-        dsn=settings.gr_redis,
-        decode_responses=True,
-        socket_timeout=settings.redis_timeout,
-        socket_connect_timeout=settings.redis_timeout,
-    )
-
-
-@pytest.fixture(scope="session")
-def gr_redis(settings: "GRLBaseSettings") -> "Redis":
-    assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
-    return redis.Redis.from_url(
-        **{
-            "url": str(settings.gr_redis),
-            "decode_responses": True,
-            "socket_timeout": settings.redis_timeout,
-            "socket_connect_timeout": settings.redis_timeout,
-        }
-    )
-
-
-@pytest.fixture
-def gr_redis_async(settings: "GRLBaseSettings"):
-    assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
-
-    import redis.asyncio as redis_async
-
-    return redis_async.Redis.from_url(
-        str(settings.gr_redis),
-        decode_responses=True,
-        socket_timeout=0.20,
-        socket_connect_timeout=0.20,
-    )
-
-
 # === Random helpers ===
 
 
 @pytest.fixture
-def start() -> "datetime":
-    from datetime import datetime, timezone
-
+def start() -> datetime:
     return datetime(year=1900, month=1, day=1, tzinfo=timezone.utc)
-
-
-@pytest.fixture
-def wall_status(request) -> "Status":
-    from generalresearch.models.thl.session import Status
-
-    return request.param if hasattr(request, "wall_status") else Status.COMPLETE
 
 
 @pytest.fixture
@@ -352,30 +280,22 @@ def utc_hour_ago() -> datetime:
 
 
 @pytest.fixture
-def utc_day_ago() -> "datetime":
-    from datetime import datetime, timedelta, timezone
-
+def utc_day_ago() -> datetime:
     return datetime.now(tz=timezone.utc) - timedelta(hours=24)
 
 
 @pytest.fixture
-def utc_90days_ago() -> "datetime":
-    from datetime import datetime, timedelta, timezone
-
+def utc_90days_ago() -> datetime:
     return datetime.now(tz=timezone.utc) - timedelta(days=90)
 
 
 @pytest.fixture
-def utc_60days_ago() -> "datetime":
-    from datetime import datetime, timedelta, timezone
-
+def utc_60days_ago() -> datetime:
     return datetime.now(tz=timezone.utc) - timedelta(days=60)
 
 
 @pytest.fixture
-def utc_30days_ago() -> "datetime":
-    from datetime import datetime, timedelta, timezone
-
+def utc_30days_ago() -> datetime:
     return datetime.now(tz=timezone.utc) - timedelta(days=30)
 
 
@@ -425,6 +345,8 @@ def delete_df_collection(
                     )
 
             case _:
+                assert coll.data_type
+
                 thl_web_rw.execute_write(
                     query=f"DELETE FROM {coll.data_type.value};",
                 )
@@ -436,23 +358,23 @@ def delete_df_collection(
 
 
 @pytest.fixture(scope="function")
-def amount_1(request) -> "USDCent":
-    from generalresearch.currency import USDCent
-
+def amount_1() -> USDCent:
     return USDCent(1)
 
 
 @pytest.fixture(scope="function")
-def amount_100(request) -> "USDCent":
-    from generalresearch.currency import USDCent
-
+def amount_100() -> USDCent:
     return USDCent(100)
 
 
-def clear_directory(path: Path):
-    for entry in os.listdir(path):
+def clear_directory(path: Path | str):
+    dir_path = Path(path)
+
+    for entry in os.listdir(dir_path):
+
         full_path = os.path.join(path, entry)
         if os.path.isfile(full_path) or os.path.islink(full_path):
             os.unlink(full_path)  # remove file or symlink
+
         elif os.path.isdir(full_path):
             shutil.rmtree(full_path)  # remove folder

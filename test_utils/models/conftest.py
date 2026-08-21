@@ -16,6 +16,7 @@ from generalresearch.models.thl.definitions import (
     WALL_ALLOWED_STATUS_STATUS_CODE,
     Status,
 )
+from generalresearch.models.thl.survey.model import Buyer, Survey
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
 
@@ -59,7 +60,6 @@ if TYPE_CHECKING:
         Product,
     )
     from generalresearch.models.thl.session import Session, Wall
-    from generalresearch.models.thl.survey.model import Buyer, Survey
     from generalresearch.models.thl.user import User
     from generalresearch.models.thl.user_iphistory import IPRecord
     from generalresearch.models.thl.userhealth import AuditLog, AuditLogLevel
@@ -70,10 +70,10 @@ if TYPE_CHECKING:
 @pytest.fixture
 def user(
     request,
-    product_manager: "ProductManager",
-    user_manager: "UserManager",
+    product_manager: ProductManager,
+    user_manager: UserManager,
     thl_web_rr: PostgresConfig,
-) -> "User":
+) -> User:
     product = getattr(request, "product", None)
 
     if product is None:
@@ -172,7 +172,6 @@ def wall(session: Session, user: User, wall_manager: WallManager) -> Wall | None
 
 @pytest.fixture
 def session_factory(
-    wall_factory: Callable[..., Wall],
     session_manager: SessionManager,
     wall_manager: WallManager,
     utc_hour_ago: datetime,
@@ -190,7 +189,7 @@ def session_factory(
         # Session details
         final_status: Status = Status.COMPLETE,
         started: datetime = utc_hour_ago,
-    ) -> "Session":
+    ) -> Session:
         if wall_req_cpis:
             assert len(wall_req_cpis) == wall_count
         if wall_statuses:
@@ -422,7 +421,7 @@ def business(request, business_manager: BusinessManager) -> Business:
 
 @pytest.fixture
 def business_address(
-    request, business: "Business", business_address_manager: BusinessAddressManager
+    request, business: Business, business_address_manager: BusinessAddressManager
 ) -> BusinessAddress:
     return business_address_manager.create_dummy(business_id=business.id)
 
@@ -439,77 +438,6 @@ def business_bank_account(
 @pytest.fixture
 def team(request, team_manager: TeamManager) -> Team:
     return team_manager.create_dummy()
-
-
-@pytest.fixture
-def gr_user(gr_um: GRUserManager) -> GRUser:
-    return gr_um.create_dummy()
-
-
-@pytest.fixture
-def gr_user_cache(
-    gr_user: GRUser,
-    gr_db: PostgresConfig,
-    thl_web_rr: PostgresConfig,
-    gr_redis_config: RedisConfig,
-) -> GRUser:
-    gr_user.set_cache(
-        pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
-    )
-    return gr_user
-
-
-@pytest.fixture
-def gr_user_factory(gr_um: GRUserManager) -> Callable[..., GRUser]:
-
-    def _inner():
-        return gr_um.create_dummy()
-
-    return _inner
-
-
-@pytest.fixture()
-def gr_user_token(
-    gr_user: GRUser, gr_tm: GRTokenManager, gr_db: PostgresConfig
-) -> GRToken:
-    gr_tm.create(user_id=gr_user.id)
-    gr_user.prefetch_token(pg_config=gr_db)
-
-    res = gr_user.token
-    assert res is not None, "GRToken should exist after creation and prefetching"
-    return res
-
-
-@pytest.fixture()
-def gr_user_token_header(gr_user_token: GRToken) -> dict[str, str]:
-    return gr_user_token.auth_header
-
-
-@pytest.fixture(scope="function")
-def membership(
-    request, team: Team, gr_user: GRUser, team_manager: TeamManager
-) -> Membership:
-    assert team.id, "Team must be saved"
-    assert gr_user.id, "GRUser must be saved"
-    return team_manager.add_user(team=team, gr_user=gr_user)
-
-
-@pytest.fixture(scope="function")
-def membership_factory(
-    team: Team,
-    gr_user: GRUser,
-    membership_manager: MembershipManager,
-    team_manager: TeamManager,
-    gr_um: GRUserManager,
-) -> Callable[..., Membership]:
-
-    def _inner(**kwargs) -> Membership:
-        _team = kwargs.get("team", team_manager.create_dummy())
-        _gr_user = kwargs.get("gr_user", gr_um.create_dummy())
-
-        return membership_manager.create(team=_team, gr_user=_gr_user)
-
-    return _inner
 
 
 @pytest.fixture
@@ -613,7 +541,7 @@ def buyer_factory(buyer_manager: BuyerManager) -> Callable[..., Buyer]:
 
 
 @pytest.fixture(scope="session")
-def survey(survey_manager: SurveyManager, buyer: Buyer) -> "Survey":
+def survey(survey_manager: SurveyManager, buyer: Buyer) -> Survey:
     s = Survey(source=Source.TESTING, survey_id=uuid4().hex, buyer_code=buyer.code)
     survey_manager.create_bulk([s])
     return s

@@ -53,6 +53,8 @@ class GRLBaseSettings(BaseSettings):
     testing_postgres_user: str | None = Field(default=None)
     testing_postgres_pass: str | None = Field(default=None)
 
+    git_creds: str | None = Field(default=None)
+
     # ---
 
     redis: RedisDsn | None = Field(default=None)

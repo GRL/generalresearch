@@ -410,5 +410,5 @@ class NmapXmlParser:
         )
 
 
-def parse_nmap_xml(raw):
+def parse_nmap_xml(raw) -> NmapResult:
     return NmapXmlParser.parse_xml(raw)

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -10,7 +12,7 @@ if TYPE_CHECKING:
 class TestGrlIqCategoryResultsReader:
 
     def test_filter_category_results(
-        self, grliq_dm: "GrlIqDataManager", grliq_crr: "GrlIqCategoryResultsReader"
+        self, grliq_dm: GrlIqDataManager, grliq_crr: GrlIqCategoryResultsReader
     ):
         from generalresearch.grliq.models.forensic_result import (
             GrlIqForensicCategoryResult,

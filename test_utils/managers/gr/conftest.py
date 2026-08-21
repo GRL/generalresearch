@@ -1,151 +1,110 @@
 from __future__ import annotations
 
 from typing import Callable
-from uuid import uuid4
 
 import pytest
-from pydantic import PositiveInt
-from pydantic_extra_types.phone_numbers import PhoneNumber
+import redis.asyncio as redis_async
+from pydantic import PostgresDsn
+from redis import Redis
 
-from generalresearch.managers.gr.authentication import GRUserManager
+from generalresearch.config import GRLBaseSettings
+from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
 from generalresearch.managers.gr.business import (
     BusinessAddressManager,
     BusinessBankAccountManager,
     BusinessManager,
 )
-from generalresearch.managers.gr.team import TeamManager
-from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.gr.authentication import GRUser
-from generalresearch.models.gr.business import (
-    Business,
-    BusinessAddress,
-    BusinessBankAccount,
-    BusinessType,
-    TransferMethod,
-)
-from generalresearch.models.gr.team import Team
+from generalresearch.pg_helper import PostgresConfig
+from generalresearch.redis_helper import RedisConfig
+
+
+# === Msc ===
+@pytest.fixture(scope="session")
+def gr_redis(settings: GRLBaseSettings) -> Redis:
+    assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
+    return Redis.from_url(
+        url=str(settings.gr_redis),
+        decode_responses=True,
+        socket_timeout=settings.redis_timeout,
+        socket_connect_timeout=settings.redis_timeout,
+    )
 
 
 @pytest.fixture
-def gr_user_factory(gr_um: GRUserManager) -> Callable[..., GRUser]:
+def gr_redis_async(settings: GRLBaseSettings) -> redis_async.Redis:
+    assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
 
-    def _inner(
-        sub: str | None = None,
-        is_superuser: bool = False,
-    ) -> GRUser:
-        sub = sub or f"{uuid4().hex}-{uuid4().hex}"
-
-        return gr_um.create(
-            sub=sub,
-            is_superuser=is_superuser,
-        )
-
-    return _inner
+    return redis_async.Redis.from_url(
+        str(settings.gr_redis),
+        decode_responses=True,
+        socket_timeout=0.20,
+        socket_connect_timeout=0.20,
+    )
 
 
-@pytest.fixture
-def gr_business_bank_account_factory(
-    gr_bbam: BusinessBankAccountManager,
-) -> Callable[..., BusinessBankAccount]:
+@pytest.fixture(scope="session")
+def gr_redis_config(settings: GRLBaseSettings) -> RedisConfig:
+    assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
 
-    def _inner(
-        business_id: PositiveInt,
-        uuid: UUIDStr | None = None,
-        transfer_method: TransferMethod | None = None,
-        account_number: str | None = None,
-        routing_number: str | None = None,
-        iban: str | None = None,
-        swift: str | None = None,
-    ):
-        from generalresearch.models.gr.business import TransferMethod
-
-        return gr_bbam.create(
-            business_id=business_id,
-            uuid=uuid or uuid4().hex,
-            transfer_method=transfer_method or TransferMethod.ACH,
-            account_number=account_number or uuid4().hex[:6],
-            routing_number=routing_number or uuid4().hex[:6],
-            iban=iban or uuid4().hex[:6],
-            swift=swift or uuid4().hex[:6],
-        )
-
-    return _inner
+    return RedisConfig(
+        dsn=settings.gr_redis,
+        decode_responses=True,
+        socket_timeout=settings.redis_timeout,
+        socket_connect_timeout=settings.redis_timeout,
+    )
 
 
-@pytest.fixture
-def gr_business_address_factory(
-    gr_bam: BusinessAddressManager,
-) -> Callable[..., BusinessAddress]:
+@pytest.fixture(scope="session")
+def gr_db(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
 
-    def _inner(
-        business_id: PositiveInt,
-        uuid: UUIDStr | None = None,
-        line_1: str | None = None,
-        line_2: str | None = None,
-        city: str | None = None,
-        state: str | None = None,
-        postal_code: str | None = None,
-        phone_number: PhoneNumber | None = None,
-        country: str | None = None,
-    ):
-        uuid = uuid or uuid4().hex
-        line_1 = line_1 or "abc"
-        line_2 = line_2 or "bczx"
-        city = city or "Downingtown"
-        state = state or "CA"
-        postal_code = postal_code or "94041"
-        phone_number = None
-        country = country or "US"
-
-        return gr_bam.create(
-            business_id=business_id,
-            uuid=uuid,
-            line_1=line_1,
-            line_2=line_2,
-            city=city,
-            state=state,
-            postal_code=postal_code,
-            phone_number=phone_number,
-            country=country,
-        )
-
-    return _inner
+    return PostgresConfig(
+        dsn=django_db_factory("gr_carer"),
+        connect_timeout=1,
+        statement_timeout=5,
+    )
 
 
-@pytest.fixture
-def gr_business_factory(
-    gr_bm: BusinessManager,
-) -> Callable[..., Business]:
-
-    def _inner(
-        uuid: UUIDStr | None = None,
-        name: str | None = None,
-        team: Team | None = None,
-        kind: BusinessType | None = None,
-        tax_number: str | None = None,
-    ) -> Business:
-        from random import randint
-
-        uuid = uuid or uuid4().hex
-        name = name or "< Unknown >"
-        tax_number = tax_number or str(randint(1, 999_999_999))
-
-        return gr_bm.create(
-            uuid=uuid, name=name, team=team, kind=kind, tax_number=tax_number
-        )
-
-    return _inner
+# === Managers ===
 
 
-@pytest.fixture
-def gr_team(
-    gr_tm: TeamManager,
-) -> Callable[..., Team]:
+@pytest.fixture(scope="session")
+def gr_user_manager(
+    gr_db: PostgresConfig, gr_redis_config: RedisConfig
+) -> GRUserManager:
+    assert gr_db.dsn.path
+    assert "/unittest-" in gr_db.dsn.path
 
-    def _inner(uuid: UUIDStr | None = None, name: str | None = None) -> Team:
-        uuid = uuid or uuid4().hex
-        name = name or f"name-{uuid4().hex[:12]}"
+    from generalresearch.managers.gr.authentication import GRUserManager
 
-        return gr_tm.create(uuid=uuid, name=name)
+    return GRUserManager(pg_config=gr_db, redis_config=gr_redis_config)
 
-    return _inner
+
+@pytest.fixture(scope="session")
+def gr_team_manager(gr_db: PostgresConfig) -> GRTokenManager:
+    assert gr_db.dsn.path
+    assert "/unittest-" in gr_db.dsn.path
+
+    from generalresearch.managers.gr.authentication import GRTokenManager
+
+    return GRTokenManager(pg_config=gr_db)
+
+
+@pytest.fixture(scope="session")
+def gr_business_manager(
+    gr_db: PostgresConfig, gr_redis_config: RedisConfig
+) -> BusinessManager:
+    return BusinessManager(pg_config=gr_db, redis_config=gr_redis_config)
+
+
+@pytest.fixture(scope="session")
+def gr_business_bank_account_manager(
+    gr_db: PostgresConfig,
+) -> BusinessBankAccountManager:
+    return BusinessBankAccountManager(pg_config=gr_db)
+
+
+@pytest.fixture(scope="session")
+def gr_business_address_manager(
+    gr_db: PostgresConfig,
+) -> BusinessAddressManager:
+    return BusinessAddressManager(pg_config=gr_db)
