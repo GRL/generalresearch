@@ -4,6 +4,7 @@ import os
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from os.path import join as pjoin
@@ -174,7 +175,7 @@ def git_key_path(
 
 
 @pytest.fixture(scope="session")
-def gr_models(git_key_path: Path) -> Callable[..., Path]:
+def gr_repo(git_key_path: Path) -> Callable[..., Path]:
     repo_url = "ssh://code.g-r-l.com/general-research/gr-carer.git"
     repo_path = Path("/tmp/gr-carer")
 
@@ -202,7 +203,9 @@ def gr_models(git_key_path: Path) -> Callable[..., Path]:
 
 @pytest.fixture(scope="session")
 def django_db_factory(
-    postgres_instance: PostgresDsn, postgres_instance_dict: PostgresDict
+    postgres_instance: PostgresDsn,
+    postgres_instance_dict: PostgresDict,
+    gr_repo: Callable[..., Path],
 ) -> Callable[..., PostgresDsn]:
 
     import django
@@ -210,6 +213,13 @@ def django_db_factory(
     from django.core.management import call_command
 
     def _inner(django_project: str = "generalresearch.thl_django"):
+
+        if "gr" in django_project:
+            # We need model files that are NOT in this repo.
+            gr_path = gr_repo()
+            sys.path.insert(0, str(gr_path))
+
+            print(sys.path)
 
         # 1. Bootstrapping Django settings
         if not django_settings.configured:
