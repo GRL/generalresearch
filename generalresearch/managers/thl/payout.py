@@ -1139,6 +1139,54 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
             conn.commit()
         return None
 
+    def create_bp_payout_event(
+        self,
+        thl_ledger_manager: ThlLedgerManager,
+        product: Product,
+        amount: USDCent,
+        ext_ref_id: str,
+        created: datetime | None = None,
+    ):
+        """
+        This should NOT be called directly normally. It is just a shortcut
+        for tests. However, instead of just making a naked BP payout,
+        it created the business payout also, but with just one BP Payout
+        """
+        created = created or datetime.now(tz=timezone.utc)
+        account = thl_ledger_manager.get_account(
+            f"{thl_ledger_manager.currency.value}:bp_wallet:{product.uuid}"
+        )
+        bpe = BusinessPayoutEvent(
+            id=None,
+            business_id=product.business_uuid,
+            payout_type=PayoutType.ACH,
+            amount=amount,
+            created=created,
+            ext_ref_id=ext_ref_id,
+            status=PayoutStatus.APPROVED,
+            bp_payouts=[
+                BrokerageProductPayoutEvent(
+                    created=created,
+                    payout_type=PayoutType.ACH,
+                    status=PayoutStatus.PENDING,
+                    uuid=uuid4().hex,
+                    amount=amount,
+                    ext_ref_id=ext_ref_id,
+                    product_id=product.uuid,
+                    cashout_method_uuid=self.bp_pe_manager.CASHOUT_METHOD_UUID,
+                    debit_account_uuid=account.uuid,
+                )
+            ],
+        )
+        self.create_business_payout_event(bpe=bpe)
+        self.bp_pe_manager.create_tx_bp_payout_from_payout_event(
+            thl_ledger_manager=thl_ledger_manager,
+            bp_pe=bpe.bp_payouts[0],
+            product=product,
+        )
+        self.update_business_payout_event(pk=bpe.id, status=PayoutStatus.COMPLETE)
+        return bpe
+
 
 # import duckdb
 # conn = duckdb.connect()

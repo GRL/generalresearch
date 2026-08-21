@@ -390,8 +390,6 @@ def bp_payout_factory(
         amount: Optional["USDCent"] = None,
         ext_ref_id: Optional[str] = None,
         created: Optional[AwareDatetime] = None,
-        skip_wallet_balance_check: bool = False,
-        skip_one_per_day_check: bool = False,
     ) -> "BrokerageProductPayoutEvent":
         from generalresearch.currency import USDCent
 
@@ -402,10 +400,8 @@ def bp_payout_factory(
             thl_ledger_manager=thl_lm,
             product=product,
             amount=amount,
-            ext_ref_id=ext_ref_id,
+            ext_ref_id=ext_ref_id or uuid4().hex,
             created=created,
-            skip_wallet_balance_check=skip_wallet_balance_check,
-            skip_one_per_day_check=skip_one_per_day_check,
         )
 
     return _inner

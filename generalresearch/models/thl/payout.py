@@ -228,7 +228,7 @@ class BusinessPayoutEvent(BaseModel):
 
     model_config = ConfigDict(validate_assignment=True)
 
-    id: SkipJsonSchema[PositiveInt | None] = Field(exclude=True)
+    id: SkipJsonSchema[PositiveInt | None] = Field(exclude=True, default=None)
 
     # Used for holding a *unique*, external, payout-type-specific identifier.
     ext_ref_id: str = Field(title="Unique external reference ID")
