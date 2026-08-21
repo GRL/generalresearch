@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
-from fastapi import Request
+from pytest import FixtureRequest as Request
 
 from generalresearch.managers.network.label import IPLabelManager
 from generalresearch.managers.network.tool_run import ToolRunManager

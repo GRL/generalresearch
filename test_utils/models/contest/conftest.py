@@ -6,7 +6,8 @@ from typing import Callable
 from uuid import uuid4
 
 import pytest
-from fastapi import Request
+from pytest import FixtureRequest as Request
+
 
 from generalresearch.currency import USDCent
 from generalresearch.managers.thl.contest_manager import ContestManager

@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Callable
 from uuid import uuid4
 
 import pytest
-from fastapi import Request
 from pydantic import AwareDatetime, PositiveInt
+from pytest import FixtureRequest as Request
 
 from generalresearch.models import Source
 from generalresearch.models.thl.definitions import (
