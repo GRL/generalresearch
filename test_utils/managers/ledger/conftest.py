@@ -192,8 +192,7 @@ def bp_payout_event(
         thl_ledger_manager=thl_lm,
         product=product,
         amount=usd_cent,
-        skip_wallet_balance_check=True,
-        skip_one_per_day_check=True,
+        ext_ref_id=uuid4().hex
     )
 
 

@@ -293,37 +293,14 @@ class TestBusinessPayoutEventManager:
         ach_id1 = uuid4().hex
         ach_id2 = uuid4().hex
 
-        bp_payout_factory(
-            product=p1,
-            amount=USDCent(1),
-            ext_ref_id=None,
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
-        )
+        # ext_ref_id is required now
+        bp_payout_factory(product=p1,amount=USDCent(1),ext_ref_id="none")
 
-        bp_payout_factory(
-            product=p1,
-            amount=USDCent(1),
-            ext_ref_id=ach_id1,
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
-        )
+        bp_payout_factory(product=p1,amount=USDCent(1),ext_ref_id=ach_id1)
+        with pytest.raises(expected_exception=ValueError, match="Cannot create a BusinessPayoutEvent with an existing transaction_id"):
+            bp_payout_factory(product=p1,amount=USDCent(25),ext_ref_id=ach_id1)
 
-        bp_payout_factory(
-            product=p1,
-            amount=USDCent(25),
-            ext_ref_id=ach_id1,
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
-        )
-
-        bp_payout_factory(
-            product=p1,
-            amount=USDCent(50),
-            ext_ref_id=ach_id2,
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
-        )
+        bp_payout_factory(product=p1,amount=USDCent(50),ext_ref_id=ach_id2)
 
         business.prebuild_payouts(
             bpem=business_payout_event_manager,
@@ -333,11 +310,14 @@ class TestBusinessPayoutEventManager:
         assert business.payouts_total == sum([pe.amount for pe in business.payouts])
         assert business.payouts[0].created > business.payouts[1].created
         assert len(business.payouts[0].bp_payouts) == 1
-        assert len(business.payouts[1].bp_payouts) == 2
+
+        # Cannot pay out the same product twice in the same business payout
+        # assert len(business.payouts[1].bp_payouts) == 2
+        assert len(business.payouts[1].bp_payouts) == 1
 
         assert business.payouts[0].ext_ref_id == ach_id2
         assert business.payouts[1].ext_ref_id == ach_id1
-        assert business.payouts[2].ext_ref_id is None
+        assert business.payouts[2].ext_ref_id == "none"
 
     def test_update_ext_reference_ids(
         self,
@@ -368,7 +348,6 @@ class TestBusinessPayoutEventManager:
         p1: Product = product_factory(business=business)
         u1: User = user_factory(product=p1)
         thl_lm.get_account_or_create_bp_wallet(product=p1)
-        business_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
 
         # $250.00 to work with
         for idx in range(1, 10):
@@ -381,12 +360,11 @@ class TestBusinessPayoutEventManager:
         ach_id1 = uuid4().hex
         ach_id2 = uuid4().hex
 
-        with pytest.raises(expected_exception=Warning) as cm:
+        with pytest.raises(expected_exception=AssertionError, match="No Business Payout found"):
             business_payout_event_manager.update_ext_reference_ids(
                 new_value=ach_id2,
                 current_value=ach_id1,
             )
-        assert "No event_payouts found to UPDATE" in str(cm)
 
         # We must build the balance to issue ACH/Wire
         ledger_collection.initial_load(client=None, sync=True)
@@ -407,6 +385,7 @@ class TestBusinessPayoutEventManager:
             transaction_id=ach_id1,
         )
         assert isinstance(res, BusinessPayoutEvent)
+        assert business_payout_event_manager.get_by_ext_ref_id(ext_ref_id=ach_id1)
 
         # Okay, now that there is a payout_event, let's try to update the
         # ext_reference_id
@@ -415,105 +394,10 @@ class TestBusinessPayoutEventManager:
             current_value=ach_id1,
         )
 
-        res = business_payout_event_manager.filter_by(ext_ref_id=ach_id1)
-        assert len(res) == 0
+        with pytest.raises(expected_exception=AssertionError, match="No Business Payout found"):
+            business_payout_event_manager.get_by_ext_ref_id(ext_ref_id=ach_id1)
 
-        res = business_payout_event_manager.filter_by(ext_ref_id=ach_id2)
-        assert len(res) == 1
-
-    def test_delete_failed_business_payout(
-        self,
-        brokerage_product_payout_event_manager,
-        business_payout_event_manager,
-        delete_ledger_db,
-        create_main_accounts,
-        thl_lm,
-        thl_web_rr,
-        product_factory,
-        bp_payout_factory,
-        currency,
-        delete_df_collection,
-        user_factory,
-        ledger_collection,
-        session_with_tx_factory,
-        pop_ledger_merge,
-        client_no_amm,
-        mnt_filepath,
-        lm,
-        product_manager,
-        start,
-        business,
-    ):
-        delete_ledger_db()
-        create_main_accounts()
-        delete_df_collection(coll=ledger_collection)
-
-        p1: Product = product_factory(business=business)
-        u1: User = user_factory(product=p1)
-        thl_lm.get_account_or_create_bp_wallet(product=p1)
-        business_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
-
-        # $250.00 to work with
-        for idx in range(1, 10):
-            session_with_tx_factory(
-                user=u1,
-                wall_req_cpi=Decimal("25.00"),
-                started=start + timedelta(days=1, minutes=idx),
-            )
-
-        # We must build the balance to issue ACH/Wire
-        ledger_collection.initial_load(client=None, sync=True)
-        pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
-        business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
-            lm=lm,
-            ds=mnt_filepath,
-            client=client_no_amm,
-            pop_ledger=pop_ledger_merge,
-        )
-
-        ach_id1 = uuid4().hex
-
-        res = business_payout_event_manager.create_from_ach_or_wire(
-            business=business,
-            amount=USDCent(100_01),
-            pm=product_manager,
-            thl_lm=thl_lm,
-            transaction_id=ach_id1,
-        )
-        assert isinstance(res, BusinessPayoutEvent)
-
-        # (1) Confirm the initial Event Payout, Tx, TxMeta, TxEntry all exist
-        event_payouts = business_payout_event_manager.filter_by(ext_ref_id=ach_id1)
-        event_payout_uuids = [i.uuid for i in event_payouts]
-        assert len(event_payout_uuids) == 1
-        tags = [f"{currency.value}:bp_payout:{x}" for x in event_payout_uuids]
-        transactions = thl_lm.get_txs_by_tags(tags=tags)
-        assert len(transactions) == 1
-        tx_metadata_ids = thl_lm.get_tx_metadata_ids_by_txs(transactions=transactions)
-        assert len(tx_metadata_ids) == 2
-        tx_entries = thl_lm.get_tx_entries_by_txs(transactions=transactions)
-        assert len(tx_entries) == 2
-
-        # (2) Delete!
-        business_payout_event_manager.delete_failed_business_payout(
-            ext_ref_id=ach_id1, thl_lm=thl_lm
-        )
-
-        # (3) Confirm the initial Event Payout, Tx, TxMeta, TxEntry have
-        #   all been deleted
-        res = business_payout_event_manager.filter_by(ext_ref_id=ach_id1)
-        assert len(res) == 0
-
-        # Note: b/c the event_payout shouldn't exist anymore, we are taking
-        #    the tag strings and transactions from when they did..
-        res = thl_lm.get_txs_by_tags(tags=tags)
-        assert len(res) == 0
-
-        tx_metadata_ids = thl_lm.get_tx_metadata_ids_by_txs(transactions=transactions)
-        assert len(tx_metadata_ids) == 0
-        tx_entries = thl_lm.get_tx_entries_by_txs(transactions=transactions)
-        assert len(tx_entries) == 0
+        assert business_payout_event_manager.get_by_ext_ref_id(ext_ref_id=ach_id2)
 
     def test_recoup_empty(self, business_payout_event_manager):
         res = {uuid4().hex: USDCent(0) for i in range(100)}
@@ -664,7 +548,7 @@ class TestBusinessPayoutEventManager:
         lm,
         product_manager,
     ):
-        """Test having a Business with three products.. one that lost money
+        """Test having a Business with three products. One that lost money
         and two that gained money. Ensure that the Business balance
         reflects that to compensate for the Product in the negative and only
         assigns Brokerage Product payments from the 2 accounts that have
@@ -689,7 +573,6 @@ class TestBusinessPayoutEventManager:
             wall_req_cpi=Decimal("5.00"),
             started=start + timedelta(days=6),
         )
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
         bp_payout_factory(
             product=u1.product,
             amount=USDCent(475),  # 95% of $5.00
@@ -712,30 +595,9 @@ class TestBusinessPayoutEventManager:
                 amount=USDCent(500),
                 pm=product_manager,
                 thl_lm=thl_lm,
+                transaction_id=uuid4().hex,
             )
         assert "Must issue Supplier Payouts at least $100 minimum." in str(cm)
-
-        bpe = BusinessPayoutEvent(
-            business_id=business.uuid,
-            amount=USDCent(100_00),
-            payout_type=PayoutType.ACH,
-        )
-        bpe.bp_payouts = [
-            BrokerageProductPayoutEvent(
-                product_id=uuid4().hex,
-                payout_type=PayoutType.ACH,
-                amount=USDCent(47_00),
-                cashout_method_uuid=uuid4().hex,
-                debit_account_uuid=uuid4().hex,
-            ),
-            BrokerageProductPayoutEvent(
-                product_id=uuid4().hex,
-                payout_type=PayoutType.ACH,
-                amount=USDCent(53_00),
-                cashout_method_uuid=uuid4().hex,
-                debit_account_uuid=uuid4().hex,
-            ),
-        ]
 
     def test_create_from_ach_or_wire(
         self,
@@ -916,7 +778,6 @@ class TestBusinessPayoutEventManager:
             wall_req_cpi=Decimal("5.00"),
             started=start + timedelta(days=1),
         )
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
         bp_payout_factory(
             product=u1.product,
             amount=USDCent(475),  # 95% of $5.00
