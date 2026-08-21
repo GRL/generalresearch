@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable
 
 import pytest
 
@@ -21,12 +23,12 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def user_collection(
-    mnt_filepath: "GRLDatasets",
+    mnt_filepath: GRLDatasets,
     offset: str,
     duration: timedelta,
     start: datetime,
     thl_web_rr: PostgresConfig,
-) -> "UserDFCollection":
+) -> UserDFCollection:
     from generalresearch.incite.collections.thl_web import (
         DFCollectionType,
         UserDFCollection,
@@ -43,12 +45,12 @@ def user_collection(
 
 @pytest.fixture
 def wall_collection(
-    mnt_filepath: "GRLDatasets",
+    mnt_filepath: GRLDatasets,
     offset: str,
     duration: timedelta,
     start: datetime,
     thl_web_rr: PostgresConfig,
-) -> "WallDFCollection":
+) -> WallDFCollection:
     from generalresearch.incite.collections.thl_web import (
         DFCollectionType,
         WallDFCollection,
@@ -65,12 +67,12 @@ def wall_collection(
 
 @pytest.fixture
 def session_collection(
-    mnt_filepath: "GRLDatasets",
+    mnt_filepath: GRLDatasets,
     offset: str,
     duration: timedelta,
     start: datetime,
     thl_web_rr: PostgresConfig,
-) -> "SessionDFCollection":
+) -> SessionDFCollection:
     from generalresearch.incite.collections.thl_web import (
         DFCollectionType,
         SessionDFCollection,
@@ -103,12 +105,12 @@ def session_collection(
 
 @pytest.fixture
 def task_adj_collection(
-    mnt_filepath: "GRLDatasets",
+    mnt_filepath: GRLDatasets,
     offset: str,
-    duration: Optional[timedelta],
+    duration: timedelta | None,
     start: datetime,
     thl_web_rr: PostgresConfig,
-) -> "TaskAdjustmentDFCollection":
+) -> TaskAdjustmentDFCollection:
     from generalresearch.incite.collections.thl_web import (
         DFCollectionType,
         TaskAdjustmentDFCollection,
@@ -127,12 +129,12 @@ def task_adj_collection(
 
 @pytest.fixture
 def auditlog_collection(
-    mnt_filepath: "GRLDatasets",
+    mnt_filepath: GRLDatasets,
     offset: str,
     duration: timedelta,
     start: datetime,
     thl_web_rr: PostgresConfig,
-) -> "AuditLogDFCollection":
+) -> AuditLogDFCollection:
     from generalresearch.incite.collections.thl_web import (
         AuditLogDFCollection,
         DFCollectionType,
@@ -149,12 +151,12 @@ def auditlog_collection(
 
 @pytest.fixture
 def ledger_collection(
-    mnt_filepath: "GRLDatasets",
+    mnt_filepath: GRLDatasets,
     offset: str,
     duration: timedelta,
     start: datetime,
     thl_web_rr: PostgresConfig,
-) -> "LedgerDFCollection":
+) -> LedgerDFCollection:
     from generalresearch.incite.collections.thl_web import (
         DFCollectionType,
         LedgerDFCollection,
@@ -171,7 +173,7 @@ def ledger_collection(
 
 @pytest.fixture
 def rm_ledger_collection(
-    ledger_collection: "LedgerDFCollection",
+    ledger_collection: LedgerDFCollection,
 ) -> Callable[..., None]:
 
     def _inner():
@@ -187,13 +189,13 @@ def rm_ledger_collection(
 
 @pytest.fixture
 def df_collection(
-    mnt_filepath: "GRLDatasets",
-    df_collection_data_type: "DFCollectionType",
+    mnt_filepath: GRLDatasets,
+    df_collection_data_type: DFCollectionType,
     offset: str,
     duration: timedelta,
     utc_90days_ago: datetime,
     thl_web_rr: PostgresConfig,
-) -> "DFCollection":
+) -> DFCollection:
     from generalresearch.incite.collections import DFCollection
 
     start = utc_90days_ago.replace(microsecond=0)

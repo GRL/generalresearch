@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
 from itertools import product as iter_product
 from os.path import join as pjoin
@@ -12,13 +15,7 @@ from distributed import Client, Scheduler, Worker
 
 # noinspection PyUnresolvedReferences
 from distributed.utils_test import (
-    cleanup,
-    client,
-    client_no_amm,
-    cluster_fixture,
     gen_cluster,
-    loop,
-    loop_in_thread,
 )
 from faker import Faker
 from pandera.pandas import DataFrameSchema
@@ -34,7 +31,6 @@ from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.sql_helper import PostgresDsn
-from test_utils.incite.conftest import incite_item_factory, mnt_filepath
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
@@ -56,12 +52,12 @@ unsupported_mock_types = {
 }
 
 
-def combo_object():
+def combo_object() -> Generator[str, None, None]:
     for x in iter_product(
         df_collections,
         ["15min", "45min", "1H"],
     ):
-        yield x
+        yield from x
 
 
 class TestDFCollectionItemBase:
@@ -199,7 +195,7 @@ class TestDFCollectionItemMethod:
         client_no_amm,
         incite_item_factory,
         delete_df_collection,
-        mnt_filepath: "GRLDatasets",
+        mnt_filepath: GRLDatasets,
     ):
         assert 1 + 1 == 2
 
@@ -768,7 +764,7 @@ class TestDFCollectionItemFunctionalTest:
         product: Product,
         incite_item_factory,
         delete_df_collection,
-        mnt_filepath: "GRLDatasets",
+        mnt_filepath: GRLDatasets,
     ):
         from generalresearch.models.thl.user import User
 
@@ -818,7 +814,7 @@ class TestDFCollectionItemFunctionalTest:
         df_collection_data_type,
         incite_item_factory,
         delete_df_collection,
-        mnt_filepath: "GRLDatasets",
+        mnt_filepath: GRLDatasets,
     ):
         """A functional test to write some Parquet files for the
         DFCollection and then confirm that the files get written
@@ -866,7 +862,7 @@ class TestDFCollectionItemFunctionalTest:
         df_collection_data_type,
         incite_item_factory,
         delete_df_collection,
-        mnt_filepath: "GRLDatasets",
+        mnt_filepath: GRLDatasets,
     ):
         from generalresearch.models.thl.user import User
 
@@ -919,7 +915,7 @@ class TestDFCollectionItemFunctionalTest:
         product: Product,
         offset: str,
         duration: timedelta,
-        mnt_filepath: "GRLDatasets",
+        mnt_filepath: GRLDatasets,
     ):
         """Don't allow creating an archive for data that will likely be
         overwritten or updated
@@ -960,7 +956,7 @@ class TestDFCollectionItemFunctionalTest:
         user: User,
         offset: str,
         duration: timedelta,
-        mnt_filepath: "GRLDatasets",
+        mnt_filepath: GRLDatasets,
     ):
         delete_df_collection(coll=df_collection)
 

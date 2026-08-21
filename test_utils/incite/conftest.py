@@ -1,17 +1,16 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta, timezone
 from os.path import join as pjoin
 from pathlib import Path
 from random import choice as randchoice
 from shutil import rmtree
-from typing import TYPE_CHECKING, Callable, Optional
+from typing import TYPE_CHECKING, Callable
 from uuid import uuid4
 
 import pytest
 from _pytest.fixtures import SubRequest
 from faker import Faker
-
-# from test_utils.managers.ledger.conftest import session_with_tx_factory
-# from test_utils.models.conftest import session_factory
 
 if TYPE_CHECKING:
     from generalresearch.config import GRLBaseSettings
@@ -33,7 +32,7 @@ fake = Faker()
 
 
 @pytest.fixture
-def mnt_gr_api_dir(request: SubRequest, settings: "GRLBaseSettings") -> Path:
+def mnt_gr_api_dir(request: SubRequest, settings: GRLBaseSettings) -> Path:
     p = Path(settings.mnt_gr_api_dir)
     p.mkdir(parents=True, exist_ok=True)
 
@@ -56,7 +55,7 @@ def mnt_gr_api_dir(request: SubRequest, settings: "GRLBaseSettings") -> Path:
 
 
 @pytest.fixture
-def event_report_request(utc_hour_ago: datetime, start: datetime) -> "ReportRequest":
+def event_report_request(utc_hour_ago: datetime, start: datetime) -> ReportRequest:
     from generalresearch.models.admin.request import (
         ReportRequest,
         ReportType,
@@ -72,7 +71,7 @@ def event_report_request(utc_hour_ago: datetime, start: datetime) -> "ReportRequ
 
 
 @pytest.fixture
-def session_report_request(utc_hour_ago: datetime, start: datetime) -> "ReportRequest":
+def session_report_request(utc_hour_ago: datetime, start: datetime) -> ReportRequest:
     from generalresearch.models.admin.request import (
         ReportRequest,
         ReportType,
@@ -88,7 +87,7 @@ def session_report_request(utc_hour_ago: datetime, start: datetime) -> "ReportRe
 
 
 @pytest.fixture
-def mnt_filepath(request: SubRequest) -> "GRLDatasets":
+def mnt_filepath(request: SubRequest) -> GRLDatasets:
     """
     Creates a temporary file path for all DFCollections &
     Mergers parquet files.
@@ -114,7 +113,7 @@ def mnt_filepath(request: SubRequest) -> "GRLDatasets":
 
 
 @pytest.fixture
-def start(utc_90days_ago: datetime) -> "datetime":
+def start(utc_90days_ago: datetime) -> datetime:
     s = utc_90days_ago.replace(microsecond=0)
     return s
 
@@ -125,19 +124,19 @@ def offset() -> str:
 
 
 @pytest.fixture
-def duration() -> Optional["timedelta"]:
+def duration() -> timedelta | None:
     return timedelta(hours=1)
 
 
 @pytest.fixture
-def df_collection_data_type() -> "DFCollectionType":
+def df_collection_data_type() -> DFCollectionType:
     from generalresearch.incite.collections import DFCollectionType
 
     return DFCollectionType.TEST
 
 
 @pytest.fixture
-def merge_type() -> "MergeType":
+def merge_type() -> MergeType:
     from generalresearch.incite.mergers import MergeType
 
     return MergeType.TEST
@@ -145,16 +144,16 @@ def merge_type() -> "MergeType":
 
 @pytest.fixture
 def incite_item_factory(
-    session_factory: Callable[..., "Session"],
-    product: "Product",
-    user_factory: Callable[..., "User"],
-    session_with_tx_factory: Callable[..., "Session"],
+    session_factory: Callable[..., Session],
+    product: Product,
+    user_factory: Callable[..., User],
+    session_with_tx_factory: Callable[..., Session],
 ) -> Callable[..., None]:
 
     def _inner(
-        item: "DFCollectionItem",
+        item: DFCollectionItem,
         observations: int = 3,
-        user: Optional["User"] = None,
+        user: User | None = None,
     ):
         from generalresearch.incite.collections import (
             DFCollection,
@@ -203,7 +202,5 @@ def incite_item_factory(
 
                 case _:
                     raise ValueError("Unsupported DFCollectionItem")
-
-        return None
 
     return _inner

@@ -1,14 +1,15 @@
-from typing import Optional
+from __future__ import annotations
+
 from uuid import uuid4
 
 import pytest
-from pydantic import BaseModel, ValidationError, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from generalresearch.models.custom_types import UUIDStr
 
 
 class UUIDStrModel(BaseModel):
-    uuid_optional: Optional[UUIDStr] = Field(default_factory=lambda: uuid4().hex)
+    uuid_optional: UUIDStr | None = Field(default_factory=lambda: uuid4().hex)
     uuid: UUIDStr
 
 

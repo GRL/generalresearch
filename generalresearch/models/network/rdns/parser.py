@@ -7,7 +7,7 @@ from generalresearch.models.network.rdns.result import RDNSResult
 PTR_RE = re.compile(r"\sPTR\s+([^\s]+)\.")
 
 
-def parse_rdns_output(ip: IPvAnyAddressStr, raw: str):
+def parse_rdns_output(ip: IPvAnyAddressStr, raw: str) -> RDNSResult:
     hostnames: list[str] = []
 
     for line in raw.splitlines():

@@ -18,11 +18,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    List,
-    Optional,
     Sequence,
-    Tuple,
-    Union,
 )
 from uuid import uuid4
 
@@ -30,7 +26,7 @@ import dask
 import dask.dataframe as dd
 import pandas as pd
 import pyarrow.parquet as pq
-from distributed import Client
+from distributed import Client as DaskClient
 from pandera.pandas import DataFrameSchema
 from pydantic import (
     BaseModel,
@@ -38,7 +34,9 @@ from pydantic import (
     DirectoryPath,
     Field,
     FilePath,
+    PositiveInt,
     PrivateAttr,
+    TypeAdapter,
     ValidationInfo,
     field_validator,
     model_validator,
@@ -61,7 +59,7 @@ if TYPE_CHECKING:
     )
     from generalresearch.incite.mergers import MergeCollection, MergeType
 
-    Collection = Union[DFCollection, MergeCollection]
+    Collection = DFCollection | MergeCollection
 
 logging.basicConfig()
 LOG = logging.getLogger()
@@ -70,6 +68,9 @@ LOG = logging.getLogger()
 Item = Any
 Items = Sequence[Item]
 DT_STR = "%Y-%m-%d %H:%M:%S"
+
+_dir_adapter = TypeAdapter(DirectoryPath)
+_filepath_adapter = TypeAdapter(FilePath)
 
 
 class NFSMount(BaseModel):
@@ -89,8 +90,8 @@ class GRLDatasets(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    data_src: Optional[Path] = Field(default=None)
-    incite: Optional[NFSMount] = Field(default=None)
+    data_src: Path | None = Field(default=None)
+    incite: NFSMount | None = Field(default=None)
 
     @model_validator(mode="after")
     def check_data_src_and_et_path(self) -> Self:
@@ -98,6 +99,8 @@ class GRLDatasets(BaseModel):
             DFCollectionType,
         )
         from generalresearch.incite.mergers import MergeType
+
+        assert self.data_src, "data src must be defined"
 
         # Create the base folders and confirm we have read access
         self.data_src.mkdir(parents=True, exist_ok=True)
@@ -121,7 +124,7 @@ class GRLDatasets(BaseModel):
                 assert access(path=p, mode=R_OK), f"Cannot read {p}"
         return self
 
-    def archive_path(self, enum_type: Union[MergeType, DFCollectionType]) -> Path:
+    def archive_path(self, enum_type: MergeType | DFCollectionType) -> Path:
         """
         TODO: Extend this so that it takes any type of Enum and that
             inputs in the correct parent dir for the respective Enum
@@ -135,7 +138,7 @@ class GRLDatasets(BaseModel):
             pjoin(self.data_src, self.incite.point, folder, str(enum_type.value))
         )
 
-    def has_data(self, enum_type: Union[MergeType, DFCollectionType]) -> bool:
+    def has_data(self, enum_type: MergeType | DFCollectionType) -> bool:
         path_dir = self.archive_path(enum_type=enum_type)
         if isdir(path_dir):
             return bool(listdir(path_dir))
@@ -152,7 +155,7 @@ class CollectionBase(BaseModel):
         extra="forbid",
     )
 
-    archive_path: DirectoryPath = Field(default="/tmp/")
+    archive_path: DirectoryPath = Field(default=_dir_adapter.validate_python("/tmp/"))
     df: SkipJsonSchema[pd.DataFrame] = Field(
         default_factory=lambda: pd.DataFrame(), exclude=True
     )
@@ -169,12 +172,12 @@ class CollectionBase(BaseModel):
         frozen=True,
     )
 
-    finished: Optional[AwareDatetimeISO] = Field(
+    finished: AwareDatetimeISO | None = Field(
         default=None,
         description="Finished is only set if we don't want a rolling window",
     )
 
-    _client: Optional[Client] = PrivateAttr(default=None)
+    _client: DaskClient | None = PrivateAttr(default=None)
 
     # --- Validators ---
     @model_validator(mode="before")
@@ -188,15 +191,14 @@ class CollectionBase(BaseModel):
         assert isinstance(ap, Path), "check_model_before.isinstance(ap, Path)"
 
         if not ap.is_dir():
-            raise ValueError(f"Path does not point to a directory")
+            raise ValueError("Path does not point to a directory")
 
         if not access(path=ap, mode=R_OK):
-            raise ValueError(f"Cannot read archive_path")
+            raise ValueError("Cannot read archive_path")
 
-        df: Optional[pd.DataFrame] = data.get("df", None)
-        if df is not None:
-            if not df.empty or len(df.columns) != 0:
-                raise ValueError("Do not provide a pd.DataFrame")
+        df: pd.DataFrame | None = data.get("df", None)
+        if df is not None and (not df.empty or len(df.columns) != 0):
+            raise ValueError("Do not provide a pd.DataFrame")
 
         return data
 
@@ -215,21 +217,21 @@ class CollectionBase(BaseModel):
 
     @field_validator("start")
     def check_start(
-        cls, start: Optional[datetime], info: ValidationInfo
-    ) -> Optional[datetime]:
+        cls, start: datetime | None, info: ValidationInfo
+    ) -> datetime | None:
         if start and start.microsecond != 0:
             raise ValueError("Collection.start must not have microseconds")
         return start
 
     @field_validator("offset")
-    def check_offset(cls, v: Optional[str], info: ValidationInfo):
+    def check_offset(cls, v: str | None, info: ValidationInfo):
         # pd.offsets.__all__
         if v is None:
             # In MergeCollections, offset can be None
             return v
         try:
             pd.Timedelta(v)
-        except (Exception,) as e:
+        except Exception as e:
             capture_exception(error=e)
             raise ValueError(
                 "Invalid offset alias provided. Please review: "
@@ -251,6 +253,7 @@ class CollectionBase(BaseModel):
         assert end, "an end value must be provided"
 
         _start = self.interval_start
+        assert _start, "a start value must be provided"
 
         if end.tzinfo is None:
             # A Naive end was passed in. We probably did this on purpose.
@@ -283,13 +286,13 @@ class CollectionBase(BaseModel):
         )
 
     @property
-    def interval_start(self) -> Optional[datetime]:
+    def interval_start(self) -> datetime | None:
         # In DFCollections, start must be set, so the interval_start = start. In merged
         #   this may be overridden with different behavior.
         return self.start
 
     @property
-    def interval_range(self) -> List[Tuple]:
+    def interval_range(self) -> list[tuple[datetime, datetime]]:
         """closed='left', so 0 <= x < 5"""
         end = self.finished or datetime.now(tz=timezone.utc).replace(microsecond=0)
         iv_r = self._interval_range(end)
@@ -302,7 +305,7 @@ class CollectionBase(BaseModel):
         return pd.DataFrame.from_records(records, index=self._interval_range(end))
 
     @property
-    def items(self) -> pd.DataFrame:
+    def items(self) -> Items | None:
         raise NotImplementedError("Must override")
 
     @property
@@ -315,19 +318,20 @@ class CollectionBase(BaseModel):
 
     def fetch_all_paths(
         self,
-        items: Optional[Items] = None,
-        force_rr_latest=False,
-        include_partial=False,
-    ) -> List[FilePath]:
+        items: Items | None = None,
+        force_rr_latest: bool = False,
+        include_partial: bool = False,
+    ) -> list[FilePath]:
         LOG.info(
             f"CollectionBase.fetch_all(items={len(items or [])}, "
             f"{force_rr_latest=}, {include_partial=})"
         )
 
         items = items or self.items
+        assert items
 
         # (1) All the originally available archives
-        sources: List[FilePath] = [
+        sources: list[FilePath] = [
             i.path for i in items if i.has_archive(include_empty=False)
         ]
 
@@ -357,14 +361,14 @@ class CollectionBase(BaseModel):
 
     def ddf(
         self,
-        items: Optional[Items] = None,
-        force_rr_latest=False,
+        items: Items | None = None,
+        force_rr_latest: bool = False,
         columns=None,
         filters=None,
         categories=None,
         include_partial=False,
-        graph: Optional[Callable] = None,
-    ) -> Optional[dd.DataFrame]:
+        graph: Callable | None = None,
+    ) -> dd.DataFrame | None:
         """
 
         Args:
@@ -396,7 +400,7 @@ class CollectionBase(BaseModel):
         """
 
         if isinstance(items, list) and len(items):
-            sources: List[FilePath] = [
+            sources: list[FilePath] = [
                 i.path for i in items if i.has_archive(include_empty=False)
             ]
 
@@ -410,7 +414,7 @@ class CollectionBase(BaseModel):
             )
 
         else:
-            sources: List[FilePath] = self.fetch_all_paths(
+            sources: list[FilePath] = self.fetch_all_paths(
                 items=None,
                 force_rr_latest=force_rr_latest,
                 include_partial=include_partial,
@@ -444,8 +448,8 @@ class CollectionBase(BaseModel):
 
     # --- Methods: Cleanup ---
     def schedule_cleanup(
-        self, client=None, sync=True, client_resources=None
-    ) -> Union[pd.DataFrame, Future]:
+        self, client: DaskClient | None = None, sync: bool = True, client_resources=None
+    ) -> pd.DataFrame | Future:
         LOG.info(f"cleanup(archive_path={self.archive_path})")
 
         fs = []
@@ -453,6 +457,8 @@ class CollectionBase(BaseModel):
             fs.append(dask.delayed(item.cleanup_partials)())
             fs.append(dask.delayed(item.clear_corrupt_archive)())
         fs.append(dask.delayed(self.clear_tmp_archives)())
+
+        assert isinstance(client, DaskClient)
         res = client.compute(
             collections=fs,
             sync=sync,
@@ -468,14 +474,12 @@ class CollectionBase(BaseModel):
         self.clear_corrupt_archives()
         # self.check_empty()  # what did this do??
 
-        return None
-
     def cleanup_partials(self) -> None:
         """If an item is "closed", remove any partial files that may be around..."""
+        assert self.items
+
         for item in self.items:
             item.cleanup_partials()
-
-        return None
 
     def clear_tmp_archives(self) -> None:
         regex = re.compile(r"\.parquet\.[0-9a-f]{32}", re.I)
@@ -487,19 +491,18 @@ class CollectionBase(BaseModel):
                     Path(os.path.join(self.archive_path, fn))
                 )
 
-        return None
-
     def clear_corrupt_archives(self) -> None:
+        assert self.items
+
         for item in self.items:
             item.clear_corrupt_archive()
-
-        return None
 
     def rebuild_symlinks(self) -> None:
         """
         When copying "things" between filesystems, and using Sambda mmfsylinks,
         we can't ensure links are properly shared.
         """
+        assert self.items
 
         for item in reversed(self.items):
             item: CollectionItemBase
@@ -513,7 +516,6 @@ class CollectionBase(BaseModel):
 
                 # Don't "continue" onto the next CollectionItem. Later on,
                 # we may need to create a symlink for the most recent partial
-                pass
 
             # --- Empty Path ---
             if os.path.exists(empty_path):
@@ -574,7 +576,7 @@ class CollectionBase(BaseModel):
             # `ln` command is run.  -- Max 2024-07-26
             try:
                 os.remove(item.path.as_posix())
-            except FileNotFoundError as e:
+            except FileNotFoundError:
                 pass
 
             if platform == "darwin":
@@ -582,16 +584,20 @@ class CollectionBase(BaseModel):
             else:
                 subprocess.call(["ln", "-sfnT", highest_version, item.path.as_posix()])
 
-        return None
-
     # -- Methods: Source timing
     def get_item(self, interval: pd.Interval) -> Item:
+        assert self.items
+
         return next(x for x in self.items if x.interval == interval)
 
     def get_item_start(self, start: pd.Timestamp) -> Items:
+        assert self.items
+
         return next(x for x in self.items if x.interval.left == start)
 
     def get_items(self, since: datetime) -> Items:
+        assert self.items
+
         res = []
         first_match = True
 
@@ -610,7 +616,7 @@ class CollectionBase(BaseModel):
                 res.append(item)
                 first_match = False
 
-        res: List[Item] = [i for i in res if not i.is_empty()]
+        res: list[Item] = [i for i in res if not i.is_empty()]
         if len([1 for i in res if i.should_archive() and not i.has_archive()]):
             warnings.warn(
                 message="DFCollectionItem has missing archives",
@@ -620,7 +626,7 @@ class CollectionBase(BaseModel):
         return res
 
     def get_items_from_year(self, year: int) -> Items:
-        ts = datetime(year=year, month=1, day=1)
+        ts = datetime(year=year, month=1, day=1, tzinfo=timezone.utc)
         return self.get_items(since=ts)
 
     def get_items_last90(self) -> Items:
@@ -645,10 +651,14 @@ class CollectionItemBase(BaseModel):
     @property
     def name(self) -> str:
         coll = self._collection
+
         if hasattr(coll, "data_type"):
+            assert coll.data_type
             name = coll.data_type.value
         else:
+            assert coll.merge_type
             name = coll.merge_type.value
+
         return name
 
     def __str__(self):
@@ -702,7 +712,9 @@ class CollectionItemBase(BaseModel):
 
     @property
     def path(self) -> FilePath:
-        return FilePath(os.path.join(self._collection.archive_path, self.filename))
+        return_filepath_adapter.validate_python(
+            os.path.join(self._collection.archive_path, self.filename)
+        )
 
     @property
     def partial_path(self) -> FilePath:
@@ -732,7 +744,7 @@ class CollectionItemBase(BaseModel):
 
         # We assume the target ends with ".####". If not, we'll append .00000
         try:
-            left, right = target.rsplit(".", 1)
+            _, right = target.rsplit(".", 1)
             right_int = int(right)
         except ValueError:
             return Path(f"{path}.{0:>05}")
@@ -740,7 +752,7 @@ class CollectionItemBase(BaseModel):
         right_int += 1
         return Path(f"{path}.{right_int:>05}")
 
-    def search_highest_numbered_path(self) -> Optional[Path]:
+    def search_highest_numbered_path(self) -> Path | None:
         """This is used for when things are broken, and we want to rebuild
         our symlinks. We can't trust or use any exist symlinks... so given
         a path or a partial path... find the highest available "versioned"
@@ -766,7 +778,7 @@ class CollectionItemBase(BaseModel):
         # nums = sorted([b.rsplit(".", 1)[1] for b in builds], reverse=True)
         # return Path(f"{self.path}.{nums[0]}")
 
-        files: List[str] = sorted(
+        files: list[str] = sorted(
             builds, key=lambda b: b.rsplit(".", 1)[1], reverse=True
         )
         return Path(os.path.join(coll.archive_path, files[0]))
@@ -818,7 +830,6 @@ class CollectionItemBase(BaseModel):
                 shutil.rmtree(generic_path)
         else:
             LOG.warning(f"tried removing non-existent file: {generic_path}")
-            pass
 
     def should_archive(self) -> bool:
         # Determine if enough time has passed to move out of a partial file into an
@@ -828,9 +839,7 @@ class CollectionItemBase(BaseModel):
         if archive_after is None:
             return False
 
-        if datetime.now(tz=timezone.utc) > self.finish + archive_after:
-            return True
-        return False
+        return datetime.now(tz=timezone.utc) > self.finish + archive_after
 
     def set_empty(self):
         assert (
@@ -842,8 +851,8 @@ class CollectionItemBase(BaseModel):
 
     def valid_archive(
         self,
-        generic_path: Optional[FilePath] = None,
-        sample: Optional[int] = None,
+        generic_path: FilePath | None = None,
+        sample: int | None = None,
     ) -> bool:
         """
         Attempts to confirm if the parquet file or directory that is
@@ -864,7 +873,7 @@ class CollectionItemBase(BaseModel):
                 raise ValueError("Unknown path type.")
 
             df = parquet.read().to_pandas()
-        except (Exception,):
+        except Exception:
             LOG.warning(f"Invalid archive {path=}")
             df = None
 
@@ -876,8 +885,8 @@ class CollectionItemBase(BaseModel):
         return self.validate_df(df=df, sample=sample) is not None
 
     def validate_df(
-        self, df: pd.DataFrame, sample: Optional[int] = None
-    ) -> Optional[pd.DataFrame]:
+        self, df: pd.DataFrame, sample: int | None = None
+    ) -> pd.DataFrame | None:
         if sample is not None:
             sample = min(len(df), sample)
         try:
@@ -910,8 +919,8 @@ class CollectionItemBase(BaseModel):
     def from_archive(
         self,
         include_empty: bool = True,
-        generic_path: Optional[FilePath] = None,
-    ) -> Optional[dd.DataFrame]:
+        generic_path: FilePath | None = None,
+    ) -> dd.DataFrame | None:
 
         if include_empty and self.path_exists(generic_path=self.empty_path):
             # Return an empty dd.DataFrame with the correct columns
@@ -930,15 +939,15 @@ class CollectionItemBase(BaseModel):
         raise NotImplementedError("Must override")
 
     # --- ORM / Data handlers---
-    def _to_dict(self, *args, **kwargs) -> dict:
-        return dict(
-            should_archive=self.should_archive(),
-            has_archive=self.has_archive(),
-            filename=self.filename,
-            path=self.path,
-            start=self.start,
-            finish=self.finish,
-        )
+    def _to_dict(self) -> dict[str, Any]:
+        return {
+            "should_archive": self.should_archive(),
+            "has_archive": self.has_archive(),
+            "filename": self.filename,
+            "path": self.path,
+            "start": self.start,
+            "finish": self.finish,
+        }
 
     def delete_partial(self):
         # If a Collection Item is archived, we want to delete the partial file.
@@ -961,11 +970,16 @@ class CollectionItemBase(BaseModel):
             else:
                 self.delete_dangling_partials(keep_latest=2)
 
-    def delete_dangling_partials(self, keep_latest=None, target_path=None) -> List[str]:
+    def delete_dangling_partials(
+        self,
+        keep_latest: PositiveInt | None = None,
+        target_path: Path | str | None = None,
+    ) -> list[str]:
         # Specifically looking for numbered partials that are NOT associated
         # with a symlink. It does not matter if the item is archiveable or not.
         if target_path is None:
             target_path = self.partial_path
+
         fps = glob.glob(target_path.as_posix() + ".*")
         fps = {x for x in fps if x.split(".")[-1].isnumeric()}
         # Note: if the dir itself is sym-linked, this is going to be wrong.

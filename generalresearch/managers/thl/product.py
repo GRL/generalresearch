@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from threading import Lock
 from typing import TYPE_CHECKING
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from cachetools import TTLCache, cachedmethod, keys
 from more_itertools import chunked
@@ -263,46 +263,6 @@ class ProductManager(PostgresManager):
                 logger.info(f"failed to parse product: {k}")
                 raise e
         return r
-
-    def create_dummy(
-        self,
-        product_id: UUIDStr | None = None,
-        team_id: UUIDStr | None = None,
-        business_id: UUIDStr | None = None,
-        name: str | None = None,
-        redirect_url: str | None = None,
-        harmonizer_domain: str | None = None,
-        commission_pct: Decimal = Decimal("0.05000"),
-        sources_config: SourcesConfig | SupplyConfigs | None = None,
-        payout_config: PayoutConfig | None = None,
-        session_config: SessionConfig | None = None,
-        profiling_config: ProfilingConfig | None = None,
-        user_wallet_config: UserWalletConfig | None = None,
-        user_create_config: UserCreateConfig | None = None,
-        user_health_config: UserHealthConfig | None = None,
-    ) -> Product:
-        """To be used in tests, where we don't care about certain fields"""
-        product_id = product_id if product_id else uuid4().hex
-        team_id = team_id if team_id else uuid4().hex
-        name = name if name else f"name-{product_id[:12]}"
-        redirect_url = redirect_url if redirect_url else "https://www.example.com/"
-
-        return self.create(
-            product_id=product_id,
-            team_id=team_id,
-            business_id=business_id,
-            name=name,
-            redirect_url=redirect_url,
-            harmonizer_domain=harmonizer_domain,
-            commission_pct=commission_pct,
-            sources_config=sources_config,
-            payout_config=payout_config,
-            session_config=session_config,
-            profiling_config=profiling_config,
-            user_wallet_config=user_wallet_config,
-            user_create_config=user_create_config,
-            user_health_config=user_health_config,
-        )
 
     def create(
         self,

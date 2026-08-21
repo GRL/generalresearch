@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Collection
 from datetime import datetime, timezone
-from random import choice as rand_choice, randint
+from random import choice as rand_choice
+from random import randint
 from typing import Any
 from uuid import uuid4
 
@@ -16,8 +17,8 @@ from pydantic import AwareDatetime, NonNegativeInt, PositiveInt
 from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
 from generalresearch.managers.base import (
-    PostgresManagerWithRedis,
     Permission,
+    PostgresManagerWithRedis,
 )
 from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionConditionFailedError,
@@ -89,15 +90,13 @@ class PayoutEventManager(PostgresManagerWithRedis):
         payout_event.update(status=status, ext_ref_id=ext_ref_id, order_data=order_data)
 
         d = payout_event.model_dump_postgres()
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
         UPDATE event_payout SET 
             status = %(status)s,
             ext_ref_id = %(ext_ref_id)s,
             order_data = %(order_data)s
         WHERE uuid = %(uuid)s;
-        """
-        )
+        """)
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query=query, params=d)
@@ -326,53 +325,6 @@ class UserPayoutEventManager(PayoutEventManager):
             conn.commit()
 
         return payout_event
-
-    def create_dummy(
-        self,
-        uuid: UUIDStr | None = None,
-        debit_account_uuid: UUIDStr | None = None,
-        account_reference_type: str | None = None,
-        account_reference_uuid: UUIDStr | None = None,
-        cashout_method_uuid: UUIDStr | None = None,
-        description: str | None = None,
-        created: AwareDatetimeISO | None = None,
-        amount: PositiveInt | None = None,
-        status: PayoutStatus | None = None,
-        ext_ref_id: str | None = None,
-        payout_type: PayoutType | None = None,
-        request_data: dict[str, Any] | None = None,
-        order_data: dict[str, Any] | CashMailOrderData | None = None,
-    ) -> UserPayoutEvent:
-
-        debit_account_uuid = debit_account_uuid or uuid4().hex
-        cashout_method_uuid = cashout_method_uuid or uuid4().hex
-        # account_reference_type = account_reference_type or f"acct-ref-{uuid4().hex}"
-        # account_reference_uuid = account_reference_uuid or uuid4().hex
-        # cashout_method_uuid = cashout_method_uuid or uuid4().hex
-        amount = amount or randint(a=99, b=9_999)
-        status = status or rand_choice(list(PayoutStatus))
-
-        description = description or f"desc-{uuid4().hex[:12]}"
-        # ext_ref_id = ext_ref_id or f"ext-ref-{uuid4().hex[:8]}"
-        payout_type = payout_type or rand_choice(list(PayoutType))
-        request_data = request_data or {}
-        # order_data = order_data or None
-
-        return self.create(
-            uuid=uuid,
-            debit_account_uuid=debit_account_uuid,
-            account_reference_type=account_reference_type,
-            account_reference_uuid=account_reference_uuid,
-            cashout_method_uuid=cashout_method_uuid,
-            description=description,
-            created=created,
-            amount=amount,
-            status=status,
-            ext_ref_id=ext_ref_id,
-            payout_type=payout_type,
-            request_data=request_data,
-            order_data=order_data,
-        )
 
 
 class BrokerageProductPayoutEventManager(PayoutEventManager):
@@ -610,15 +562,13 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
             )
         except LedgerTransactionConditionFailedError as e:
             if e.args[0] == "duplicate tag":
-                raise ValueError(
-                    f"""Payout event already exists! {e}
+                raise ValueError(f"""Payout event already exists! {e}
                 You are trying to create a tx that already exists. We can't know
                 if this is a new payout event with the same ref id, or you're
                 trying to run the same one twice ... So not setting the existing
                 payout event to FAILED, b/c the existing one is not failed!
                 Doing nothing ...
-                """
-                ) from e
+                """) from e
             self.update(payout_event=bp_pe, status=PayoutStatus.FAILED)
             raise
         except Exception as e:

@@ -9,6 +9,7 @@ description = "Python Utilities for General Research"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
+    "fastapi",
     "Faker",
     "PyMySQL",
     "psycopg",
@@ -27,6 +28,7 @@ dependencies = [
     "pytest",
     "pylibmc",
     "pymemcache",
+    "pytz",
     "redis",
     "requests",
     "scipy",

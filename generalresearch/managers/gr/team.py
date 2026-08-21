@@ -84,19 +84,18 @@ class MembershipManager(PostgresManager):
     def exists(
         self, gr_user_id: PositiveInt, team_id: PositiveInt
     ) -> Membership | None:
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(
-                    query=sql.SQL("""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(
+                query=sql.SQL("""
                             SELECT  id, uuid, privilege, owner, created, 
                                     user_id, team_id
                             FROM common_membership
                             WHERE team_id = %s AND user_id = %s
                             LIMIT 1
                         """),
-                    params=(team_id, gr_user_id),
-                )
-                res = c.fetchone()
+                params=(team_id, gr_user_id),
+            )
+            res = c.fetchone()
 
         if not res:
             return None
@@ -104,36 +103,34 @@ class MembershipManager(PostgresManager):
         return Membership.model_validate(res)
 
     def get_by_team_id(self, team_id: PositiveInt) -> list[Membership]:
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(
-                    query=sql.SQL("""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(
+                query=sql.SQL("""
                             SELECT  id, uuid, privilege, owner, created, 
                                     user_id, team_id
                             FROM common_membership
                             WHERE team_id = %s
                             LIMIT 250
                         """),
-                    params=(team_id,),
-                )
-                res = c.fetchall()
+                params=(team_id,),
+            )
+            res = c.fetchall()
 
         return [Membership.model_validate(i) for i in res]
 
     def get_by_gr_user_id(self, gr_user_id: PositiveInt) -> list[Membership]:
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(
-                    query=sql.SQL("""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(
+                query=sql.SQL("""
                             SELECT  id, uuid, privilege, owner, created, 
                                     user_id, team_id
                             FROM common_membership
                             WHERE user_id = %s
                             LIMIT 250
                         """),
-                    params=(gr_user_id,),
-                )
-                res = c.fetchall()
+                params=(gr_user_id,),
+            )
+            res = c.fetchall()
 
         return [Membership.model_validate(i) for i in res]
 
@@ -154,23 +151,14 @@ class TeamManager(PostgresManagerWithRedis):
     def get_all(self) -> list[Team]:
         from generalresearch.models.gr.team import Team
 
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query=sql.SQL("""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query=sql.SQL("""
                 SELECT t.id, t.uuid, t.name
                 FROM common_team AS t
             """))
-                res = c.fetchall()
+            res = c.fetchall()
 
         return [Team.model_validate(i) for i in res]
-
-    def create_dummy(
-        self, uuid: UUIDStr | None = None, name: str | None = None
-    ) -> Team:
-        uuid = uuid or uuid4().hex
-        name = name or f"name-{uuid4().hex[:12]}"
-
-        return self.create(uuid=uuid, name=name)
 
     def create(
         self,
@@ -228,19 +216,18 @@ class TeamManager(PostgresManagerWithRedis):
     def get_by_uuid(self, team_uuid: UUIDStr) -> Team | None:
         from generalresearch.models.gr.team import Team
 
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(
-                    query="""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(
+                query="""
                     SELECT t.* 
                     FROM common_team AS t
                     WHERE t.uuid = %s
                     LIMIT 1;
                 """,
-                    params=(team_uuid,),
-                )
+                params=(team_uuid,),
+            )
 
-                res = c.fetchone()
+            res = c.fetchone()
 
         if not isinstance(res, dict):
             return None
@@ -250,19 +237,18 @@ class TeamManager(PostgresManagerWithRedis):
     def get_by_id(self, team_id: PositiveInt) -> Team | None:
         from generalresearch.models.gr.team import Team
 
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(
-                    query=sql.SQL("""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(
+                query=sql.SQL("""
                     SELECT t.id, t.uuid, t.name
                     FROM common_team AS t
                     WHERE t.id = %s
                     LIMIT 1;
                 """),
-                    params=(team_id,),
-                )
+                params=(team_id,),
+            )
 
-                res = c.fetchone()
+            res = c.fetchone()
 
         if not isinstance(res, dict):
             return None
@@ -272,19 +258,18 @@ class TeamManager(PostgresManagerWithRedis):
     def get_by_user(self, gr_user: GRUser) -> list[Team]:
         from generalresearch.models.gr.team import Team
 
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(
-                    query=sql.SQL("""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(
+                query=sql.SQL("""
                     SELECT team.*
                     FROM common_team AS team
                     INNER JOIN common_membership AS mem 
                         ON mem.team_id = team.id
                     WHERE mem.user_id = %s
                 """),
-                    params=(gr_user.id,),
-                )
+                params=(gr_user.id,),
+            )
 
-                res = c.fetchall()
+            res = c.fetchall()
 
         return [Team.model_validate(item) for item in res]

@@ -28,7 +28,7 @@ def combo_object():
         ],
         ["5min", "6H", "30D"],
     ):
-        yield x
+        yield from x
 
 
 @pytest.mark.parametrize("df_coll, offset", combo_object())

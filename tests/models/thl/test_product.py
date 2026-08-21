@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import os
 import shutil
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Callable, Optional
+from typing import Callable
 from uuid import uuid4
 
 import pytest
@@ -10,7 +12,7 @@ from dask.distributed import Client as DaskClient
 from pydantic import ValidationError
 
 from generalresearch.currency import USDCent
-from generalresearch.incite import GRLDatasets
+from generalresearch.incite.base import GRLDatasets
 from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 from generalresearch.managers.thl.ledger_manager.thl_ledger import (
     ThlLedgerManager,
@@ -25,6 +27,7 @@ from generalresearch.models.thl.product import (
     IntegrationMode,
     PayoutConfig,
     PayoutTransformation,
+    PayoutTransformationPercentArgs,
     Product,
     ProfilingConfig,
     SourceConfig,
@@ -135,6 +138,12 @@ class TestProduct:
             team_id="8b5e94afd8a246bf8556ad9986486baa",
             harmonizer_domain="profile.generalresearch.com",
             redirect_url="https://www.google.com/hey",
+        )
+
+        assert isinstance(p.payout_config.payout_transformation, PayoutTransformation)
+        assert isinstance(
+            p.payout_config.payout_transformation.kwargs,
+            PayoutTransformationPercentArgs,
         )
 
         p.payout_config.payout_transformation = PayoutTransformation.model_validate(
@@ -576,7 +585,7 @@ class TestGlobalProductConfigFor:
 class TestProductFinancials:
 
     @pytest.fixture
-    def start(self) -> "datetime":
+    def start(self) -> datetime:
         return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
 
     @pytest.fixture
@@ -584,7 +593,7 @@ class TestProductFinancials:
         return "30d"
 
     @pytest.fixture
-    def duration(self) -> Optional["timedelta"]:
+    def duration(self) -> timedelta | None:
         return None
 
     def test_balance(
@@ -759,7 +768,7 @@ class TestProductFinancials:
 class TestProductBalance:
 
     @pytest.fixture
-    def start(self) -> "datetime":
+    def start(self) -> datetime:
         return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
 
     @pytest.fixture
@@ -767,7 +776,7 @@ class TestProductBalance:
         return "30d"
 
     @pytest.fixture
-    def duration(self) -> Optional["timedelta"]:
+    def duration(self) -> timedelta | None:
         return None
 
     def test_inconsistent(
@@ -783,7 +792,7 @@ class TestProductBalance:
         user_factory: Callable[..., User],
         session_with_tx_factory: Callable[..., Session],
         pop_ledger_merge,
-        start,
+        start: datetime,
         bp_payout_factory,
         payout_event_manager,
     ):
@@ -791,8 +800,6 @@ class TestProductBalance:
         delete_ledger_db()
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
-
-        from generalresearch.models.thl.user import User
 
         u1: User = user_factory(product=product)
 
@@ -827,7 +834,7 @@ class TestProductBalance:
     def test_not_inconsistent(
         self,
         product: Product,
-        mnt_filepath,
+        mnt_filepath: GRLDatasets,
         thl_lm: ThlLedgerManager,
         client_no_amm: DaskClient,
         delete_ledger_db,
@@ -851,8 +858,6 @@ class TestProductBalance:
         delete_ledger_db()
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
-
-        from generalresearch.models.thl.user import User
 
         u1: User = user_factory(product=product)
 
@@ -886,7 +891,7 @@ class TestProductBalance:
 class TestProductPOPFinancial:
 
     @pytest.fixture
-    def start(self) -> "datetime":
+    def start(self) -> datetime:
         return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
 
     @pytest.fixture
@@ -894,15 +899,15 @@ class TestProductPOPFinancial:
         return "30d"
 
     @pytest.fixture
-    def duration(self) -> Optional["timedelta"]:
+    def duration(self) -> timedelta | None:
         return None
 
     def test_base(
         self,
-        product,
-        mnt_filepath,
+        product: Product,
+        mnt_filepath: GRLDatasets,
         thl_lm: ThlLedgerManager,
-        client_no_amm,
+        client_no_amm: DaskClient,
         delete_ledger_db,
         create_main_accounts,
         delete_df_collection,
@@ -922,8 +927,6 @@ class TestProductPOPFinancial:
         delete_ledger_db()
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
-
-        from generalresearch.models.thl.user import User
 
         u1: User = user_factory(product=product)
 
@@ -961,7 +964,7 @@ class TestProductPOPFinancial:
 class TestProductCache:
 
     @pytest.fixture
-    def start(self) -> "datetime":
+    def start(self) -> datetime:
         return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
 
     @pytest.fixture
@@ -969,7 +972,7 @@ class TestProductCache:
         return "30d"
 
     @pytest.fixture
-    def duration(self) -> Optional["timedelta"]:
+    def duration(self) -> timedelta | None:
         return None
 
     def test_basic(
@@ -1008,7 +1011,6 @@ class TestProductCache:
             )
 
         from generalresearch.models.thl.product import Product
-        from generalresearch.models.thl.user import User
 
         u1: User = user_factory(product=product)
 
@@ -1047,7 +1049,7 @@ class TestProductCache:
     def test_neg_balance_cache(
         self,
         product: Product,
-        mnt_filepath,
+        mnt_filepath: GRLDatasets,
         thl_lm,
         client_no_amm: DaskClient,
         thl_redis_config,
@@ -1070,7 +1072,6 @@ class TestProductCache:
         delete_df_collection(coll=ledger_collection)
 
         from generalresearch.models.thl.product import Product
-        from generalresearch.models.thl.user import User
 
         u1: User = user_factory(product=product)
 
@@ -1112,10 +1113,12 @@ class TestProductCache:
 
         # Fetch from cache and assert the instance loaded from redis
         rc = thl_redis_config.create_redis_client()
-        res: Optional[str] = rc.get(product.cache_key)
+        res: str | None = rc.get(product.cache_key)
         assert isinstance(res, str)
 
         p1: Product = Product.model_validate_json(res)
+        assert p1.balance
+
         assert p1.balance.product_id == product.uuid
         assert p1.balance.payout_usd_str == "$0.71"
         assert p1.balance.adjustment == -71

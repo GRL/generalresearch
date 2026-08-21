@@ -3,17 +3,20 @@ import json
 import os
 from datetime import datetime, timezone
 from random import randint
+from typing import Callable
 from uuid import uuid4
 
 import pytest
+
+from generalresearch.models.gr.authentication import GRUser
+from generalresearch.models.gr.team import Membership, Team
 
 SSO_ISSUER = ""
 
 
 class TestGRUser:
 
-    def test_init(self, gr_user):
-        from generalresearch.models.gr.authentication import GRUser
+    def test_init(self, gr_user: GRUser):
 
         assert isinstance(gr_user, GRUser)
         assert not gr_user.is_superuser
@@ -26,8 +29,7 @@ class TestGRUser:
     def test_businesses(self):
         pass
 
-    def test_teams(self, gr_user, membership, gr_db, gr_redis_config):
-        from generalresearch.models.gr.team import Team
+    def test_teams(self, gr_user: GRUser, membership, gr_db, gr_redis_config):
 
         assert gr_user.teams is None
 
@@ -40,11 +42,11 @@ class TestGRUser:
     def test_prefetch_team_duplicates(
         self,
         gr_user_token,
-        gr_user,
-        membership,
+        gr_user: GRUser,
+        membership: Membership,
         product_factory,
         membership_factory,
-        team,
+        team: Team,
         thl_web_rr,
         gr_redis_config,
         gr_db,
@@ -61,10 +63,10 @@ class TestGRUser:
 
     def test_products(
         self,
-        gr_user,
+        gr_user: GRUser,
         product_factory,
-        team,
-        membership,
+        team: Team,
+        membership: Membership,
         gr_db,
         thl_web_rr,
         gr_redis_config,
@@ -102,12 +104,12 @@ class TestGRUserMethods:
 
     def test_to_redis(
         self,
-        gr_user,
+        gr_user: GRUser,
         gr_redis,
-        team,
+        team: Team,
         business,
         product_factory,
-        membership_factory,
+        membership_factory: Callable[Membership],
     ):
         product_factory(team=team, business=business)
         membership_factory(team=team, gr_user=gr_user)
@@ -122,7 +124,7 @@ class TestGRUserMethods:
 
     def test_set_cache(
         self,
-        gr_user,
+        gr_user: GRUser,
         gr_user_token,
         gr_redis,
         gr_db,
@@ -145,7 +147,7 @@ class TestGRUserMethods:
 
     def test_set_cache_gr_user(
         self,
-        gr_user,
+        gr_user: GRUser,
         gr_user_token,
         gr_redis,
         gr_redis_config,
@@ -203,9 +205,7 @@ class TestGRUserMethods:
     @pytest.mark.skip
     def test_set_cache_business_uuids(
         self,
-        gr_user,
-        membership,
-        gr_user_token,
+        gr_user: GRUser,
         gr_redis,
         gr_db,
         thl_web_rr,

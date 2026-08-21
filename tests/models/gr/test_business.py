@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pandas as pd
 import pytest
+from dask.distributed import Client as DaskClient
 
 # noinspection PyUnresolvedReferences
 from distributed.utils_test import (
@@ -14,22 +15,27 @@ from distributed.utils_test import (
 from pytest import approx
 
 from generalresearch.currency import USDCent
+from generalresearch.managers.gr.business import BusinessBankAccountManager
+from generalresearch.models.gr.business import (
+    Business,
+    BusinessAddress,
+    BusinessBankAccount,
+    BusinessContact,
+)
 from generalresearch.models.thl.finance import (
     BusinessBalances,
     ProductBalances,
 )
-
-# from test_utils.incite.conftest import mnt_filepath
-from test_utils.managers.conftest import (
-    business_bank_account_manager,
-    lm,
-    thl_lm,
-)
+from generalresearch.pg_helper import PostgresConfig
 
 
 class TestBusinessBankAccount:
 
-    def test_init(self, business, business_bank_account_manager):
+    def test_init(
+        self,
+        business: Business,
+        business_bank_account_manager: BusinessBankAccountManager,
+    ):
         from generalresearch.models.gr.business import (
             BusinessBankAccount,
             TransferMethod,
@@ -42,7 +48,13 @@ class TestBusinessBankAccount:
         )
         assert isinstance(instance, BusinessBankAccount)
 
-    def test_business(self, business_bank_account, business, gr_db, gr_redis_config):
+    def test_business(
+        self,
+        business_bank_account: BusinessBankAccount,
+        business: Business,
+        gr_db,
+        gr_redis_config,
+    ):
         from generalresearch.models.gr.business import Business
 
         assert business_bank_account.business is None
@@ -56,16 +68,13 @@ class TestBusinessBankAccount:
 
 class TestBusinessAddress:
 
-    def test_init(self, business_address):
-        from generalresearch.models.gr.business import BusinessAddress
-
+    def test_init(self, business_address: BusinessAddress):
         assert isinstance(business_address, BusinessAddress)
 
 
 class TestBusinessContact:
 
     def test_init(self):
-        from generalresearch.models.gr.business import BusinessContact
 
         bc = BusinessContact(name="abc", email="test@abc.com")
         assert isinstance(bc, BusinessContact)
@@ -104,7 +113,7 @@ class TestBusiness:
         user_factory,
         session_with_tx_factory,
         pop_ledger_merge,
-        client_no_amm,
+        client_no_amm: DaskClient,
         ledger_collection,
         mnt_filepath,
         create_main_accounts,
@@ -220,11 +229,11 @@ class TestBusiness:
 
     def test_balance(
         self,
-        business,
+        business: Business,
         mnt_filepath,
-        client_no_amm,
-        thl_web_rr,
-        lm,
+        client_no_amm: DaskClient,
+        thl_web_rr: PostgresConfig,
+        ledger_manager,
         pop_ledger_merge,
     ):
         assert business.balance is None
@@ -232,7 +241,7 @@ class TestBusiness:
         with pytest.raises(expected_exception=AssertionError) as cm:
             business.prebuild_balance(
                 thl_pg_config=thl_web_rr,
-                lm=lm,
+                lm=ledger_manager,
                 ds=mnt_filepath,
                 client=client_no_amm,
                 pop_ledger=pop_ledger_merge,
@@ -248,7 +257,7 @@ class TestBusiness:
         business,
         product_factory,
         thl_web_rr,
-        thl_lm,
+        thl_ledger_manager,
         business_payout_event_manager,
     ):
         assert business.payouts is None
@@ -256,17 +265,17 @@ class TestBusiness:
         with pytest.raises(expected_exception=AssertionError) as cm:
             business.prebuild_payouts(
                 thl_pg_config=thl_web_rr,
-                thl_lm=thl_lm,
+                thl_lm=thl_ledger_manager,
                 bpem=business_payout_event_manager,
             )
         assert "Must provide product_uuids" in str(cm.value)
 
         p = product_factory(business=business)
-        thl_lm.get_account_or_create_bp_wallet(product=p)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=p)
 
         business.prebuild_payouts(
             thl_pg_config=thl_web_rr,
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
         assert isinstance(business.payouts, list)
@@ -274,17 +283,17 @@ class TestBusiness:
 
     def test_payouts(
         self,
-        business,
-        product_factory,
+        business: Business,
+        product_factory: Callable[Product],
         bp_payout_factory,
-        thl_lm,
+        thl_ledger_manager,
         thl_web_rr,
         business_payout_event_manager,
         create_main_accounts,
     ):
         create_main_accounts()
         p = product_factory(business=business)
-        thl_lm.get_account_or_create_bp_wallet(product=p)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=p)
         business_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
 
         bp_payout_factory(
@@ -293,7 +302,7 @@ class TestBusiness:
 
         business.prebuild_payouts(
             thl_pg_config=thl_web_rr,
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
         assert len(business.payouts) == 1
@@ -306,10 +315,12 @@ class TestBusiness:
             skip_wallet_balance_check=True,
             skip_one_per_day_check=True,
         )
-        business_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
+        business_payout_event_manager.set_account_lookup_table(
+            thl_lm=thl_ledger_manager
+        )
         business.prebuild_payouts(
             thl_pg_config=thl_web_rr,
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
         assert len(business.payouts) == 1
@@ -370,7 +381,7 @@ class TestBusiness:
         self,
         business,
         thl_web_rr,
-        thl_lm,
+        thl_ledger_manager,
         mnt_filepath,
         client_no_amm,
         pop_ledger_merge,
@@ -496,7 +507,7 @@ class TestBusinessBalance:
         mnt_filepath,
         bp_payout_factory,
         thl_lm,
-        lm,
+        ledger_manager,
         duration,
         offset,
         start,

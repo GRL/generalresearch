@@ -2,12 +2,10 @@ from typing import Optional
 from uuid import uuid4
 
 import pytest
-from pydantic import BaseModel, ValidationError, Field
-from pydantic import MySQLDsn
+from pydantic import BaseModel, Field, MySQLDsn, ValidationError
 from pydantic_core import Url
 
 from generalresearch.models.custom_types import DaskDsn, SentryDsn
-
 
 # --- Test Pydantic Models ---
 
@@ -27,7 +25,7 @@ class TestDaskDsn:
         from dask.distributed import Client
 
         m = SettingsModel(dask="tcp://dask-scheduler.internal")
-
+        assert isinstance(m.dask, Url)
         assert m.dask.scheme == "tcp"
         assert m.dask.host == "dask-scheduler.internal"
         assert m.dask.port == 8786
@@ -72,6 +70,7 @@ class TestDaskDsn:
 
     def test_port(self):
         m = SettingsModel(dask="tcp://dask-scheduler.internal")
+        assert isinstance(m.dask, Url)
         assert m.dask.port == 8786
 
 
@@ -81,6 +80,7 @@ class TestSentryDsn:
             sentry=f"https://{uuid4().hex}@12345.ingest.us.sentry.io/9876543"
         )
 
+        assert isinstance(m.sentry, Url)
         assert m.sentry.scheme == "https"
         assert m.sentry.host == "12345.ingest.us.sentry.io"
         assert m.sentry.port == 443
@@ -109,4 +109,5 @@ class TestSentryDsn:
     def test_port(self):
         test_url: str = f"https://{uuid4().hex}@12345.ingest.us.sentry.io/9876543"
         m = SettingsModel(sentry=test_url)
+        assert isinstance(m.sentry, Url)
         assert m.sentry.port == 443
