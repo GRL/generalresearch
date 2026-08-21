@@ -1,33 +1,28 @@
+import io
 import logging
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from random import choice as rand_choice, randint
-from typing import Optional
+from random import choice as rand_choice
+from random import randint
 from uuid import uuid4
-import io
 
 import pandas as pd
 import pytest
 
-from generalresearch import pg_helper
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
 from generalresearch.currency import USDCent
-from generalresearch.managers.thl.ledger_manager.exceptions import (
-    LedgerTransactionConditionFailedError,
-)
+from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.managers.thl.payout import UserPayoutEventManager
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.ledger import LedgerEntry, Direction
-from generalresearch.models.thl.payout import (
-    BusinessPayoutEvent,
-    BrokerageProductPayoutEvent,
-)
-from generalresearch.models.thl.payout import UserPayoutEvent
-from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.ledger import LedgerAccount
+from generalresearch.models.thl.payout import (
+    BrokerageProductPayoutEvent,
+    BusinessPayoutEvent,
+    UserPayoutEvent,
+)
+from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.user import User
+from generalresearch.models.thl.wallet import PayoutType
 
 logger = logging.getLogger()
 
@@ -35,7 +30,6 @@ cashout_method_uuid = uuid4().hex
 
 
 class TestPayout:
-
     def test_get_by_uuid_and_create(
         self,
         user,
@@ -43,7 +37,6 @@ class TestPayout:
         thl_lm,
         utc_now,
     ):
-
         user_account: LedgerAccount = thl_lm.get_account_or_create_user_wallet(
             user=user
         )
@@ -118,7 +111,7 @@ class TestPayout:
         product,
         thl_lm: ThlLedgerManager,
         brokerage_product_payout_event_manager,
-            utc_now
+        utc_now,
     ) -> BrokerageProductPayoutEvent:
         account = thl_lm.get_account_or_create_bp_wallet(product=product)
         bp_pe = BrokerageProductPayoutEvent(
@@ -127,22 +120,22 @@ class TestPayout:
             payout_type=PayoutType.ACH,
             debit_account_uuid=account.uuid,
             cashout_method_uuid=brokerage_product_payout_event_manager.CASHOUT_METHOD_UUID,
-            created=utc_now
+            created=utc_now,
         )
         params = bp_pe.model_dump_postgres()
         # This shouldn't exist. For testing only, so no supplier_payout
-        params['supplier_payout_id'] = None
-        thl_web_rw.execute_write("""
-        INSERT INTO event_payout (
-            uuid, debit_account_uuid, created, cashout_method_uuid,
-            amount, status, ext_ref_id, payout_type, order_data,
-            request_data, supplier_payout_id
-        ) VALUES (
-            %(uuid)s, %(debit_account_uuid)s, %(created)s, %(cashout_method_uuid)s,
-            %(amount)s, %(status)s, %(ext_ref_id)s, %(payout_type)s, %(order_data)s,
-            %(request_data)s, %(supplier_payout_id)s
-        );
-        """, params)
+        params["supplier_payout_id"] = None
+        thl_web_rw.execute_write(
+            """
+         INSERT INTO event_payout (uuid, debit_account_uuid, created, cashout_method_uuid,
+                                   amount, status, ext_ref_id, payout_type, order_data,
+                                   request_data, supplier_payout_id)
+         VALUES (%(uuid)s, %(debit_account_uuid)s, %(created)s, %(cashout_method_uuid)s,
+                 %(amount)s, %(status)s, %(ext_ref_id)s, %(payout_type)s, %(order_data)s,
+                 %(request_data)s, %(supplier_payout_id)s);
+         """,
+            params,
+        )
         return bp_pe
 
     def test_create_bp_payout_quick_dupe(
@@ -254,22 +247,20 @@ class TestPayout:
 
 
 class TestPayoutEventManager:
-
     pass
 
 
 class TestBusinessPayoutEventManager:
-
     @pytest.fixture
-    def start(self) -> "datetime":
-        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
+    def start(self) -> datetime:
+        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:
         return "5d"
 
     @pytest.fixture
-    def duration(self) -> Optional["timedelta"]:
+    def duration(self) -> timedelta | None:
         return timedelta(days=10)
 
     def test_base(
@@ -294,13 +285,16 @@ class TestBusinessPayoutEventManager:
         ach_id2 = uuid4().hex
 
         # ext_ref_id is required now
-        bp_payout_factory(product=p1,amount=USDCent(1),ext_ref_id="none")
+        bp_payout_factory(product=p1, amount=USDCent(1), ext_ref_id="none")
 
-        bp_payout_factory(product=p1,amount=USDCent(1),ext_ref_id=ach_id1)
-        with pytest.raises(expected_exception=ValueError, match="Cannot create a BusinessPayoutEvent with an existing transaction_id"):
-            bp_payout_factory(product=p1,amount=USDCent(25),ext_ref_id=ach_id1)
+        bp_payout_factory(product=p1, amount=USDCent(1), ext_ref_id=ach_id1)
+        with pytest.raises(
+            expected_exception=ValueError,
+            match="Cannot create a BusinessPayoutEvent with an existing transaction_id",
+        ):
+            bp_payout_factory(product=p1, amount=USDCent(25), ext_ref_id=ach_id1)
 
-        bp_payout_factory(product=p1,amount=USDCent(50),ext_ref_id=ach_id2)
+        bp_payout_factory(product=p1, amount=USDCent(50), ext_ref_id=ach_id2)
 
         business.prebuild_payouts(
             bpem=business_payout_event_manager,
@@ -325,7 +319,7 @@ class TestBusinessPayoutEventManager:
         business_payout_event_manager,
         delete_ledger_db,
         create_main_accounts,
-        thl_lm,
+        thl_ledger_manager,
         thl_web_rr,
         product_factory,
         bp_payout_factory,
@@ -336,7 +330,6 @@ class TestBusinessPayoutEventManager:
         pop_ledger_merge,
         client_no_amm,
         mnt_filepath,
-        lm,
         product_manager,
         start,
         business,
@@ -347,7 +340,7 @@ class TestBusinessPayoutEventManager:
 
         p1: Product = product_factory(business=business)
         u1: User = user_factory(product=p1)
-        thl_lm.get_account_or_create_bp_wallet(product=p1)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
 
         # $250.00 to work with
         for idx in range(1, 10):
@@ -360,7 +353,9 @@ class TestBusinessPayoutEventManager:
         ach_id1 = uuid4().hex
         ach_id2 = uuid4().hex
 
-        with pytest.raises(expected_exception=AssertionError, match="No Business Payout found"):
+        with pytest.raises(
+            expected_exception=AssertionError, match="No Business Payout found"
+        ):
             business_payout_event_manager.update_ext_reference_ids(
                 new_value=ach_id2,
                 current_value=ach_id1,
@@ -371,7 +366,7 @@ class TestBusinessPayoutEventManager:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         business.prebuild_balance(
             thl_pg_config=thl_web_rr,
-            lm=lm,
+            lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
@@ -381,7 +376,7 @@ class TestBusinessPayoutEventManager:
             business=business,
             amount=USDCent(100_01),
             pm=product_manager,
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             transaction_id=ach_id1,
         )
         assert isinstance(res, BusinessPayoutEvent)
@@ -394,7 +389,9 @@ class TestBusinessPayoutEventManager:
             current_value=ach_id1,
         )
 
-        with pytest.raises(expected_exception=AssertionError, match="No Business Payout found"):
+        with pytest.raises(
+            expected_exception=AssertionError, match="No Business Payout found"
+        ):
             business_payout_event_manager.get_by_ext_ref_id(ext_ref_id=ach_id1)
 
         assert business_payout_event_manager.get_by_ext_ref_id(ext_ref_id=ach_id2)
@@ -718,7 +715,6 @@ class TestBusinessPayoutEventManager:
         # )
 
         assert 1 == 0
-        return None
 
     def test_ach_payment(
         self,
@@ -783,8 +779,6 @@ class TestBusinessPayoutEventManager:
             amount=USDCent(475),  # 95% of $5.00
             ext_ref_id=ach_id1,
             created=start + timedelta(days=1, minutes=1),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
         adj_to_fail_with_tx_factory(
             session=s1,

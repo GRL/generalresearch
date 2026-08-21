@@ -54,3 +54,6 @@ include = ["generalresearch", "generalresearch.*", "test_utils", "test_utils.*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+
+[tool.ruff]
+target-version = "py314"

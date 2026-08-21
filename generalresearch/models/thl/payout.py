@@ -1,31 +1,28 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-from typing import Collection
+from datetime import UTC, datetime
+from typing import Self
 from uuid import uuid4
 
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
     PositiveInt,
     computed_field,
     field_validator,
     model_validator,
-    ConfigDict,
 )
 from pydantic.json_schema import SkipJsonSchema
-from typing_extensions import Self
 
 from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr, UUIDStrCoerce
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.ledger import OrderBy
 from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
     CashMailOrderData,
 )
-from generalresearch.redis_helper import RedisConfig
 
 
 class PayoutEvent(BaseModel):
@@ -63,7 +60,7 @@ class PayoutEvent(BaseModel):
     )
 
     created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
+        default_factory=lambda: datetime.now(tz=UTC)
     )
 
     # In the smallest unit of the currency being transacted. For USD, this
@@ -223,12 +220,10 @@ class BrokerageProductPayoutEvent(PayoutEvent):
         return self.amount_usd.to_usd_str()
 
 
-class BusinessPayoutEvent(BaseModel):
+class BusinessPayoutEventCreate(BaseModel):
     """A single payout event to a supplier Business."""
 
     model_config = ConfigDict(validate_assignment=True)
-
-    id: SkipJsonSchema[PositiveInt | None] = Field(exclude=True, default=None)
 
     # Used for holding a *unique*, external, payout-type-specific identifier.
     ext_ref_id: str = Field(title="Unique external reference ID")
@@ -239,7 +234,7 @@ class BusinessPayoutEvent(BaseModel):
     )
 
     created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
+        default_factory=lambda: datetime.now(tz=UTC)
     )
 
     # In the smallest unit of the currency being transacted. For USD, this
@@ -274,8 +269,7 @@ class BusinessPayoutEvent(BaseModel):
         "returned from the external payout provider.",
     )
 
-    bp_payouts: list[BrokerageProductPayoutEvent] | None = Field(
-        default=None,
+    bp_payouts: list[BrokerageProductPayoutEvent] = Field(
         description="The list of Brokerage Product Payouts that this Business Payout includes",
         min_length=1,
     )
@@ -317,9 +311,6 @@ class BusinessPayoutEvent(BaseModel):
 
     @model_validator(mode="after")
     def validate_bp_payouts(self) -> Self:
-        if not self.bp_payouts:
-            return self
-
         bp_payout_amount = sum([p.amount for p in self.bp_payouts])
         if bp_payout_amount != self.amount:
             raise ValueError(
@@ -359,3 +350,6 @@ class BusinessPayoutEvent(BaseModel):
             json.dumps(self.order_data) if self.order_data is not None else None
         )
         return d
+
+class BusinessPayoutEvent(BusinessPayoutEventCreate):
+    id: SkipJsonSchema[PositiveInt] = Field(exclude=True)
