@@ -333,7 +333,16 @@ class BusinessPayoutEvent(BaseModel):
         if invalid_payout_types:
             raise ValueError(
                 "All BrokerageProductPayoutEvent.payout_type values must equal "
-                f"BusinessPayoutEvent.payout_type ({self.payout_type=})"
+                f"BusinessPayoutEvent.payout_type ({self.payout_type})"
+            )
+
+        invalid_ext_ids = [
+            p.ext_ref_id for p in self.bp_payouts if p.ext_ref_id != self.ext_ref_id
+        ]
+        if invalid_ext_ids:
+            raise ValueError(
+                "All BrokerageProductPayoutEvent.ext_ref_id values must equal "
+                f"BusinessPayoutEvent.ext_ref_id ({self.ext_ref_id})"
             )
 
         return self

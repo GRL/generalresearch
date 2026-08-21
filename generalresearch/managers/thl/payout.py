@@ -9,6 +9,7 @@ from uuid import uuid4
 
 import numpy as np
 import pandas as pd
+import psycopg
 from psycopg import sql
 from pydantic import AwareDatetime, NonNegativeInt, PositiveInt
 
@@ -958,40 +959,46 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
             PayoutStatus.PENDING
         }, "All BP Payouts must be PENDING"
         assert bpe.id is None, "Cannot create a BusinessPayoutEvent with an existing ID"
+        INSERT_SUPPLIER_PAYOUT = """
+        INSERT INTO supplier_payout (
+            business_id, created, amount,
+            status, ext_ref_id, payout_type,
+            request_data, order_data
+        ) VALUES (
+            %(business_id)s, %(created)s, %(amount)s, 
+            %(status)s, %(ext_ref_id)s, %(payout_type)s, 
+            %(request_data)s, %(order_data)s 
+        ) RETURNING id;
+        """
+        INSERT_BP_PAYOUT = """
+        INSERT INTO event_payout (
+            uuid, debit_account_uuid, created, cashout_method_uuid,
+            amount, status, ext_ref_id, payout_type, order_data,
+            request_data, supplier_payout_id
+        ) VALUES (
+            %(uuid)s, %(debit_account_uuid)s, %(created)s, %(cashout_method_uuid)s,
+            %(amount)s, %(status)s, %(ext_ref_id)s, %(payout_type)s, %(order_data)s,
+            %(request_data)s, %(supplier_payout_id)s
+        );
+        """
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
-                # ext_ref_id has a unique constraint, so we don't need to even
-                #   do an existence check first
-                c.execute(
-                    """
-                INSERT INTO supplier_payout (
-                    business_id, created, amount,
-                    status, ext_ref_id, payout_type,
-                    request_data, order_data
-                ) VALUES (
-                    %(business_id)s, %(created)s, %(amount)s, 
-                    %(status)s, %(ext_ref_id)s, %(payout_type)s, 
-                    %(request_data)s, %(order_data)s 
-                ) RETURNING id;
-                """,
-                    bpe.model_dump_postgres(),
-                )
+                # ext_ref_id (transaction_id) has a unique constraint
+                try:
+                    c.execute(INSERT_SUPPLIER_PAYOUT, bpe.model_dump_postgres())
+                except psycopg.errors.UniqueViolation as e:
+                    if e.diag.constraint_name == "supplier_payout_ext_ref_id_key":
+                        raise ValueError(
+                            f"Cannot create a BusinessPayoutEvent with an existing "
+                            f"transaction_id. {e.diag.message_detail}"
+                        )
+                    raise
                 supplier_payout_pk = c.fetchone()["id"]
                 bpe.id = supplier_payout_pk
                 for bp_pe in bpe.bp_payouts:
                     c.execute(
-                        """
-                        INSERT INTO event_payout (
-                            uuid, debit_account_uuid, created, cashout_method_uuid,
-                            amount, status, ext_ref_id, payout_type, order_data,
-                            request_data, supplier_payout_id
-                        ) VALUES (
-                            %(uuid)s, %(debit_account_uuid)s, %(created)s, %(cashout_method_uuid)s,
-                            %(amount)s, %(status)s, %(ext_ref_id)s, %(payout_type)s, %(order_data)s,
-                            %(request_data)s, %(supplier_payout_id)s
-                        );
-                        """,
+                        INSERT_BP_PAYOUT,
                         bp_pe.model_dump_postgres()
                         | {"supplier_payout_id": supplier_payout_pk},
                     )
@@ -1186,6 +1193,43 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
         )
         self.update_business_payout_event(pk=bpe.id, status=PayoutStatus.COMPLETE)
         return bpe
+
+    def update_ext_reference_ids(
+        self,
+        new_value: str,
+        current_value: str,
+    ) -> None:
+        """
+        There are scenarios where an ACH/Wire payout event was saved with
+        a generic or anonymized reference identifier. We may want to be
+        able to go back and update all of those transaction IDs.
+
+        """
+        assert new_value and current_value
+
+        # Will raise if doesn't exist
+        self.get_by_ext_ref_id(ext_ref_id=current_value)
+
+        query1 = """
+        UPDATE supplier_payout
+        SET ext_ref_id = %(new_value)s
+        WHERE ext_ref_id = %(old_value)s
+        """
+        query2 = """
+        UPDATE event_payout
+        SET ext_ref_id = %(new_value)s
+        WHERE ext_ref_id = %(old_value)s
+        """
+        params = {"new_value": new_value, "old_value": current_value}
+        with self.pg_config.make_connection() as conn:
+            with conn.cursor() as c:
+                c.execute(query1, params)
+                assert c.rowcount == 1
+                c.execute(query2, params)
+                # As of 2025, no single Business has more than 10,000 Products,
+                #   leave the limit in as an additional safeguard.
+                assert c.rowcount < 10000
+            conn.commit()
 
 
 # import duckdb
