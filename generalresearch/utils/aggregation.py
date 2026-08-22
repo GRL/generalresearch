@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Dict, List
+from typing import Any
 
 
 def group_by_year(records: list[dict], datetime_field: str) -> dict[int, list[Any]]:

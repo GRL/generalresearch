@@ -1,10 +1,10 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated
 
 from pydantic import StringConstraints
 
 
-class PrecisionStatus(str, Enum):
+class PrecisionStatus(StrEnum):
     # I made this up. They use isactive: "Yes" or "no", which I think is stupid
     OPEN = "open"
     CLOSED = "closed"

@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import hashlib
-from enum import Enum
+from enum import StrEnum
+from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing import Self
 from user_agents import parse as ua_parse
 from user_agents.parsers import UserAgent
 
 
-class BrowserFamily(str, Enum):
+class BrowserFamily(StrEnum):
     CHROME_MOBILE = "Chrome Mobile"
     CHROME = "Chrome"
     CHROME_MOBILE_WEBVIEW = "Chrome Mobile WebView"
@@ -32,7 +32,7 @@ class BrowserFamily(str, Enum):
     OTHER = "Other"
 
 
-class OSFamily(str, Enum):
+class OSFamily(StrEnum):
     ANDROID = "Android"
     WINDOWS = "Windows"
     IOS = "iOS"
@@ -43,7 +43,7 @@ class OSFamily(str, Enum):
     OTHER = "Other"
 
 
-class DeviceBrand(str, Enum):
+class DeviceBrand(StrEnum):
     GENERIC_ANDROID = "Generic_Android"
     NONE = "None"
     APPLE = "Apple"
@@ -65,7 +65,7 @@ class DeviceBrand(str, Enum):
     OTHER = "Other"
 
 
-class DeviceModelFamily(str, Enum):
+class DeviceModelFamily(StrEnum):
     NONE = "None"
     OTHER = "Other"
     K = "K"

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Annotated, Any, Literal, Self, Type
+from typing import Annotated, Any, Literal, Self
 
 from more_itertools import flatten
 from pydantic import (

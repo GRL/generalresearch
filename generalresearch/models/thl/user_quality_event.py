@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field, PositiveInt
@@ -18,7 +18,7 @@ Typically used internally. These affect a user's quality standing.
 """
 
 
-class QualityEventType(str, Enum, metaclass=ReprEnumMeta):
+class QualityEventType(StrEnum, metaclass=ReprEnumMeta):
     """
     Currently, the grpc call SendUserQualityEvents handles both the
         recons/task adj, access control, and "security/hash failure" events.

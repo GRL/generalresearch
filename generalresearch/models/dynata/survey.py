@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, timezone
+from datetime import UTC
 from decimal import Decimal
 from functools import cached_property
-from typing import Any, Literal, Self, Type
+from typing import Any, Literal, Self
 
 from more_itertools import flatten
 from pydantic import (

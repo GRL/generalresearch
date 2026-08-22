@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List
-
 import pandas as pd
 from pandera.pandas import Check, Column, DataFrameSchema, Index
 

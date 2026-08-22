@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timezone
-from enum import Enum
-from typing import Annotated, Any, Literal, Self, Union
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Annotated, Any, Literal, Self
 from uuid import uuid4
 
 from pydantic import (
@@ -50,13 +50,13 @@ class Direction(int, Enum, metaclass=ReprEnumMeta):
     DEBIT = 1
 
 
-class OrderBy(str, Enum, metaclass=ReprEnumMeta):
+class OrderBy(StrEnum, metaclass=ReprEnumMeta):
     ASC = "ASC"
 
     DESC = "DESC"
 
 
-class AccountType(str, Enum, metaclass=ReprEnumMeta):
+class AccountType(StrEnum, metaclass=ReprEnumMeta):
     # Revenue from BP payment commission
     BP_COMMISSION = "bp_commission"
     # BP wallets (owed balance)
@@ -83,7 +83,7 @@ class AccountType(str, Enum, metaclass=ReprEnumMeta):
     WA_CREDIT_LINE = "wa_credit_line"
 
 
-class TransactionMetadataColumns(str, Enum):
+class TransactionMetadataColumns(StrEnum):
     BONUS = "bonus_id"
     # Note: EVENT & EVENT2 represent the same concept. I accidentally made
     # this inconsistent.
@@ -102,7 +102,7 @@ class TransactionMetadataColumns(str, Enum):
     CONTEST = "contest"
 
 
-class TransactionType(str, Enum):
+class TransactionType(StrEnum):
     """These are used in the Ledger to annotate the type of transaction (in
     metadata: tx_type)
     """

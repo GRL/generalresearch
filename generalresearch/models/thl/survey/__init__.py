@@ -3,7 +3,6 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from decimal import Decimal
 from itertools import product
-from typing import Type
 
 from more_itertools import flatten
 from pydantic import BaseModel, Field

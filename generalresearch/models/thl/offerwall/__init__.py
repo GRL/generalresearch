@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal, Self
 
 from pydantic import (
@@ -31,7 +31,7 @@ from generalresearch.models.thl.product import (
 from generalresearch.models.thl.user import User
 
 
-class OfferWallType(str, Enum):
+class OfferWallType(StrEnum):
     """
     The specific offerwall type
     """
@@ -56,7 +56,7 @@ class OfferWallType(str, Enum):
     STARWALL = "b59a2d2b"
 
 
-class OfferWallTypeClass(str, Enum):
+class OfferWallTypeClass(StrEnum):
     """
     A higher level "class" to organize similar offerwall types.
     For e.g. STARWALL_PLUS_BLOCK, STARWALL_PLUS, STARWALL all use the same

@@ -3,9 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property
-from typing import Annotated, Any, List, Literal, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -98,7 +98,7 @@ class UpkQuestionChoiceOut(UpkQuestionChoice):
     # importance: Optional[UPKImportance] = Field(default=None, exclude=True)
 
 
-class UpkQuestionType(str, Enum):
+class UpkQuestionType(StrEnum):
     # The question has options that the user must select from. A MC question
     #   can be e.g. Selector.SINGLE_ANSWER or Selector.MULTIPLE_ANSWER to
     #   indicate only 1 or more than 1 option can be selected respectively.
@@ -111,7 +111,7 @@ class UpkQuestionType(str, Enum):
     HIDDEN = "HIDDEN"
 
 
-class UpkQuestionSelector(str, Enum):
+class UpkQuestionSelector(StrEnum):
     pass
 
 

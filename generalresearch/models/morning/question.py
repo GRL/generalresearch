@@ -1,6 +1,6 @@
 import json
-from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Self
+from enum import StrEnum
+from typing import Any, Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -36,7 +36,7 @@ class MorningQuestionOption(BaseModel, frozen=True):
     order: int = Field()
 
 
-class MorningQuestionType(str, Enum):
+class MorningQuestionType(StrEnum):
     # The db stores these as a single letter
 
     # Geographic questions represent geographic areas within a country.

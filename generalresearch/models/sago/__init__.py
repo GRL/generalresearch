@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated
 
 from pydantic import Field
@@ -8,6 +8,6 @@ SagoQuestionIdType = Annotated[
 ]
 
 
-class SagoStatus(str, Enum):
+class SagoStatus(StrEnum):
     LIVE = "LIVE"
     NOT_LIVE = "NOT_LIVE"

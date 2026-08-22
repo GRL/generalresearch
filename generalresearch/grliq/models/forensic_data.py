@@ -3,10 +3,10 @@ from __future__ import annotations
 import hashlib
 import re
 from collections import Counter
-from datetime import datetime, timedelta, timezone, UTC
-from enum import Enum
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from functools import cached_property
-from typing import Any, Literal
+from typing import Annotated, Any, Literal, Self
 from uuid import uuid4
 
 import pycountry
@@ -23,7 +23,6 @@ from pydantic import (
 )
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_extra_types.timezone_name import TimeZoneName
-from typing import Annotated, Self
 
 from generalresearch.grliq.models import (
     AUDIO_CODEC_NAMES,
@@ -60,7 +59,7 @@ from generalresearch.models.thl.session import Session
 fake = Faker()
 
 
-class Platform(str, Enum):
+class Platform(StrEnum):
     MAC_INTEL = "MacIntel"
     ARM = "ARM"
     IPAD = "iPad"
@@ -75,7 +74,7 @@ class Platform(str, Enum):
     OTHER = "Other"
 
 
-class PassFailError(str, Enum):
+class PassFailError(StrEnum):
     PASS = "pass"
     FAIL = "fail"
     ERROR = "error"
@@ -96,7 +95,7 @@ class PassFailError(str, Enum):
             return {2: cls.PASS, 1: cls.FAIL, 0: cls.ERROR, -1: cls.ERROR}[int(v)]
 
 
-class SupportLevel(str, Enum):
+class SupportLevel(StrEnum):
     # Used for checking if certain features are available in the browser
     FULL = "full"
     PARTIAL = "partial"

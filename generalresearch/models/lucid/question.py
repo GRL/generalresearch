@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -40,7 +40,7 @@ class LucidQuestionOption(BaseModel):
     order: int = Field()
 
 
-class LucidQuestionType(str, Enum):
+class LucidQuestionType(StrEnum):
     SINGLE_SELECT = "s"
     MULTI_SELECT = "m"
     TEXT_ENTRY = "t"

@@ -1,10 +1,10 @@
 import copy
-from enum import Enum
+from enum import IntEnum, StrEnum
 
 from generalresearch.utils.enum import ReprEnumMeta
 
 
-class ReservedQueryParameters(str, Enum, metaclass=ReprEnumMeta):
+class ReservedQueryParameters(StrEnum, metaclass=ReprEnumMeta):
     PRODUCT_ID = "product_id"
     PRODUCT_USER_ID = "bp_user_id"
     BPUID = "bpuid"
@@ -48,7 +48,7 @@ class ReservedQueryParameters(str, Enum, metaclass=ReprEnumMeta):
     N_BINS = "n_bins"
 
 
-class THLPaths(str, Enum, metaclass=ReprEnumMeta):
+class THLPaths(StrEnum, metaclass=ReprEnumMeta):
 
     # Endpoints on thl-fsb
     TASK_ADJUSTMENT = "f4484dbdf144451ab60cda256ce14266"
@@ -65,7 +65,7 @@ class THLPaths(str, Enum, metaclass=ReprEnumMeta):
     GET_GRLIQ_JS_ATTR = "4a2954b34cc24f93be3e8b218e323b88"
 
 
-class Status(str, Enum, metaclass=ReprEnumMeta):
+class Status(StrEnum, metaclass=ReprEnumMeta):
     """
     The outcome of a session or wall event. If the session is still in
     progress, the status will be NULL.
@@ -85,7 +85,7 @@ class Status(str, Enum, metaclass=ReprEnumMeta):
     TIMEOUT = "t"
 
 
-class WallAdjustedStatus(str, Enum, metaclass=ReprEnumMeta):
+class WallAdjustedStatus(StrEnum, metaclass=ReprEnumMeta):
     # Task was reconciled to complete
     ADJUSTED_TO_COMPLETE = "ac"
     # Task was reconciled to incomplete
@@ -100,7 +100,7 @@ class WallAdjustedStatus(str, Enum, metaclass=ReprEnumMeta):
     CONFIRMED_COMPLETE = "cc"
 
 
-class SessionAdjustedStatus(str, Enum, metaclass=ReprEnumMeta):
+class SessionAdjustedStatus(StrEnum, metaclass=ReprEnumMeta):
     """An adjusted_status is set if a session is adjusted by the marketplace
     after the original return. A session can be adjusted multiple times.
     This is the most recent status. If a session was originally a complete,
@@ -117,7 +117,7 @@ class SessionAdjustedStatus(str, Enum, metaclass=ReprEnumMeta):
     PAYOUT_ADJUSTMENT = "pa"
 
 
-class StatusCode1(int, Enum, metaclass=ReprEnumMeta):
+class StatusCode1(IntEnum, metaclass=ReprEnumMeta):
     """
     __High level status code for outcome of the session.__
     This should only be NULL if the Status is ABANDON or TIMEOUT
@@ -177,7 +177,7 @@ class StatusCode1(int, Enum, metaclass=ReprEnumMeta):
     SESSION_CONTINUE_QUALITY_FAIL = 19
 
 
-class SessionStatusCode2(int, Enum, metaclass=ReprEnumMeta):
+class SessionStatusCode2(IntEnum, metaclass=ReprEnumMeta):
     """
     __Status Detail__
     This should be set if the Session.status_code_1 is SESSION_XXX_FAIL
@@ -217,7 +217,7 @@ class SessionStatusCode2(int, Enum, metaclass=ReprEnumMeta):
     GRLIQ_MISSING = 13
 
 
-class WallStatusCode2(int, Enum, metaclass=ReprEnumMeta):
+class WallStatusCode2(IntEnum, metaclass=ReprEnumMeta):
     """
     This should be set if the Wall.status_code_1 is MARKETPLACE_FAIL
     """
@@ -289,7 +289,7 @@ WALL_ALLOWED_STATUS_CODE_1_2 = {
 }
 
 
-class ReportValue(int, Enum, metaclass=ReprEnumMeta):
+class ReportValue(IntEnum, metaclass=ReprEnumMeta):
     """
     The reason a user reported a task.
     """
@@ -316,7 +316,7 @@ class ReportValue(int, Enum, metaclass=ReprEnumMeta):
     DIDNT_LIKE = 7
 
 
-class PayoutStatus(str, Enum, metaclass=ReprEnumMeta):
+class PayoutStatus(StrEnum, metaclass=ReprEnumMeta):
     """The max size of the db field that holds this value is 20, so please
     don't add new values longer than that!
     """

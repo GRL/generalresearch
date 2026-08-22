@@ -3,7 +3,7 @@ https://purespectrum.atlassian.net/wiki/spaces/PA/pages/33613201/Minimizing+Clic
 """
 
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 

@@ -5,7 +5,7 @@ import os
 import subprocess
 import time
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from sys import platform
 from typing import Any
 
@@ -56,7 +56,7 @@ LOG = logging.getLogger("incite")
 DT_STR = "%Y-%m-%d %H:%M:%S"
 
 
-class DFCollectionType(str, Enum):
+class DFCollectionType(StrEnum):
     TEST = "test"
 
     USER = "thl_user"

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal, Self
 from uuid import UUID
 
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     )
 
 
-class CintQuestionType(str, Enum):
+class CintQuestionType(StrEnum):
     SINGLE_SELECT = "s"
     MULTI_SELECT = "m"
     # Dummy means they're calculated

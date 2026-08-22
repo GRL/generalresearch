@@ -1,9 +1,9 @@
-from enum import Enum
+from enum import StrEnum
 
 from generalresearch.utils.enum import ReprEnumMeta
 
 
-class PayoutType(str, Enum, metaclass=ReprEnumMeta):
+class PayoutType(StrEnum, metaclass=ReprEnumMeta):
     """
     The method in which the requested payout is delivered.
     """
@@ -35,7 +35,7 @@ class PayoutType(str, Enum, metaclass=ReprEnumMeta):
     AMT_ASSIGNMENT = "AMT_ASSIGNMENT"
 
 
-class Currency(str, Enum):
+class Currency(StrEnum):
     # United States Dollar
     USD = "USD"
     # Canadian Dollar

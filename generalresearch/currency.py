@@ -1,6 +1,6 @@
 import warnings
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import GetCoreSchemaHandler, NonNegativeInt
@@ -9,7 +9,7 @@ from pydantic_core import CoreSchema, core_schema
 from generalresearch.utils.enum import ReprEnumMeta
 
 
-class LedgerCurrency(str, Enum, metaclass=ReprEnumMeta):
+class LedgerCurrency(StrEnum, metaclass=ReprEnumMeta):
     USD = "USD"
     USDCent = "USDCent"
     USDMill = "USDMill"

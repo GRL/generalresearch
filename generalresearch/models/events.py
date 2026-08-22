@@ -1,6 +1,6 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import Annotated, Dict, Literal, Optional, Union
+from typing import Annotated, Literal
 from uuid import uuid4
 
 from pydantic import (
@@ -263,17 +263,14 @@ class SubscribeMessage(BaseModel):
     product_id: UUIDStr = Field(examples=["4fe381fb7186416cb443a38fa66c6557"])
 
 
-ServerToClientMessage = Union[EventMessage, StatsMessage, PingMessage]
+ServerToClientMessage = EventMessage | StatsMessage | PingMessage
 ServerToClientMessageField = Annotated[
     ServerToClientMessage,
     Field(discriminator="kind"),
 ]
 ServerToClientMessageAdapter = TypeAdapter(ServerToClientMessageField)
 
-ClientToServerMessage = Union[
-    SubscribeMessage,
-    PongMessage,
-]
+ClientToServerMessage = SubscribeMessage | PongMessage
 ClientToServerMessageField = Annotated[
     ClientToServerMessage,
     Field(discriminator="kind"),

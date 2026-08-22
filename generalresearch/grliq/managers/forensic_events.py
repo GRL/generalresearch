@@ -1,7 +1,7 @@
 import json
-from datetime import datetime
-from typing import Any, Dict, List, Optional
 from collections.abc import Collection
+from datetime import datetime
+from typing import Any
 from uuid import uuid4
 
 from psycopg import sql
@@ -40,15 +40,13 @@ class GrlIqEventManager:
             with conn.cursor() as c:
                 c.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (session_uuid,))
                 # Try to update first
-                update_query = sql.SQL(
-                    """
+                update_query = sql.SQL("""
                     UPDATE grliq_forensicevents
                     SET timing_data = %(timing_data)s
                     WHERE session_uuid = %(session_uuid)s
                       AND timing_data IS NULL
                     RETURNING id
-                """
-                )
+                """)
                 c.execute(update_query, data)
                 result = c.fetchone()
 
@@ -58,15 +56,13 @@ class GrlIqEventManager:
                     return pk
 
                 # No matching row to update. Do an insert
-                insert_query = sql.SQL(
-                    """
+                insert_query = sql.SQL("""
                     INSERT INTO grliq_forensicevents
                         (uuid, session_uuid, timing_data)
                     VALUES
                         (%(uuid)s, %(session_uuid)s, %(timing_data)s)
                     RETURNING id
-                """
-                )
+                """)
                 c.execute(insert_query, data)
                 pk = c.fetchone()["id"]
                 conn.commit()
@@ -96,8 +92,7 @@ class GrlIqEventManager:
             with conn.cursor() as c:
                 c.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (session_uuid,))
                 # Try to update first
-                update_query = sql.SQL(
-                    """
+                update_query = sql.SQL("""
                     UPDATE grliq_forensicevents
                     SET events = %(events)s, 
                         mouse_events = %(mouse_events)s,
@@ -106,8 +101,7 @@ class GrlIqEventManager:
                     WHERE session_uuid = %(session_uuid)s
                       AND events IS NULL
                     RETURNING id
-                """
-                )
+                """)
                 c.execute(update_query, data)
                 result = c.fetchone()
 
@@ -117,8 +111,7 @@ class GrlIqEventManager:
                     return pk
 
                 # No matching row to update. Do an insert
-                insert_query = sql.SQL(
-                    """
+                insert_query = sql.SQL("""
                      INSERT INTO grliq_forensicevents
                         (uuid, session_uuid, events, mouse_events,
                         event_start, event_end)
@@ -126,8 +119,7 @@ class GrlIqEventManager:
                         (%(uuid)s, %(session_uuid)s, %(events)s, %(mouse_events)s,
                         %(event_start)s, %(event_end)s)
                      RETURNING id
-                """
-                )
+                """)
                 c.execute(insert_query, data)
                 pk = c.fetchone()["id"]
                 conn.commit()
@@ -202,8 +194,7 @@ class GrlIqEventManager:
         session_uuids: Collection[str],
     ) -> list[dict[str, Any]]:
         params = {"session_uuids": list(session_uuids)}
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
         SELECT DISTINCT ON (fe.session_uuid)
             timing_data,
             fe.session_uuid,
@@ -214,8 +205,7 @@ class GrlIqEventManager:
         WHERE fe.session_uuid = ANY(%(session_uuids)s)
         AND timing_data IS NOT NULL
         ORDER BY session_uuid, fe.id DESC;
-        """
-        )
+        """)
         with self.postgres_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query, params)

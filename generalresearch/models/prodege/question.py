@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -90,7 +90,7 @@ class ProdegeQuestionOption(BaseModel):
     is_exclusive: bool = Field(default=False)
 
 
-class ProdegeQuestionType(str, Enum):
+class ProdegeQuestionType(StrEnum):
     """
     {'Derived', 'Multi Punch', 'Numeric - Open End', 'Single Punch', 'Zip Code'}
     """

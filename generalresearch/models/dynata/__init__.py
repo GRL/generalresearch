@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class DynataStatus(str, Enum):
+class DynataStatus(StrEnum):
     OPEN = "OPEN"
     PAUSED = "PAUSED"
     CLOSED = "CLOSED"

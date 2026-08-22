@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import UTC, datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 from uuid import uuid4
@@ -63,7 +63,7 @@ class TransferMethod(Enum, metaclass=ReprEnumMeta):
     WIRE = 1
 
 
-class BusinessType(str, Enum, metaclass=ReprEnumMeta):
+class BusinessType(StrEnum, metaclass=ReprEnumMeta):
     INDIVIDUAL = "i"
     COMPANY = "c"
 

@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class SupplierTag(str, Enum):
+class SupplierTag(StrEnum):
     """Available tags which can be used to annotate supplier traffic
 
     Note: should not include commas!

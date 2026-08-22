@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated
 
 from pydantic import StringConstraints
@@ -9,17 +9,17 @@ InnovateQuestionID = Annotated[
 ]
 
 
-class InnovateStatus(str, Enum):
+class InnovateStatus(StrEnum):
     LIVE = "LIVE"
     NOT_LIVE = "NOT_LIVE"
 
 
-class InnovateQuotaStatus(str, Enum):
+class InnovateQuotaStatus(StrEnum):
     OPEN = "OPEN"
     CLOSED = "CLOSED"
 
 
-class InnovateDuplicateCheckLevel(str, Enum):
+class InnovateDuplicateCheckLevel(StrEnum):
     # How we should check for de-dupes / survey exclusions.
     # https://innovatemr.stoplight.io/docs/supplier-api/ZG9jOjEzNzYxMTg2-statuses-term-reasons-and-categories
     # #duplicatedtoken

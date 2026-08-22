@@ -1,5 +1,4 @@
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.wxet.models.definitions import (

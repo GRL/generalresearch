@@ -4,10 +4,10 @@ from __future__ import annotations
 import json
 import logging
 from collections import defaultdict
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from functools import cached_property
-from typing import Any, Literal, Type
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,

@@ -1,4 +1,4 @@
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.wall_status_codes import lucid

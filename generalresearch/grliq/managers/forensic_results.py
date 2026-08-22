@@ -1,6 +1,6 @@
-from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
 from collections.abc import Collection
+from datetime import datetime
+from typing import Any
 
 from generalresearch.grliq.models.forensic_result import (
     GrlIqForensicCategoryResult,

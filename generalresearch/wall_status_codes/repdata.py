@@ -3,7 +3,7 @@ Status codes are in a xlsx file. See thl-repdata readme
 """
 
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, time, timedelta
-from typing import Literal, Type
+from typing import Literal
 
 import dask.dataframe as dd
 import pandas as pd

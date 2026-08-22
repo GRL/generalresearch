@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field
@@ -14,7 +14,7 @@ from generalresearch.grliq.models.decider import (
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 
 
-class Phase(str, Enum):
+class Phase(StrEnum):
     # The 'phase' of a THL-Session experience. grliq may be collected in
     # multiple places multiple times within one session
 

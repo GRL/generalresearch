@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class OfferwallReason(str, Enum):
+class OfferwallReason(StrEnum):
     USER_BLOCKED = "USER_BLOCKED"
     HIGH_RECON_RATE = "HIGH_RECON_RATE"
     UNCOMMON_DEMOGRAPHICS = "UNCOMMON_DEMOGRAPHICS"

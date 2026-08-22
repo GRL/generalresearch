@@ -1,6 +1,5 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from random import sample
-from typing import List
 
 import numpy as np
 import pandas as pd

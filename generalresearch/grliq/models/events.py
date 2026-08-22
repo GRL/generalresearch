@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import namedtuple
 from dataclasses import dataclass, fields
 from functools import cached_property
-from typing import Any, Dict, List, Optional
+from typing import Any, Self
 
 import numpy as np
 from pydantic import (
@@ -14,7 +14,6 @@ from pydantic import (
     NonNegativeInt,
     PositiveFloat,
 )
-from typing import Self
 
 from generalresearch.models.custom_types import AwareDatetimeISO, IPvAnyAddressStr
 

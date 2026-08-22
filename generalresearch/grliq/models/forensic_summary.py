@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import random
 from typing import (
-    List,
     Literal,
+    Optional,
     Union,
     get_args,
     get_origin,
     get_type_hints,
-    Optional,
 )
 
 import numpy as np
@@ -57,9 +56,7 @@ class UserForensicSummary(BaseModel):
     )
 
     # These must be nullable in case a user has 0 attempts!
-    category_result_summary: GrlIqForensicCategorySummary | None= Field(
-        default=None
-    )
+    category_result_summary: GrlIqForensicCategorySummary | None = Field(default=None)
     checker_result_summary: GrlIqCheckerResultsSummary | None = Field(default=None)
 
     country_timing_data_summary: dict[CountryISO, TimingDataCountrySummary] = Field(
@@ -211,13 +208,13 @@ class CountryRTTDistribution(BaseModel):
         description="Country client_ip is located in", examples=["fr"]
     )
     # For users marked as fraud or not
-    is_fraud: bool| None = Field(
+    is_fraud: bool | None = Field(
         default=None,
         description="If timing data from sessions determined to be fraud are included",
     )
 
     # we could split by this optionally
-    user_type: UserType|None = Field(
+    user_type: UserType | None = Field(
         default=None,
         description="user_type of the client_ip as determined by MaxMind",
         examples=[UserType.RESIDENTIAL],

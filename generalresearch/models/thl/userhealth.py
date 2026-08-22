@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Dict, Optional, Self
+from typing import Self
 
 from pydantic import BaseModel, Field, NonNegativeFloat, PositiveInt
 

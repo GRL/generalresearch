@@ -3,7 +3,7 @@ from __future__ import annotations
 # https://integrations.precisionsample.com/api.html#Get%20Questions
 import json
 import logging
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -43,7 +43,7 @@ class PrecisionQuestionOption(BaseModel):
     order: int = Field()
 
 
-class PrecisionQuestionType(str, Enum):
+class PrecisionQuestionType(StrEnum):
     """
     From the API: {'Drop Down', 'Multi Select', 'Single Select', 'Single Select Matrix', 'Vertical Question'}
     Of course undocumented. And there doesn't seem to be a text entry option?

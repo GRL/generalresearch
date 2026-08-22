@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import datetime, timezone, UTC
-from enum import Enum
-from typing import Any, Literal
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -16,7 +16,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing import Self
 
 from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import (
@@ -144,9 +143,7 @@ class CashoutMethod(CashoutMethodBase):
         "a user may have a paypal cashout method with their paypal"
         "email associated.",
     )
-    last_updated: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=UTC)
-    )
+    last_updated: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
     is_live: bool = Field(default=True)
 
     @model_validator(mode="after")
@@ -249,7 +246,7 @@ class CashoutMethodsResponse(StatusResponse):
     cashout_methods: list[CashoutMethodOut] = Field()
 
 
-class DeliveryStatus(str, Enum):
+class DeliveryStatus(StrEnum):
     PENDING = "Pending"
     SHIPPED = "Shipped"
     IN_TRANSIT = "In Transit"
@@ -261,14 +258,14 @@ class DeliveryStatus(str, Enum):
     LOST = "Lost"
 
 
-class ShippingCarrier(str, Enum):
+class ShippingCarrier(StrEnum):
     USPS = "USPS"
     FEDEX = "FedEx"
     UPS = "UPS"
     DHL = "DHL"
 
 
-class ShippingMethod(str, Enum):
+class ShippingMethod(StrEnum):
     STANDARD = "Standard"
     EXPRESS = "Express"
     TWO_DAY = "Two-Day"
@@ -394,7 +391,7 @@ example_foreign_value = {
 }
 
 
-class RedemptionCurrency(str, Enum, metaclass=ReprEnumMeta):
+class RedemptionCurrency(StrEnum, metaclass=ReprEnumMeta):
     """
     Supported Currencies for Foreign Redemptions
     """

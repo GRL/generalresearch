@@ -1,6 +1,5 @@
 import html
 import webbrowser
-from typing import List
 
 import numpy as np
 from more_itertools import windowed

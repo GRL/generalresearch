@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from collections import Counter, defaultdict
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
@@ -35,7 +35,7 @@ class DemographicTarget:
         }
 
 
-class Gender(str, Enum):
+class Gender(StrEnum):
     """
     The respondent's gender
     """

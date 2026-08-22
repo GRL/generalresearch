@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
-from enum import Enum
+from enum import StrEnum
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 from pydantic import (
@@ -15,14 +16,13 @@ from pydantic import (
     model_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
-from zoneinfo import ZoneInfo
 
 from generalresearch.managers.leaderboard import country_timezone
 from generalresearch.models import MAX_INT32
 from generalresearch.models.thl.locales import CountryISO
 
 
-class StreakPeriod(str, Enum):
+class StreakPeriod(StrEnum):
     # Midnight to midnight in the tz associated with the user's country
     DAY = "day"
     # Sunday midnight - sunday midnight
@@ -31,7 +31,7 @@ class StreakPeriod(str, Enum):
     MONTH = "month"
 
 
-class StreakFulfillment(str, Enum):
+class StreakFulfillment(StrEnum):
     """
     What has to happen for a user to fulfill a period for a streak
     """
@@ -42,7 +42,7 @@ class StreakFulfillment(str, Enum):
     COMPLETE = "complete"
 
 
-class StreakState(str, Enum):
+class StreakState(StrEnum):
     # The activity for today was completed!
     ACTIVE = "active"
     # They had activity yesterday, but not today, and can still continue today

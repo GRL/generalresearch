@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
@@ -86,7 +86,7 @@ class RepDataQuestionOption(BaseModel):
     order: int = Field()
 
 
-class RepDataQuestionType(str, Enum):
+class RepDataQuestionType(StrEnum):
     """
     {'Derived', 'Multi Punch', 'Numeric - Open End', 'Single Punch', 'Zip Code'}
     """

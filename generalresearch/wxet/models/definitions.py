@@ -1,11 +1,10 @@
-from enum import Enum
-from typing import Optional, Tuple
+from enum import IntEnum, StrEnum
 
 from generalresearch.currency import USDMill
 from generalresearch.utils.enum import ReprEnumMeta
 
 
-class IncExcFilterType(str, Enum, metaclass=ReprEnumMeta):
+class IncExcFilterType(StrEnum, metaclass=ReprEnumMeta):
     INCLUDE = "include"
     EXCLUDE = "exclude"
 
@@ -13,7 +12,7 @@ class IncExcFilterType(str, Enum, metaclass=ReprEnumMeta):
 # Note: This is exactly the same as the generalresearch:models/thl/definitions.py:Status.
 # Keeping this because the comments (and as a result, the documentation)
 #   is slightly different, and specific to wxet.
-class WXETStatus(str, Enum, metaclass=ReprEnumMeta):
+class WXETStatus(StrEnum, metaclass=ReprEnumMeta):
     """
     The outcome of a task attempt. If the attempt is still in progress, the status will be NULL.
     """
@@ -36,7 +35,7 @@ class WXETStatus(str, Enum, metaclass=ReprEnumMeta):
 
 
 # Basically same note as for WxetStatus for WallAdjustedStatus
-class WXETAdjustedStatus(str, Enum, metaclass=ReprEnumMeta):
+class WXETAdjustedStatus(StrEnum, metaclass=ReprEnumMeta):
     # Task was reconciled to complete
     ADJUSTED_TO_COMPLETE = "ac"
 
@@ -52,7 +51,7 @@ class WXETAdjustedStatus(str, Enum, metaclass=ReprEnumMeta):
     POSTBACK_COMPLETE = "pc"
 
 
-class WXETStatusCode1(int, Enum, metaclass=ReprEnumMeta):
+class WXETStatusCode1(IntEnum, metaclass=ReprEnumMeta):
     """
     __High level status code for outcome of the attempt.__
     This should only be NULL if the WXETStatus is ABANDON or TIMEOUT
@@ -103,10 +102,10 @@ class WXETStatusCode1(int, Enum, metaclass=ReprEnumMeta):
         """This property helper indicates if the WXET Attempt made it into
         the WXET Account's (eg: the "buyer"'s) Task.
         """
-        return False if self.value > 10 else True
+        return not self.value > 10
 
 
-class WXETStatusCode2(int, Enum, metaclass=ReprEnumMeta):
+class WXETStatusCode2(IntEnum, metaclass=ReprEnumMeta):
     """
     __Status Detail__
     These are generally only set if the StatusCode1 is WXET_FAIL,

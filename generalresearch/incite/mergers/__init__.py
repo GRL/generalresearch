@@ -1,17 +1,16 @@
 import logging
 import os.path
 import subprocess
-from datetime import datetime, timezone, UTC
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from sys import platform
-from typing import List, Optional, Type
+from typing import Self
 
 import dask.dataframe as dd
 import pandas as pd
 from dask.distributed import Client
 from pandera.pandas import DataFrameSchema
 from pydantic import Field, ValidationInfo, field_validator, model_validator
-from typing import Self
 
 from generalresearch.incite.base import CollectionBase, CollectionItemBase
 from generalresearch.incite.schemas import PARTITION_ON
@@ -27,7 +26,6 @@ from generalresearch.incite.schemas.mergers.foundations.enriched_wall import (
 from generalresearch.incite.schemas.mergers.foundations.user_id_product import (
     UserIdProductSchema,
 )
-
 from generalresearch.incite.schemas.mergers.pop_ledger import (
     PopLedgerSchema,
 )
@@ -42,7 +40,7 @@ from generalresearch.models.custom_types import AwareDatetimeISO
 LOG = logging.getLogger("incite")
 
 
-class MergeType(str, Enum):
+class MergeType(StrEnum):
     TEST = "test"
     YM_SURVEY_WALL = "ym_survey_wall"
     YM_WALL_SUMMARY = "ym_wall_summary"

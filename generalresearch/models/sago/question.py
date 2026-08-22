@@ -4,7 +4,7 @@ from __future__ import annotations
 # -answers-lanaguge-languageid
 import json
 import logging
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -57,7 +57,7 @@ class SagoQuestionOption(BaseModel):
         return string_utils.remove_nbsp(s)
 
 
-class SagoQuestionType(str, Enum):
+class SagoQuestionType(StrEnum):
     """
     From the API:
         {1: 'Single Punch', 2: 'Multi Punch', 3: 'Open Ended', 4: 'Dummy',

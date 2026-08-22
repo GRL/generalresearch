@@ -3,7 +3,6 @@ from __future__ import annotations
 import inspect
 import re
 from enum import EnumMeta
-from typing import Dict
 
 
 class ReprEnumMeta(EnumMeta):

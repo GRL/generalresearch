@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -50,7 +50,7 @@ class InnovateQuestionOption(BaseModel):
     order: int = Field()
 
 
-class InnovateQuestionType(str, Enum):
+class InnovateQuestionType(StrEnum):
     # API response: {'Multipunch', 'Numeric Open Ended', 'Single Punch'}
     # "Numeric Open Ended" must be wrong... It can't be numeric, as UK's
     #   postcode question is marked as this, but it wants alphanumeric

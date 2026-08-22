@@ -5,7 +5,7 @@ import json
 import logging
 import re
 from datetime import timedelta
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property
 from typing import Any, Literal
 
@@ -51,7 +51,7 @@ class DynataQuestionOption(BaseModel):
         return clean_text(s)
 
 
-class DynataQuestionType(str, Enum):
+class DynataQuestionType(StrEnum):
     """
     From the API: {'geo', 'multi_select', 'multi_select_searchable',  'none',
       'single_select',  'single_select_grid',  'single_select_searchable',  'zip'}

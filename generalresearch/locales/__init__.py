@@ -12,7 +12,6 @@ https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
 
 import json
 import pkgutil
-from typing import Set
 
 
 class Localelator:

@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated
 
 from pydantic import StringConstraints
@@ -9,7 +9,7 @@ MorningQuestionID = Annotated[
 ]
 
 
-class MorningStatus(str, Enum):
+class MorningStatus(StrEnum):
     DRAFT = "draft"
     ACTIVE = "active"  # aka LIVE
     PAUSED = "paused"

@@ -1,11 +1,10 @@
-from enum import Enum
-from typing import Optional, Set
+from enum import StrEnum
 
 from generalresearch.utils.enum import ReprEnumMeta
 from generalresearch.wxet.models.definitions import WXETStatus, WXETStatusCode1
 
 
-class FinishType(str, Enum, metaclass=ReprEnumMeta):
+class FinishType(StrEnum, metaclass=ReprEnumMeta):
     """A Task can be classified as "finished" based on different outcomes.
     <br/>
     This controls how the `Task.required_finish_count` value

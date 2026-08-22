@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import IntEnum, StrEnum
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Literal, Self
 from uuid import UUID
@@ -93,7 +93,7 @@ class SpectrumQuestionOption(BaseModel):
         return string_utils.remove_nbsp(s)
 
 
-class SpectrumQuestionType(str, Enum):
+class SpectrumQuestionType(StrEnum):
     # The documentation defines 4 types (1,2,3,4), however 2 is the same as 1
     #   and never comes back in the api, and we also get back 5, 6, and 7,
     #   which are all undocumented.
@@ -135,7 +135,7 @@ class SpectrumQuestionType(str, Enum):
         return api_type_map[a] if a in api_type_map else None
 
 
-class SpectrumQuestionClass(int, Enum):
+class SpectrumQuestionClass(IntEnum):
     CORE = 1
     EXTENDED = 2
     CUSTOM = 3

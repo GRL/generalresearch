@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 import math
-from datetime import UTC, datetime, timedelta, timezone
-from enum import Enum
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from typing import Literal
 from uuid import UUID, uuid3
 from zoneinfo import ZoneInfo
@@ -27,7 +27,7 @@ from generalresearch.utils.enum import ReprEnumMeta
 logger = logging.getLogger()
 
 
-class LeaderboardCode(str, Enum, metaclass=ReprEnumMeta):
+class LeaderboardCode(StrEnum, metaclass=ReprEnumMeta):
     """
     The type of leaderboard. What the "values" represent.
     """
@@ -40,7 +40,7 @@ class LeaderboardCode(str, Enum, metaclass=ReprEnumMeta):
     SUM_PAYOUTS = "sum_user_payout"
 
 
-class LeaderboardFrequency(str, Enum, metaclass=ReprEnumMeta):
+class LeaderboardFrequency(StrEnum, metaclass=ReprEnumMeta):
     """
     The time period range for the leaderboard.
     """

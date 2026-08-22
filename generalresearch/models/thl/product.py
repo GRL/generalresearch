@@ -8,7 +8,7 @@ import warnings
 from collections import defaultdict
 from collections.abc import Callable
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property, partial
 from typing import (
     TYPE_CHECKING,
@@ -628,13 +628,13 @@ class SourceConfig(BaseModel):
     )
 
 
-class Scope(str, Enum):
+class Scope(StrEnum):
     GLOBAL = "global"
     TEAM = "team"
     PRODUCT = "product"
 
 
-class IntegrationMode(str, Enum):
+class IntegrationMode(StrEnum):
     # We handle integration, get paid
     PLATFORM = "platform"
     # "external" credentials, we do not get paid for this activity

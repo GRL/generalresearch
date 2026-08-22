@@ -1,5 +1,3 @@
-from typing import Set
-
 import pandas as pd
 from pandera.pandas import Check, Column, DataFrameSchema, Index
 

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import IntEnum, StrEnum
 
 from generalresearch.utils.enum import ReprEnumMeta
 
 
-class Source(str, Enum, metaclass=ReprEnumMeta):
+class Source(StrEnum, metaclass=ReprEnumMeta):
     # The external marketplace, or the source of the survey / work.
     #   Max length of the value is 2.
     GRS = "g"
@@ -31,7 +31,7 @@ class Source(str, Enum, metaclass=ReprEnumMeta):
     WXET = "w"
 
 
-class DebitKey(int, Enum, metaclass=ReprEnumMeta):
+class DebitKey(IntEnum, metaclass=ReprEnumMeta):
     # The debit key for marketplaces
     CINT = 8
     DALIA = 9
@@ -50,21 +50,21 @@ class DebitKey(int, Enum, metaclass=ReprEnumMeta):
     # WXET = None
 
 
-class DeviceType(int, Enum, metaclass=ReprEnumMeta):
+class DeviceType(IntEnum, metaclass=ReprEnumMeta):
     UNKNOWN = 0
     MOBILE = 1
     DESKTOP = 2
     TABLET = 3
 
 
-class LogicalOperator(str, Enum, metaclass=ReprEnumMeta):
+class LogicalOperator(StrEnum, metaclass=ReprEnumMeta):
     OR = "OR"
     AND = "AND"
     # There is currently no use case for NOT. See MarketplaceCondition.explain_not
     NOT = "NOT"
 
 
-class TaskStatus(str, Enum, metaclass=ReprEnumMeta):
+class TaskStatus(StrEnum, metaclass=ReprEnumMeta):
     # A survey is live if it is open and, given all conditions are met, is
     # possible to send in traffic. All other statuses are just variants of
     # NOT Live (not accepting traffic)
@@ -80,7 +80,7 @@ class TaskStatus(str, Enum, metaclass=ReprEnumMeta):
     NOT_FOUND = "NOT_FOUND"
 
 
-class TaskCalculationType(str, Enum):
+class TaskCalculationType(StrEnum):
     COMPLETES = "COMPLETES"
     STARTS = "STARTS"
 
@@ -105,7 +105,7 @@ class TaskCalculationType(str, Enum):
         return {0: cls.COMPLETES, 1: cls.STARTS}[v]
 
 
-class URLQueryKey(str, Enum, metaclass=ReprEnumMeta):
+class URLQueryKey(StrEnum, metaclass=ReprEnumMeta):
     PRODUCT_ID = "39057c8b"
     PRODUCT_USER_ID = "c184efc0"
     SESSION_ID = "0bb50182"

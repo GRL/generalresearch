@@ -1,5 +1,3 @@
-from typing import Optional, Tuple
-
 from generalresearch.models import Source
 from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.models.thl.session import Wall

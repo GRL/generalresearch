@@ -2,20 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, timezone
+from datetime import UTC
 from decimal import Decimal
 from functools import cached_property
 from typing import (
     Annotated,
     Any,
-    Dict,
-    List,
     Literal,
-    Optional,
     Self,
-    Set,
-    Tuple,
-    Type,
 )
 
 from pydantic import (

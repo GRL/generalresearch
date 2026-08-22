@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, date, timezone
+from datetime import UTC, date
 from decimal import Decimal
 from functools import cached_property
 from typing import (
@@ -10,7 +10,6 @@ from typing import (
     Any,
     Literal,
     Self,
-    Type,
 )
 
 from more_itertools import flatten
