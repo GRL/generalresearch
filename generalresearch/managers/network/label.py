@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 from psycopg import sql
 from pydantic import IPvAnyNetwork, TypeAdapter
@@ -48,8 +48,8 @@ class IPLabelManager(PostgresManager):
         filters = []
         params = {}
         if labeled_after or labeled_before:
-            time_end = labeled_before or datetime.now(tz=timezone.utc)
-            time_start = labeled_after or datetime(2017, 1, 1, tzinfo=timezone.utc)
+            time_end = labeled_before or datetime.now(tz=UTC)
+            time_start = labeled_after or datetime(2017, 1, 1, tzinfo=UTC)
             assert time_start.tzinfo.utcoffset(time_start) == timedelta(), "must be UTC"
             assert time_end.tzinfo.utcoffset(time_end) == timedelta(), "must be UTC"
             filters.append("labeled_at BETWEEN %(time_start)s AND %(time_end)s")

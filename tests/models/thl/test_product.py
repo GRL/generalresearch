@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import os
 import shutil
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Callable
 from uuid import uuid4
 
 import pytest
@@ -586,7 +586,7 @@ class TestProductFinancials:
 
     @pytest.fixture
     def start(self) -> datetime:
-        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
+        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:
@@ -769,7 +769,7 @@ class TestProductBalance:
 
     @pytest.fixture
     def start(self) -> datetime:
-        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
+        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:
@@ -877,7 +877,7 @@ class TestProductBalance:
             product=product,
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             skip_wallet_balance_check=True,
             skip_one_per_day_check=True,
         )
@@ -892,7 +892,7 @@ class TestProductPOPFinancial:
 
     @pytest.fixture
     def start(self) -> datetime:
-        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
+        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:
@@ -965,7 +965,7 @@ class TestProductCache:
 
     @pytest.fixture
     def start(self) -> datetime:
-        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
+        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:

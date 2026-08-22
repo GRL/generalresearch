@@ -3,7 +3,7 @@ from __future__ import annotations
 import binascii
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import TYPE_CHECKING, Any
 
 from psycopg import sql
@@ -29,7 +29,7 @@ class GRUserManager(PostgresManagerWithRedis):
     ) -> GRUser:
         from generalresearch.models.gr.authentication import GRUser
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         instance = GRUser.model_validate(
             {
@@ -147,7 +147,7 @@ class GRUserManager(PostgresManagerWithRedis):
         for item in res:
             for k, v in item.items():
                 if isinstance(item[k], datetime):
-                    item[k] = item[k].replace(tzinfo=timezone.utc)
+                    item[k] = item[k].replace(tzinfo=UTC)
 
         return [GRUser.model_validate(item) for item in res]
 
@@ -216,7 +216,7 @@ class GRTokenManager(PostgresManager):
                     "key": api_key,
                     "user_id": gr_user.id,
                     "user": gr_user,
-                    "created": datetime.now(tz=timezone.utc),
+                    "created": datetime.now(tz=UTC),
                 }
             )
 
@@ -251,7 +251,7 @@ class GRTokenManager(PostgresManager):
         token = GRToken.model_validate(
             {
                 "key": binascii.hexlify(os.urandom(20)).decode(),
-                "created": datetime.now(tz=timezone.utc),
+                "created": datetime.now(tz=UTC),
                 "user_id": user_id,
             }
         )
@@ -298,6 +298,6 @@ class GRTokenManager(PostgresManager):
 
         for k, _ in res.items():
             if isinstance(res[k], datetime):
-                res[k] = res[k].replace(tzinfo=timezone.utc)
+                res[k] = res[k].replace(tzinfo=UTC)
 
         return GRToken.model_validate(res)

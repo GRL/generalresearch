@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections import Counter
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from enum import Enum
 from functools import cached_property
 from typing import Any, Literal
@@ -23,7 +23,7 @@ from pydantic import (
 )
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_extra_types.timezone_name import TimeZoneName
-from typing_extensions import Annotated, Self
+from typing import Annotated, Self
 
 from generalresearch.grliq.models import (
     AUDIO_CODEC_NAMES,
@@ -776,7 +776,7 @@ class GrlIqData(BaseModel):
         ), "product_user_id mismatch"
 
         # validate the Session's mid is "recent"
-        assert (datetime.now(tz=timezone.utc) - session.started) < timedelta(
+        assert (datetime.now(tz=UTC) - session.started) < timedelta(
             minutes=90
         ), "expired session"
 

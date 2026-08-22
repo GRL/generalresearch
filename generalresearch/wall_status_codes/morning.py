@@ -17,7 +17,7 @@ timeout: The respondent completed the survey after the timeout period had expire
 in_progress: The respondent interview session is still in progress, such as in the prescreener or survey.
 """
 
-short_code_to_status_codes_morning: Dict[str, str] = {
+short_code_to_status_codes_morning: dict[str, str] = {
     "att_che": "attention_check",
     "banned": "banned",
     "bid_clo": "bid_closed",
@@ -54,7 +54,7 @@ short_code_to_status_codes_morning: Dict[str, str] = {
 }
 status_map = defaultdict(lambda: Status.FAIL, **{"complete": Status.COMPLETE})
 
-status_codes_ext_map: Dict[StatusCode1, List[str]] = {
+status_codes_ext_map: dict[StatusCode1, list[str]] = {
     StatusCode1.COMPLETE: ["complete"],
     StatusCode1.BUYER_FAIL: [
         "in_survey_failure",
@@ -97,10 +97,10 @@ status_codes_ext_map: Dict[StatusCode1, List[str]] = {
         "quota_invalid_for_bid",
     ],
 }
-ext_status_code_map: Dict[str, StatusCode1] = dict()
+ext_status_code_map: dict[str, StatusCode1] = dict()
 for k, v in status_codes_ext_map.items():
     k: StatusCode1
-    v: List[str]
+    v: list[str]
 
     for vv in v:
         vv: str
@@ -109,9 +109,9 @@ for k, v in status_codes_ext_map.items():
 
 def annotate_status_code(
     ext_status_code_1: str,
-    ext_status_code_2: Optional[str] = None,
-    ext_status_code_3: Optional[str] = None,
-) -> Tuple[Status, StatusCode1, Optional[Any]]:
+    ext_status_code_2: str | None = None,
+    ext_status_code_3: str | None = None,
+) -> tuple[Status, StatusCode1, Any | None]:
     """
     :params ext_status_code_1: from callback url params: &sti={{status_id}}
     :params ext_status_code_2: from callback url params: &sdi={{status_detail_id}}

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 from generalresearch.managers.base import PostgresManagerWithRedis
 from generalresearch.models.thl.profiling.user_question_answer import (
@@ -128,7 +128,7 @@ class UQAManager(PostgresManagerWithRedis):
     def get_from_db(self, user: User) -> list[UserQuestionAnswer]:
         logger.info(f"get_uqa_from_db: {user.user_id}")
         # Only store the latest row per question_id. We don't need it multiple times.
-        since = datetime.now(tz=timezone.utc) - timedelta(days=30)
+        since = datetime.now(tz=UTC) - timedelta(days=30)
 
         # We CAN use the RR, b/c either
         #   1) the cache expired and the user hasn't sent an answer recently

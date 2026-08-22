@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import ipaddress
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
+from typing import Self
 
 from faker import Faker
 from pydantic import (
@@ -11,7 +12,6 @@ from pydantic import (
     PositiveInt,
     field_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
@@ -113,7 +113,7 @@ class IPRecord(BaseModel):
     # --- ORM ---
     @classmethod
     def from_mysql(cls, d: dict) -> Self:
-        created = d["created"].replace(tzinfo=timezone.utc)
+        created = d["created"].replace(tzinfo=UTC)
 
         d["created"] = created
         d["forwarded_ip_records"] = []
@@ -169,7 +169,7 @@ class UserIPHistory(BaseModel):
     def ips_timestamp(cls, ips):
         if ips is None:
             return None
-        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=28)
+        cutoff = datetime.now(tz=UTC) - timedelta(days=28)
         return sorted(
             [x for x in ips if x.created > cutoff],
             key=lambda x: x.created,

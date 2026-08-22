@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
 import pytz
@@ -27,14 +27,14 @@ class TestAwareDatetimeISO:
         AwareDatetimeISOModel.model_validate_json(t.model_dump_json())
 
     def test_dt(self):
-        dt = datetime(2023, 10, 10, 1, 1, 1, tzinfo=timezone.utc)
+        dt = datetime(2023, 10, 10, 1, 1, 1, tzinfo=UTC)
         t = AwareDatetimeISOModel(dt=dt, dt_optional=dt)
         AwareDatetimeISOModel.model_validate_json(t.model_dump_json())
 
         t = AwareDatetimeISOModel(dt=dt, dt_optional=None)
         AwareDatetimeISOModel.model_validate_json(t.model_dump_json())
 
-        dt = datetime(2023, 10, 10, 1, 1, 1, microsecond=123, tzinfo=timezone.utc)
+        dt = datetime(2023, 10, 10, 1, 1, 1, microsecond=123, tzinfo=UTC)
         t = AwareDatetimeISOModel(dt=dt, dt_optional=dt)
         AwareDatetimeISOModel.model_validate_json(t.model_dump_json())
 

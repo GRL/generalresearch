@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Any, Literal, cast
 from uuid import UUID
 
@@ -199,10 +199,10 @@ class ContestBaseManager(PostgresManager):
             params["contest_type"] = contest_type.value
             filters.append("contest_type = %(contest_type)s")
         if starts_at_before is True:
-            params["starts_at"] = datetime.now(tz=timezone.utc)
+            params["starts_at"] = datetime.now(tz=UTC)
             filters.append("starts_at < %(starts_at)s")
         elif starts_at_before:
-            assert starts_at_before.tzinfo == timezone.utc
+            assert starts_at_before.tzinfo == UTC
             params["starts_at"] = starts_at_before
             filters.append("starts_at < %(starts_at)s")
         if name is not None:
@@ -822,7 +822,7 @@ class MilestoneContestManager(ContestBaseManager):
         if decision:
             contest.update(
                 status=ContestStatus.COMPLETED,
-                ended_at=datetime.now(tz=timezone.utc),
+                ended_at=datetime.now(tz=UTC),
                 end_reason=reason,
             )
             self.end_milestone_contest(contest)

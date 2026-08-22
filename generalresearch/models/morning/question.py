@@ -1,10 +1,9 @@
 import json
 from enum import Enum
-from typing import Any, Literal, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional, Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing_extensions import Self
 
 from generalresearch.locales import Localelator
 from generalresearch.models import Source
@@ -54,7 +53,7 @@ class MorningQuestionType(str, Enum):
 
 class MorningUserQuestionAnswer(MarketplaceUserQuestionAnswer):
     question_id: MorningQuestionID = Field()
-    question_type: Optional[MorningQuestionType] = Field(default=None)
+    question_type: MorningQuestionType | None = Field(default=None)
     # Did this answer come from us asking, or was it passed back from the
     #   marketplace? Note, morning doesn't "pass back" answers, but we can
     #   retrieve a user's profile through API, so it is possible to populate
@@ -92,7 +91,7 @@ class MorningQuestion(MarketplaceQuestion):
         frozen=True,
     )
     # API calls this "responses", but I think that is a confusing name
-    options: Optional[List[MorningQuestionOption]] = Field(
+    options: list[MorningQuestionOption] | None = Field(
         default=None, min_length=1, frozen=True
     )
 
@@ -119,7 +118,7 @@ class MorningQuestion(MarketplaceQuestion):
         return options
 
     @classmethod
-    def from_api(cls, d: Dict[str, Any], country_iso: str, language_iso: str):
+    def from_api(cls, d: dict[str, Any], country_iso: str, language_iso: str):
         options = None
         if d.get("responses"):
             options = [
@@ -138,7 +137,7 @@ class MorningQuestion(MarketplaceQuestion):
         )
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> Self:
+    def from_db(cls, d: dict[str, Any]) -> Self:
         options = None
         if d["options"]:
             options = [
@@ -162,7 +161,7 @@ class MorningQuestion(MarketplaceQuestion):
             ),
         )
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(mode="json", by_alias=True)
         d["options"] = json.dumps(d["options"])
         return d

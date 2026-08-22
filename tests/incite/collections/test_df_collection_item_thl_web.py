@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Generator
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable, Generator
+from datetime import UTC, datetime, timedelta, timezone
 from itertools import product as iter_product
 from os.path import join as pjoin
 from pathlib import Path, PurePath
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import dask.dataframe as dd
@@ -52,7 +52,7 @@ unsupported_mock_types = {
 }
 
 
-def combo_object() -> Generator[str, None, None]:
+def combo_object() -> Generator[str]:
     for x in iter_product(
         df_collections,
         ["15min", "45min", "1H"],
@@ -632,7 +632,7 @@ class TestDFCollectionItemMethodBase:
         for item in df_collection.items:
             item: DFCollectionItem
 
-            if datetime.now(tz=timezone.utc) > item.finish + aa:
+            if datetime.now(tz=UTC) > item.finish + aa:
                 assert item.should_archive()
             else:
                 assert not item.should_archive()

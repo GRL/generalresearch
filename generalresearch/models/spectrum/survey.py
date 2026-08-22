@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import timezone
+from datetime import UTC, timezone
 from decimal import Decimal
-from typing import Any, Literal, Type
+from typing import Any, Literal, Self, Type
 
 from more_itertools import flatten
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
-from typing_extensions import Self
 
 from generalresearch.locales import Localelator
 from generalresearch.models import Source, TaskCalculationType
@@ -297,7 +296,7 @@ class SpectrumSurvey(MarketplaceTask):
         return data
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return SpectrumCondition
 
     @property
@@ -389,16 +388,14 @@ class SpectrumSurvey(MarketplaceTask):
 
     @classmethod
     def from_db(cls, d: dict[str, Any]) -> Self:
-        d["created_api"] = d["created_api"].replace(tzinfo=timezone.utc)
-        d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
-        d["modified_api"] = d["modified_api"].replace(tzinfo=timezone.utc)
+        d["created_api"] = d["created_api"].replace(tzinfo=UTC)
+        d["updated"] = d["updated"].replace(tzinfo=UTC)
+        d["modified_api"] = d["modified_api"].replace(tzinfo=UTC)
         d["field_end_date"] = (
-            d["field_end_date"].replace(tzinfo=timezone.utc)
-            if d["field_end_date"]
-            else None
+            d["field_end_date"].replace(tzinfo=UTC) if d["field_end_date"] else None
         )
         d["project_last_complete_date"] = (
-            d["project_last_complete_date"].replace(tzinfo=timezone.utc)
+            d["project_last_complete_date"].replace(tzinfo=UTC)
             if d["project_last_complete_date"]
             else None
         )

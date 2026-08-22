@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Collection
 from copy import copy
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -21,7 +21,7 @@ from generalresearch.models.thl.wallet.cashout_method import (
 class CashoutMethodManager(PostgresManager):
 
     def create(self, cm: CashoutMethod) -> None:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         query = """
         INSERT INTO accounting_cashoutmethod (
             id, last_updated, is_live, provider, 

@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 
-status_codes_spectrum: Dict[str, str] = {
+status_codes_spectrum: dict[str, str] = {
     "11": "PS Drop",
     "12": "PS Quota Full Core",
     "13": "PS Termination Core",
@@ -80,7 +80,7 @@ status_codes_spectrum: Dict[str, str] = {
     "88": "PS_Supplier_Allocation_Throttle",
 }
 status_map = defaultdict(lambda: Status.FAIL, **{"21": Status.COMPLETE})
-status_codes_ext_map: Dict[StatusCode1, List[str]] = {
+status_codes_ext_map: dict[StatusCode1, list[str]] = {
     StatusCode1.COMPLETE: ["21"],
     StatusCode1.BUYER_FAIL: ["16", "17", "18", "19", "30", "59", "84"],
     StatusCode1.BUYER_QUALITY_FAIL: ["20", "31"],
@@ -143,7 +143,7 @@ status_codes_ext_map: Dict[StatusCode1, List[str]] = {
 ext_status_code_map = dict()
 for k, v in status_codes_ext_map.items():
     k: StatusCode1
-    v: List[str]
+    v: list[str]
 
     for vv in v:
         vv: str
@@ -152,9 +152,9 @@ for k, v in status_codes_ext_map.items():
 
 def annotate_status_code(
     ext_status_code_1: str,
-    ext_status_code_2: Optional[str] = None,
-    ext_status_code_3: Optional[str] = None,
-) -> Tuple[Status, StatusCode1, Optional[Any]]:
+    ext_status_code_2: str | None = None,
+    ext_status_code_3: str | None = None,
+) -> tuple[Status, StatusCode1, Any | None]:
     """
     :params ext_status_code_1: from url params: ps_rstatus
     https://purespectrum.atlassian.net/wiki/spaces/PA/pages/33613201/Minimizing+Clickwaste+with+ps+rstatus

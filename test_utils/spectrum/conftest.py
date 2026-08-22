@@ -1,6 +1,6 @@
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import TYPE_CHECKING
 
 import pytest
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(scope="session")
-def spectrum_rw(settings: "GRLBaseSettings") -> SqlHelper:
+def spectrum_rw(settings: GRLBaseSettings) -> SqlHelper:
     logging.info(f"{settings.spectrum_rw_db=}")
 
     assert settings.spectrum_rw_db is not None
@@ -49,11 +49,11 @@ def spectrum_survey_manager(spectrum_rw: SqlHelper) -> SpectrumSurveyManager:
 def setup_spectrum_surveys(
     spectrum_rw: SqlHelper, spectrum_survey_manager, spectrum_criteria_manager
 ) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     # make sure these example surveys exist in db
     surveys = [SpectrumSurvey.model_validate_json(x) for x in SURVEYS_JSON]
     for s in surveys:
-        s.modified_api = datetime.now(tz=timezone.utc)
+        s.modified_api = datetime.now(tz=UTC)
     spectrum_survey_manager.create_or_update(surveys)
     spectrum_criteria_manager.update(CONDITIONS)
 
@@ -66,10 +66,10 @@ def setup_spectrum_surveys(
         ["687", "GRL", "x", "x", "x", "x"],
         commit=True,
     )
-    supplier687_pk = spectrum_rw.execute_sql_query(
-        f"""
-    select id from `{spectrum_rw.db}`.spectrum_supplier where supplier_id = '687'"""
-    )[0]["id"]
+    supplier687_pk = spectrum_rw.execute_sql_query(f"""
+    select id from `{spectrum_rw.db}`.spectrum_supplier where supplier_id = '687'""")[
+        0
+    ]["id"]
     conn = spectrum_rw.make_connection()
     c = conn.cursor()
     c.executemany(

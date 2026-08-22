@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import ipaddress
-from datetime import datetime, timezone
-from typing import Any, Literal
+from datetime import UTC, datetime, timezone
+from typing import Any, Literal, Self
 
 from faker import Faker
 from pydantic import (
@@ -13,7 +13,6 @@ from pydantic import (
     PrivateAttr,
     field_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
@@ -95,7 +94,7 @@ class IPGeoname(BaseModel):
     is_in_european_union: bool | None = Field(default=None)
 
     updated: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
     )
 
     @field_validator(
@@ -119,7 +118,7 @@ class IPGeoname(BaseModel):
 
     @classmethod
     def from_mysql(cls, d: dict[str, Any]) -> Self:
-        d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
+        d["updated"] = d["updated"].replace(tzinfo=UTC)
 
         return cls.model_validate(d)
 
@@ -205,7 +204,7 @@ class IPInformation(BaseModel):
     )
 
     updated: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
     )
 
     _geoname: IPGeoname | None = PrivateAttr(default=None)
@@ -255,7 +254,7 @@ class IPInformation(BaseModel):
 
     @classmethod
     def from_mysql(cls, d: dict) -> Self:
-        d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
+        d["updated"] = d["updated"].replace(tzinfo=UTC)
 
         return cls.model_validate(d)
 

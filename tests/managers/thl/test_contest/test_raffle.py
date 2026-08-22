@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
 from pydantic import ValidationError
@@ -9,21 +9,19 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionConditionFailedError,
 )
 from generalresearch.models.thl.contest import (
-    ContestPrize,
-    ContestEntryRule,
     ContestEndCondition,
+    ContestEntryRule,
+    ContestPrize,
 )
 from generalresearch.models.thl.contest.definitions import (
-    ContestStatus,
-    ContestPrizeKind,
     ContestEndReason,
+    ContestPrizeKind,
+    ContestStatus,
 )
 from generalresearch.models.thl.contest.exceptions import ContestError
 from generalresearch.models.thl.contest.raffle import (
     ContestEntry,
     ContestEntryType,
-)
-from generalresearch.models.thl.contest.raffle import (
     RaffleContest,
     RaffleContestCreate,
     RaffleUserView,
@@ -32,9 +30,15 @@ from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
 from test_utils.managers.contest.conftest import (
     raffle_contest as contest,
-    raffle_contest_in_db as contest_in_db,
+)
+from test_utils.managers.contest.conftest import (
     raffle_contest_create as contest_create,
+)
+from test_utils.managers.contest.conftest import (
     raffle_contest_factory as contest_factory,
+)
+from test_utils.managers.contest.conftest import (
+    raffle_contest_in_db as contest_in_db,
 )
 
 
@@ -46,7 +50,7 @@ class TestRaffleContest:
         assert not should, msg
 
         # Change so that the contest ends now
-        contest.end_condition.ends_at = datetime.now(tz=timezone.utc)
+        contest.end_condition.ends_at = datetime.now(tz=UTC)
         should, msg = contest.should_end()
         assert should
         assert msg == ContestEndReason.ENDS_AT

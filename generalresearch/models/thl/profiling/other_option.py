@@ -40,7 +40,7 @@ texts_in = {
 }
 
 
-def option_is_catch_all(c: "UpkQuestionChoice") -> bool:
+def option_is_catch_all(c: UpkQuestionChoice) -> bool:
     """
     Exclusive not specifically in the sense that it is a multi-select question
     and if this option is selected no others can be selected. But also in the

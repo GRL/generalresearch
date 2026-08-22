@@ -108,7 +108,7 @@ class MarketplaceTask(BaseModel, ABC):
 
     @property
     @abstractmethod
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         """
         The Condition Model for this survey class
         """

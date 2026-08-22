@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import decimal
 import re
+from typing import Annotated
 
 from pydantic import AfterValidator, Field
-from typing_extensions import Annotated
 
 # Matches only digits, parenthesis, + , -, *, / and the string payout.
 xform_format_re = re.compile(pattern=r"^[\d()+\-*/.]*payout[\d()+\-*/.]*$")

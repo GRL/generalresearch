@@ -166,8 +166,8 @@ class WXETStatusCode2(int, Enum, metaclass=ReprEnumMeta):
 
 def check_wxet_status_consistent(
     status: WXETStatus,
-    status_code_1: Optional[WXETStatusCode1] = None,
-    status_code_2: Optional[WXETStatusCode2] = None,
+    status_code_1: WXETStatusCode1 | None = None,
+    status_code_2: WXETStatusCode2 | None = None,
 ) -> bool:
     """
     Raises an AssertionError if inconsistent
@@ -203,13 +203,13 @@ def check_wxet_status_consistent(
 
 def check_wxet_adjusted_status_attempt_consistent(
     status: WXETStatus,
-    status_code_1: Optional[WXETStatusCode1] = None,
-    cpi: Optional[USDMill] = None,
-    adjusted_status: Optional[WXETAdjustedStatus] = None,
-    adjusted_cpi: Optional[USDMill] = None,
-    new_adjusted_status: Optional[WXETAdjustedStatus] = None,
-    new_adjusted_cpi: Optional[USDMill] = None,
-) -> Tuple[bool, str]:
+    status_code_1: WXETStatusCode1 | None = None,
+    cpi: USDMill | None = None,
+    adjusted_status: WXETAdjustedStatus | None = None,
+    adjusted_cpi: USDMill | None = None,
+    new_adjusted_status: WXETAdjustedStatus | None = None,
+    new_adjusted_cpi: USDMill | None = None,
+) -> tuple[bool, str]:
     """
     Raises an AssertionError if inconsistent.
     - status, status_code_1, adjusted_status, adjusted_cpi, cpi are the attempt's CURRENT values
@@ -233,12 +233,12 @@ def check_wxet_adjusted_status_attempt_consistent(
 
 def _check_wxet_adjusted_status_attempt_consistent(
     status: WXETStatus,
-    status_code_1: Optional[WXETStatusCode1] = None,
-    cpi: Optional[USDMill] = None,
-    adjusted_status: Optional[WXETAdjustedStatus] = None,
-    adjusted_cpi: Optional[USDMill] = None,
-    new_adjusted_status: Optional[WXETAdjustedStatus] = None,
-    new_adjusted_cpi: Optional[USDMill] = None,
+    status_code_1: WXETStatusCode1 | None = None,
+    cpi: USDMill | None = None,
+    adjusted_status: WXETAdjustedStatus | None = None,
+    adjusted_cpi: USDMill | None = None,
+    new_adjusted_status: WXETAdjustedStatus | None = None,
+    new_adjusted_cpi: USDMill | None = None,
 ) -> None:
     """
     Raises an AssertionError if inconsistent.
@@ -297,8 +297,8 @@ def _check_wxet_adjusted_status_attempt_consistent(
 
 
 def _check_wxet_adjusted_status_consistent(
-    adjusted_status: Optional[WXETAdjustedStatus] = None,
-    adjusted_cpi: Optional[USDMill] = None,
+    adjusted_status: WXETAdjustedStatus | None = None,
+    adjusted_cpi: USDMill | None = None,
 ) -> None:
     """
     Raises an AssertionError if inconsistent.

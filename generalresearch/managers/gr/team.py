@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -43,7 +43,7 @@ class MembershipManager(PostgresManager):
             owner=False,
             team_id=team.id,
             user_id=gr_user.id,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
         )
 
         data = membership.model_dump(by_alias=True)

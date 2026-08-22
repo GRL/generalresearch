@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta, timezone
 from itertools import product as iter_product
 from random import randint
-from typing import Callable
 from uuid import uuid4
 
 import pandas as pd
@@ -683,7 +683,7 @@ class TestProductFinanceData:
                 rand_item_time = fake.date_time_between(
                     start_date=item.start,
                     end_date=item.finish,
-                    tzinfo=timezone.utc,
+                    tzinfo=UTC,
                 )
                 session_with_tx_factory(started=rand_item_time, user=u)
 
@@ -773,7 +773,7 @@ class TestPOPFinancialData:
                 rand_item_time = fake.date_time_between(
                     start_date=item.start,
                     end_date=item.finish,
-                    tzinfo=timezone.utc,
+                    tzinfo=UTC,
                 )
 
                 session_with_tx_factory(started=rand_item_time, user=u)
@@ -870,7 +870,7 @@ class TestBusinessBalanceData:
                 item_time = fake.date_time_between(
                     start_date=item.start,
                     end_date=item.finish,
-                    tzinfo=timezone.utc,
+                    tzinfo=UTC,
                 )
                 session_with_tx_factory(started=item_time, user=u)
                 item.initial_load(overwrite=True)

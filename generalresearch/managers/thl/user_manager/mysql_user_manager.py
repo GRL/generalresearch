@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from functools import lru_cache
 from uuid import uuid4
 
@@ -26,7 +26,7 @@ class MysqlUserManager:
     def _set_last_seen(self, user: User) -> None:
         # Don't call this directly. Use UserManager.set_last_seen()
         assert not self.is_read_replica
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         self.pg_config.execute_write(
             """
             UPDATE thl_user
@@ -118,7 +118,7 @@ class MysqlUserManager:
         if not self.product_id_exists(product_id=product_id):
             raise ValueError(f"userprofile_brokerageproduct not found: {product_id}")
 
-        now = created or datetime.now(tz=timezone.utc)
+        now = created or datetime.now(tz=UTC)
         user_uuid = uuid4().hex
         params = {
             "user_uuid": user_uuid,

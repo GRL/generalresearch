@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from enum import Enum
 from typing import Any, Literal
 
@@ -16,7 +16,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
+from typing import Self
 
 from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import (
@@ -145,7 +145,7 @@ class CashoutMethod(CashoutMethodBase):
         "email associated.",
     )
     last_updated: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
+        default_factory=lambda: datetime.now(tz=UTC)
     )
     is_live: bool = Field(default=True)
 

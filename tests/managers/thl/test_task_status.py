@@ -1,31 +1,31 @@
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
+
+import pytest
 
 from generalresearch.managers.thl.session import SessionManager
 from generalresearch.models import Source
 from generalresearch.models.thl.definitions import (
     Status,
-    WallAdjustedStatus,
     StatusCode1,
+    WallAdjustedStatus,
 )
 from generalresearch.models.thl.product import (
     PayoutConfig,
-    UserWalletConfig,
     PayoutTransformation,
     PayoutTransformationPercentArgs,
+    UserWalletConfig,
 )
 from generalresearch.models.thl.session import Session, WallOut
 from generalresearch.models.thl.task_status import TaskStatusResponse
 from generalresearch.models.thl.user import User
 
-
-start1 = datetime(2023, 2, 1, tzinfo=timezone.utc)
+start1 = datetime(2023, 2, 1, tzinfo=UTC)
 finish1 = start1 + timedelta(minutes=5)
 recon1 = start1 + timedelta(days=20)
-start2 = datetime(2023, 2, 2, tzinfo=timezone.utc)
+start2 = datetime(2023, 2, 2, tzinfo=UTC)
 finish2 = start2 + timedelta(minutes=5)
-start3 = datetime(2023, 2, 3, tzinfo=timezone.utc)
+start3 = datetime(2023, 2, 3, tzinfo=UTC)
 finish3 = start3 + timedelta(minutes=5)
 
 

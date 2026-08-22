@@ -82,7 +82,7 @@ class YMWallSummaryMergeItem(MergeCollectionItem):
 class YMWallSummaryMerge(MergeCollection):
     merge_type: Literal[MergeType.YM_WALL_SUMMARY] = MergeType.YM_WALL_SUMMARY
     _schema = YMWallSummarySchema
-    collection_item_class: Type[YMWallSummaryMergeItem] = YMWallSummaryMergeItem
+    collection_item_class: type[YMWallSummaryMergeItem] = YMWallSummaryMergeItem
     items: list[YMWallSummaryMergeItem] = Field(default_factory=list)
 
     @field_validator("offset")

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -50,9 +50,7 @@ class PayoutEvent(BaseModel, validate_assignment=True):
     #   populated from the db and so does not need to be set (there is no
     #   `description` field in event_payout)
     description: str | None = Field(default=None)
-    created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    created: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # In the smallest unit of the currency being transacted. For USD, this
     #   is cents.
@@ -159,7 +157,7 @@ class BPPayoutEvent(BaseModel):
 
     created: AwareDatetimeISO = Field(
         description="When the Brokerage Product was paid out",
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
     )
 
     amount: USDCent = Field(

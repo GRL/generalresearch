@@ -32,8 +32,8 @@ def manage_pending_cashout(
     user_ip_history_manager: UserIpHistoryManager,
     user_manager: UserManager,
     ledger_manager: ThlLedgerManager,
-    order_data: Optional[Union[Dict[str, Any], CashMailOrderData]] = None,
-    tango_client: Optional[TangoClient] = None,
+    order_data: dict[str, Any] | CashMailOrderData | None = None,
+    tango_client: TangoClient | None = None,
 ) -> UserPayoutEvent:
     """
     Called by a UI actions performed by Todd. This rejects/approves/cancels

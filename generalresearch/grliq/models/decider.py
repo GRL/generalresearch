@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -35,7 +35,7 @@ class GrlIqAttemptResult(BaseModel):
 
     timestamp: AwareDatetimeISO = Field(
         description="When this decision was made",
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
     )
     decider: Decider = Field(description="Where this decision was made")
     decision: AttemptDecision = Field(

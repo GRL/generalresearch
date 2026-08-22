@@ -65,8 +65,8 @@ def complete_tango_order(
 
 
 def create_tango_order(
-    request_data: Dict[str, Any], ref_id: str, tango_client: TangoClient
-) -> Dict[str, Any]:
+    request_data: dict[str, Any], ref_id: str, tango_client: TangoClient
+) -> dict[str, Any]:
     """
     Create a tango gift card order.
     Throws exception if anything is not right.

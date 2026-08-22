@@ -1,22 +1,22 @@
+import math
 import random
 import time
-from datetime import timedelta, datetime, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from functools import partial
+from math import floor
 from typing import Optional
 from uuid import uuid4
 
-import math
 import pytest
-from math import floor
 
 from generalresearch.managers.events import EventSubscriber
 from generalresearch.models import Source
 from generalresearch.models.events import (
-    MessageKind,
-    EventType,
     AggregateBySource,
+    EventType,
     MaxGaugeBySource,
+    MessageKind,
 )
 from generalresearch.models.legacy.bucket import Bucket
 from generalresearch.models.thl.definitions import Status, StatusCode1
@@ -41,13 +41,13 @@ def event_subscriber(thl_redis_config, product_id):
 
 
 def create_dummy(
-    product_id: Optional[str] = None, product_user_id: Optional[str] = None
+    product_id: str | None = None, product_user_id: str | None = None
 ) -> User:
     return User(
         product_id=product_id,
         product_user_id=product_user_id or uuid4().hex,
         uuid=uuid4().hex,
-        created=datetime.now(tz=timezone.utc),
+        created=datetime.now(tz=UTC),
         user_id=random.randint(0, floor(2**32 / 2)),
     )
 
@@ -496,7 +496,7 @@ class TestChannelsSubscriptions:
         wall.update(
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            finished=datetime.now(tz=timezone.utc),
+            finished=datetime.now(tz=UTC),
             cpi=Decimal("1"),
         )
         event_manager.handle_task_finish(wall, session, user)

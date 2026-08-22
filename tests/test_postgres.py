@@ -1,6 +1,6 @@
 import socket
 import subprocess
-from typing import Callable
+from collections.abc import Callable
 
 from pydantic import PostgresDsn
 
@@ -12,7 +12,7 @@ def is_port_open(host: InternalHostname, port: int = 5432, timeout: int = 3):
     try:
         with socket.create_connection((host, port), timeout=timeout):
             return True
-    except (socket.timeout, ConnectionRefusedError, OSError):
+    except (TimeoutError, ConnectionRefusedError, OSError):
         return False
 
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 import pymysql
 
@@ -93,7 +93,7 @@ class ProdegeSurveyManager(SurveyManager):
         return surveys
 
     def create(self, survey: ProdegeSurvey) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         d = survey.to_mysql()
         conn: pymysql.Connection = self.sql_helper.make_connection()
         conn.autocommit(True)
@@ -114,7 +114,7 @@ class ProdegeSurveyManager(SurveyManager):
         return True
 
     def update(self, surveys: list[ProdegeSurvey]) -> None:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         # Do to stupidity with bid/actual loi/ir values (see ProdegeSurvey.to_mysql), we now
         #   can't do a bulk update b/c the fields may be different in different rows. Just do
@@ -124,7 +124,7 @@ class ProdegeSurveyManager(SurveyManager):
 
     def update_one(self, survey: ProdegeSurvey, now=None) -> bool:
         if now is None:
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=UTC)
         d = survey.to_mysql()
         # We have to have special logic for bid/actual loi/ir here. The api is
         #   stupid and only returns one set of them. If we just do the db

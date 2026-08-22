@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import Collection
+from collections.abc import Collection
 
 from generalresearch.models.cint.question import CintQuestion
 from generalresearch.sql_helper import SqlHelper

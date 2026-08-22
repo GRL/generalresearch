@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timezone
 from decimal import ROUND_DOWN, Decimal
 from random import choice as rand_choice
 from random import choice as rchoice
 from random import randint, random
-from typing import Any, Callable
+from typing import Any
 from uuid import uuid4
 
 import faker
@@ -105,9 +106,9 @@ def wall_factory(
 
         user_id = user_id or fake.random_int(min=1, max=2_147_483_648)
         started = started or fake.date_time_between(
-            start_date=datetime(year=1900, month=1, day=1, tzinfo=timezone.utc),
-            end_date=datetime.now(tz=timezone.utc),
-            tzinfo=timezone.utc,
+            start_date=datetime(year=1900, month=1, day=1, tzinfo=UTC),
+            end_date=datetime.now(tz=UTC),
+            tzinfo=UTC,
         )
 
         if session_id is None:
@@ -199,9 +200,9 @@ def session_factory(session_manager: SessionManager):
     ) -> Session:
         """To be used in tests, where we don't care about certain fields"""
         started = started or fake.date_time_between(
-            start_date=datetime(year=1900, month=1, day=1, tzinfo=timezone.utc),
-            end_date=datetime(year=2000, month=1, day=1, tzinfo=timezone.utc),
-            tzinfo=timezone.utc,
+            start_date=datetime(year=1900, month=1, day=1, tzinfo=UTC),
+            end_date=datetime(year=2000, month=1, day=1, tzinfo=UTC),
+            tzinfo=UTC,
         )
         user = user or User(
             user_id=fake.random_int(min=1, max=2_147_483_648), uuid=uuid4().hex

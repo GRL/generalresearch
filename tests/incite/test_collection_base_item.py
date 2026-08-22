@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from os.path import join as pjoin
 from pathlib import Path
 from uuid import uuid4
@@ -13,7 +13,7 @@ from generalresearch.incite.base import CollectionItemBase
 
 class TestCollectionItemBase:
     def test_init(self):
-        dt = datetime.now(tz=timezone.utc).replace(microsecond=0)
+        dt = datetime.now(tz=UTC).replace(microsecond=0)
 
         instance = CollectionItemBase()
         instance2 = CollectionItemBase(start=dt)
@@ -25,7 +25,7 @@ class TestCollectionItemBase:
         assert 0 == instance.start.microsecond == instance2.start.microsecond
 
     def test_init_start(self):
-        dt = datetime.now(tz=timezone.utc)
+        dt = datetime.now(tz=UTC)
 
         with pytest.raises(expected_exception=ValidationError) as cm:
             CollectionItemBase(start=dt)

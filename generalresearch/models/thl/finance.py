@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from datetime import timezone
+from datetime import UTC, timezone
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -16,8 +16,8 @@ from pydantic import (
     model_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
-from generalresearch.config import is_debug
 
+from generalresearch.config import is_debug
 from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
@@ -150,7 +150,7 @@ class POPFinancial(BaseModel):
             index: int  # Not useful, just a RangeIndex
             row: pd.DataFrame
 
-            row["time_idx"] = row.time_idx.to_pydatetime().replace(tzinfo=timezone.utc)
+            row["time_idx"] = row.time_idx.to_pydatetime().replace(tzinfo=UTC)
             instance = ProductBalances.from_pandas(row)
 
             res.append(
@@ -842,12 +842,12 @@ class BusinessBalances(BaseModel):
         from generalresearch.incite.schemas.mergers.pop_ledger import (
             numerical_col_names,
         )
+        from generalresearch.managers.thl.product import ProductManager
         from generalresearch.models.thl.ledger import (
             AccountType,
             Direction,
         )
         from generalresearch.models.thl.product import Product
-        from generalresearch.managers.thl.product import ProductManager
 
         # Validate the input accounts
         assert len(accounts) > 0, "Must provide accounts"

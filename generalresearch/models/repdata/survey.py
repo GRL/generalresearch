@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import Any, Literal, Type
+from typing import Any, Literal, Self, Type
 from uuid import UUID
 
 from pydantic import (
@@ -17,7 +17,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.grpc import timestamp_from_datetime
 from generalresearch.locales import Localelator
@@ -304,7 +303,7 @@ class RepDataStream(MarketplaceTask):
         return self.stream_status == RepDataStatus.LIVE
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return RepDataCondition
 
     @property
@@ -538,8 +537,8 @@ class RepDataSurveyHashed(RepDataSurvey):
             DeviceType(int(x)) for x in res["allowed_devices"].split(",")
         ]
         if res["created"] is not None:
-            res["created"] = res["created"].replace(tzinfo=timezone.utc)
-        res["last_updated"] = res["last_updated"].replace(tzinfo=timezone.utc)
+            res["created"] = res["created"].replace(tzinfo=UTC)
+        res["last_updated"] = res["last_updated"].replace(tzinfo=UTC)
         return cls.model_validate(res)
 
     def to_mysql(self) -> dict[str, Any]:
@@ -553,7 +552,7 @@ class RepDataSurveyHashed(RepDataSurvey):
         return d
 
     def to_grpc(self, repdata_pb2):
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         timestamp = timestamp_from_datetime(now)
 
         return repdata_pb2.RepDataOpportunity(

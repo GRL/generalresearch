@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -90,7 +90,7 @@ def rdns_result(dig_raw_output: str) -> RDNSResult:
 def rdns_run(rdns_result: RDNSResult, scan_group_id: str):
     r = rdns_result
     ip = "45.33.32.156"
-    utc_now = datetime.now(tz=timezone.utc)
+    utc_now = datetime.now(tz=UTC)
     config = RDNSRunCommand(command="dig", options=RDNSRunCommandOptions(ip=ip))
     return RDNSRun(
         tool_version="1.2.3",
@@ -121,7 +121,7 @@ def mtr_result(mtr_raw_output: str) -> MTRResult:
 @pytest.fixture(scope="session")
 def mtr_run(mtr_result: MTRResult, scan_group_id: str):
     r = mtr_result
-    utc_now = datetime.now(tz=timezone.utc)
+    utc_now = datetime.now(tz=UTC)
     config = MTRRunCommand(
         command="mtr",
         options=MTRRunCommandOptions(

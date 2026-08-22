@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import (
     BaseModel,
@@ -15,7 +15,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Annotated
 
 from generalresearch.managers.thl.buyer import Buyer
 from generalresearch.models import Source
@@ -71,12 +70,8 @@ class Survey(BaseModel):
         min_length=1, max_length=128, default=None, examples=["124"]
     )
 
-    created_at: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
-    updated_at: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    created_at: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
+    updated_at: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     is_live: bool = Field(default=True)
     is_recontact: bool = Field(default=False)
@@ -188,9 +183,7 @@ class SurveyStat(BaseModel):
 
     # ---- Metadata ----
 
-    updated_at: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    updated_at: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     @property
     def natural_key(self) -> str:

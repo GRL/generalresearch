@@ -41,7 +41,7 @@ class ReprEnumMeta(EnumMeta):
             )
 
 
-def get_enum_comments(enum_class) -> Dict:
+def get_enum_comments(enum_class) -> dict:
     source = inspect.getsource(enum_class)
     # Regular expression to match multi-line comments and enum values
     pattern = re.compile(r"((?:\s*#.*?\n)+)\s*(\w+)\s*=")

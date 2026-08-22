@@ -11,7 +11,7 @@ from generalresearch.grliq.models.events import KeyboardEvent, MouseEvent
 
 
 def make_events_svg(
-    mouse_events: List[MouseEvent], keyboard_events: List[KeyboardEvent]
+    mouse_events: list[MouseEvent], keyboard_events: list[KeyboardEvent]
 ) -> str:
     if len(mouse_events) + len(keyboard_events) == 0:
         return f'<svg xmlns="http://www.w3.org/2000/svg">\n' + "\n</svg>"
@@ -119,8 +119,8 @@ def svg_multiline_text(
 
 
 def group_input_events_by_xy(
-    mouse_events: List[MouseEvent], keyboard_events: List[KeyboardEvent]
-) -> List[tuple[tuple[float, float], List[str]]]:
+    mouse_events: list[MouseEvent], keyboard_events: list[KeyboardEvent]
+) -> list[tuple[tuple[float, float], list[str]]]:
     """
     Each keypress is its own event. For plotting, we want to group together
     all keypresses that were made when the mouse was at the same position,

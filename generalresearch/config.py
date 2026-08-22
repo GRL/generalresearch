@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 
 from pydantic import DirectoryPath, Field, MariaDBDsn, PostgresDsn, RedisDsn
@@ -125,4 +125,4 @@ EXAMPLE_PRODUCT_ID = "1108d053e4fa47c5b0dbdcd03a7981e7"
 # AMT accounting was changed many times and txs before this date
 # are either missing AMT bonuses, or not accounting for hit rewards.
 JAMES_BILLINGS_BPID = "888dbc589987425fa846d6e2a8daed04"
-JAMES_BILLINGS_TX_CUTOFF = datetime(2026, 1, 1, tzinfo=timezone.utc)
+JAMES_BILLINGS_TX_CUTOFF = datetime(2026, 1, 1, tzinfo=UTC)

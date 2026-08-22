@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 import pymysql
 from pymysql import IntegrityError
@@ -110,7 +110,7 @@ class SpectrumSurveyManager(SurveyManager):
         return surveys
 
     def create(self, survey: SpectrumSurvey) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         d = survey.to_mysql()
         conn: pymysql.Connection = self.sql_helper.make_connection()
         conn.autocommit(True)
@@ -134,7 +134,7 @@ class SpectrumSurveyManager(SurveyManager):
         return True
 
     def update(self, surveys: list[SpectrumSurvey]) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         # Due to stupidity with bid/actual loi/ir values (last block nonsense),
         # we can't do a bulk update b/c the fields may be different in
@@ -146,7 +146,7 @@ class SpectrumSurveyManager(SurveyManager):
 
     def update_one(self, survey: SpectrumSurvey, now: datetime | None = None) -> bool:
         if now is None:
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=UTC)
 
         d = survey.to_mysql()
         # We have to have special logic for bid/actual loi/ir here. The api

@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 import random
 from collections import defaultdict
-from datetime import datetime, timezone
-from typing import Any, Literal
+from datetime import UTC, datetime, timezone
+from typing import Any, Literal, Self
 
 from pydantic import (
     ConfigDict,
@@ -14,7 +14,6 @@ from pydantic import (
     model_validator,
 )
 from scipy.stats import hypergeom
-from typing_extensions import Self
 
 from generalresearch.currency import USDCent
 from generalresearch.models.thl.contest import (
@@ -202,7 +201,7 @@ class RaffleContest(RaffleContestCreate, Contest):
         c = self.end_condition
         if c.target_entry_amount and self.current_amount >= c.target_entry_amount:
             return True
-        if c.ends_at and datetime.now(tz=timezone.utc) >= c.ends_at:
+        if c.ends_at and datetime.now(tz=UTC) >= c.ends_at:
             return True
         return False
 

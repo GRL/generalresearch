@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from itertools import product
 from typing import TYPE_CHECKING
 
@@ -57,8 +57,8 @@ class TestDFCollection_thl_marketplaces:
             archive_path=mnt_filepath.archive_path(enum_type=data_type),
             sql_helper=spectrum_rw,
             offset=offset,
-            start=datetime(year=2023, month=6, day=1, minute=0, tzinfo=timezone.utc),
-            finished=datetime(year=2023, month=6, day=1, minute=5, tzinfo=timezone.utc),
+            start=datetime(year=2023, month=6, day=1, minute=0, tzinfo=UTC),
+            finished=datetime(year=2023, month=6, day=1, minute=5, tzinfo=UTC),
         )
         assert isinstance(instance, DFCollection)
 

@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing_extensions import Self
 
 from generalresearch.models import Source, string_utils
 from generalresearch.models.cint import CintQuestionIdType
@@ -151,7 +150,7 @@ class CintQuestion(MarketplaceQuestion):
         options = None
         created_at = datetime.strptime(
             d["create_date"], "%Y-%m-%dT%H:%M:%S%z"
-        ).astimezone(timezone.utc)
+        ).astimezone(UTC)
 
         if d.get("question_options"):
             options = [
@@ -189,7 +188,7 @@ class CintQuestion(MarketplaceQuestion):
             ]
 
         if d.get("created_at"):
-            d["created_at"] = d["created_at"].replace(tzinfo=timezone.utc)
+            d["created_at"] = d["created_at"].replace(tzinfo=UTC)
 
         return cls(
             question_id=d["question_id"],

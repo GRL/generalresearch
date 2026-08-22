@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 from google.protobuf.duration_pb2 import Duration
 from google.protobuf.timestamp_pb2 import Timestamp
@@ -20,13 +20,13 @@ def timestamp_from_datetime_nullable(dt: datetime | None) -> Timestamp:
 
 
 def timestamp_to_datetime(ts: Timestamp) -> datetime:
-    return datetime.fromtimestamp(ts.seconds + ts.nanos / 1e9, tz=timezone.utc)
+    return datetime.fromtimestamp(ts.seconds + ts.nanos / 1e9, tz=UTC)
 
 
 def timestamp_to_datetime_nullable(ts: Timestamp) -> datetime | None:
     # grpc has no None. If a google.protobuf.Timestamp field is not set, it gets interpreted as timestamp 0
-    default = datetime.fromtimestamp(0, tz=timezone.utc)
-    d = datetime.fromtimestamp(ts.seconds + ts.nanos / 1e9, tz=timezone.utc)
+    default = datetime.fromtimestamp(0, tz=UTC)
+    d = datetime.fromtimestamp(ts.seconds + ts.nanos / 1e9, tz=UTC)
     return None if d == default else d
 
 

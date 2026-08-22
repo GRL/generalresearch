@@ -4,7 +4,7 @@ import hashlib
 from abc import ABC
 from enum import Enum
 from functools import cached_property
-from typing import Any
+from typing import Annotated, Any, Self
 
 from pydantic import (
     BaseModel,
@@ -16,7 +16,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Annotated, Self
 
 from generalresearch.models import LogicalOperator
 

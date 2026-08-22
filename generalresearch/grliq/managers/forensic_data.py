@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Collection
+from typing import Any
+from collections.abc import Collection
 
 from psycopg import sql
 from pydantic import NonNegativeInt, PositiveInt

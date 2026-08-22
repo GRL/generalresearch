@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from os.path import exists as pexists
 from os.path import join as pjoin
 from pathlib import Path
@@ -12,11 +12,9 @@ from _pytest._code.code import ExceptionInfo
 from generalresearch.incite.base import CollectionBase
 from test_utils.incite.conftest import mnt_filepath
 
-AGO_15min = (datetime.now(tz=timezone.utc) - timedelta(minutes=15)).replace(
-    microsecond=0
-)
-AGO_1HR = (datetime.now(tz=timezone.utc) - timedelta(hours=1)).replace(microsecond=0)
-AGO_2HR = (datetime.now(tz=timezone.utc) - timedelta(hours=2)).replace(microsecond=0)
+AGO_15min = (datetime.now(tz=UTC) - timedelta(minutes=15)).replace(microsecond=0)
+AGO_1HR = (datetime.now(tz=UTC) - timedelta(hours=1)).replace(microsecond=0)
+AGO_2HR = (datetime.now(tz=UTC) - timedelta(hours=2)).replace(microsecond=0)
 
 
 class TestCollectionBase:
@@ -50,7 +48,7 @@ class TestCollectionBase:
         with pytest.raises(expected_exception=ValueError) as cm:
             cm: ExceptionInfo
             CollectionBase(
-                start=datetime.now(tz=timezone.utc) - timedelta(days=10),
+                start=datetime.now(tz=UTC) - timedelta(days=10),
                 archive_path=mnt_filepath.data_src,
             )
         assert "Collection.start must not have microseconds" in str(cm.value)
@@ -66,9 +64,7 @@ class TestCollectionBase:
         assert "Timezone is not UTC" in str(cm.value)
 
         instance = CollectionBase(archive_path=mnt_filepath.data_src)
-        assert instance.start == datetime(
-            year=2018, month=1, day=1, tzinfo=timezone.utc
-        )
+        assert instance.start == datetime(year=2018, month=1, day=1, tzinfo=UTC)
 
         with pytest.raises(expected_exception=ValueError) as cm:
             cm: ExceptionInfo
@@ -145,7 +141,7 @@ class TestCollectionBaseProperties:
             instance._interval_range(end=datetime.now(tz=tz))
         assert "Timezones must match" in str(cm.value)
 
-        res = instance._interval_range(end=datetime.now(tz=timezone.utc))
+        res = instance._interval_range(end=datetime.now(tz=UTC))
         assert isinstance(res, pd.IntervalIndex)
         assert res.closed_left
         assert res.is_non_overlapping_monotonic
@@ -282,7 +278,7 @@ class TestCollectionBaseMethodsSourceTiming:
     def test_get_item_start(self, mnt_filepath):
         instance = CollectionBase(archive_path=mnt_filepath.data_src)
 
-        dt = datetime.now(tz=timezone.utc)
+        dt = datetime.now(tz=UTC)
         start = pd.Timestamp(dt)
 
         with pytest.raises(expected_exception=NotImplementedError) as cm:
@@ -292,7 +288,7 @@ class TestCollectionBaseMethodsSourceTiming:
     def test_get_items(self, mnt_filepath):
         instance = CollectionBase(archive_path=mnt_filepath.data_src)
 
-        dt = datetime.now(tz=timezone.utc)
+        dt = datetime.now(tz=UTC)
 
         with pytest.raises(expected_exception=NotImplementedError) as cm:
             instance.get_items(since=dt)

@@ -10,7 +10,7 @@ from pydantic import (
     Field,
     PositiveInt,
 )
-from typing_extensions import Self
+from typing import Self
 
 from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.thl.contest.contest import (

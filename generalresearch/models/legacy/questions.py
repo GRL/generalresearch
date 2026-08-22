@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any, Self
 
 from pydantic import (
     BaseModel,
@@ -14,7 +14,6 @@ from pydantic import (
     model_validator,
 )
 from sentry_sdk import capture_exception
-from typing_extensions import Annotated, Self
 
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.legacy.api_status import StatusResponse

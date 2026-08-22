@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from itertools import product
 from typing import Optional
@@ -77,15 +77,15 @@ class TestEnrichedSession:
 class TestEnrichedSessionAdmin:
 
     @pytest.fixture
-    def start(self) -> "datetime":
-        return datetime(year=2020, month=3, day=14, tzinfo=timezone.utc)
+    def start(self) -> datetime:
+        return datetime(year=2020, month=3, day=14, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:
         return "1d"
 
     @pytest.fixture
-    def duration(self) -> Optional["timedelta"]:
+    def duration(self) -> timedelta | None:
         return timedelta(days=5)
 
     def test_to_admin_response(

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 import pymysql
 from pymysql import IntegrityError
@@ -107,7 +107,7 @@ class CintSurveyManager(SurveyManager):
         return True
 
     def update(self, surveys: list[CintSurvey]) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         for survey in surveys:
             survey.last_updated = now
 

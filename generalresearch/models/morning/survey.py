@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import timezone
+from datetime import UTC, timezone
 from decimal import Decimal
 from functools import cached_property
 from typing import (
@@ -12,6 +12,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    Self,
     Set,
     Tuple,
     Type,
@@ -27,7 +28,6 @@ from pydantic import (
     computed_field,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.locales import Localelator
 from generalresearch.models import Source
@@ -79,14 +79,14 @@ class MorningStatistics(BaseModel):
     # bid bid_loi: int = Field(validation_alias="estimated_length_of_interview",
     # le=120 * 60)
     # If num_completes == 0 , this gets returned as 0. it should be None
-    obs_median_loi: Optional[NonNegativeInt] = Field(
+    obs_median_loi: NonNegativeInt | None = Field(
         validation_alias="median_length_of_interview", default=None, le=120 * 60
     )
 
     # API returns 100 until 5 completes! Should be None.
     # This is calculated as the total completes divided by the total number of
     # finished sessions that passed the prescreener.
-    qualified_conversion: Optional[float] = Field(
+    qualified_conversion: float | None = Field(
         ge=0, le=1, description="conversion rate of qualified respondents"
     )
 
@@ -142,7 +142,7 @@ class MorningTaskStatistics(MorningStatistics):
     # relevant to quotas.
 
     # API returns 100 until 5 completes! Should be None ...
-    system_conversion: Optional[float] = Field(
+    system_conversion: float | None = Field(
         description="conversion rate of the system. completes divided by total number of entrants to the system",
         ge=0,
         le=1,
@@ -166,8 +166,8 @@ class MorningTaskStatistics(MorningStatistics):
 
 class MorningCondition(MarketplaceCondition):
     model_config = ConfigDict(populate_by_name=True, frozen=False, extra="ignore")
-    question_id: Optional[MorningQuestionID] = Field(validation_alias="id")
-    values: List[Annotated[str, Field(max_length=128)]] = Field(
+    question_id: MorningQuestionID | None = Field(validation_alias="id")
+    values: list[Annotated[str, Field(max_length=128)]] = Field(
         validation_alias="response_ids"
     )
     value_type: ConditionValueType = Field(default=ConditionValueType.LIST)
@@ -184,11 +184,11 @@ class MorningQuota(MorningStatistics, MarketplaceTask):
         max_digits=5,
         validation_alias="cost_per_interview",
     )
-    condition_hashes: List[str] = Field(min_length=1, default_factory=list)
+    condition_hashes: list[str] = Field(min_length=1, default_factory=list)
 
     # since the Quota is the MarketplaceTask, it needs these fields, copied from the Bid
     source: Literal[Source.MORNING_CONSULT] = Field(default=Source.MORNING_CONSULT)
-    used_question_ids: Set[MorningQuestionID] = Field(default_factory=set)
+    used_question_ids: set[MorningQuestionID] = Field(default_factory=set)
     country_iso: CountryISO = Field(frozen=True)
     country_isos: CountryISOs = Field()
     language_isos: LanguageISOs = Field(frozen=True)
@@ -219,11 +219,11 @@ class MorningQuota(MorningStatistics, MarketplaceTask):
 
     @computed_field
     @cached_property
-    def all_hashes(self) -> Set[str]:
+    def all_hashes(self) -> set[str]:
         return set(self.condition_hashes)
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return MorningCondition
 
     @property
@@ -233,7 +233,7 @@ class MorningQuota(MorningStatistics, MarketplaceTask):
     @property
     def marketplace_genders(
         self,
-    ) -> Dict[Gender, Optional[MarketplaceCondition]]:
+    ) -> dict[Gender, MarketplaceCondition | None]:
         return {
             Gender.MALE: MorningCondition(
                 question_id="gender",
@@ -253,14 +253,14 @@ class MorningQuota(MorningStatistics, MarketplaceTask):
         # num_available includes in-progress (they're already deducted)
         return self.num_available >= self._min_open_spots
 
-    def passes(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Passes means we 1) meet all conditions (aka "match") AND 2) the quota is open.
         return self.is_open and self.matches(criteria_evaluation)
 
     # TODO: I did some speed tests. This is faster than how this is implemented
     # in sago/spectrum/dynata/etc. We should generalize this logic instead of
     # copying/pasting it 7 times. (matches, matches_optional and _soft)
-    def matches(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def matches(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Matches means we meet all conditions.
         # In Morning, all quotas are mutually exclusive. so if it doesn't
         # matter if we match a closed quota, b/c that means that we won't
@@ -268,8 +268,8 @@ class MorningQuota(MorningStatistics, MarketplaceTask):
         return self.matches_optional(criteria_evaluation) is True
 
     def matches_optional(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Optional[bool]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> bool | None:
         for c in self.condition_hashes:
             eval_value = criteria_evaluation.get(c)
             if eval_value is False:
@@ -279,8 +279,8 @@ class MorningQuota(MorningStatistics, MarketplaceTask):
         return True
 
     def matches_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], List[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, list[str]]:
         # Passes back "matches" (T/F/none) and a list of unknown criterion hashes
         unknowns = list()
         for c in self.condition_hashes:
@@ -321,22 +321,22 @@ class MorningBid(MorningTaskStatistics):
     timeout: PositiveInt = Field(le=24 * 60 * 60)
     topic_id: str = Field(min_length=1, max_length=64)
 
-    exclusions: List[MorningExclusion] = Field(default_factory=list)
+    exclusions: list[MorningExclusion] = Field(default_factory=list)
 
-    quotas: List[MorningQuota] = Field(default_factory=list)
+    quotas: list[MorningQuota] = Field(default_factory=list)
 
     source: Literal[Source.MORNING_CONSULT] = Field(default=Source.MORNING_CONSULT)
 
-    used_question_ids: Set[MorningQuestionID] = Field(default_factory=set)
+    used_question_ids: set[MorningQuestionID] = Field(default_factory=set)
 
     # This is a "special" key to store all conditions that are used (as
     # "condition_hashes") throughout this survey. In the reduced representation
     # of this task (nearly always, for db i/o, in global_vars) this field will
     # be null.
-    conditions: Optional[Dict[str, MorningCondition]] = Field(default=None)
+    conditions: dict[str, MorningCondition] | None = Field(default=None)
 
     # This doesn't get stored in the db directly
-    experimental_single_use_qualifications: Optional[List[MorningQuestion]] = Field(
+    experimental_single_use_qualifications: list[MorningQuestion] | None = Field(
         default=None
     )
 
@@ -345,8 +345,8 @@ class MorningBid(MorningTaskStatistics):
     created_api: AwareDatetimeISO = Field(validation_alias="published_at")
 
     # This does not come from the API. We set it when we update this in the db.
-    created: Optional[AwareDatetimeISO] = Field(default=None)
-    updated: Optional[AwareDatetimeISO] = Field(default=None)
+    created: AwareDatetimeISO | None = Field(default=None)
+    updated: AwareDatetimeISO | None = Field(default=None)
 
     # ignoring from API: closed_at
 
@@ -373,7 +373,7 @@ class MorningBid(MorningTaskStatistics):
 
     @computed_field
     @cached_property
-    def all_hashes(self) -> Set[str]:
+    def all_hashes(self) -> set[str]:
         s = set()
         for q in self.quotas:
             s.update(set(q.condition_hashes))
@@ -387,7 +387,7 @@ class MorningBid(MorningTaskStatistics):
 
     @model_validator(mode="before")
     @classmethod
-    def setup_quota_fields(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+    def setup_quota_fields(cls, data: dict[str, Any]) -> dict[str, Any]:
         # These fields get "inherited" by each quota from its bid.
         quota_fields = [
             "country_iso",
@@ -419,7 +419,7 @@ class MorningBid(MorningTaskStatistics):
 
     @model_validator(mode="before")
     @classmethod
-    def setup_conditions(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+    def setup_conditions(cls, data: dict[str, Any]) -> dict[str, Any]:
         if "conditions" in data:
             return data
 
@@ -448,7 +448,7 @@ class MorningBid(MorningTaskStatistics):
 
     @model_validator(mode="before")
     @classmethod
-    def clean_alias(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+    def clean_alias(cls, data: dict[str, Any]) -> dict[str, Any]:
         # Make sure fields are named certain ways, so we don't have to check
         # aliases within other validators
         if "estimated_length_of_interview" in data:
@@ -503,18 +503,16 @@ class MorningBid(MorningTaskStatistics):
         return d
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> Self:
-        d["created"] = d["created"].replace(tzinfo=timezone.utc)
-        d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
-        d["expected_end"] = d["expected_end"].replace(tzinfo=timezone.utc)
-        d["created_api"] = d["created_api"].replace(tzinfo=timezone.utc)
+    def from_db(cls, d: dict[str, Any]) -> Self:
+        d["created"] = d["created"].replace(tzinfo=UTC)
+        d["updated"] = d["updated"].replace(tzinfo=UTC)
+        d["expected_end"] = d["expected_end"].replace(tzinfo=UTC)
+        d["created_api"] = d["created_api"].replace(tzinfo=UTC)
         d["used_question_ids"] = json.loads(d["used_question_ids"])
         d["exclusions"] = json.loads(d["exclusions"])
         return cls.model_validate(d)
 
-    def passes_quotas(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Optional[str]:
+    def passes_quotas(self, criteria_evaluation: dict[str, bool | None]) -> str | None:
         # Quotas are mutually-exclusive. A user can only possibly match 1 quota.
         # Returns the passing quota ID or None (if user doesn't pass any quota)
         for q in self.quotas:
@@ -522,8 +520,8 @@ class MorningBid(MorningTaskStatistics):
                 return q.id
 
     def passes_quotas_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Optional[List[str]], Optional[Set[str]]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, list[str] | None, set[str] | None]:
         """
         Quotas are mutually-exclusive. A user can only possibly match 1
             quota. As such, all unknown questions on any quota will be
@@ -547,15 +545,15 @@ class MorningBid(MorningTaskStatistics):
         return False, None, None
 
     def determine_eligibility(
-        self, criteria_evaluation: dict[str, Optional[bool]]
-    ) -> Optional[str]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> str | None:
         if not self.is_open:
             return None
         return self.passes_quotas(criteria_evaluation)
 
     def determine_eligibility_soft(
-        self, criteria_evaluation: dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Optional[List[str]], Optional[Set[str]]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, list[str] | None, set[str] | None]:
         if not self.is_open:
             return False, None, None
         return self.passes_quotas_soft(criteria_evaluation)

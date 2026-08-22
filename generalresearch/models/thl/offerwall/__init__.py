@@ -4,7 +4,7 @@ import hashlib
 import json
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -13,7 +13,6 @@ from pydantic import (
     computed_field,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.models import Source
 from generalresearch.models.custom_types import IPvAnyAddressStr

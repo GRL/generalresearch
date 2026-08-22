@@ -1,8 +1,8 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 from generalresearch.managers.thl.profiling.user_upk import UserUpkManager
 
-now = datetime.now(tz=timezone.utc)
+now = datetime.now(tz=UTC)
 base = {
     "country_iso": "us",
     "language_iso": "eng",

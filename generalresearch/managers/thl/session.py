@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -188,7 +188,7 @@ class SessionManager(PostgresManager):
         # validation errors. There doesn't seem to be a clean way of doing this.
         # model_copy with update doesn't trigger the validators, so we
         # re-run model_validate after
-        finished = finished if finished else datetime.now(tz=timezone.utc)
+        finished = finished if finished else datetime.now(tz=UTC)
         session.update(
             **{
                 "status": status,
@@ -451,13 +451,13 @@ class SessionManager(PostgresManager):
         params = {}
 
         if started_before or started_after:
-            started_after = started_after or datetime(2017, 1, 1, tzinfo=timezone.utc)
-            started_before = started_before or datetime.now(tz=timezone.utc)
+            started_after = started_after or datetime(2017, 1, 1, tzinfo=UTC)
+            started_before = started_before or datetime.now(tz=UTC)
             assert (
-                started_after.tzinfo == timezone.utc
+                started_after.tzinfo == UTC
             ), "started_after must be tz-aware as UTC"
             assert (
-                started_before.tzinfo == timezone.utc
+                started_before.tzinfo == UTC
             ), "started_before must be tz-aware as UTC"
             assert (
                 started_after < started_before
@@ -467,13 +467,13 @@ class SessionManager(PostgresManager):
             params["started_before"] = started_before
 
         if adjusted_before or adjusted_after:
-            adjusted_after = adjusted_after or datetime(2017, 1, 1, tzinfo=timezone.utc)
-            adjusted_before = adjusted_before or datetime.now(tz=timezone.utc)
+            adjusted_after = adjusted_after or datetime(2017, 1, 1, tzinfo=UTC)
+            adjusted_before = adjusted_before or datetime.now(tz=UTC)
             assert (
-                adjusted_after.tzinfo == timezone.utc
+                adjusted_after.tzinfo == UTC
             ), "adjusted_after must be tz-aware as UTC"
             assert (
-                adjusted_before.tzinfo == timezone.utc
+                adjusted_before.tzinfo == UTC
             ), "adjusted_before must be tz-aware as UTC"
             assert (
                 adjusted_after < adjusted_before

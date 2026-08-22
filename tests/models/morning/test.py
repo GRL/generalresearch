@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 from generalresearch.models.morning.question import MorningQuestion
 
@@ -163,8 +163,8 @@ bid = {
 # what gets run in MorningAPI._format_bid
 bid["language_isos"] = ("eng",)
 bid["country_iso"] = "us"
-bid["end_date"] = datetime(2024, 7, 19, 9, 1, 13, 520243, tzinfo=timezone.utc)
-bid["published_at"] = datetime(2024, 6, 19, 9, 1, 13, 520243, tzinfo=timezone.utc)
+bid["end_date"] = datetime(2024, 7, 19, 9, 1, 13, 520243, tzinfo=UTC)
+bid["published_at"] = datetime(2024, 6, 19, 9, 1, 13, 520243, tzinfo=UTC)
 bid.update(bid["statistics"])
 bid["qualified_conversion"] /= 100
 bid["system_conversion"] /= 100

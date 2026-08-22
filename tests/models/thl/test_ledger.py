@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from uuid import uuid4
 
 import pytest
@@ -21,7 +21,7 @@ class TestLedgerTransaction:
         assert [] == t.entries
         assert {} == t.metadata
         t = LedgerTransaction(
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             metadata={"a": "b", "user": "1234"},
             ext_description="foo",
         )

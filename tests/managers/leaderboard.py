@@ -1,7 +1,7 @@
 import os
 import time
 import zoneinfo
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
 
@@ -10,9 +10,6 @@ import pytest
 from generalresearch.managers.leaderboard.manager import LeaderboardManager
 from generalresearch.managers.leaderboard.tasks import hit_leaderboards
 from generalresearch.models.thl.definitions import Status
-from generalresearch.models.thl.user import User
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.session import Session
 from generalresearch.models.thl.leaderboard import (
     LeaderboardCode,
     LeaderboardFrequency,
@@ -22,7 +19,10 @@ from generalresearch.models.thl.product import (
     PayoutConfig,
     PayoutTransformation,
     PayoutTransformationPercentArgs,
+    Product,
 )
+from generalresearch.models.thl.session import Session
+from generalresearch.models.thl.user import User
 
 # random uuid for leaderboard tests
 product_id = uuid4().hex
@@ -63,7 +63,7 @@ def _create_session(
     )
     session = Session(
         user=user,
-        started=datetime(2025, 2, 5, 6, tzinfo=timezone.utc),
+        started=datetime(2025, 2, 5, 6, tzinfo=UTC),
         id=1,
         country_iso=country_iso,
         status=Status.COMPLETE,
@@ -152,7 +152,7 @@ class TestLeaderboards:
             999999,
             tzinfo=zoneinfo.ZoneInfo(key="America/New_York"),
         )
-        assert lb.period_start_utc == datetime(2025, 2, 5, 5, tzinfo=timezone.utc)
+        assert lb.period_start_utc == datetime(2025, 2, 5, 5, tzinfo=UTC)
         assert lb.row_count == 7
         assert lb.rows == [
             LeaderboardRow(bpuid="aaa", rank=1, value=10),
@@ -270,5 +270,5 @@ class TestLeaderboards:
         )
         assert lb.local_start_time == "2025-02-01T00:00:00+09:00"
         assert lb.local_end_time == "2025-02-01T23:59:59.999999+09:00"
-        assert lb.period_start_utc == datetime(2025, 1, 31, 15, tzinfo=timezone.utc)
+        assert lb.period_start_utc == datetime(2025, 1, 31, 15, tzinfo=UTC)
         print(lb.model_dump(mode="json"))

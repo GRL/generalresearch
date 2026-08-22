@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, Optional, Self
 
 from pydantic import BaseModel, Field, NonNegativeFloat, PositiveInt
-from typing_extensions import Self
 
 from generalresearch.models.custom_types import AwareDatetimeISO
 
@@ -26,12 +25,12 @@ class AuditLog(BaseModel):
     are related to a User
     """
 
-    id: Optional[PositiveInt] = Field(default=None)
+    id: PositiveInt | None = Field(default=None)
     user_id: PositiveInt = Field()
 
     created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
-        examples=[datetime.now(tz=timezone.utc)],
+        default_factory=lambda: datetime.now(tz=UTC),
+        examples=[datetime.now(tz=UTC)],
         description="When did this event occur",
     )
 
@@ -51,14 +50,14 @@ class AuditLog(BaseModel):
     # e.g. "upk-audit", "ip-audit", "entrance-limit"
     event_type: str = Field(max_length=64, examples=["entrance-limit"])
 
-    event_msg: Optional[str] = Field(
+    event_msg: str | None = Field(
         default=None,
         min_length=3,
         max_length=256,
         description="The event message. Could be displayed on user's page",
     )
 
-    event_value: Optional[NonNegativeFloat] = Field(
+    event_value: NonNegativeFloat | None = Field(
         default=None,
         description="Optionally store a numeric value associated with this "
         "event. For e.g. if we recalculate the user's normalized "
@@ -68,12 +67,12 @@ class AuditLog(BaseModel):
         examples=[0.42],
     )
 
-    def model_dump_mysql(self, **kwargs) -> Dict:
+    def model_dump_mysql(self, **kwargs) -> dict:
         d = self.model_dump(mode="json", **kwargs)
         d["created"] = self.created.replace(tzinfo=None)
         return d
 
     @classmethod
-    def from_mysql(cls, d: Dict) -> Self:
-        d["created"] = d["created"].replace(tzinfo=timezone.utc)
+    def from_mysql(cls, d: dict) -> Self:
+        d["created"] = d["created"].replace(tzinfo=UTC)
         return AuditLog.model_validate(d)

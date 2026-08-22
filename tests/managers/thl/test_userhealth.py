@@ -1,4 +1,4 @@
-from datetime import timezone, datetime
+from datetime import UTC, datetime, timezone
 from uuid import uuid4
 
 import faker
@@ -12,7 +12,7 @@ from generalresearch.models.thl.ipinfo import GeoIPInformation
 from generalresearch.models.thl.user_iphistory import (
     IPRecord,
 )
-from generalresearch.models.thl.userhealth import AuditLogLevel, AuditLog
+from generalresearch.models.thl.userhealth import AuditLog, AuditLogLevel
 
 fake = faker.Faker()
 
@@ -51,7 +51,7 @@ class TestAuditLog:
         res = audit_log_manager.get_by_id(auditlog_id=audit_log.id)
         assert isinstance(res, AuditLog)
         assert res.id == audit_log.id
-        assert res.created.tzinfo == timezone.utc
+        assert res.created.tzinfo == UTC
 
     def test_filter_by_product(
         self,
@@ -179,7 +179,7 @@ class TestAuditLog:
 
         res = audit_log_manager.filter_count(
             user_ids=[u1.user_id, u2.user_id, u3.user_id],
-            created_after=datetime.now(tz=timezone.utc),
+            created_after=datetime.now(tz=UTC),
         )
         assert isinstance(res, int)
         assert res == 0

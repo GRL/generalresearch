@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import timezone
+from datetime import UTC, timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import Annotated, Any, Literal, Type
+from typing import Annotated, Any, Literal, Self, Type
 
 from more_itertools import flatten
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
-from typing_extensions import Self
 
 from generalresearch.locales import Localelator
 from generalresearch.models import LogicalOperator, Source
@@ -235,7 +234,7 @@ class SagoSurvey(MarketplaceTask):
         return data
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return SagoCondition
 
     @property
@@ -314,9 +313,9 @@ class SagoSurvey(MarketplaceTask):
 
     @classmethod
     def from_db(cls, d: dict[str, Any]):
-        d["created"] = d["created"].replace(tzinfo=timezone.utc)
-        d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
-        d["modified_api"] = d["modified_api"].replace(tzinfo=timezone.utc)
+        d["created"] = d["created"].replace(tzinfo=UTC)
+        d["updated"] = d["updated"].replace(tzinfo=UTC)
+        d["modified_api"] = d["modified_api"].replace(tzinfo=UTC)
         d["qualifications"] = json.loads(d["qualifications"])
         d["used_question_ids"] = json.loads(d["used_question_ids"])
         d["quotas"] = json.loads(d["quotas"])

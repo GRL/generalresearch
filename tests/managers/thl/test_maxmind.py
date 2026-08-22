@@ -1,17 +1,12 @@
 import json
 import logging
-from typing import Callable
+from collections.abc import Callable
 
-import geoip2.models
 import pytest
 from faker import Faker
 from faker.providers.address.en_US import Provider as USAddressProvider
 
 from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
-from generalresearch.managers.thl.maxmind import MaxmindManager
-from generalresearch.managers.thl.maxmind.basic import (
-    MaxmindBasicManager,
-)
 from generalresearch.models.thl.ipinfo import (
     GeoIPInformation,
     normalize_ip,

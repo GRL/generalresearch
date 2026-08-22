@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 from uuid import uuid4
@@ -82,15 +82,15 @@ class TestBusinessContact:
 
 class TestBusiness:
     @pytest.fixture
-    def start(self) -> "datetime":
-        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
+    def start(self) -> datetime:
+        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:
         return "30d"
 
     @pytest.fixture
-    def duration(self) -> Optional["timedelta"]:
+    def duration(self) -> timedelta | None:
         return None
 
     def test_init(self, business):
@@ -413,15 +413,15 @@ class TestBusiness:
 class TestBusinessBalance:
 
     @pytest.fixture
-    def start(self) -> "datetime":
-        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
+    def start(self) -> datetime:
+        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:
         return "30d"
 
     @pytest.fixture
-    def duration(self) -> Optional["timedelta"]:
+    def duration(self) -> timedelta | None:
         return None
 
     @pytest.mark.skip
@@ -1138,7 +1138,7 @@ class TestBusinessBalance:
 class TestBusinessMethods:
 
     @pytest.fixture(scope="function")
-    def start(self, utc_90days_ago) -> "datetime":
+    def start(self, utc_90days_ago) -> datetime:
         s = utc_90days_ago.replace(microsecond=0)
         return s
 
@@ -1149,7 +1149,7 @@ class TestBusinessMethods:
     @pytest.fixture(scope="function")
     def duration(
         self,
-    ) -> Optional["timedelta"]:
+    ) -> timedelta | None:
         return None
 
     def test_cache_key(self, business, gr_redis):
@@ -1212,7 +1212,7 @@ class TestBusinessMethods:
 
         # We're going to pull only a specific year, but make sure that
         # it's being assigned to the field regardless
-        year = datetime.now(tz=timezone.utc).year
+        year = datetime.now(tz=UTC).year
         res = Business.from_redis(
             uuid=business.uuid,
             fields=[f"pop_financial:{year}"],

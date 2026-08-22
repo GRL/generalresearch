@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
-from typing import Any, Literal, Type
+from typing import Annotated, Any, Literal, Self, Type
 
 from more_itertools import flatten
 from pydantic import (
@@ -15,7 +15,6 @@ from pydantic import (
     computed_field,
     model_validator,
 )
-from typing_extensions import Annotated, Self
 
 from generalresearch.locales import Localelator
 from generalresearch.models import Source, TaskCalculationType
@@ -291,7 +290,7 @@ class CintSurvey(MarketplaceTask):
         return data
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return CintCondition
 
     @property
@@ -390,7 +389,7 @@ class CintSurvey(MarketplaceTask):
                     d["conditions"][q.criterion_hash] = q
         d["quotas"] = quotas
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         d["created_at"] = now
         d["last_updated"] = now
 
@@ -418,8 +417,8 @@ class CintSurvey(MarketplaceTask):
 
     @classmethod
     def from_mysql(cls, d: Dict[str, Any]) -> Self:
-        d["created_at"] = d["created_at"].replace(tzinfo=timezone.utc)
-        d["last_updated"] = d["last_updated"].replace(tzinfo=timezone.utc)
+        d["created_at"] = d["created_at"].replace(tzinfo=UTC)
+        d["last_updated"] = d["last_updated"].replace(tzinfo=UTC)
         d["qualifications"] = json.loads(d["qualifications"])
         d["used_question_ids"] = json.loads(d["used_question_ids"])
         d["quotas"] = json.loads(d["quotas"])

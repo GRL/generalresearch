@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
@@ -24,8 +25,8 @@ if TYPE_CHECKING:
 
 
 def test_user_txs(
-    user_factory: Callable[..., "User"],
-    product_amt_true: "Product",
+    user_factory: Callable[..., User],
+    product_amt_true: Product,
     create_main_accounts: Callable[..., None],
     thl_lm: ThlLedgerManager,
     lm,
@@ -36,7 +37,7 @@ def test_user_txs(
     session_factory,
     user_payout_event_manager,
     utc_now: datetime,
-    settings: "GRLSettings",
+    settings: GRLSettings,
 ):
     delete_ledger_db()
     create_main_accounts()
@@ -136,13 +137,13 @@ def test_user_txs(
 
 
 def test_user_txs_pagination(
-    user_factory: Callable[..., "User"],
-    product_amt_true: "Product",
+    user_factory: Callable[..., User],
+    product_amt_true: Product,
     create_main_accounts: Callable[..., None],
-    thl_lm: "ThlLedgerManager",
-    lm: "LedgerManager",
+    thl_lm: ThlLedgerManager,
+    lm: LedgerManager,
     delete_ledger_db: Callable[..., None],
-    session_with_tx_factory: Callable[..., "Session"],
+    session_with_tx_factory: Callable[..., Session],
     adj_to_fail_with_tx_factory,
     user_payout_event_manager,
     utc_now: datetime,
@@ -187,7 +188,7 @@ def test_user_txs_pagination(
     assert txs.summary.user_bonus.entry_count == 12
 
     # Test filtering. We should pull back only this one
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     user_compensate(
         ledger_manager=thl_lm,
         user=user,
@@ -203,7 +204,7 @@ def test_user_txs_pagination(
     assert txs.summary.user_bonus.entry_count == 1
 
     # And filtering with 0 results
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     txs = thl_lm.get_user_txs(user, page=1, size=5, time_start=now)
     assert len(txs.transactions) == 0
     assert txs.total == 0
@@ -215,8 +216,8 @@ def test_user_txs_pagination(
 
 
 def test_user_txs_rolling_balance(
-    user_factory: Callable[..., "User"],
-    product_amt_true: "Product",
+    user_factory: Callable[..., User],
+    product_amt_true: Product,
     create_main_accounts,
     thl_lm,
     lm,
@@ -224,7 +225,7 @@ def test_user_txs_rolling_balance(
     session_with_tx_factory,
     adj_to_fail_with_tx_factory,
     user_payout_event_manager,
-    settings: "GRLSettings",
+    settings: GRLSettings,
 ):
     """
     Creates 3 $1.00 bonuses (postive),

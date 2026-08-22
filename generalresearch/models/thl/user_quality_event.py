@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
 from enum import Enum
 from typing import Literal
@@ -61,9 +61,7 @@ class TaskAdjustmentEvent(BaseModel):
     mid: UUIDStr = Field()
     source: Source = Field()
     status: WallAdjustedStatus = Field()
-    alert_time: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    alert_time: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
     quality_event_type: Literal[QualityEventType.task_adjustment] = Field(
         default=QualityEventType.task_adjustment
     )

@@ -1,7 +1,7 @@
 from enum import Enum
+from typing import Annotated
 
 from pydantic import StringConstraints
-from typing_extensions import Annotated
 
 # This is text-based, in lowercase. e.g. 'age', 'household_income'
 MorningQuestionID = Annotated[

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from random import choice as randchoice
 from random import randint
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -124,7 +125,7 @@ def wall_factory(wall_manager: WallManager) -> Callable[..., Wall]:
     ) -> Wall:
 
         assert session.started <= datetime.now(
-            tz=timezone.utc
+            tz=UTC
         ), "Session can't start in the future"
 
         if session.wall_events:

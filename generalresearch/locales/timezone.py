@@ -3,7 +3,7 @@ from typing import Optional
 from pytz import country_timezones
 
 
-def get_default_timezone(country_iso: str) -> Optional[str]:
+def get_default_timezone(country_iso: str) -> str | None:
     # to list all:
     # from pytz import country_names, country_timezones
     # [country_timezones.get(country) for country in country_names]
@@ -72,6 +72,6 @@ country_default_locale = {
 }
 
 
-def get_default_locale(country_iso: str) -> Optional[str]:
+def get_default_locale(country_iso: str) -> str | None:
     # todo: "https://cdn.simplelocalize.io/public/v1/locales"   to fill in the rest?
     return country_default_locale.get(country_iso, None)

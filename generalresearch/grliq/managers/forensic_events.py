@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
-from typing import Any, Collection, Dict, List, Optional
+from typing import Any, Dict, List, Optional
+from collections.abc import Collection
 from uuid import uuid4
 
 from psycopg import sql
@@ -25,7 +26,7 @@ class GrlIqEventManager:
     def update_or_create_timing(
         self,
         session_uuid: UUIDStr,
-        timing_data: Optional[TimingData] = None,
+        timing_data: TimingData | None = None,
     ) -> PositiveInt:
         data = {
             "session_uuid": session_uuid,
@@ -77,8 +78,8 @@ class GrlIqEventManager:
         session_uuid: UUIDStr,
         event_start: datetime,
         event_end: datetime,
-        events: Optional[List[Dict]] = None,
-        mouse_events: Optional[List[Dict]] = None,
+        events: list[dict] | None = None,
+        mouse_events: list[dict] | None = None,
     ) -> PositiveInt:
         data = {
             "uuid": uuid4().hex,
@@ -135,14 +136,14 @@ class GrlIqEventManager:
 
     def filter(
         self,
-        select_str: Optional[str] = None,
-        session_uuid: Optional[str] = None,
-        session_uuids: Optional[Collection[str]] = None,
-        uuids: Optional[Collection[str]] = None,
-        started_since: Optional[datetime] = None,
-        limit: Optional[int] = None,
+        select_str: str | None = None,
+        session_uuid: str | None = None,
+        session_uuids: Collection[str] | None = None,
+        uuids: Collection[str] | None = None,
+        started_since: datetime | None = None,
+        limit: int | None = None,
         order_by: str = "event_start DESC",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
 
         if not limit:
             limit = 100
@@ -199,7 +200,7 @@ class GrlIqEventManager:
     def filter_distinct_timing(
         self,
         session_uuids: Collection[str],
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         params = {"session_uuids": list(session_uuids)}
         query = sql.SQL(
             """
@@ -229,7 +230,7 @@ class GrlIqEventManager:
         return res
 
     @staticmethod
-    def process_mouse_events(pointer_moves: List[PointerMove], events: List[Dict]):
+    def process_mouse_events(pointer_moves: list[PointerMove], events: list[dict]):
         """
         In the db column 'mouse_events' we put all 'pointermove' events. Pull
         those out, and then any 'pointerdown' and 'pointerup' events from the
@@ -274,7 +275,7 @@ class GrlIqEventManager:
         return mouse_events
 
     @staticmethod
-    def process_keyboard_events(events: List[Dict]):
+    def process_keyboard_events(events: list[dict]):
         res = [
             KeyboardEvent(
                 type=x["type"],

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -16,7 +16,7 @@ def _example_user_tx_payout(schema: dict[str, Any]) -> None:
         amount=-5,
         description="HIT Reward",
         payout_format="${payout/100:.2f}",
-        created=datetime.now(tz=timezone.utc),
+        created=datetime.now(tz=UTC),
     ).model_dump(mode="json")
 
 
@@ -30,7 +30,7 @@ def _example_user_tx_bonus(schema: dict[str, Any]) -> None:
         amount=100,
         description="Compensation Bonus",
         payout_format="${payout/100:.2f}",
-        created=datetime.now(tz=timezone.utc),
+        created=datetime.now(tz=UTC),
     ).model_dump(mode="json")
 
 
@@ -44,7 +44,7 @@ def _example_user_tx_complete(schema: dict[str, Any]) -> None:
         amount=38,
         description="Task Complete",
         payout_format="${payout/100:.2f}",
-        created=datetime.now(tz=timezone.utc),
+        created=datetime.now(tz=UTC),
         tsid=uuid4().hex,
     ).model_dump(mode="json")
 
@@ -59,6 +59,6 @@ def _example_user_tx_adjustment(schema: dict[str, Any]) -> None:
         amount=-38,
         description="Task Adjustment",
         payout_format="${payout/100:.2f}",
-        created=datetime.now(tz=timezone.utc),
+        created=datetime.now(tz=UTC),
         tsid=uuid4().hex,
     ).model_dump(mode="json")

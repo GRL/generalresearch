@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from enum import Enum
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal, Self, Union
 from uuid import uuid4
 
 from pydantic import (
@@ -15,7 +15,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
@@ -253,7 +252,7 @@ class LedgerTransaction(BaseModel):
     id: int | None = Field(default=None)
 
     created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
         description="When the Transaction (TX) was created into the database."
         "This does not represent the exact time for any action"
         "which may be responsible for this Transaction (TX), and "
@@ -283,9 +282,7 @@ class LedgerTransaction(BaseModel):
         """Created should not be in the future. This will mess up
         LedgerAccountStatement / groupby rollups.
         """
-        assert (
-            datetime.now(tz=timezone.utc) > created
-        ), "created cannot be in the future"
+        assert datetime.now(tz=UTC) > created, "created cannot be in the future"
         return created
 
     @field_validator("entries", mode="after")
@@ -536,12 +533,10 @@ class UserLedgerTransactionTaskAdjustment(UserLedgerTransaction):
 
 
 UserLedgerTransactionType = Annotated[
-    Union[
-        UserLedgerTransactionUserPayout,
-        UserLedgerTransactionUserBonus,
-        UserLedgerTransactionTaskAdjustment,
-        UserLedgerTransactionTaskComplete,
-    ],
+    UserLedgerTransactionUserPayout
+    | UserLedgerTransactionUserBonus
+    | UserLedgerTransactionTaskAdjustment
+    | UserLedgerTransactionTaskComplete,
     Field(discriminator="tx_type"),
 ]
 

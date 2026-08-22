@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
 from math import log
 from typing import Annotated
@@ -46,7 +46,7 @@ class Buyer(BaseModel):
     )
     label: str | None = Field(default=None, max_length=255)
     created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
         description="When this entry was made, or when the buyer was first seen",
     )
 

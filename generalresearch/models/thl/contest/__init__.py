@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
+from typing import Self
 from uuid import uuid4
 
 from pydantic import (
@@ -10,7 +11,6 @@ from pydantic import (
     computed_field,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
@@ -106,7 +106,7 @@ class ContestWinner(BaseModel):
 
     uuid: UUIDStr = Field(default_factory=lambda: uuid4().hex)
     created_at: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
         description="When this user won this prize",
     )
 

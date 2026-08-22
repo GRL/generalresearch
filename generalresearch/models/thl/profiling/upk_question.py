@@ -5,7 +5,7 @@ import json
 import re
 from enum import Enum
 from functools import cached_property
-from typing import Any, List, Literal, Union
+from typing import Annotated, Any, List, Literal, Union
 
 from pydantic import (
     BaseModel,
@@ -16,7 +16,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Annotated
 
 from generalresearch.models import Source
 from generalresearch.models.custom_types import UUIDStr
@@ -215,11 +214,9 @@ SelectorType = (
     | UpkQuestionSelectorHIDDEN
 )
 Configuration = Annotated[
-    Union[
-        UpkQuestionConfigurationMC,
-        UpkQuestionConfigurationTE,
-        UpkQuestionConfigurationSLIDER,
-    ],
+    UpkQuestionConfigurationMC
+    | UpkQuestionConfigurationTE
+    | UpkQuestionConfigurationSLIDER,
     Field(discriminator="type"),
 ]
 
@@ -433,7 +430,7 @@ class UpkQuestion(BaseModel):
 
     @field_validator("choices")
     @classmethod
-    def order_choices(cls, choices: List):
+    def order_choices(cls, choices: list):
         if choices:
             choices.sort(key=lambda x: x.order)
         return choices

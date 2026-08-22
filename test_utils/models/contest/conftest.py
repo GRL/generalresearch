@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
-from typing import Callable
 from uuid import uuid4
 
 import pytest
 from pytest import FixtureRequest as Request
-
 
 from generalresearch.currency import USDCent
 from generalresearch.managers.thl.contest_manager import ContestManager
@@ -136,7 +135,7 @@ def milestone_contest_create() -> MilestoneContestCreate:
             ),
         ],
         end_condition=MilestoneContestEndCondition(
-            ends_at=datetime(year=2030, month=1, day=1, tzinfo=timezone.utc),
+            ends_at=datetime(year=2030, month=1, day=1, tzinfo=UTC),
             max_winners=5,
         ),
         entry_trigger=ContestEntryTrigger.TASK_COMPLETE,

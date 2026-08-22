@@ -1,17 +1,17 @@
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
 
 from generalresearch.managers.thl.ledger_manager.exceptions import (
-    LedgerTransactionFlagAlreadyExistsError,
     LedgerTransactionConditionFailedError,
+    LedgerTransactionFlagAlreadyExistsError,
 )
+from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet import PayoutType
-from generalresearch.models.thl.payout import UserPayoutEvent
 from test_utils.managers.ledger.conftest import create_main_accounts
 
 
@@ -243,7 +243,7 @@ class TestLedgerManagerAMT:
         delete_ledger_db()
         create_main_accounts()
 
-        now = datetime.now(timezone.utc) - timedelta(hours=1)
+        now = datetime.now(UTC) - timedelta(hours=1)
         user: User = user_factory(product=product_amt_true)
 
         pe = UserPayoutEvent(
@@ -394,7 +394,7 @@ class TestLedgerManagerPaypal:
         delete_ledger_db()
         create_main_accounts()
 
-        now = datetime.now(tz=timezone.utc) - timedelta(hours=1)
+        now = datetime.now(tz=UTC) - timedelta(hours=1)
         user: User = user_factory(product=product_amt_true)
 
         # debit_account_uuid nothing checks they match the ledger ... todo?

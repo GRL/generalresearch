@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     )
 
 
-def combo_object() -> Generator[tuple, None, None]:
+def combo_object() -> Generator[tuple]:
     for x in product(
         [
             DFCollectionType.USER,

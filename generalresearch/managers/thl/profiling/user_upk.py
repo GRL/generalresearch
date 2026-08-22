@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from typing import Any
 from uuid import UUID
 
@@ -56,7 +56,7 @@ class UserUpkManager(PostgresManagerWithRedis):
         return res
 
     def get_user_upk_mysql(self, user_id: int) -> list[UpkQuestionAnswer]:
-        since = datetime.now(tz=timezone.utc) - timedelta(days=89)
+        since = datetime.now(tz=UTC) - timedelta(days=89)
 
         query = """
         SELECT 

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pandas as pd
 from dateutil import relativedelta
 
 
 def get_date_list(start_datetime: datetime, end_datetime: datetime | None = None):
-    start_datetime = start_datetime.replace(tzinfo=timezone.utc)
-    end_datetime = end_datetime if end_datetime else datetime.now(tz=timezone.utc)
+    start_datetime = start_datetime.replace(tzinfo=UTC)
+    end_datetime = end_datetime if end_datetime else datetime.now(tz=UTC)
     return (
         pd.date_range(start_datetime, end_datetime, freq="1D")
         .strftime("%Y-%m-%d")
@@ -22,7 +22,7 @@ def year_start(periods_ago: int = 6) -> datetime:
     years. Goal is to provide a simple way to
     know when to do filters from
     """
-    n: datetime = datetime.now(tz=timezone.utc)
+    n: datetime = datetime.now(tz=UTC)
     d: datetime = n - relativedelta.relativedelta(years=periods_ago)
     return d.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
 
@@ -33,7 +33,7 @@ def month_start(periods_ago: int = 6) -> datetime:
     months. Goal is to provide a simple way to
     know when to do filters from
     """
-    n: datetime = datetime.now(tz=timezone.utc)
+    n: datetime = datetime.now(tz=UTC)
     d: datetime = n - relativedelta.relativedelta(months=periods_ago)
     return d.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
@@ -44,7 +44,7 @@ def day_start(periods_ago: int = 6) -> datetime:
     days. Goal is to provide a simple way to
     know when to do filters from
     """
-    n: datetime = datetime.now(tz=timezone.utc)
+    n: datetime = datetime.now(tz=UTC)
     d: datetime = n - relativedelta.relativedelta(days=periods_ago)
     return d.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -55,6 +55,6 @@ def hour_start(periods_ago: int = 6) -> datetime:
     hours. Goal is to provide a simple way to
     know when to do filters from
     """
-    n: datetime = datetime.now(tz=timezone.utc)
+    n: datetime = datetime.now(tz=UTC)
     d: datetime = n - relativedelta.relativedelta(hours=periods_ago)
     return d.replace(minute=0, second=0, microsecond=0)

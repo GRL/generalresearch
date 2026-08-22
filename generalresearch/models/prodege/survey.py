@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
 from functools import cached_property
 from typing import Any, Literal, Type
@@ -127,7 +127,7 @@ class ProdegeQuota(BaseModel):
         return self.remaining_count >= min_open_spots
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return ProdegeCondition
 
     @property
@@ -276,7 +276,7 @@ class ProdegeUserPastParticipation(BaseModel):
         raise ValueError(f"Unknown ext_status_code_1: {self.ext_status_code_1}")
 
     def days_ago(self) -> float:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return (now - self.started).total_seconds() / (3600 * 24)
 
 
@@ -486,7 +486,7 @@ class ProdegeSurvey(MarketplaceTask):
         return data
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return ProdegeCondition
 
     @property
@@ -656,8 +656,8 @@ class ProdegeSurvey(MarketplaceTask):
 
     @classmethod
     def from_db(cls, d: dict[str, Any]) -> ProdegeSurvey:
-        d["created"] = d["created"].replace(tzinfo=timezone.utc)
-        d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
+        d["created"] = d["created"].replace(tzinfo=UTC)
+        d["updated"] = d["updated"].replace(tzinfo=UTC)
         d["quotas"] = json.loads(d["quotas"])
         for k in [
             "max_clicks_settings",

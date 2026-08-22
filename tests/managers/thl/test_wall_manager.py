@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
 
@@ -10,7 +10,7 @@ from generalresearch.models.thl.session import (
     Status,
     StatusCode1,
 )
-from test_utils.models.conftest import user, session
+from test_utils.models.conftest import session, user
 
 
 class TestWallManager:
@@ -88,7 +88,7 @@ class TestWallManager:
             session_id=session.id,
             user_id=user.user_id,
             uuid_id=uuid4().hex,
-            started=datetime.now(tz=timezone.utc),
+            started=datetime.now(tz=UTC),
             source=Source.DYNATA,
             buyer_id="123",
             req_survey_id="456",
@@ -217,9 +217,9 @@ class TestWallCacheManager:
     def test_get_wall_events(
         self, wall_cache_manager, wall_manager, session_manager, user
     ):
-        start1 = datetime.now(timezone.utc) - timedelta(hours=3)
-        start2 = datetime.now(timezone.utc) - timedelta(hours=2)
-        start3 = datetime.now(timezone.utc) - timedelta(hours=1)
+        start1 = datetime.now(UTC) - timedelta(hours=3)
+        start2 = datetime.now(UTC) - timedelta(hours=2)
+        start3 = datetime.now(UTC) - timedelta(hours=1)
 
         session = session_manager.create_dummy(started=start1, user=user)
         wall1 = wall_manager.create_dummy(

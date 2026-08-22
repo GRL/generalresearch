@@ -130,7 +130,7 @@ def decode_uuids(row: dict[str, Any]) -> dict[str, Any]:
 
 class SqlHelper(SqlConnector):
 
-    def __init__(self, dsn: Optional[DataBaseDsn] = None, **kwargs):
+    def __init__(self, dsn: DataBaseDsn | None = None, **kwargs):
         super().__init__(dsn, **kwargs)
 
     def execute_sql_query(
@@ -281,7 +281,7 @@ class SqlHelper(SqlConnector):
         cursor=None,
         commit=True,
         primary_key=None,
-    ) -> Optional[int]:
+    ) -> int | None:
         """
         Create the item in table `table_name`.
         In postgresql, `primary_key` needs to be given in order to return the

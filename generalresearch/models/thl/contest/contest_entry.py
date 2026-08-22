@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from uuid import uuid4
 
 from pydantic import (
@@ -39,12 +39,8 @@ class ContestEntryCreate(BaseModel):
 
 class ContestEntry(BaseModel):
     uuid: UUIDStr = Field(default_factory=lambda: uuid4().hex)
-    created_at: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
-    updated_at: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    created_at: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(UTC))
 
     # entry_type and amount are the same as on ContestEntryCreate
     entry_type: ContestEntryType = Field()

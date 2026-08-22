@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from random import randint
 from uuid import uuid4
 
@@ -118,7 +118,7 @@ class TestBlockUserManager:
         )
         assert not user.blocked
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         # Adds user to whitelist
         thl_web_rw.execute_write(
             """

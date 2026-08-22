@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any
+from typing import Annotated, Any, Self
 
 from pydantic import (
     BaseModel,
@@ -12,7 +12,6 @@ from pydantic import (
     computed_field,
 )
 from pydantic.json_schema import SkipJsonSchema
-from typing_extensions import Annotated, Self
 
 from generalresearch.models import MAX_INT32, Source
 from generalresearch.models.custom_types import UUIDStr

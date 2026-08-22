@@ -1,10 +1,10 @@
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from generalresearch.currency import USDCent
 from generalresearch.models.thl.contest.definitions import (
-    ContestStatus,
     ContestEndReason,
+    ContestStatus,
 )
 from generalresearch.models.thl.contest.leaderboard import (
     LeaderboardContest,
@@ -13,8 +13,10 @@ from generalresearch.models.thl.contest.leaderboard import (
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
 from test_utils.managers.contest.conftest import (
-    leaderboard_contest_in_db as contest_in_db,
     leaderboard_contest_create as contest_create,
+)
+from test_utils.managers.contest.conftest import (
+    leaderboard_contest_in_db as contest_in_db,
 )
 
 
@@ -39,7 +41,7 @@ class TestLeaderboardContestCRUD:
         # We have it set in the fixture as the daily contest for 2025-01-01
         assert c.end_condition.ends_at == datetime(
             2025, 1, 1, 23, 59, 59, 999999, tzinfo=ZoneInfo("America/New_York")
-        ).astimezone(tz=timezone.utc) + timedelta(minutes=90)
+        ).astimezone(tz=UTC) + timedelta(minutes=90)
 
     def test_enter(
         self,

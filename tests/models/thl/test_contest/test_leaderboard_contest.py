@@ -1,4 +1,4 @@
-from datetime import timezone
+from datetime import UTC, timezone
 from uuid import uuid4
 
 import pytest
@@ -26,7 +26,7 @@ class TestLeaderboardContest(TestContest):
     @pytest.fixture
     def leaderboard_contest(
         self, product: Product, thl_redis, user_manager
-    ) -> "LeaderboardContest":
+    ) -> LeaderboardContest:
         board_key = f"leaderboard:{product.uuid}:us:weekly:2025-05-26:complete_count"
 
         c = LeaderboardContest(
@@ -91,7 +91,7 @@ class TestLeaderboardContest(TestContest):
             country_iso=model.country_iso,
             freq=model.freq,
             product_id=leaderboard_contest.product_id,
-            within_time=model.period_start_local.astimezone(tz=timezone.utc),
+            within_time=model.period_start_local.astimezone(tz=UTC),
         )
 
         lbm.hit_complete_count(product_user_id=user_1.product_user_id)

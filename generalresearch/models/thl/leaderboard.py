@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import logging
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from enum import Enum
 from typing import Literal
 from uuid import UUID, uuid3
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 from pydantic import (
@@ -17,7 +18,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from zoneinfo import ZoneInfo
 
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.legacy.api_status import StatusResponse
@@ -167,13 +167,13 @@ class Leaderboard(BaseModel):
     def period_start_utc(self) -> datetime:
         # The start of the time period covered by this board in UTC, tz-aware
         # e.g. datetime(2024, 7, 12, 4, 0, 0, 0, tzinfo=timezone.utc)
-        return self.period_start_local.astimezone(timezone.utc)
+        return self.period_start_local.astimezone(UTC)
 
     @property
     def period_end_utc(self) -> datetime:
         # The end of the time period covered by this board in UTC, tz-aware
         # e.g. datetime(2024, 7, 13, 3, 59, 59, 999999, tzinfo=timezone.utc)
-        return self.period_end_local.astimezone(timezone.utc)
+        return self.period_end_local.astimezone(UTC)
 
     @computed_field(
         description="(unix timestamp) The start time of the time range this leaderboard covers.",

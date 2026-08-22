@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 import pymysql
 from pymysql import IntegrityError
@@ -138,7 +138,7 @@ class MorningSurveyManager(SurveyManager):
         return bids
 
     def create(self, bid: MorningBid) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         d = bid.to_mysql()
         create_fields = self.BID_FIELDS + ["created", "updated"]
 
@@ -179,14 +179,14 @@ class MorningSurveyManager(SurveyManager):
         return True
 
     def update(self, surveys: list[MorningBid]) -> None:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         for survey in surveys:
             self.update_one(survey, now=now)
 
     def update_one(self, bid: MorningBid, now: datetime | None = None) -> bool:
         if now is None:
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=UTC)
         d = bid.to_mysql()
         d["updated"] = now
 

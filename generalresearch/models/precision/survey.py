@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
-from datetime import timezone
+from datetime import UTC, timezone
 from functools import cached_property
-from typing import Any, Dict, List, Literal, Optional, Self, Set, Tuple, Type
+from typing import Annotated, Any, Dict, List, Literal, Optional, Self, Set, Tuple, Type
 
 from more_itertools import flatten
 from pydantic import (
@@ -14,7 +14,6 @@ from pydantic import (
     computed_field,
     model_validator,
 )
-from typing_extensions import Annotated
 
 from generalresearch.models import Source
 from generalresearch.models.custom_types import (
@@ -34,8 +33,8 @@ from generalresearch.models.thl.survey.condition import (
 
 
 class PrecisionCondition(MarketplaceCondition):
-    question_id: Optional[PrecisionQuestionID] = Field()
-    values: List[Annotated[str, Field(max_length=128)]] = Field()
+    question_id: PrecisionQuestionID | None = Field()
+    values: list[Annotated[str, Field(max_length=128)]] = Field()
     value_type: ConditionValueType = Field(default=ConditionValueType.LIST)
     _CONVERT_LIST_TO_RANGE = ["age"]
 
@@ -54,7 +53,7 @@ class PrecisionQuota(BaseModel):
     termination_count: int = Field(ge=0)
     overquota_count: int = Field(ge=0)
 
-    condition_hashes: List[str] = Field(min_length=1, default_factory=list)
+    condition_hashes: list[str] = Field(min_length=1, default_factory=list)
 
     # Min spots a quota should have open to be OPEN
     _min_open_spots: int = PrivateAttr(default=3)
@@ -78,7 +77,7 @@ class PrecisionQuota(BaseModel):
     # TODO: I did some speed tests. This is faster than how this is implemented
     # in sago/spectrum/dynata/etc. We should generalize this logic instead of
     # copying/pasting it 7 times. (matches, matches_optional and _soft)
-    def matches(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def matches(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # Matches means we meet all conditions.
         # In Morning, all quotas are mutually exclusive. so if it doesn't
         # matter if we match a closed quota, b/c that means that we won't
@@ -86,8 +85,8 @@ class PrecisionQuota(BaseModel):
         return self.matches_optional(criteria_evaluation) is True
 
     def matches_optional(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Optional[bool]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> bool | None:
         for c in self.condition_hashes:
             eval_value = criteria_evaluation.get(c)
             if eval_value is False:
@@ -97,8 +96,8 @@ class PrecisionQuota(BaseModel):
         return True
 
     def matches_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], List[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, list[str]]:
         # Passes back "matches" (T/F/none) and a list of unknown criterion hashes
         unknowns = list()
         for c in self.condition_hashes:
@@ -128,7 +127,7 @@ class PrecisionSurvey(MarketplaceTask):
     name: str = Field(validation_alias="prj_name")
     survey_guid: UUIDStrCoerce = Field(validation_alias="prj_guid")
 
-    category_id: Optional[str] = Field(validation_alias="sc_id", default=None)
+    category_id: str | None = Field(validation_alias="sc_id", default=None)
     buyer_id: CoercedStr = Field(max_length=16)
 
     # This seems to always be 0 ... ?
@@ -141,7 +140,7 @@ class PrecisionSurvey(MarketplaceTask):
     bid_ir: float = Field(ge=0, le=1, validation_alias="ir")
     # Be careful with this, it doesn't make any sense. See survey 452481, has 12 completes with a 100% live_ir,
     #   but the only quotas have 0 completes and 1052 terms. .... ??
-    global_conversion: Optional[float] = Field(
+    global_conversion: float | None = Field(
         ge=0,
         le=1,
         default=None,
@@ -156,31 +155,31 @@ class PrecisionSurvey(MarketplaceTask):
     allowed_devices: DeviceTypes = Field(min_length=1)
 
     entry_link: str = Field(validation_alias="url")
-    excluded_surveys: Optional[AlphaNumStrSet] = Field(
+    excluded_surveys: AlphaNumStrSet | None = Field(
         description="list of excluded survey ids",
         default=None,
         validation_alias="exclusion_project_id",
     )
 
-    quotas: List[PrecisionQuota] = Field(default_factory=list)
+    quotas: list[PrecisionQuota] = Field(default_factory=list)
 
     source: Literal[Source.PRECISION] = Field(default=Source.PRECISION)
 
-    used_question_ids: Set[PrecisionQuestionID] = Field(default_factory=set)
+    used_question_ids: set[PrecisionQuestionID] = Field(default_factory=set)
 
     # This is a "special" key to store all conditions that are used (as "condition_hashes") throughout
     #   this survey. In the reduced representation of this task (nearly always, for db i/o, in global_vars)
     #   this field will be null.
-    conditions: Optional[Dict[str, PrecisionCondition]] = Field(default=None)
+    conditions: dict[str, PrecisionCondition] | None = Field(default=None)
 
     # This comes from the API
-    expected_end_date: Optional[AwareDatetimeISO] = Field(
+    expected_end_date: AwareDatetimeISO | None = Field(
         default=None, validation_alias="end_date"
     )
 
     # This does not come from the API. We set it when we update this in the db.
-    created: Optional[AwareDatetimeISO] = Field(default=None)
-    updated: Optional[AwareDatetimeISO] = Field(default=None)
+    created: AwareDatetimeISO | None = Field(default=None)
+    updated: AwareDatetimeISO | None = Field(default=None)
 
     @property
     def internal_id(self) -> str:
@@ -199,7 +198,7 @@ class PrecisionSurvey(MarketplaceTask):
 
     @computed_field
     @cached_property
-    def all_hashes(self) -> Set[str]:
+    def all_hashes(self) -> set[str]:
         s = set()
         for q in self.quotas:
             s.update(set(q.condition_hashes))
@@ -219,7 +218,7 @@ class PrecisionSurvey(MarketplaceTask):
         return data
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return PrecisionCondition
 
     @property
@@ -227,7 +226,7 @@ class PrecisionSurvey(MarketplaceTask):
         return "age"
 
     @property
-    def marketplace_genders(self) -> Dict[Gender, Optional[MarketplaceCondition]]:
+    def marketplace_genders(self) -> dict[Gender, MarketplaceCondition | None]:
         return {
             Gender.MALE: PrecisionCondition(
                 question_id="gender",
@@ -262,7 +261,7 @@ class PrecisionSurvey(MarketplaceTask):
             exclude={"updated", "conditions", "created"}
         ) == other.model_dump(exclude={"updated", "conditions", "created"})
 
-    def to_mysql(self) -> Dict[str, Any]:
+    def to_mysql(self) -> dict[str, Any]:
         d = self.model_dump(
             mode="json",
             exclude={
@@ -283,11 +282,11 @@ class PrecisionSurvey(MarketplaceTask):
         return d
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> Self:
-        d["created"] = d["created"].replace(tzinfo=timezone.utc)
-        d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
+    def from_db(cls, d: dict[str, Any]) -> Self:
+        d["created"] = d["created"].replace(tzinfo=UTC)
+        d["updated"] = d["updated"].replace(tzinfo=UTC)
         d["expected_end_date"] = (
-            d["expected_end_date"].replace(tzinfo=timezone.utc)
+            d["expected_end_date"].replace(tzinfo=UTC)
             if d["expected_end_date"]
             else None
         )
@@ -295,7 +294,7 @@ class PrecisionSurvey(MarketplaceTask):
         d["used_question_ids"] = json.loads(d["used_question_ids"])
         return cls.model_validate(d)
 
-    def passes_quotas(self, criteria_evaluation: Dict[str, Optional[bool]]) -> bool:
+    def passes_quotas(self, criteria_evaluation: dict[str, bool | None]) -> bool:
         # We have to match 1 or more quota.
         # Quotas are exclusionary: they can NOT match a quota where currently_open=0
         any_pass = False
@@ -308,8 +307,8 @@ class PrecisionSurvey(MarketplaceTask):
         return any_pass
 
     def passes_quotas_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Set[str]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str]]:
         # Quotas are exclusionary. They can NOT match a quota where currently_open=0
         quota_eval = {
             quota: quota.matches_soft(criteria_evaluation) for quota in self.quotas
@@ -345,19 +344,19 @@ class PrecisionSurvey(MarketplaceTask):
         return False, set()
 
     def determine_eligibility(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
+        self, criteria_evaluation: dict[str, bool | None]
     ) -> bool:
         return self.is_open and self.passes_quotas(criteria_evaluation)
 
     def determine_eligibility_soft(
-        self, criteria_evaluation: Dict[str, Optional[bool]]
-    ) -> Tuple[Optional[bool], Optional[Set[str]]]:
+        self, criteria_evaluation: dict[str, bool | None]
+    ) -> tuple[bool | None, set[str] | None]:
         if not self.is_open:
             return False, None
         return self.passes_quotas_soft(criteria_evaluation)
 
     def participation_allowed(
-        self, att_survey_ids: Set[str], att_group_ids: Set[str]
+        self, att_survey_ids: set[str], att_group_ids: set[str]
     ) -> bool:
         """
         Checks if this user can participate in this survey

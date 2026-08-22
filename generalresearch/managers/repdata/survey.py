@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 import pymysql
 
@@ -122,7 +122,7 @@ class RepDataSurveyManager(SurveyManager):
         return list(surveys.values())
 
     def create(self, survey: RepDataSurvey | RepDataSurveyHashed) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         d = survey.to_mysql()
         conn: pymysql.Connection = self.sql_helper.make_connection()
         conn.autocommit(True)
@@ -160,7 +160,7 @@ class RepDataSurveyManager(SurveyManager):
         return True
 
     def update(self, surveys: list[RepDataSurveyHashed]) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         update_fields = self.SURVEY_FIELDS + ["last_updated"]
 
         data = [survey.to_mysql() for survey in surveys]

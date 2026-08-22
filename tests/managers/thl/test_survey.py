@@ -1,24 +1,24 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
 
 import pytest
 
 from generalresearch.models import Source
 from generalresearch.models.legacy.bucket import (
-    SurveyEligibilityCriterion,
-    TopNPlusBucket,
     DurationSummary,
     PayoutSummary,
+    SurveyEligibilityCriterion,
+    TopNPlusBucket,
 )
 from generalresearch.models.thl.profiling.user_question_answer import (
     UserQuestionAnswer,
 )
 from generalresearch.models.thl.survey.model import (
     Survey,
-    SurveyStat,
     SurveyCategoryModel,
     SurveyEligibilityDefinition,
+    SurveyStat,
 )
 
 
@@ -258,7 +258,7 @@ class TestSurveyStat:
         return
 
         # 1,000 of the 20,000 are "new"
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         for s in ss[:1000]:
             s.survey__survey_id = "b"
             s.updated_at = now
@@ -298,7 +298,7 @@ class TestSurveyStat:
             source=source, surveys=surveys, survey_stats=survey_stats
         )
         # UPDATE -------
-        since = datetime.now(tz=timezone.utc)
+        since = datetime.now(tz=UTC)
         print(f"{since=}")
 
         # 10 survey disappear

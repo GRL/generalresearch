@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 
 class TestProdegeParticipation:
@@ -10,7 +10,7 @@ class TestProdegeParticipation:
             ProdegeUserPastParticipation,
         )
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         pp = ProdegePastParticipation.from_api(
             {
                 "participation_project_ids": [152677146, 152803285],
@@ -89,7 +89,7 @@ class TestProdegeParticipation:
             ProdegeUserPastParticipation,
         )
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         pp = ProdegePastParticipation.from_api(
             {
                 "participation_project_ids": [152677146, 152803285],

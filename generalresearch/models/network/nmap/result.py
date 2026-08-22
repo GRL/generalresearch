@@ -256,13 +256,13 @@ class NmapScanInfo(BaseModel):
     services: str = Field()
 
     @cached_property
-    def port_set(self) -> Set[int]:
+    def port_set(self) -> set[int]:
         """
         Expand the Nmap services string into a set of port numbers.
         Example:
             "22-25,80,443" -> {22,23,24,25,80,443}
         """
-        ports: Set[int] = set()
+        ports: set[int] = set()
         for part in self.services.split(","):
             if "-" in part:
                 start, end = part.split("-", 1)

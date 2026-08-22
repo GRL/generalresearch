@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
 
 from generalresearch.managers.thl.profiling.uqa import UQAManager
 from generalresearch.models.thl.profiling.user_question_answer import (
-    UserQuestionAnswer,
     DUMMY_UQA,
+    UserQuestionAnswer,
 )
 from generalresearch.models.thl.user import User
 
@@ -18,7 +18,7 @@ class TestUQAManager:
         assert len(uqas) == 0
 
     def test_create(self, uqa_manager: UQAManager, user: User):
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         uqas = [
             UserQuestionAnswer(
                 user_id=user.user_id,
@@ -38,7 +38,7 @@ class TestUQAManager:
         assert res[0] == uqas[0]
 
         # Same question, so this gets updated
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         uqas_update = [
             UserQuestionAnswer(
                 user_id=user.user_id,
@@ -57,7 +57,7 @@ class TestUQAManager:
         assert res[0] == uqas_update[0]
 
         # Add a new answer
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         uqas_new = [
             UserQuestionAnswer(
                 user_id=user.user_id,
@@ -103,7 +103,7 @@ class TestUQAManagerCache:
             UserQuestionAnswer(
                 question_id="5d6d9f3c03bb40bf9d0a24f306387d7c",
                 answer=("1",),
-                timestamp=datetime.now(tz=timezone.utc),
+                timestamp=datetime.now(tz=UTC),
                 country_iso="us",
                 language_iso="eng",
                 property_code="gr:gender",

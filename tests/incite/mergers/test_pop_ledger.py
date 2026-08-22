@@ -1,4 +1,4 @@
-from datetime import timedelta, datetime, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from itertools import product as iter_product
 from typing import Optional
 
@@ -10,7 +10,7 @@ from generalresearch.incite.schemas.mergers.pop_ledger import (
     numerical_col_names,
 )
 from test_utils.incite.collections.conftest import ledger_collection
-from test_utils.incite.conftest import mnt_filepath, incite_item_factory
+from test_utils.incite.conftest import incite_item_factory, mnt_filepath
 from test_utils.incite.mergers.conftest import pop_ledger_merge
 from test_utils.managers.ledger.conftest import create_main_accounts
 
@@ -27,11 +27,11 @@ from test_utils.managers.ledger.conftest import create_main_accounts
 class TestMergePOPLedger:
 
     @pytest.fixture
-    def start(self) -> "datetime":
-        return datetime(year=2020, month=3, day=14, tzinfo=timezone.utc)
+    def start(self) -> datetime:
+        return datetime(year=2020, month=3, day=14, tzinfo=UTC)
 
     @pytest.fixture
-    def duration(self) -> Optional["timedelta"]:
+    def duration(self) -> timedelta | None:
         return timedelta(days=5)
 
     def test_base(
@@ -145,9 +145,9 @@ class TestMergePOPLedger:
         delete_ledger_db,
         session_collection,
     ):
+        from generalresearch.models.thl.finance import ProductBalances
         from generalresearch.models.thl.ledger import LedgerAccount
         from generalresearch.models.thl.product import Product
-        from generalresearch.models.thl.finance import ProductBalances
 
         u = user_factory(product=product, created=session_collection.start)
 

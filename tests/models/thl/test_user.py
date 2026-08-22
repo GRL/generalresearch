@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from random import choice as rand_choice
 from random import randint
@@ -383,7 +383,7 @@ class TestUserCreated:
         from generalresearch.models.thl.user import User
 
         user = User(user_id=self.user_id)
-        dt = datetime.now(tz=timezone.utc)
+        dt = datetime.now(tz=UTC)
         user.created = dt
 
         assert user.created == dt
@@ -419,7 +419,7 @@ class TestUserCreated:
     def test_not_in_future(self):
         from generalresearch.models.thl.user import User
 
-        the_future = datetime.now(tz=timezone.utc) + timedelta(minutes=1)
+        the_future = datetime.now(tz=UTC) + timedelta(minutes=1)
         with pytest.raises(ValueError) as cm:
             User(user_id=self.user_id, created=the_future)
         assert "1 validation error for User" in str(cm.value)
@@ -428,9 +428,9 @@ class TestUserCreated:
     def test_after_anno_domini(self):
         from generalresearch.models.thl.user import User
 
-        before_ad = datetime(
-            year=2015, month=1, day=1, tzinfo=timezone.utc
-        ) + timedelta(minutes=1)
+        before_ad = datetime(year=2015, month=1, day=1, tzinfo=UTC) + timedelta(
+            minutes=1
+        )
         with pytest.raises(ValueError) as cm:
             User(user_id=self.user_id, created=before_ad)
         assert "1 validation error for User" in str(cm.value)
@@ -444,7 +444,7 @@ class TestUserLastSeen:
         from generalresearch.models.thl.user import User
 
         user = User(user_id=self.user_id)
-        dt = datetime.now(tz=timezone.utc)
+        dt = datetime.now(tz=UTC)
         user.last_seen = dt
 
         assert user.last_seen == dt
@@ -480,7 +480,7 @@ class TestUserLastSeen:
     def test_not_in_future(self):
         from generalresearch.models.thl.user import User
 
-        the_future = datetime.now(tz=timezone.utc) + timedelta(minutes=1)
+        the_future = datetime.now(tz=UTC) + timedelta(minutes=1)
         with pytest.raises(ValueError) as cm:
             User(user_id=self.user_id, last_seen=the_future)
         assert "1 validation error for User" in str(cm.value)
@@ -489,9 +489,9 @@ class TestUserLastSeen:
     def test_after_anno_domini(self):
         from generalresearch.models.thl.user import User
 
-        before_ad = datetime(
-            year=2015, month=1, day=1, tzinfo=timezone.utc
-        ) + timedelta(minutes=1)
+        before_ad = datetime(year=2015, month=1, day=1, tzinfo=UTC) + timedelta(
+            minutes=1
+        )
         with pytest.raises(ValueError) as cm:
             User(user_id=self.user_id, last_seen=before_ad)
         assert "1 validation error for User" in str(cm.value)
@@ -549,8 +549,8 @@ class TestUserTiming:
     def test_valid(self):
         from generalresearch.models.thl.user import User
 
-        created = datetime.now(tz=timezone.utc) - timedelta(minutes=60)
-        last_seen = datetime.now(tz=timezone.utc) - timedelta(minutes=59)
+        created = datetime.now(tz=UTC) - timedelta(minutes=60)
+        last_seen = datetime.now(tz=UTC) - timedelta(minutes=59)
 
         user = User(user_id=self.user_id, created=created, last_seen=last_seen)
         assert user.created == created
@@ -559,8 +559,8 @@ class TestUserTiming:
     def test_created_first(self):
         from generalresearch.models.thl.user import User
 
-        created = datetime.now(tz=timezone.utc) - timedelta(minutes=60)
-        last_seen = datetime.now(tz=timezone.utc) - timedelta(minutes=59)
+        created = datetime.now(tz=UTC) - timedelta(minutes=60)
+        last_seen = datetime.now(tz=UTC) - timedelta(minutes=59)
 
         with pytest.raises(ValueError) as cm:
             User(user_id=self.user_id, created=last_seen, last_seen=created)
@@ -602,7 +602,7 @@ class TestUserSerialization:
         user = User(
             product_id=product_id,
             product_user_id=product_user_id,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             blocked=False,
         )
 
@@ -623,7 +623,7 @@ class TestUserSerialization:
         user = User(
             product_id=product_id,
             product_user_id=product_user_id,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             blocked=False,
         )
 
@@ -633,7 +633,7 @@ class TestUserSerialization:
         assert not d.get("blocked")
 
         assert d.get("product") is None
-        assert d.get("created").tzinfo == timezone.utc
+        assert d.get("created").tzinfo == UTC
 
     def test_from_json(self):
         from generalresearch.models.thl.user import User
@@ -644,14 +644,14 @@ class TestUserSerialization:
         user = User(
             product_id=product_id,
             product_user_id=product_user_id,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             blocked=False,
         )
 
         u = User.model_validate_json(user.to_json())
         assert u.product_id == product_id
         assert u.product is None
-        assert u.created.tzinfo == timezone.utc
+        assert u.created.tzinfo == UTC
 
 
 class TestUserMethods:

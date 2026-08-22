@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from itertools import zip_longest
 from typing import Any
 
@@ -210,7 +210,7 @@ class IPRecordManager(PostgresManagerWithRedis):
         data = {
             "user_id": user_id,
             "ip": ipaddress.ip_address(ip).exploded,
-            "created": datetime.now(tz=timezone.utc),
+            "created": datetime.now(tz=UTC),
         }
 
         fips_cols = [
@@ -335,7 +335,7 @@ class AuditLogManager(PostgresManager):
         al = AuditLog.model_validate(
             {
                 "user_id": user_id,
-                "created": datetime.now(tz=timezone.utc),
+                "created": datetime.now(tz=UTC),
                 "level": level,
                 "event_type": event_type,
                 "event_msg": event_msg,
@@ -495,7 +495,7 @@ class AuditLogManager(PostgresManager):
         ), "must pass user_id as int"
 
         if created_after is None:
-            created_after = datetime.now(tz=timezone.utc) - timedelta(days=7)
+            created_after = datetime.now(tz=UTC) - timedelta(days=7)
 
         filters = [
             "user_id = ANY(%(user_ids)s)",

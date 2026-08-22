@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 from uuid import uuid4
 
 import pandas as pd
@@ -18,7 +18,6 @@ from pydantic import (
     field_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
-from typing_extensions import Self
 
 from generalresearch.decorators import LOG
 from generalresearch.incite.mergers.foundations.enriched_session import (
@@ -92,7 +91,7 @@ class Membership(BaseModel):
     @classmethod
     def created_utc(cls, v: datetime | str) -> datetime | str:
         if isinstance(v, datetime):
-            return v.replace(tzinfo=timezone.utc)
+            return v.replace(tzinfo=UTC)
         return v
 
     # --- prefetch methods ---

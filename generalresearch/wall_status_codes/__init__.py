@@ -22,9 +22,9 @@ from generalresearch.wall_status_codes import (
 def annotate_status_code(
     source: Source,
     ext_status_code_1: str,
-    ext_status_code_2: Optional[str] = None,
-    ext_status_code_3: Optional[str] = None,
-) -> Tuple[Status, Optional[StatusCode1], Optional[str]]:
+    ext_status_code_2: str | None = None,
+    ext_status_code_3: str | None = None,
+) -> tuple[Status, StatusCode1 | None, str | None]:
     """
     :params ext_status_code_1: marketplace-dependent code
     :params ext_status_code_2: marketplace-dependent code

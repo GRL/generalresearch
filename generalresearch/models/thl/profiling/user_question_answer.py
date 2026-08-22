@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
-from typing import Any, Iterator, Literal
+from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta, timezone
+from typing import Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -12,7 +13,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.grpc import timestamp_to_datetime
 from generalresearch.models import MAX_INT32, Source
@@ -28,9 +28,7 @@ class UserQuestionAnswer(BaseModel):
     user_id: PositiveInt | None = Field(lt=MAX_INT32, default=None)
     question_id: UUIDStr = Field()
     answer: tuple[str, ...] = Field()
-    timestamp: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    timestamp: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     country_iso: CountryISO | Literal["xx"] = Field()
     language_iso: LanguageISO | Literal["xxx"] = Field()
@@ -105,7 +103,7 @@ class UserQuestionAnswer(BaseModel):
             return True, ""
 
     def is_stale(self) -> bool:
-        return self.timestamp < datetime.now(tz=timezone.utc) - timedelta(days=30)
+        return self.timestamp < datetime.now(tz=UTC) - timedelta(days=30)
 
     @classmethod
     def from_grpc(cls, msg, default_timestamp: datetime) -> Self:
@@ -129,7 +127,7 @@ class UserQuestionAnswer(BaseModel):
 DUMMY_UQA = UserQuestionAnswer(
     question_id="f118edd01cf1476ba7200a175fb4351d",
     answer=("0",),
-    timestamp=datetime(2020, 1, 1, tzinfo=timezone.utc),
+    timestamp=datetime(2020, 1, 1, tzinfo=UTC),
     country_iso="xx",
     language_iso="xxx",
     property_code="dummy",

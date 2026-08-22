@@ -4,7 +4,7 @@ import statistics
 from datetime import timedelta
 from decimal import Decimal
 from string import Formatter
-from typing import Any
+from typing import Annotated, Any, Self
 from uuid import uuid4
 
 import numpy as np
@@ -18,7 +18,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Annotated, Self
 
 from generalresearch.models import Source
 from generalresearch.models.custom_types import HttpsUrl, UUIDStr

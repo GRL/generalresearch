@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 from uuid import uuid4
 
 import pandas as pd
@@ -16,7 +16,6 @@ from psycopg.rows import dict_row
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_extra_types.phone_numbers import PhoneNumber
-from typing_extensions import Self
 
 from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
@@ -391,8 +390,8 @@ class Business(BaseModel):
             pop_ledger = plm(ds=ds)
 
         if at_timestamp is None:
-            at_timestamp = datetime.now(tz=timezone.utc)
-        assert at_timestamp.tzinfo == timezone.utc
+            at_timestamp = datetime.now(tz=UTC)
+        assert at_timestamp.tzinfo == UTC
 
         ddf = pop_ledger.ddf(
             force_rr_latest=False,
@@ -724,7 +723,7 @@ class Business(BaseModel):
         if "pop_financial" in keys:
             # We should explicitly pass the pop_financial years we want. By default,
             #   at least get this year.
-            year = datetime.now(tz=timezone.utc).year
+            year = datetime.now(tz=UTC).year
             keys = list(set(keys) | {f"pop_financial:{year}"})
         rc = gr_redis_config.create_redis_client()
 

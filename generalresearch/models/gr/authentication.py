@@ -3,8 +3,8 @@ from __future__ import annotations
 import binascii
 import json
 import os
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from datetime import UTC, datetime, timezone
+from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import (
     AnyHttpUrl,
@@ -15,7 +15,6 @@ from pydantic import (
     PositiveInt,
     field_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.decorators import LOG
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
@@ -199,7 +198,7 @@ class GRUser(BaseModel):
     @field_validator("date_joined")
     @classmethod
     def date_joined_utc(cls, v: datetime) -> datetime:
-        return v.replace(tzinfo=timezone.utc)
+        return v.replace(tzinfo=UTC)
 
     # --- Properties ---
     @property
@@ -290,7 +289,7 @@ class GRUser(BaseModel):
 
     @classmethod
     def from_postgresql(cls, d: dict) -> Self:
-        d["date_joined"] = d["date_joined"].replace(tzinfo=timezone.utc)
+        d["date_joined"] = d["date_joined"].replace(tzinfo=UTC)
         return GRUser.model_validate(d)
 
     @classmethod
@@ -354,7 +353,7 @@ class GRToken(BaseModel):
     @field_validator("created", mode="before")
     @classmethod
     def created_utc(cls, v: datetime) -> datetime:
-        return v.replace(tzinfo=timezone.utc)
+        return v.replace(tzinfo=UTC)
 
     # --- Properties ---
 

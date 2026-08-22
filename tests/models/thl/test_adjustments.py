@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Callable
 
 import pytest
 
@@ -16,14 +16,14 @@ from generalresearch.models.thl.session import (
 )
 from generalresearch.models.thl.user import User
 
-started1 = datetime(2023, 1, 1, tzinfo=timezone.utc)
-started2 = datetime(2023, 1, 1, 0, 10, 0, tzinfo=timezone.utc)
+started1 = datetime(2023, 1, 1, tzinfo=UTC)
+started2 = datetime(2023, 1, 1, 0, 10, 0, tzinfo=UTC)
 finished1 = started1 + timedelta(minutes=10)
 finished2 = started2 + timedelta(minutes=10)
 
-adj_ts = datetime(2023, 2, 2, tzinfo=timezone.utc)
-adj_ts2 = datetime(2023, 2, 3, tzinfo=timezone.utc)
-adj_ts3 = datetime(2023, 2, 4, tzinfo=timezone.utc)
+adj_ts = datetime(2023, 2, 2, tzinfo=UTC)
+adj_ts2 = datetime(2023, 2, 3, tzinfo=UTC)
+adj_ts3 = datetime(2023, 2, 4, tzinfo=UTC)
 
 
 class TestProductAdjustments:

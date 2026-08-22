@@ -1,5 +1,6 @@
 from datetime import datetime
-from typing import Any, Collection, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+from collections.abc import Collection
 
 from generalresearch.grliq.models.forensic_result import (
     GrlIqForensicCategoryResult,
@@ -16,16 +17,16 @@ class GrlIqCategoryResultsReader:
 
     def filter_category_results(
         self,
-        session_uuid: Optional[str] = None,
-        fingerprint: Optional[str] = None,
-        phase: Optional[Phase] = None,
-        uuids: Optional[Collection[str]] = None,
-        product_ids: Optional[Collection[str]] = None,
-        created_since: Optional[datetime] = None,
-        created_between: Optional[Tuple[datetime, datetime]] = None,
-        user: Optional[User] = None,
-        limit: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
+        session_uuid: str | None = None,
+        fingerprint: str | None = None,
+        phase: Phase | None = None,
+        uuids: Collection[str] | None = None,
+        product_ids: Collection[str] | None = None,
+        created_since: datetime | None = None,
+        created_between: tuple[datetime, datetime] | None = None,
+        user: User | None = None,
+        limit: int | None = None,
+    ) -> list[dict[str, Any]]:
         """
         For retrieving GrlIqForensicCategoryResult objects from db.
 

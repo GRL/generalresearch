@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
 
 
@@ -140,11 +140,11 @@ class TestSpectrumSurvey:
             "survey_id": 29333264,
             "survey_name": "Exciting New Survey #29333264",
             "survey_status": 22,
-            "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=timezone.utc),
+            "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=UTC),
             "category": "Exciting New",
             "category_code": 232,
-            "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=timezone.utc),
-            "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=timezone.utc),
+            "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=UTC),
+            "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=UTC),
             "soft_launch": False,
             "click_balancing": 0,
             "price_type": 1,
@@ -212,7 +212,7 @@ class TestSpectrumSurvey:
             survey_id="29333264",
             survey_name="Exciting New Survey #29333264",
             status=SpectrumStatus.LIVE,
-            field_end_date=datetime(2024, 5, 23, 18, 18, 31, tzinfo=timezone.utc),
+            field_end_date=datetime(2024, 5, 23, 18, 18, 31, tzinfo=UTC),
             category_code="232",
             calculation_type=TaskCalculationType.COMPLETES,
             requires_pii=False,
@@ -240,8 +240,8 @@ class TestSpectrumSurvey:
                     values=["18-64"],
                 )
             },
-            created_api=datetime(2024, 5, 20, 17, 48, 13, tzinfo=timezone.utc),
-            modified_api=datetime(2024, 5, 20, 18, 18, 31, tzinfo=timezone.utc),
+            created_api=datetime(2024, 5, 20, 17, 48, 13, tzinfo=UTC),
+            modified_api=datetime(2024, 5, 20, 18, 18, 31, tzinfo=UTC),
             updated=None,
         )
         assert expected_survey.model_dump_json() == s.model_dump_json()
@@ -255,11 +255,11 @@ class TestSpectrumSurvey:
             "survey_id": 29333264,
             "survey_name": "#29333264",
             "survey_status": 22,
-            "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=timezone.utc),
+            "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=UTC),
             "category": "Exciting New",
             "category_code": 232,
-            "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=timezone.utc),
-            "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=timezone.utc),
+            "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=UTC),
+            "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=UTC),
             "soft_launch": False,
             "click_balancing": 0,
             "price_type": 1,
@@ -318,11 +318,11 @@ class TestSpectrumSurvey:
             "survey_id": 29333264,
             "survey_name": "#29333264",
             "survey_status": 22,
-            "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=timezone.utc),
+            "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=UTC),
             "category": "Exciting New",
             "category_code": 232,
-            "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=timezone.utc),
-            "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=timezone.utc),
+            "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=UTC),
+            "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=UTC),
             "soft_launch": False,
             "click_balancing": 0,
             "price_type": 1,

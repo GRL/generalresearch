@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from uuid import uuid4
 
 from generalresearch.models.custom_types import UUIDStr
@@ -33,10 +33,10 @@ def execute_mtr(
         ),
     )
 
-    started_at = datetime.now(tz=timezone.utc)
+    started_at = datetime.now(tz=UTC)
     tool_version = get_mtr_version()
     result = run_mtr(config)
-    finished_at = datetime.now(tz=timezone.utc)
+    finished_at = datetime.now(tz=UTC)
 
     return MTRRun(
         tool_name=ToolName.MTR,

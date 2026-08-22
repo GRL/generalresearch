@@ -1,17 +1,17 @@
 import copy
-from datetime import datetime, timezone, timedelta, date
+from datetime import UTC, date, datetime, timedelta, timezone
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 import pytest
 
 from generalresearch.managers.thl.user_streak import compute_streaks_from_days
-from generalresearch.models.thl.definitions import StatusCode1, Status
+from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.models.thl.user_streak import (
-    UserStreak,
-    StreakState,
-    StreakPeriod,
     StreakFulfillment,
+    StreakPeriod,
+    StreakState,
+    UserStreak,
 )
 
 
@@ -126,7 +126,7 @@ def test_user_streaks_active_broken(
     user_streak_manager, user, session_manager, broken_active_streak
 ):
     # Testing active streak, but broken (not today or yesterday)
-    start1 = datetime(2025, 2, 12, tzinfo=timezone.utc)
+    start1 = datetime(2025, 2, 12, tzinfo=UTC)
     end1 = start1 + timedelta(minutes=1)
 
     # abandon counts as inactive
@@ -176,7 +176,7 @@ def test_user_streak_complete_active(user_streak_manager, user, session_manager)
 
     # They completed yesterday NY time. Today isn't over so streak is pending
     start1 = datetime.now(tz=ZoneInfo("America/New_York")) - timedelta(days=1)
-    create_session_complete(session_manager, start1.astimezone(tz=timezone.utc), user)
+    create_session_complete(session_manager, start1.astimezone(tz=UTC), user)
 
     last_complete_day = start1.date()
     expected_streak = UserStreak(
@@ -201,7 +201,7 @@ def test_user_streak_complete_active(user_streak_manager, user, session_manager)
 
     # And now they complete today
     start2 = datetime.now(tz=ZoneInfo("America/New_York"))
-    create_session_complete(session_manager, start2.astimezone(tz=timezone.utc), user)
+    create_session_complete(session_manager, start2.astimezone(tz=UTC), user)
     last_complete_day = start2.date()
     expected_streak = UserStreak(
         longest_streak=2,

@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from enum import Enum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Self
 from uuid import UUID
 
 from pydantic import (
@@ -16,7 +16,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.models import MAX_INT32, Source, string_utils
 from generalresearch.models.custom_types import AwareDatetimeISO
@@ -50,9 +49,7 @@ class SpectrumUserQuestionAnswer(BaseModel):
     # This may be a pipe-separated string if the question_type is multi. regex
     #   means any chars except capital letters
     option_id: str = Field(pattern=r"^[^A-Z]*$")
-    created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    created: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
     # ISO 3166-1 alpha-2 (two-letter codes, lowercase)
     country_iso: str = Field(
         max_length=2, min_length=2, pattern=r"^[a-z]{2}$", frozen=True
@@ -283,7 +280,7 @@ class SpectrumQuestion(MarketplaceQuestion):
             ]
 
         created = (
-            datetime.utcfromtimestamp(d["crtd_on"] / 1000).replace(tzinfo=timezone.utc)
+            datetime.utcfromtimestamp(d["crtd_on"] / 1000).replace(tzinfo=UTC)
             if d.get("crtd_on")
             else None
         )
@@ -308,9 +305,7 @@ class SpectrumQuestion(MarketplaceQuestion):
                 SpectrumQuestionOption(id=r["id"], text=r["text"], order=r["order"])
                 for r in d["options"]
             ]
-        d["created"] = (
-            d["created"].replace(tzinfo=timezone.utc) if d["created"] else None
-        )
+        d["created"] = d["created"].replace(tzinfo=UTC) if d["created"] else None
 
         return cls(
             question_id=d["question_id"],

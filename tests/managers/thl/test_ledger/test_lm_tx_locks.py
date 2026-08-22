@@ -1,7 +1,7 @@
 import logging
-from datetime import datetime, timezone, timedelta
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Callable
 
 import pytest
 
@@ -9,21 +9,21 @@ from generalresearch.managers.thl.ledger_manager.conditions import (
     generate_condition_mp_payment,
 )
 from generalresearch.managers.thl.ledger_manager.exceptions import (
+    LedgerTransactionCreateError,
     LedgerTransactionCreateLockError,
     LedgerTransactionFlagAlreadyExistsError,
-    LedgerTransactionCreateError,
 )
 from generalresearch.models import Source
 from generalresearch.models.thl.ledger import LedgerTransaction
 from generalresearch.models.thl.session import (
-    Wall,
+    Session,
     Status,
     StatusCode1,
-    Session,
+    Wall,
     WallAdjustedStatus,
 )
 from generalresearch.models.thl.user import User
-from test_utils.models.conftest import user_factory, session, product_user_wallet_no
+from test_utils.models.conftest import product_user_wallet_no, session, user_factory
 
 logger = logging.getLogger("LedgerManager")
 
@@ -139,7 +139,7 @@ class TestLedgerLocks:
         delete_ledger_db()
         create_main_accounts()
 
-        now = datetime.now(timezone.utc) - timedelta(hours=1)
+        now = datetime.now(UTC) - timedelta(hours=1)
         user: User = user_factory(product=product_user_wallet_no)
 
         # A User does a Wall complete on Session.id=1 and the transaction is
@@ -283,8 +283,8 @@ class TestLedgerLocks:
             session_id=3,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
 
         thl_lm.create_tx_task_complete(wall=wall1, user=user, created=wall1.started)
@@ -327,8 +327,8 @@ class TestLedgerLocks:
             session_id=3,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
 
         thl_lm.create_tx_task_complete(wall1, user, created=wall1.started)

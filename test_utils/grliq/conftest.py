@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Callable
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -83,7 +83,7 @@ def grliq_data() -> GrlIqData:
 
     g.id = None
     g.uuid = uuid4().hex
-    g.created_at = datetime.now(tz=timezone.utc)
+    g.created_at = datetime.now(tz=UTC)
     g.timestamp = g.created_at - timedelta(seconds=10)
     return g
 
@@ -117,7 +117,7 @@ def grliq_data_factory(grliq_dm: GrlIqDataManager) -> Callable[..., GrlIqData]:
         product_user_id = product_user_id or uuid4().hex
         uuid = uuid or uuid4().hex
         mid = mid or uuid4().hex
-        created_at = created_at or datetime.now(tz=timezone.utc)
+        created_at = created_at or datetime.now(tz=UTC)
 
         res["data"].product_id = product_id
         res["data"].product_user_id = product_user_id

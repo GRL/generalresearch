@@ -33,7 +33,7 @@ class FinishType(str, Enum, metaclass=ReprEnumMeta):
     FAIL = "fail"
 
     @property
-    def finish_statuses(self) -> Set[Optional[WXETStatus]]:
+    def finish_statuses(self) -> set[WXETStatus | None]:
         """For this particular FinishType, what are the different WXETStatus
         values that are consider
         """
@@ -64,9 +64,9 @@ class FinishType(str, Enum, metaclass=ReprEnumMeta):
 
 
 def is_a_finish(
-    status: Optional[WXETStatus],
-    status_code_1: Optional[WXETStatusCode1],
-    finish_type: Optional[FinishType],
+    status: WXETStatus | None,
+    status_code_1: WXETStatusCode1 | None,
+    finish_type: FinishType | None,
 ) -> bool:
     """Determines if a wall event should be considered a finish or not.
 

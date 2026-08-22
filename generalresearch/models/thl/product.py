@@ -6,14 +6,15 @@ import json
 import math
 import warnings
 from collections import defaultdict
+from collections.abc import Callable
 from decimal import Decimal
 from enum import Enum
 from functools import cached_property, partial
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Literal,
+    Self,
 )
 from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
@@ -34,7 +35,6 @@ from pydantic import (
     model_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
-from typing_extensions import Self
 
 from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
@@ -941,9 +941,7 @@ class Product(BaseModel, validate_assignment=True):
 
     # Initialization is deferred until unless it's called
     # (see .prebuild_***())
-    balance: ProductBalances | None = Field(
-        default=None, description="Product Balance"
-    )
+    balance: ProductBalances | None = Field(default=None, description="Product Balance")
 
     payouts_total_str: str | None = Field(default=None)
     payouts_total: USDCent | None = Field(default=None)

@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import re
 import sys as _sys
-from datetime import datetime, timedelta, timezone
-from typing import Any, Literal
+from datetime import UTC, datetime, timedelta, timezone
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import (
@@ -20,7 +20,6 @@ from pydantic.functional_serializers import PlainSerializer
 from pydantic.functional_validators import AfterValidator, BeforeValidator
 from pydantic.networks import IPvAnyNetwork, UrlConstraints
 from pydantic_core import MultiHostHost, Url
-from typing_extensions import Annotated
 
 from generalresearch.models import DeviceType, Source
 
@@ -57,19 +56,17 @@ def convert_str_dt(v: Any) -> AwareDatetime | None:
     # to parse a str that was dumped using the iso8601 format with Z suffix.
     if v is not None and type(v) is str:
         assert v.endswith("Z") and "T" in v, "invalid format"
-        return datetime.strptime(v, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
-            tzinfo=timezone.utc
-        )
+        return datetime.strptime(v, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
     return v
 
 
 def assert_utc(v: AwareDatetime) -> AwareDatetime:
     if isinstance(v, datetime):
         # We need utcoffset b/c FastAPI parses datetimes using FixedTimezone
-        assert v.tzinfo == timezone.utc or v.tzinfo.utcoffset(v) == timedelta(
+        assert v.tzinfo == UTC or v.tzinfo.utcoffset(v) == timedelta(
             0
         ), "Timezone is not UTC"
-        v = v.astimezone(timezone.utc)
+        v = v.astimezone(UTC)
     return v
 
 
@@ -309,4 +306,4 @@ PropertyCode = Annotated[
 
 
 def now_utc_factory():
-    return datetime.now(tz=timezone.utc)
+    return datetime.now(tz=UTC)

@@ -1,6 +1,6 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from enum import StrEnum
-from typing import Dict, Literal, Optional, Union
+from typing import Annotated, Dict, Literal, Optional, Union
 from uuid import uuid4
 
 from pydantic import (
@@ -12,7 +12,6 @@ from pydantic import (
     TypeAdapter,
     model_validator,
 )
-from typing_extensions import Annotated
 
 from generalresearch.models import Source
 from generalresearch.models.custom_types import (
@@ -63,7 +62,7 @@ class TaskEnterPayload(BaseModel):
 
     source: Source = Field()
     survey_id: str = Field(min_length=1, max_length=32, examples=["127492892"])
-    quota_id: Optional[str] = Field(
+    quota_id: str | None = Field(
         default=None,
         max_length=32,
         description="The marketplace's internal quota id",
@@ -76,9 +75,9 @@ class TaskFinishPayload(TaskEnterPayload):
 
     duration_sec: PositiveFloat = Field()
     status: Status
-    status_code_1: Optional[StatusCode1] = None
-    status_code_2: Optional[WallStatusCode2] = None
-    cpi: Optional[NonNegativeInt] = Field(le=4000, default=None)
+    status_code_1: StatusCode1 | None = None
+    status_code_2: WallStatusCode2 | None = None
+    cpi: NonNegativeInt | None = Field(le=4000, default=None)
 
 
 class SessionEnterPayload(BaseModel):
@@ -91,18 +90,13 @@ class SessionFinishPayload(SessionEnterPayload):
 
     duration_sec: PositiveFloat = Field()
     status: Status
-    status_code_1: Optional[StatusCode1] = None
-    status_code_2: Optional[SessionStatusCode2] = None
-    user_payout: Optional[NonNegativeInt] = Field(default=None, le=4000, ge=0)
+    status_code_1: StatusCode1 | None = None
+    status_code_2: SessionStatusCode2 | None = None
+    user_payout: NonNegativeInt | None = Field(default=None, le=4000, ge=0)
 
 
 EventPayload = Annotated[
-    Union[
-        TaskEnterPayload,
-        TaskFinishPayload,
-        SessionEnterPayload,
-        SessionFinishPayload,
-    ],
+    TaskEnterPayload | TaskFinishPayload | SessionEnterPayload | SessionFinishPayload,
     Field(discriminator="event_type"),
 ]
 
@@ -110,12 +104,10 @@ EventPayload = Annotated[
 class EventEnvelope(BaseModel):
     event_uuid: UUIDStr = Field(default_factory=lambda: uuid4().hex)
     event_type: EventType = Field()
-    timestamp: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    timestamp: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
     version: int = 1
 
-    product_user_id: Optional[str] = Field(
+    product_user_id: str | None = Field(
         min_length=3,
         max_length=128,
         examples=["app-user-9329ebd"],
@@ -136,7 +128,7 @@ class EventEnvelope(BaseModel):
 
 class AggregateBySource(BaseModel):
     total: NonNegativeInt = Field(default=0)
-    by_source: Dict[Source, NonNegativeInt] = Field(default_factory=dict)
+    by_source: dict[Source, NonNegativeInt] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def remove_zero(self):
@@ -145,8 +137,8 @@ class AggregateBySource(BaseModel):
 
 
 class MaxGaugeBySource(BaseModel):
-    value: Optional[NonNegativeInt] = Field(default=None)
-    by_source: Dict[Source, NonNegativeInt] = Field(default_factory=dict)
+    value: NonNegativeInt | None = Field(default=None)
+    by_source: dict[Source, NonNegativeInt] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def remove_zero(self):
@@ -174,11 +166,9 @@ class StatsSnapshot(TaskStatsSnapshot):
     model_config = ConfigDict(ser_json_timedelta="float")
 
     # If this is set, then everything is scoped to this country.
-    country_iso: Optional[CountryISOLike] = Field(default=None)
+    country_iso: CountryISOLike | None = Field(default=None)
 
-    timestamp: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    timestamp: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # Counts: User related
     active_users_last_1h: NonNegativeInt = Field(
@@ -217,17 +207,17 @@ class StatsSnapshot(TaskStatsSnapshot):
     )
 
     # Rolling averages
-    session_avg_payout_last_24h: Optional[NonNegativeInt] = Field(
+    session_avg_payout_last_24h: NonNegativeInt | None = Field(
         description="Average (actual) payout of all tasks completed in the past 24 hrs"
     )
-    session_avg_user_payout_last_24h: Optional[NonNegativeInt] = Field(
+    session_avg_user_payout_last_24h: NonNegativeInt | None = Field(
         description="Average (actual) user payout of all tasks completed in the past 24 hrs"
     )
 
-    session_fail_avg_loi_last_24h: Optional[timedelta] = Field(
+    session_fail_avg_loi_last_24h: timedelta | None = Field(
         description="Average LOI of all tasks terminated in the past 24 hrs (excludes abandons)"
     )
-    session_complete_avg_loi_last_24h: Optional[timedelta] = Field(
+    session_complete_avg_loi_last_24h: timedelta | None = Field(
         description="Average LOI of all tasks completed in the past 24 hrs"
     )
 
@@ -246,34 +236,26 @@ class StatsSnapshot(TaskStatsSnapshot):
 
 class EventMessage(BaseModel):
     kind: Literal[MessageKind.EVENT] = Field(default=MessageKind.EVENT)
-    timestamp: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    timestamp: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
     data: EventEnvelope
 
 
 class StatsMessage(BaseModel):
     kind: Literal[MessageKind.STATS] = Field(default=MessageKind.STATS)
-    timestamp: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    timestamp: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
     # The data/StatsSnapshot can optionally be scoped to a country
-    country_iso: Optional[CountryISOLike] = Field(default=None)
+    country_iso: CountryISOLike | None = Field(default=None)
     data: StatsSnapshot
 
 
 class PingMessage(BaseModel):
     kind: Literal[MessageKind.PING] = Field(default=MessageKind.PING)
-    timestamp: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    timestamp: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
 
 class PongMessage(BaseModel):
     kind: Literal[MessageKind.PONG] = Field(default=MessageKind.PONG)
-    timestamp: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    timestamp: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
 
 class SubscribeMessage(BaseModel):

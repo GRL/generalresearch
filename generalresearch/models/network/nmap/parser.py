@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any
 
 from generalresearch.models.network.definitions import IPProtocol
@@ -123,7 +123,7 @@ class NmapXmlParser:
         finished_at = None
         ts = finished.attrib.get("time")
         if ts:
-            finished_at = datetime.fromtimestamp(int(ts), tz=timezone.utc)
+            finished_at = datetime.fromtimestamp(int(ts), tz=UTC)
 
         return {
             "finished_at": finished_at,
@@ -136,7 +136,7 @@ class NmapXmlParser:
         nmaprun = dict(nmaprun_el.attrib)
         nmap_data["command_line"] = nmaprun["args"]
         nmap_data["started_at"] = datetime.fromtimestamp(
-            float(nmaprun["start"]), tz=timezone.utc
+            float(nmaprun["start"]), tz=UTC
         )
         nmap_data["version"] = nmaprun["version"]
         nmap_data["xmloutputversion"] = nmaprun["xmloutputversion"]

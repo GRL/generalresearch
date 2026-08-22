@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from enum import Enum
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Literal
@@ -43,9 +43,7 @@ class ProdegeUserQuestionAnswer(BaseModel):
 
     # This may be a pipe-separated string if the question_type is multi. regex means any chars except capital letters
     option_id: str = Field(pattern=r"^[^A-Z]*$")
-    created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    created: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # ISO 3166-1 alpha-2 (two-letter codes, lowercase)
     country_iso: str = Field(

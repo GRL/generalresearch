@@ -228,7 +228,7 @@ class CountryRTTDistribution(BaseModel):
     rtt_mean: float = Field(gt=0, examples=[179.302])
     rtt_max: float = Field(gt=0, examples=[890.006])
     rtt_std: float = Field(gt=0, examples=[46.831])
-    rtt_percentiles: List[float] = Field(
+    rtt_percentiles: list[float] = Field(
         min_length=101, max_length=101, examples=[example_rtt_percentiles]
     )
 

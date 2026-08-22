@@ -1,7 +1,8 @@
 import threading
 import time
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 from decorator import decorator
 from wrapt import FunctionWrapper, ObjectProxy
@@ -12,7 +13,7 @@ def retry(
     tries: int = 4,
     delay: float = 0.5,
     backoff: int = 2,
-    logger: Optional[Any] = None,
+    logger: Any | None = None,
 ) -> Callable:
     """
     https://www.calazan.com/retry-decorator-for-python-3/

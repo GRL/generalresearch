@@ -1,9 +1,9 @@
 import binascii
 import json
 import os
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timezone
 from random import randint
-from typing import Callable
 from uuid import uuid4
 
 import pytest
@@ -251,7 +251,7 @@ class TestGRToken:
     def gr_token(self, gr_user):
         from generalresearch.models.gr.authentication import GRToken
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         token = binascii.hexlify(os.urandom(20)).decode()
 
         gr_token = GRToken(key=token, created=now, user_id=gr_user.id)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import Any
 
 import pandas as pd
@@ -544,7 +544,7 @@ class SurveyStatManager(PostgresManager):
         VALUES ({values_str})
         ON CONFLICT ({unique_cols_str})
         DO UPDATE SET {update_str};"""
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         params = [ss.model_dump_sql() | {"updated_at": now} for ss in survey_stats]
 
         with self.pg_config.make_connection() as conn:

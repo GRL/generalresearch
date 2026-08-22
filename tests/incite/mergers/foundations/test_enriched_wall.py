@@ -1,4 +1,4 @@
-from datetime import timedelta, timezone, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from itertools import product as iter_product
 from typing import Optional
@@ -9,13 +9,13 @@ import pytest
 
 # noinspection PyUnresolvedReferences
 from distributed.utils_test import (
-    gen_cluster,
+    cleanup,
+    client,
     client_no_amm,
+    cluster_fixture,
+    gen_cluster,
     loop,
     loop_in_thread,
-    cleanup,
-    cluster_fixture,
-    client,
 )
 
 from generalresearch.incite.mergers.foundations.enriched_wall import (
@@ -158,15 +158,15 @@ class TestEnrichedWall:
 class TestEnrichedWallToAdmin:
 
     @pytest.fixture
-    def start(self) -> "datetime":
-        return datetime(year=2020, month=3, day=14, tzinfo=timezone.utc)
+    def start(self) -> datetime:
+        return datetime(year=2020, month=3, day=14, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:
         return "1d"
 
     @pytest.fixture
-    def duration(self) -> Optional["timedelta"]:
+    def duration(self) -> timedelta | None:
         return timedelta(days=5)
 
     def test_empty(self, enriched_wall_merge, client_no_amm, start):

@@ -1,7 +1,7 @@
 import logging
 import os.path
 import subprocess
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from enum import Enum
 from sys import platform
 from typing import List, Optional, Type
@@ -11,7 +11,7 @@ import pandas as pd
 from dask.distributed import Client
 from pandera.pandas import DataFrameSchema
 from pydantic import Field, ValidationInfo, field_validator, model_validator
-from typing_extensions import Self
+from typing import Self
 
 from generalresearch.incite.base import CollectionBase, CollectionItemBase
 from generalresearch.incite.schemas import PARTITION_ON
@@ -80,7 +80,7 @@ class MergeCollectionItem(CollectionItemBase):
                 pd.Timestamp(self.start) + pd.Timedelta(self._collection.offset)
             ).to_pydatetime()
         else:
-            return datetime.now(tz=timezone.utc).replace(microsecond=0)
+            return datetime.now(tz=UTC).replace(microsecond=0)
 
     @property
     def filename(self) -> str:
@@ -236,20 +236,20 @@ class MergeCollection(CollectionBase):
 
     # In a merge, we can set offset = None which indicates that there is only 1
     #   period/item where the range is 'start' until now.
-    offset: Optional[str] = Field(default="72h")
+    offset: str | None = Field(default="72h")
     # In a merge, we can set start = None which indicates that there is only 1
     #   period/item where the range is (now - offset) until now.
-    start: Optional[AwareDatetimeISO] = Field(
+    start: AwareDatetimeISO | None = Field(
         default=None,
         description="This is the starting point in which data will"
         " be retrieved in chunks from.",
         frozen=True,
     )
 
-    merge_type: Optional[MergeType] = Field(default=None)
-    group_by: Optional[str] = Field(default=None)
-    grouped_key: Optional[str] = Field(default=None)
-    collection_item_class: Type[MergeCollectionItem] = MergeCollectionItem
+    merge_type: MergeType | None = Field(default=None)
+    group_by: str | None = Field(default=None)
+    grouped_key: str | None = Field(default=None)
+    collection_item_class: type[MergeCollectionItem] = MergeCollectionItem
 
     @model_validator(mode="after")
     def check_start_and_offset_nullable(self) -> Self:
@@ -269,16 +269,16 @@ class MergeCollection(CollectionBase):
 
     # --- Properties ---
     @property
-    def interval_start(self) -> Optional[datetime]:
+    def interval_start(self) -> datetime | None:
         # if self.start is None and self.offset is set, the inferred start is (now - offset)
         if self.start is None:
-            return datetime.now(tz=timezone.utc).replace(microsecond=0) - pd.Timedelta(
+            return datetime.now(tz=UTC).replace(microsecond=0) - pd.Timedelta(
                 self.offset
             )
         return self.start
 
     @property
-    def items(self) -> List[MergeCollectionItem]:
+    def items(self) -> list[MergeCollectionItem]:
         items = []
         for iv in self.interval_range:
             cm = self.collection_item_class(start=iv[0])

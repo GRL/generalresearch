@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from enum import Enum
 from typing import Literal
 
@@ -25,9 +25,9 @@ class ReportRequest(BaseModel):
     index1: str = Field(default="product_id")
 
     start: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc) - timedelta(days=14)
+        default_factory=lambda: datetime.now(tz=UTC) - timedelta(days=14)
     )
-    end: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    end: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     interval: Literal["5min", "15min", "1h", "6h", "12h", "1d"] = "1h"
     include_open_bucket: bool = Field(default=True)
@@ -35,7 +35,7 @@ class ReportRequest(BaseModel):
     @computed_field(
         title="Start floor",
         description="The datetime that this report starts from",
-        examples=[datetime(year=2025, month=5, day=1, tzinfo=timezone.utc)],
+        examples=[datetime(year=2025, month=5, day=1, tzinfo=UTC)],
         return_type=datetime,
     )
     @property
@@ -60,7 +60,7 @@ class ReportRequest(BaseModel):
 
     @model_validator(mode="after")
     def check_start_end_tz(self):
-        assert self.start.tzinfo == self.end.tzinfo == timezone.utc
+        assert self.start.tzinfo == self.end.tzinfo == UTC
         return self
 
     @model_validator(mode="after")
@@ -150,7 +150,7 @@ class ReportRequest(BaseModel):
             start=self.ts_start_floor,
             end=self.ts_end,
             freq=self.interval,
-            tz=timezone.utc,
+            tz=UTC,
         )
 
     def bucket_ranges(self) -> list[tuple[pd.Timestamp, pd.Timestamp]]:

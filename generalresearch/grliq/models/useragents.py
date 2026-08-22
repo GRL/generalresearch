@@ -4,7 +4,7 @@ import hashlib
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
-from typing_extensions import Self
+from typing import Self
 from user_agents import parse as ua_parse
 from user_agents.parsers import UserAgent
 

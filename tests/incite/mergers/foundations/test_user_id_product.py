@@ -1,4 +1,4 @@
-from datetime import timedelta, datetime, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from itertools import product
 
 import pandas as pd
@@ -6,13 +6,13 @@ import pytest
 
 # noinspection PyUnresolvedReferences
 from distributed.utils_test import (
-    gen_cluster,
+    cleanup,
+    client,
     client_no_amm,
+    cluster_fixture,
+    gen_cluster,
     loop,
     loop_in_thread,
-    cleanup,
-    cluster_fixture,
-    client,
 )
 
 from generalresearch.incite.mergers.foundations.user_id_product import (
@@ -27,11 +27,7 @@ from test_utils.incite.mergers.conftest import user_id_product_merge
         product(
             ["12h", "3D"],
             [timedelta(days=5)],
-            [
-                (datetime.now(tz=timezone.utc) - timedelta(days=35)).replace(
-                    microsecond=0
-                )
-            ],
+            [(datetime.now(tz=UTC) - timedelta(days=35)).replace(microsecond=0)],
         )
     ),
 )

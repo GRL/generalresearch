@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timezone
+from datetime import UTC, timezone
 
 import psycopg
 from psycopg.adapt import Buffer
@@ -24,7 +24,7 @@ class UTCTimestampLoader(TimestampLoader):
         if dt is None:
             return None
         assert dt.tzinfo is None, "expected naive dt"
-        return dt.replace(tzinfo=timezone.utc)
+        return dt.replace(tzinfo=UTC)
 
 
 class BPCharLoader(TextLoader):

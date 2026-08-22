@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from itertools import product
 
 import pandas as pd
@@ -21,11 +21,7 @@ merge_types = list(e for e in MergeType if e != MergeType.TEST)
             merge_types,
             ["5min", "6h", "14D"],
             [timedelta(days=30)],
-            [
-                (datetime.now(tz=timezone.utc) - timedelta(days=35)).replace(
-                    microsecond=0
-                )
-            ],
+            [(datetime.now(tz=UTC) - timedelta(days=35)).replace(microsecond=0)],
         )
     ),
 )

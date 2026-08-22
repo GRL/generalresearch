@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 
-status_codes_name: Dict[str, str] = {
+status_codes_name: dict[str, str] = {
     "0.0": "Unknown",
     "0.1": "Missing Language",
     "0.2": "Missing Respondent ID",
@@ -51,10 +51,10 @@ status_codes_name: Dict[str, str] = {
     "5.10": "Daily Limit",
 }
 
-status_map: Dict[str, Status] = defaultdict(
+status_map: dict[str, Status] = defaultdict(
     lambda: Status.FAIL, **{"1.0": Status.COMPLETE, "1.1": Status.COMPLETE}
 )
-status_codes_ext_map: Dict[StatusCode1, List[str]] = {
+status_codes_ext_map: dict[StatusCode1, list[str]] = {
     StatusCode1.COMPLETE: ["1.0", "1.1"],
     StatusCode1.BUYER_FAIL: ["2.2", "3.2"],
     StatusCode1.BUYER_QUALITY_FAIL: ["5.1", "5.2"],
@@ -88,10 +88,10 @@ status_codes_ext_map: Dict[StatusCode1, List[str]] = {
         "5.10",
     ],
 }
-ext_status_code_map: Dict[str, StatusCode1] = dict()
+ext_status_code_map: dict[str, StatusCode1] = dict()
 for k, v in status_codes_ext_map.items():
     k: StatusCode1
-    v: List[str]
+    v: list[str]
 
     for vv in v:
         vv: str
@@ -100,9 +100,9 @@ for k, v in status_codes_ext_map.items():
 
 def annotate_status_code(
     ext_status_code_1: str,
-    ext_status_code_2: Optional[str] = None,
-    ext_status_code_3: Optional[str] = None,
-) -> Tuple[Status, StatusCode1, Optional[Any]]:
+    ext_status_code_2: str | None = None,
+    ext_status_code_3: str | None = None,
+) -> tuple[Status, StatusCode1, Any | None]:
     """
     :params ext_status_code_1: this is from the callback url params:
         disposition and status, '.'-joined

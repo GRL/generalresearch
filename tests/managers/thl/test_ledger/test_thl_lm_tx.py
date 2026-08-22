@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from random import randint
 from uuid import uuid4
@@ -14,23 +14,22 @@ from generalresearch.models import Source
 from generalresearch.models.thl.definitions import (
     WALL_ALLOWED_STATUS_STATUS_CODE,
 )
-from generalresearch.models.thl.ledger import Direction
-from generalresearch.models.thl.ledger import TransactionType
+from generalresearch.models.thl.ledger import Direction, TransactionType
+from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.product import (
     PayoutConfig,
     PayoutTransformation,
     UserWalletConfig,
 )
 from generalresearch.models.thl.session import (
-    Wall,
+    Session,
     Status,
     StatusCode1,
-    Session,
+    Wall,
     WallAdjustedStatus,
 )
 from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet import PayoutType
-from generalresearch.models.thl.payout import UserPayoutEvent
 
 logger = logging.getLogger("LedgerManager")
 
@@ -82,7 +81,7 @@ class TestThlLedgerTxManager:
             session=s1,
             status=Status.COMPLETE,
             status_code_1=status_code_1,
-            finished=datetime.now(tz=timezone.utc) + timedelta(minutes=10),
+            finished=datetime.now(tz=UTC) + timedelta(minutes=10),
             payout=bp_pay,
             user_payout=user_pay,
         )
@@ -127,7 +126,7 @@ class TestThlLedgerTxManager:
             session=s1,
             status=Status.COMPLETE,
             status_code_1=status_code_1,
-            finished=datetime.now(tz=timezone.utc) + timedelta(minutes=10),
+            finished=datetime.now(tz=UTC) + timedelta(minutes=10),
             payout=bp_pay,
             user_payout=user_pay,
         )
@@ -209,7 +208,7 @@ class TestThlLedgerTxManager:
         #   there is no financial changes needed
         session.update(
             **{
-                "finished": datetime.now(tz=timezone.utc) + timedelta(minutes=10),
+                "finished": datetime.now(tz=UTC) + timedelta(minutes=10),
             }
         )
         assert session.finished
@@ -229,7 +228,7 @@ class TestThlLedgerTxManager:
             product=product,
             amount=rand_amount,
             payoutevent_uuid=payoutevent_uuid,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             skip_wallet_balance_check=True,
             skip_one_per_day_check=True,
             skip_flag_check=True,
@@ -260,7 +259,7 @@ class TestThlLedgerTxManager:
                     product=product,
                     amount=rand_amount,
                     payoutevent_uuid=uuid4().hex,
-                    created=datetime.now(tz=timezone.utc),
+                    created=datetime.now(tz=UTC),
                     skip_wallet_balance_check=False,
                     skip_one_per_day_check=False,
                     skip_flag_check=False,
@@ -276,7 +275,7 @@ class TestThlLedgerTxManager:
             product=product,
             amount=rand_amount,
             payoutevent_uuid=payoutevent_uuid,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
         )
 
         # Check the basic attributes
@@ -300,7 +299,7 @@ class TestThlLedgerTxManager:
         tx = thl_lm.create_tx_plug_bp_wallet(
             product=product,
             amount=rand_amount,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             direction=Direction.DEBIT,
             skip_flag_check=False,
         )
@@ -328,7 +327,7 @@ class TestThlLedgerTxManager:
         tx = thl_lm.create_tx_plug_bp_wallet_(
             product=product,
             amount=rand_amount,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             direction=Direction.DEBIT,
         )
 
@@ -345,7 +344,7 @@ class TestThlLedgerTxManager:
         thl_lm.create_tx_plug_bp_wallet_(
             product=product,
             amount=rand_amount + rand_amount,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             direction=Direction.CREDIT,
         )
         balance = thl_lm.get_account_balance(
@@ -727,8 +726,8 @@ class TestThlLedgerTxManagerFlows:
             session_id=1,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
         thl_lm.create_tx_task_complete(wall=wall1, user=user, created=wall1.started)
 
@@ -740,8 +739,8 @@ class TestThlLedgerTxManagerFlows:
             session_id=1,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
         thl_lm.create_tx_task_complete(wall=wall2, user=user, created=wall2.started)
 
@@ -793,8 +792,8 @@ class TestThlLedgerTxManagerFlows:
             session_id=1,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
         tx = thl_lm.create_tx_task_complete(
             wall=wall1, user=user, created=wall1.started
@@ -880,8 +879,8 @@ class TestThlLedgerTxManagerFlows:
             session_id=3,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
 
         tx = thl_lm.create_tx_task_complete(
@@ -922,8 +921,8 @@ class TestThlLedgerTxManagerFlows:
             session_id=3,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
 
         thl_lm.create_tx_task_complete(wall=wall1, user=user, created=wall1.started)
@@ -963,8 +962,8 @@ class TestThlLedgerTxManagerFlows:
             session_id=3,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
         thl_lm.create_tx_task_complete(wall=wall1, user=user, created=wall1.started)
 
@@ -1416,7 +1415,7 @@ class TestThlLedgerManagerAdj:
         delete_ledger_db()
         create_main_accounts()
 
-        now = datetime.now(timezone.utc) - timedelta(days=1)
+        now = datetime.now(UTC) - timedelta(days=1)
         user: User = user_factory(product=product_user_wallet_yes)
 
         # Create 2 Wall completes and create the respective transaction for

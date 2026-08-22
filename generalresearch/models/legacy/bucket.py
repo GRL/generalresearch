@@ -4,7 +4,7 @@ import logging
 import math
 from datetime import timedelta
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -14,7 +14,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.models import Source
 from generalresearch.models.custom_types import (

@@ -1,6 +1,6 @@
+from collections.abc import Callable
 from copy import deepcopy
 from functools import wraps
-from typing import Callable
 
 
 def deepcopy_return(fn: Callable) -> Callable:

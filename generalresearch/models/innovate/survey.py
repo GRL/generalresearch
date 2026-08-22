@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date, timezone
+from datetime import UTC, date, timezone
 from decimal import Decimal
 from functools import cached_property
 from typing import (
     Annotated,
     Any,
     Literal,
+    Self,
     Type,
 )
 
@@ -20,7 +21,6 @@ from pydantic import (
     computed_field,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.locales import Localelator
 from generalresearch.models import (
@@ -290,7 +290,7 @@ class InnovateSurvey(MarketplaceTask):
         return cls.model_validate(d)
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return InnovateCondition
 
     @property
@@ -361,10 +361,10 @@ class InnovateSurvey(MarketplaceTask):
 
     @classmethod
     def from_db(cls, d: dict[str, Any]) -> Self:
-        d["created"] = d["created"].replace(tzinfo=timezone.utc)
-        d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
-        d["modified_api"] = d["modified_api"].replace(tzinfo=timezone.utc)
-        d["created_api"] = d["created_api"].replace(tzinfo=timezone.utc)
+        d["created"] = d["created"].replace(tzinfo=UTC)
+        d["updated"] = d["updated"].replace(tzinfo=UTC)
+        d["modified_api"] = d["modified_api"].replace(tzinfo=UTC)
+        d["created_api"] = d["created_api"].replace(tzinfo=UTC)
         d["qualifications"] = json.loads(d["qualifications"])
         d["used_question_ids"] = json.loads(d["used_question_ids"])
         d["quotas"] = json.loads(d["quotas"])

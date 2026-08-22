@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 
-status_codes_innovate: Dict[str, str] = {
+status_codes_innovate: dict[str, str] = {
     "1": "Complete",
     "2": "Buyer Fail",
     "3": "Buyer Over Quota",
@@ -29,7 +29,7 @@ status_map = defaultdict(
     lambda: Status.FAIL,
     **{"1": Status.COMPLETE, "0": Status.ABANDON, "6": Status.ABANDON},
 )
-status_codes_ext_map: Dict[StatusCode1, List[str]] = {
+status_codes_ext_map: dict[StatusCode1, list[str]] = {
     StatusCode1.BUYER_FAIL: ["2", "3"],
     StatusCode1.BUYER_QUALITY_FAIL: ["4"],
     StatusCode1.PS_BLOCKED: [],
@@ -43,7 +43,7 @@ for k, v in status_codes_ext_map.items():
     for vv in v:
         ext_status_code_map[status_codes_ext_map.get(vv, vv)] = k
 
-category_innovate: Dict[str, StatusCode1] = {
+category_innovate: dict[str, StatusCode1] = {
     "Selected threat potential score at joblevel not allow the survey": StatusCode1.PS_QUALITY,
     "OE Validation": StatusCode1.PS_QUALITY,
     "Unique IP": StatusCode1.PS_DUPLICATE,
@@ -78,9 +78,9 @@ category_innovate: Dict[str, StatusCode1] = {
 
 def annotate_status_code(
     ext_status_code_1: str,
-    ext_status_code_2: Optional[str] = None,
-    ext_status_code_3: Optional[str] = None,
-) -> Tuple[Status, StatusCode1, Optional[Any]]:
+    ext_status_code_2: str | None = None,
+    ext_status_code_3: str | None = None,
+) -> tuple[Status, StatusCode1, Any | None]:
     """
     Only quality terminate (4 and 8), and PS term (5) return a term_reason (af=).
 

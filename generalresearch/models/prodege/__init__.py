@@ -1,8 +1,7 @@
 from enum import Enum
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field
-from typing_extensions import Annotated
 
 ProdegeQuestionIdType = Annotated[
     str, Field(min_length=1, max_length=16, pattern=r"^[0-9]+$")

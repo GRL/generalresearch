@@ -1,10 +1,9 @@
 import copy
 import logging
-from datetime import timezone, datetime
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
 
 from pymysql import IntegrityError
-
 
 logger = logging.getLogger()
 
@@ -12,11 +11,11 @@ example_survey_api_response = {
     "survey_id": 29333264,
     "survey_name": "#29333264",
     "survey_status": 22,
-    "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=timezone.utc),
+    "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=UTC),
     "category": "Exciting New",
     "category_code": 232,
-    "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=timezone.utc),
-    "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=timezone.utc),
+    "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=UTC),
+    "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=UTC),
     "soft_launch": False,
     "click_balancing": 0,
     "price_type": 1,
@@ -66,7 +65,7 @@ class TestSpectrumSurvey:
 
         assert settings.debug, "CRITICAL: Do not run this on production."
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         spectrum_rw.execute_sql_query(
             query=f"""
                 DELETE FROM `{spectrum_rw.db}`.spectrum_survey
@@ -93,7 +92,7 @@ class TestSpectrumSurvey:
 
         assert settings.debug, "CRITICAL: Do not run this on production."
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         spectrum_rw.execute_sql_query(
             query=f"""
                 DELETE FROM `{spectrum_rw.db}`.spectrum_survey

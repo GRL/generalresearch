@@ -1,22 +1,28 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 from generalresearch.models.thl.contest.definitions import (
-    ContestStatus,
     ContestEndReason,
+    ContestStatus,
 )
 from generalresearch.models.thl.contest.milestone import (
+    ContestEntryTrigger,
     MilestoneContest,
     MilestoneContestCreate,
     MilestoneUserView,
-    ContestEntryTrigger,
 )
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
 from test_utils.managers.contest.conftest import (
     milestone_contest as contest,
-    milestone_contest_in_db as contest_in_db,
+)
+from test_utils.managers.contest.conftest import (
     milestone_contest_create as contest_create,
+)
+from test_utils.managers.contest.conftest import (
     milestone_contest_factory as contest_factory,
+)
+from test_utils.managers.contest.conftest import (
+    milestone_contest_in_db as contest_in_db,
 )
 
 
@@ -28,7 +34,7 @@ class TestMilestoneContest:
         assert not should, msg
 
         # Change so that the contest ends now
-        contest.end_condition.ends_at = datetime.now(tz=timezone.utc)
+        contest.end_condition.ends_at = datetime.now(tz=UTC)
         should, msg = contest.should_end()
         assert should
         assert msg == ContestEndReason.ENDS_AT

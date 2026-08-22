@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, Self
 from uuid import uuid4
 
 from pydantic import (
@@ -17,7 +17,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.models import DeviceType, Source
 from generalresearch.models.custom_types import (
@@ -69,9 +68,7 @@ class WallBase(BaseModel):
     buyer_id: str | None = Field(default=None, max_length=32)
     req_survey_id: str = Field(max_length=32)
     req_cpi: Decimal = Field(decimal_places=5, lt=1000, ge=0)
-    started: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    started: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # These get set on creation, or updated when the wall event is finished. So
     #   they shouldn't really ever be NULL, but you don't have to pass them in
@@ -158,9 +155,7 @@ class WallBase(BaseModel):
 
     @model_validator(mode="after")
     def check_timestamps(self):
-        assert self.started <= datetime.now(
-            tz=timezone.utc
-        ), "Started must not be in the future"
+        assert self.started <= datetime.now(tz=UTC), "Started must not be in the future"
         if self.finished:
             assert self.finished > self.started, "Finished must be after started"
             assert self.finished - self.started <= timedelta(
@@ -278,7 +273,7 @@ class WallBase(BaseModel):
 
         # This is just used in tests at the moment. This needs to be adjusted.
         if finished is None:
-            finished = datetime.now(tz=timezone.utc)
+            finished = datetime.now(tz=UTC)
 
         self.update(
             status=status,
@@ -313,7 +308,7 @@ class WallBase(BaseModel):
             ext_status_code_3,
         )
         if finished is None:
-            finished = datetime.now(tz=timezone.utc)
+            finished = datetime.now(tz=UTC)
         self.update(
             status=status,
             status_code_1=status_code_1,
@@ -386,7 +381,7 @@ class WallBase(BaseModel):
         TODO: Transition this over to use the ReportTask pydantic model.
         """
         report_timestamp = (
-            report_timestamp if report_timestamp else datetime.now(tz=timezone.utc)
+            report_timestamp if report_timestamp else datetime.now(tz=UTC)
         )
         if self.status is None and self.finished is None:
             self.status = Status.ABANDON
@@ -587,9 +582,7 @@ class Session(BaseModel):
     id: int | None = None
     uuid: UUIDStr = Field(default_factory=lambda: uuid4().hex)
     user: User
-    started: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    started: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # This is the "bucket" the user clicked on to start this session. We only
     # store the 4 fields: loi_min, loi_max, user_payout_min, user_payout_max
@@ -881,7 +874,7 @@ class Session(BaseModel):
         if (
             last_wall.status is None
             and self.status is None
-            and datetime.now(tz=timezone.utc)
+            and datetime.now(tz=UTC)
             > self.started + timedelta(seconds=task_timeout_seconds)
         ):
             last_wall.status = Status.TIMEOUT
@@ -962,7 +955,7 @@ class Session(BaseModel):
         self, max_session_len: timedelta, max_session_hard_retry: int
     ) -> bool:
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         last_wall = self.get_last_visible_wall()
 
         if last_wall and last_wall.status == Status.COMPLETE:

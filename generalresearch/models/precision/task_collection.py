@@ -36,8 +36,8 @@ PrecisionTaskCollectionSchema = DataFrameSchema(
         "expected_end_date": Column(dtype=pd.DatetimeTZDtype(tz="UTC"), nullable=True),
         "created": Column(dtype=pd.DatetimeTZDtype(tz="UTC")),
         "updated": Column(dtype=pd.DatetimeTZDtype(tz="UTC")),
-        "used_question_ids": Column(List[str]),
-        "all_hashes": Column(List[str]),  # set >> list for column support
+        "used_question_ids": Column(list[str]),
+        "all_hashes": Column(list[str]),  # set >> list for column support
     },
     checks=[],
     index=Index(
@@ -53,10 +53,10 @@ PrecisionTaskCollectionSchema = DataFrameSchema(
 
 
 class PrecisionTaskCollection(TaskCollection):
-    items: List[PrecisionSurvey]
+    items: list[PrecisionSurvey]
     _schema = PrecisionTaskCollectionSchema
 
-    def to_row(self, s: PrecisionSurvey) -> Dict[str, Any]:
+    def to_row(self, s: PrecisionSurvey) -> dict[str, Any]:
         d = s.model_dump(
             mode="json",
             exclude={

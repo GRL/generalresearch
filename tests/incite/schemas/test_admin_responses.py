@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from random import sample
 from typing import List
 
@@ -8,8 +8,8 @@ import pytest
 
 from generalresearch.incite.schemas import empty_dataframe_from_schema
 from generalresearch.incite.schemas.admin_responses import (
-    AdminPOPSchema,
     SIX_HOUR_SECONDS,
+    AdminPOPSchema,
 )
 from generalresearch.locales import Localelator
 
@@ -72,8 +72,7 @@ class TestAdminPOPSchema:
 
     def test_index_tz_parser(self):
         tz_dates = [
-            datetime(year=2024, month=1, day=i, tzinfo=timezone.utc)
-            for i in range(1, 10)
+            datetime(year=2024, month=1, day=i, tzinfo=UTC) for i in range(1, 10)
         ]
 
         df = pd.DataFrame(
@@ -85,16 +84,16 @@ class TestAdminPOPSchema:
         df = self.assign_valid_vals(df)
 
         # Initially, they're all set with a timezone
-        timestmaps: List[pd.Timestamp] = [i for i in df.index.get_level_values(0)]
-        assert all([ts.tz == timezone.utc for ts in timestmaps])
+        timestmaps: list[pd.Timestamp] = [i for i in df.index.get_level_values(0)]
+        assert all([ts.tz == UTC for ts in timestmaps])
 
         # After validation, the timezone is removed
         df = AdminPOPSchema.validate(df)
-        timestmaps: List[pd.Timestamp] = [i for i in df.index.get_level_values(0)]
+        timestmaps: list[pd.Timestamp] = [i for i in df.index.get_level_values(0)]
         assert all([ts.tz is None for ts in timestmaps])
 
     def test_index_tz_no_future_beyond_one_year(self):
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         tz_dates = [now + timedelta(days=i * 365) for i in range(1, 10)]
 
         df = pd.DataFrame(
@@ -157,9 +156,7 @@ class TestAdminPOPSchema:
     def test_invalid_parsing(self):
         # (1) Timezones AND as strings will still parse correctly
         tz_str_dates = [
-            datetime(
-                year=2024, month=1, day=1, minute=i, tzinfo=timezone.utc
-            ).isoformat()
+            datetime(year=2024, month=1, day=1, minute=i, tzinfo=UTC).isoformat()
             for i in range(1, 10)
         ]
         df = pd.DataFrame(
@@ -173,12 +170,12 @@ class TestAdminPOPSchema:
         df = AdminPOPSchema.validate(df, lazy=True)
 
         assert isinstance(df, pd.DataFrame)
-        timestmaps: List[pd.Timestamp] = [i for i in df.index.get_level_values(0)]
+        timestmaps: list[pd.Timestamp] = [i for i in df.index.get_level_values(0)]
         assert all([ts.tz is None for ts in timestmaps])
 
         # (2) Timezones are removed
         dates = [
-            datetime(year=2024, month=1, day=1, minute=i, tzinfo=timezone.utc)
+            datetime(year=2024, month=1, day=1, minute=i, tzinfo=UTC)
             for i in range(1, 10)
         ]
         df = pd.DataFrame(
@@ -190,12 +187,12 @@ class TestAdminPOPSchema:
         df = self.assign_valid_vals(df)
 
         # Has tz before validation, and none after
-        timestmaps: List[pd.Timestamp] = [i for i in df.index.get_level_values(0)]
-        assert all([ts.tz is timezone.utc for ts in timestmaps])
+        timestmaps: list[pd.Timestamp] = [i for i in df.index.get_level_values(0)]
+        assert all([ts.tz is UTC for ts in timestmaps])
 
         df = AdminPOPSchema.validate(df, lazy=True)
 
-        timestmaps: List[pd.Timestamp] = [i for i in df.index.get_level_values(0)]
+        timestmaps: list[pd.Timestamp] = [i for i in df.index.get_level_values(0)]
         assert all([ts.tz is None for ts in timestmaps])
 
     def test_clipping(self):

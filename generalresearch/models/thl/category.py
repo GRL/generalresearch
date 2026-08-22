@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Self
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, PositiveInt, model_validator
-from typing_extensions import Self
 
 from generalresearch.models.custom_types import UUIDStr
 

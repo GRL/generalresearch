@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from typing import TYPE_CHECKING
 
 import pytest
@@ -19,12 +19,12 @@ df_collection_types = [e for e in DFCollectionType if e is not DFCollectionType.
 @pytest.mark.parametrize("df_coll_type", df_collection_types)
 class TestDFCollectionItemBase:
 
-    def test_init(self, mnt_filepath: "GRLDatasets", df_coll_type):
+    def test_init(self, mnt_filepath: GRLDatasets, df_coll_type):
         collection = DFCollection(
             data_type=df_coll_type,
             offset="100d",
-            start=datetime(year=1800, month=1, day=1, tzinfo=timezone.utc),
-            finished=datetime(year=1900, month=1, day=1, tzinfo=timezone.utc),
+            start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
+            finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),
         )
 
@@ -45,12 +45,12 @@ class TestDFCollectionItemProperties:
 @pytest.mark.parametrize("df_coll_type", df_collection_types)
 class TestDFCollectionItemMethods:
 
-    def test_has_mysql_false(self, mnt_filepath: "GRLDatasets", df_coll_type):
+    def test_has_mysql_false(self, mnt_filepath: GRLDatasets, df_coll_type):
         collection = DFCollection(
             data_type=df_coll_type,
             offset="100d",
-            start=datetime(year=1800, month=1, day=1, tzinfo=timezone.utc),
-            finished=datetime(year=1900, month=1, day=1, tzinfo=timezone.utc),
+            start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
+            finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),
         )
 
@@ -58,13 +58,13 @@ class TestDFCollectionItemMethods:
         assert not instance1.has_mysql()
 
     def test_has_mysql_true(
-        self, thl_web_rr: PostgresConfig, mnt_filepath: "GRLDatasets", df_coll_type
+        self, thl_web_rr: PostgresConfig, mnt_filepath: GRLDatasets, df_coll_type
     ):
         collection = DFCollection(
             data_type=df_coll_type,
             offset="100d",
-            start=datetime(year=1800, month=1, day=1, tzinfo=timezone.utc),
-            finished=datetime(year=1900, month=1, day=1, tzinfo=timezone.utc),
+            start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
+            finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),
             pg_config=thl_web_rr,
         )

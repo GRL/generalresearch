@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
 
@@ -27,8 +27,8 @@ class TestWall:
             ext_status_code_1="1.0",
             status=Status.FAIL,
             status_code_1=StatusCode1.BUYER_FAIL,
-            started=datetime(2023, 1, 1, 0, 0, 1, tzinfo=timezone.utc),
-            finished=datetime(2023, 1, 1, 0, 10, 1, tzinfo=timezone.utc),
+            started=datetime(2023, 1, 1, 0, 0, 1, tzinfo=UTC),
+            finished=datetime(2023, 1, 1, 0, 10, 1, tzinfo=UTC),
         )
         s = w.to_json()
         w2 = Wall.from_json(s)
@@ -45,8 +45,8 @@ class TestWall:
             survey_id="yyy",
             status=Status.FAIL,
             status_code_1=StatusCode1.BUYER_FAIL,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
         Wall(
             user_id=1,
@@ -58,8 +58,8 @@ class TestWall:
             status=Status.FAIL,
             status_code_1=StatusCode1.MARKETPLACE_FAIL,
             status_code_2=WallStatusCode2.COMPLETE_TOO_FAST,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
         with pytest.raises(expected_exception=ValidationError) as e:
             Wall(
@@ -71,8 +71,8 @@ class TestWall:
                 survey_id="yyy",
                 status=Status.FAIL,
                 status_code_1=StatusCode1.GRS_ABANDON,
-                started=datetime.now(timezone.utc),
-                finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+                started=datetime.now(UTC),
+                finished=datetime.now(UTC) + timedelta(seconds=1),
             )
         assert "If status is f, status_code_1 should be in" in str(e.value)
 
@@ -87,8 +87,8 @@ class TestWall:
                 status=Status.FAIL,
                 status_code_1=StatusCode1.GRS_ABANDON,
                 status_code_2=WallStatusCode2.COMPLETE_TOO_FAST,
-                started=datetime.now(timezone.utc),
-                finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+                started=datetime.now(UTC),
+                finished=datetime.now(UTC) + timedelta(seconds=1),
             )
         assert "If status is f, status_code_1 should be in" in str(e.value)
 
@@ -104,8 +104,8 @@ class TestWall:
             status=Status.FAIL,
             status_code_1=StatusCode1.MARKETPLACE_FAIL,
             status_code_2=WallStatusCode2.COMPLETE_TOO_FAST,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
         Wall(
             user_id=1,
@@ -117,8 +117,8 @@ class TestWall:
             status=Status.FAIL,
             status_code_1=StatusCode1.BUYER_FAIL,
             status_code_2=None,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
         Wall(
             user_id=1,
@@ -130,8 +130,8 @@ class TestWall:
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
             status_code_2=None,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
 
         with pytest.raises(expected_exception=ValidationError) as e:
@@ -145,8 +145,8 @@ class TestWall:
                 status=Status.FAIL,
                 status_code_1=StatusCode1.BUYER_FAIL,
                 status_code_2=WallStatusCode2.COMPLETE_TOO_FAST,
-                started=datetime.now(timezone.utc),
-                finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+                started=datetime.now(UTC),
+                finished=datetime.now(UTC) + timedelta(seconds=1),
             )
             assert "If status_code_1 is 1, status_code_2 should be in" in str(e.value)
 

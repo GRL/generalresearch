@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from random import randint
 from uuid import uuid4
@@ -11,22 +11,22 @@ from redis.lock import Lock
 
 from generalresearch.currency import USDCent
 from generalresearch.managers.base import Permission
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.managers.thl.ledger_manager.exceptions import (
-    LedgerTransactionFlagAlreadyExistsError,
     LedgerTransactionConditionFailedError,
-    LedgerTransactionReleaseLockError,
     LedgerTransactionCreateError,
+    LedgerTransactionFlagAlreadyExistsError,
+    LedgerTransactionReleaseLockError,
 )
 from generalresearch.managers.thl.ledger_manager.ledger import LedgerTransaction
+from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.models import Source
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.ledger import Direction, TransactionType
 from generalresearch.models.thl.session import (
-    Wall,
+    Session,
     Status,
     StatusCode1,
-    Session,
+    Wall,
 )
 from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet import PayoutType
@@ -55,7 +55,7 @@ class TestThlLedgerManagerBPPayout:
         delete_ledger_db()
         create_main_accounts()
 
-        now = datetime.now(timezone.utc) - timedelta(hours=1)
+        now = datetime.now(UTC) - timedelta(hours=1)
         user: User = user_factory(product=product_user_wallet_no)
 
         wall1 = Wall(
@@ -158,7 +158,7 @@ class TestThlLedgerManagerBPPayout:
             product=product,
             amount=rand_amount,
             payoutevent_uuid=payoutevent_uuid,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             skip_wallet_balance_check=True,
             skip_one_per_day_check=True,
             skip_flag_check=True,
@@ -189,7 +189,7 @@ class TestThlLedgerManagerBPPayout:
                     product=product,
                     amount=rand_amount,
                     payoutevent_uuid=uuid4().hex,
-                    created=datetime.now(tz=timezone.utc),
+                    created=datetime.now(tz=UTC),
                     skip_wallet_balance_check=False,
                     skip_one_per_day_check=False,
                     skip_flag_check=False,
@@ -199,7 +199,7 @@ class TestThlLedgerManagerBPPayout:
     def test_create_tx_redis_failure(self, product, thl_web_rw, thl_lm):
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         payoutevent_uuid = uuid4().hex
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         thl_lm.create_tx_plug_bp_wallet(
             product, rand_amount, now, direction=Direction.CREDIT
@@ -226,7 +226,7 @@ class TestThlLedgerManagerBPPayout:
                 product=product,
                 amount=rand_amount,
                 payoutevent_uuid=payoutevent_uuid,
-                created=datetime.now(tz=timezone.utc),
+                created=datetime.now(tz=UTC),
             )
         assert e.type is redis.exceptions.TimeoutError
         # No txs were created
@@ -238,7 +238,7 @@ class TestThlLedgerManagerBPPayout:
     def test_create_tx_multiple_per_day(self, product, thl_lm):
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         payoutevent_uuid = uuid4().hex
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         thl_lm.create_tx_plug_bp_wallet(
             product, rand_amount * USDCent(2), now, direction=Direction.CREDIT
@@ -248,7 +248,7 @@ class TestThlLedgerManagerBPPayout:
             product=product,
             amount=rand_amount,
             payoutevent_uuid=payoutevent_uuid,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
         )
 
         # Try to create another
@@ -258,7 +258,7 @@ class TestThlLedgerManagerBPPayout:
                 product=product,
                 amount=rand_amount,
                 payoutevent_uuid=payoutevent_uuid,
-                created=datetime.now(tz=timezone.utc),
+                created=datetime.now(tz=UTC),
             )
         assert e.type is LedgerTransactionFlagAlreadyExistsError
 
@@ -270,7 +270,7 @@ class TestThlLedgerManagerBPPayout:
                 product=product,
                 amount=rand_amount,
                 payoutevent_uuid=payoutevent_uuid2,
-                created=datetime.now(tz=timezone.utc),
+                created=datetime.now(tz=UTC),
             )
         assert e.type is LedgerTransactionConditionFailedError
         assert str(e.value) == ">1 tx per day"
@@ -280,14 +280,14 @@ class TestThlLedgerManagerBPPayout:
             product=product,
             amount=rand_amount,
             payoutevent_uuid=payoutevent_uuid2,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             skip_one_per_day_check=True,
         )
 
     def test_create_tx_redis_lock_release_error(self, product, thl_lm):
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         payoutevent_uuid = uuid4().hex
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(product=product)
 
         thl_lm.create_tx_plug_bp_wallet(
@@ -304,7 +304,7 @@ class TestThlLedgerManagerBPPayout:
                 product=product,
                 amount=rand_amount,
                 payoutevent_uuid=payoutevent_uuid,
-                created=datetime.now(tz=timezone.utc),
+                created=datetime.now(tz=UTC),
             )
         assert e.type is LedgerTransactionCreateError
         assert str(e.value) == "Redis error: Simulated timeout during acquire"
@@ -321,7 +321,7 @@ class TestThlLedgerManagerBPPayout:
                 product=product,
                 amount=rand_amount,
                 payoutevent_uuid=payoutevent_uuid,
-                created=datetime.now(tz=timezone.utc),
+                created=datetime.now(tz=UTC),
             )
         assert e.type is LedgerTransactionReleaseLockError
         assert str(e.value) == "Redis error: Simulated timeout during release"
@@ -337,7 +337,7 @@ class TestPayoutEventManagerBPPayout:
 
     def test_create(self, product, thl_lm, brokerage_product_payout_event_manager):
         rand_amount: USDCent = USDCent(randint(100, 1_000))
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(product=product)
         assert thl_lm.get_account_balance(bp_wallet_account) == 0
         thl_lm.create_tx_plug_bp_wallet(
@@ -369,7 +369,7 @@ class TestPayoutEventManagerBPPayout:
         original_release = Lock.release
 
         rand_amount: USDCent = USDCent(randint(100, 1_000))
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(product=product)
         assert thl_lm.get_account_balance(bp_wallet_account) == 0
         thl_lm.create_tx_plug_bp_wallet(
@@ -435,7 +435,7 @@ class TestPayoutEventManagerBPPayout:
         # We wouldn't do this in practice, because this is paying out the BP again, but
         #   we can if want to.
         # Change the timestamp so it'll create a new payout event
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         with pytest.raises(LedgerTransactionConditionFailedError) as e:
             pe = brokerage_product_payout_event_manager.create_bp_payout_event(
                 thl_ledger_manager=thl_lm,
@@ -450,7 +450,7 @@ class TestPayoutEventManagerBPPayout:
         assert pe.status == PayoutStatus.FAILED
 
         # And if we really want to, we can make it again
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         pe = brokerage_product_payout_event_manager.create_bp_payout_event(
             thl_ledger_manager=thl_lm,
             product=product,
@@ -478,7 +478,7 @@ class TestPayoutEventManagerBPPayout:
         original_release = Lock.release
 
         rand_amount: USDCent = USDCent(randint(100, 1_000))
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(product=product)
         brokerage_product_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 from more_itertools import chunked
 
@@ -65,7 +65,7 @@ class CriteriaManager(SqlManager, ABC):
         new_hashes = this_hashes - known_hashes
 
         if new_hashes:
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=UTC)
             values = [
                 condition.to_mysql()
                 for condition in conditions

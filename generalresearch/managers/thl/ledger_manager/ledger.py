@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from datetime import datetime, timedelta, timezone, UTC
+from typing import Any
+from collections.abc import Callable
 from uuid import UUID
 
 import redis
@@ -104,8 +105,8 @@ class LedgerManagerBasePostgres(PostgresManager, RedisManager):
         filters = []
         params = {}
         if time_start or time_end:
-            time_end = time_end or datetime.now(tz=timezone.utc)
-            time_start = time_start or datetime(2017, 1, 1, tzinfo=timezone.utc)
+            time_end = time_end or datetime.now(tz=UTC)
+            time_start = time_start or datetime(2017, 1, 1, tzinfo=UTC)
             assert time_start.tzinfo.utcoffset(time_start) == timedelta()
             assert time_end.tzinfo.utcoffset(time_end) == timedelta()
             filters.append("lt.created BETWEEN %(time_start)s AND %(time_end)s")
@@ -152,7 +153,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         if metadata is None:
             metadata = dict()
         if created is None:
-            created = datetime.now(tz=timezone.utc)
+            created = datetime.now(tz=UTC)
 
         t = LedgerTransaction(
             created=created,
@@ -449,7 +450,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
                     id=row["transaction_id"],
                     entries=entries,
                     metadata=metadata,
-                    created=row["created"].replace(tzinfo=timezone.utc),
+                    created=row["created"].replace(tzinfo=UTC),
                     ext_description=row["ext_description"],
                     tag=row["tag"],
                 )

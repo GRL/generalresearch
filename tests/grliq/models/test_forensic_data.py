@@ -9,16 +9,16 @@ if TYPE_CHECKING:
 
 class TestGrlIqData:
 
-    def test_supported_fonts(self, grliq_data: "GrlIqData"):
+    def test_supported_fonts(self, grliq_data: GrlIqData):
         s = grliq_data.supported_fonts_binary
         assert len(s) == 1043
         assert "Ubuntu" in grliq_data.supported_fonts
 
-    def test_battery(self, grliq_data: "GrlIqData"):
+    def test_battery(self, grliq_data: GrlIqData):
         assert not grliq_data.battery_charging
         assert grliq_data.battery_level == 0.41
 
-    def test_base(self, grliq_data: "GrlIqData"):
+    def test_base(self, grliq_data: GrlIqData):
         from generalresearch.grliq.models.forensic_data import Platform
 
         assert grliq_data.timezone == "America/Los_Angeles"
@@ -41,7 +41,7 @@ class TestGrlIqData:
 
     # Testing things that will cause a validation error, should only be
     # because something is "corrupt", not b/c the user is a baddie
-    def test_corrupt(self, grliq_data: "GrlIqData"):
+    def test_corrupt(self, grliq_data: GrlIqData):
         """Test for timestamp and timezone offset mismatch validation."""
         from generalresearch.grliq.models.forensic_data import GrlIqData
 

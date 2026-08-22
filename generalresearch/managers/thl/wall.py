@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from functools import cached_property
 from uuid import uuid4
@@ -360,12 +360,10 @@ class WallManager(PostgresManager):
         params = {}
         filters.append("user_id = %(user_id)s")
         params["user_id"] = user_id
-        default_started = datetime.now(tz=timezone.utc) - timedelta(days=90)
+        default_started = datetime.now(tz=UTC) - timedelta(days=90)
         started_after = started_after or default_started
-        started_before = started_before or datetime.now(tz=timezone.utc)
-        assert (
-            started_before.tzinfo == timezone.utc
-        ), "started_before must be tz-aware as UTC"
+        started_before = started_before or datetime.now(tz=UTC)
+        assert started_before.tzinfo == UTC, "started_before must be tz-aware as UTC"
         assert (
             started_after < started_before
         ), "started_after must be before started_before"
@@ -412,7 +410,7 @@ class WallManager(PostgresManager):
         started_before: datetime | None = None,
         order_by: str | None = "-started",
     ) -> list[WallAttempt]:
-        started_before = started_before or datetime.now(tz=timezone.utc)
+        started_before = started_before or datetime.now(tz=UTC)
         res = []
         page = 1
         while True:

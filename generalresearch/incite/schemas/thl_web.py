@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 import pandas as pd
 from pandera.pandas import Check, Column, DataFrameSchema, Index, MultiIndex
@@ -105,7 +105,7 @@ THLWallSchema = DataFrameSchema(
         ),
         "started": Column(
             dtype=pd.DatetimeTZDtype(tz="UTC"),
-            checks=[Check(lambda x: x < datetime.now(tz=timezone.utc))],
+            checks=[Check(lambda x: x < datetime.now(tz=UTC))],
             nullable=False,
         ),
         "session_id": Column(
@@ -205,12 +205,12 @@ THLSessionSchema = DataFrameSchema(
         ),
         "started": Column(
             dtype=pd.DatetimeTZDtype(tz="UTC"),
-            checks=[Check(lambda x: x < datetime.now(tz=timezone.utc))],
+            checks=[Check(lambda x: x < datetime.now(tz=UTC))],
             nullable=True,
         ),
         "finished": Column(
             dtype=pd.DatetimeTZDtype(tz="UTC"),
-            checks=[Check(lambda x: x < datetime.now(tz=timezone.utc))],
+            checks=[Check(lambda x: x < datetime.now(tz=UTC))],
             nullable=True,
         ),
         "loi_min": Column(dtype="Int64", nullable=True),
@@ -450,7 +450,7 @@ THLTaskAdjustmentSchema = DataFrameSchema(
         ),
         "started": Column(
             dtype=pd.DatetimeTZDtype(tz="UTC"),
-            checks=[Check(lambda x: x < datetime.now(tz=timezone.utc))],
+            checks=[Check(lambda x: x < datetime.now(tz=UTC))],
         ),
         "source": Column(
             dtype=str,

@@ -14,7 +14,7 @@ from pydantic import (
     NonNegativeInt,
     PositiveFloat,
 )
-from typing_extensions import Self
+from typing import Self
 
 from generalresearch.models.custom_types import AwareDatetimeISO, IPvAnyAddressStr
 
@@ -37,14 +37,14 @@ class Event:
     # in microseconds, since page load (?)
     timeStamp: float
     # optional ID of the event target (e.g.: where the mouse is hovering)
-    _elementId: Optional[str] = None
+    _elementId: str | None = None
     # optional tag name of the event target
-    _elementTagName: Optional[str] = None
+    _elementTagName: str | None = None
     # extracted coordinates for the element being interacted with
-    _elementBounds: Optional[Bounds] = None
+    _elementBounds: Bounds | None = None
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> Self:
+    def from_dict(cls, data: dict[str, Any]) -> Self:
         data = {k: v for k, v in data.items() if k in cls.__dataclass_fields__}
         bounds = data.get("_elementBounds")
         if bounds is not None and not isinstance(bounds, Bounds):
@@ -104,13 +104,13 @@ class KeyboardEvent(Event):
 
     # "insertText", "insertCompositionText", "deleteCompositionText",
     #   "insertFromComposition", "deleteContentBackward"
-    inputType: Optional[str]
+    inputType: str | None
 
     # e.g., 'Enter', 'a', 'Backspace'
-    key: Optional[str] = None
+    key: str | None = None
 
     # This is the actual text, if applicable
-    data: Optional[str] = None
+    data: str | None = None
 
     @property
     def key_text(self):
@@ -159,18 +159,18 @@ class TimingData(BaseModel):
     """
 
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
-    client_rtts: List[float] = Field()
-    server_rtts: List[float] = Field()
+    client_rtts: list[float] = Field()
+    server_rtts: list[float] = Field()
 
     # Have to be optional for backwards-compatibility, but should always be set.
-    started_at: Optional[AwareDatetimeISO] = Field(default=None)
-    ended_at: Optional[AwareDatetimeISO] = Field(default=None)
-    client_ip: Optional[IPvAnyAddressStr] = Field(
+    started_at: AwareDatetimeISO | None = Field(default=None)
+    ended_at: AwareDatetimeISO | None = Field(default=None)
+    client_ip: IPvAnyAddressStr | None = Field(
         description="This comes from the websocket request's headers",
         examples=["72.39.217.116"],
         default=None,
     )
-    server_hostname: Optional[str] = Field(
+    server_hostname: str | None = Field(
         description="The hostname of the server that handled this request",
         examples=["grliq-web-0"],
         default=None,
@@ -189,7 +189,7 @@ class TimingData(BaseModel):
     def has_data(self):
         return len(self.client_rtts) > 0 and len(self.server_rtts) > 0
 
-    def filter_rtts(self, rtts: List[float]) -> List[float]:
+    def filter_rtts(self, rtts: list[float]) -> list[float]:
         # Skip the first 5 pings, unless we have <10 pings, then get the last
         #   5 instead.
         # The first couple pings are usually outliers as they are running
@@ -234,7 +234,7 @@ class TimingData(BaseModel):
         return rtts
 
     @property
-    def summarize(self) -> Optional[TimingDataSummary]:
+    def summarize(self) -> TimingDataSummary | None:
         if len(self.filtered_rtts) < 5:
             return None
 

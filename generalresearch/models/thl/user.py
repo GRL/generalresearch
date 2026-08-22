@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from datetime import UTC, datetime, timezone
+from typing import TYPE_CHECKING, Annotated, Self
 from uuid import UUID, uuid4
 
 from pydantic import (
@@ -19,7 +19,6 @@ from pydantic import (
     model_validator,
 )
 from sentry_sdk import set_tag, set_user
-from typing_extensions import Annotated, Self
 
 from generalresearch.models import MAX_INT32
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
@@ -126,7 +125,7 @@ class User(BaseModel):
     def check_not_in_future(cls, v: AwareDatetime) -> AwareDatetime:
         if v is not None:
             try:
-                assert v < datetime.now(tz=timezone.utc)
+                assert v < datetime.now(tz=UTC)
             except Exception:
                 raise ValueError("Input is in the future")
         return v
@@ -137,7 +136,7 @@ class User(BaseModel):
     def check_after_anno_domini(cls, v: AwareDatetime) -> AwareDatetime:
         if v is not None:
             try:
-                assert v > datetime(year=2016, month=7, day=13, tzinfo=timezone.utc)
+                assert v > datetime(year=2016, month=7, day=13, tzinfo=UTC)
             except Exception:
                 raise ValueError("Input is before Anno Domini")
         return v
@@ -294,9 +293,9 @@ class User(BaseModel):
     @classmethod
     def from_db(cls, res) -> Self:
         if res["created"]:
-            res["created"] = res["created"].replace(tzinfo=timezone.utc)
+            res["created"] = res["created"].replace(tzinfo=UTC)
         if res["last_seen"]:
-            res["last_seen"] = res["last_seen"].replace(tzinfo=timezone.utc)
+            res["last_seen"] = res["last_seen"].replace(tzinfo=UTC)
         res["product_id"] = UUID(res["product_id"]).hex
         res["uuid"] = UUID(res["uuid"]).hex
         return cls(

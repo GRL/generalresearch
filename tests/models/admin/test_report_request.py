@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pandas as pd
 import pytest
@@ -19,19 +19,19 @@ class TestReportRequest:
 
         assert rr.report_type == ReportType.POP_SESSION
         assert rr.start != rr.start_floor, "rr.start != rr.start_floor"
-        assert rr.start_floor.tzinfo == timezone.utc, "rr.start_floor.tzinfo not utc"
+        assert rr.start_floor.tzinfo == UTC, "rr.start_floor.tzinfo not utc"
 
         rr1 = ReportRequest.model_validate(
             {
                 "start": datetime(
-                    year=datetime.now(tz=timezone.utc).year,
+                    year=datetime.now(tz=UTC).year,
                     month=1,
                     day=1,
                     hour=0,
                     minute=30,
                     second=25,
                     microsecond=35,
-                    tzinfo=timezone.utc,
+                    tzinfo=UTC,
                 ),
                 "interval": "1h",
             }
@@ -43,14 +43,14 @@ class TestReportRequest:
         rr2 = ReportRequest.model_validate(
             {
                 "start": datetime(
-                    year=datetime.now(tz=timezone.utc).year,
+                    year=datetime.now(tz=UTC).year,
                     month=1,
                     day=1,
                     hour=6,
                     minute=30,
                     second=25,
                     microsecond=35,
-                    tzinfo=timezone.utc,
+                    tzinfo=UTC,
                 ),
                 "interval": "1d",
             }
@@ -92,8 +92,8 @@ class TestReportRequest:
         with pytest.raises(expected_exception=ValidationError):
             ReportRequest.model_validate(
                 {
-                    "start": datetime(year=1990, month=1, day=1, tzinfo=timezone.utc),
-                    "end": datetime(year=1950, month=1, day=1, tzinfo=timezone.utc),
+                    "start": datetime(year=1990, month=1, day=1, tzinfo=UTC),
+                    "end": datetime(year=1950, month=1, day=1, tzinfo=UTC),
                 }
             )
 
@@ -156,8 +156,8 @@ class TestReportRequest:
         rr = ReportRequest.model_validate(
             {
                 "interval": "1d",
-                "start": datetime(year=2000, month=1, day=1, tzinfo=timezone.utc),
-                "end": datetime(year=2000, month=1, day=10, tzinfo=timezone.utc),
+                "start": datetime(year=2000, month=1, day=1, tzinfo=UTC),
+                "end": datetime(year=2000, month=1, day=10, tzinfo=UTC),
             }
         )
 

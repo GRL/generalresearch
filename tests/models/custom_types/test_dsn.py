@@ -11,9 +11,9 @@ from generalresearch.models.custom_types import DaskDsn, SentryDsn
 
 
 class SettingsModel(BaseModel):
-    dask: Optional["DaskDsn"] = Field(default=None)
-    sentry: Optional["SentryDsn"] = Field(default=None)
-    db: Optional["MySQLDsn"] = Field(default=None)
+    dask: DaskDsn | None = Field(default=None)
+    sentry: SentryDsn | None = Field(default=None)
+    db: MySQLDsn | None = Field(default=None)
 
 
 # --- Pytest themselves ---

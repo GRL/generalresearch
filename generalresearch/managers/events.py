@@ -5,7 +5,7 @@ import math
 import socket
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -141,7 +141,7 @@ class UserStatsManager(RedisManager):
         pipe.execute()
 
     def mark_user_active(self, user: User) -> None:
-        now = datetime.now(tz=timezone.utc).isoformat()
+        now = datetime.now(tz=UTC).isoformat()
         r = self.redis_client
 
         pipe = r.pipeline(transaction=False)
@@ -175,7 +175,7 @@ class UserStatsManager(RedisManager):
         # This call is idempotent; it can be called multiple times (for the
         # same user) and won't falsely increase a counter; it will just
         # reset the expiration for this user (times out after 60 min)
-        now = datetime.now(tz=timezone.utc).isoformat()
+        now = datetime.now(tz=UTC).isoformat()
         r = self.redis_client
         pipe = r.pipeline(transaction=False)
 

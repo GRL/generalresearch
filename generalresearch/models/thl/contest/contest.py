@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime, timezone
+from typing import Any, Self
 from uuid import uuid4
 
 from pydantic import (
@@ -14,7 +14,6 @@ from pydantic import (
     NonNegativeInt,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.contest import (
@@ -57,7 +56,7 @@ class ContestBase(BaseModel, ABC):
 
     starts_at: AwareDatetimeISO = Field(
         description="When the contest starts",
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
     )
 
     terms_and_conditions: HttpUrl | None = Field(default=None)
@@ -91,11 +90,11 @@ class Contest(ContestBase):
     product_id: UUIDStr = Field(description="Contest applies only to a single BP")
 
     created_at: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
         description="When this contest was created",
     )
     updated_at: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
         description="When this contest was last modified. Does not include "
         "entries being created/modified",
     )
@@ -139,7 +138,7 @@ class Contest(ContestBase):
     def should_end(self) -> tuple[bool, ContestEndReason | None]:
         if self.status == ContestStatus.ACTIVE:
             if self.end_condition.ends_at:
-                if datetime.now(tz=timezone.utc) >= self.end_condition.ends_at:
+                if datetime.now(tz=UTC) >= self.end_condition.ends_at:
                     return True, ContestEndReason.ENDS_AT
 
         return False, None
@@ -158,14 +157,14 @@ class Contest(ContestBase):
         if winners is not None:
             self.update(
                 status=ContestStatus.COMPLETED,
-                ended_at=datetime.now(tz=timezone.utc),
+                ended_at=datetime.now(tz=UTC),
                 end_reason=reason,
                 all_winners=winners,
             )
         else:
             self.update(
                 status=ContestStatus.COMPLETED,
-                ended_at=datetime.now(tz=timezone.utc),
+                ended_at=datetime.now(tz=UTC),
                 end_reason=reason,
             )
         return None
@@ -211,7 +210,7 @@ class ContestUserView(Contest):
     )
 
     def is_user_eligible(self, country_iso: str) -> tuple[bool, str]:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         assert country_iso.lower() == country_iso
         if now < self.starts_at:

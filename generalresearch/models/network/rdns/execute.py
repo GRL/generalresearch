@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from uuid import uuid4
 
 from generalresearch.models.custom_types import UUIDStr
@@ -21,11 +21,11 @@ from generalresearch.models.network.tool_run_command import (
 
 
 def execute_rdns(ip: str, scan_group_id: UUIDStr | None = None):
-    started_at = datetime.now(tz=timezone.utc)
+    started_at = datetime.now(tz=UTC)
     tool_version = get_dig_version()
     config = RDNSRunCommand(options=RDNSRunCommandOptions(ip=ip))
     result = run_rdns(config)
-    finished_at = datetime.now(tz=timezone.utc)
+    finished_at = datetime.now(tz=UTC)
 
     run = RDNSRun(
         tool_name=ToolName.DIG,

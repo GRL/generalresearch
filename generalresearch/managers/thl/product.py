@@ -4,7 +4,7 @@ import json
 import logging
 import operator
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from decimal import Decimal
 from threading import Lock
 from typing import TYPE_CHECKING
@@ -293,7 +293,7 @@ class ProductManager(PostgresManager):
             UserWalletConfig,
         )
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         # TODO: Add product_id, and possibly name uniqueness validation to the
         #   pydantic model definition itself. The create manager doesn't need

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 from generalresearch.models.thl.user_iphistory import (
     UserIPHistory,
@@ -8,7 +8,7 @@ from generalresearch.models.thl.user_iphistory import (
 
 def test_collapse_ip_records():
     # This does not exist in a db, so we do not need fixtures/ real user ids, whatever
-    now = datetime.now(tz=timezone.utc) - timedelta(days=1)
+    now = datetime.now(tz=UTC) - timedelta(days=1)
     # Gets stored most recent first. This is reversed, but the validator will order it
     records = [
         UserIPRecord(ip="1.2.3.5", created=now + timedelta(minutes=1)),

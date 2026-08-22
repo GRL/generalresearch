@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
 from functools import cached_property
 
@@ -120,8 +120,8 @@ class TaskAdjustmentManager(PostgresManager):
             CHANGES/DELTAS as just communicated by the marketplace, not
             what the Wall's final adjusted_* will be.
         """
-        alert_time = alert_time or datetime.now(tz=timezone.utc)
-        assert alert_time.tzinfo == timezone.utc
+        alert_time = alert_time or datetime.now(tz=UTC)
+        assert alert_time.tzinfo == UTC
 
         wall = self.wall_manager.get_from_uuid(wall_uuid)
         session = self.session_manager.get_from_id(wall.session_id)

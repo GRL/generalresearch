@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import abc
-from datetime import datetime, timezone
-from typing import Literal
+from datetime import UTC, datetime, timezone
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
-from typing_extensions import Annotated
 
 from generalresearch.models import Source
 from generalresearch.models.custom_types import (
@@ -29,9 +28,7 @@ class SurveyPenalty(BaseModel, abc.ABC):
 
     penalty: float = Field(ge=0, le=1)
 
-    created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    created: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     @property
     def sid(self):

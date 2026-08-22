@@ -11,8 +11,8 @@ ARCHIVE_AFTER = "archive_after"
 PARTITION_ON = "partition_on"
 
 
-def empty_dataframe_from_schema(schema: pa.DataFrameSchema) -> "pd.DataFrame":
-    index_names: List[str] = schema.index.names
+def empty_dataframe_from_schema(schema: pa.DataFrameSchema) -> pd.DataFrame:
+    index_names: list[str] = schema.index.names
     columns = set(schema.dtypes.keys())
 
     if len(index_names) > 1:

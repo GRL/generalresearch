@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import TYPE_CHECKING, Callable
+from datetime import datetime, timedelta, timezone, UTC
+from typing import TYPE_CHECKING
+from collections.abc import Callable
 
 from generalresearch.config import JAMES_BILLINGS_BPID, JAMES_BILLINGS_TX_CUTOFF
 from generalresearch.currency import USDCent
@@ -73,7 +74,7 @@ def generate_condition_bp_payout(
     skip_one_per_day_check: bool = False,
     skip_wallet_balance_check: bool = False,
 ) -> Callable[..., tuple[bool, str]]:
-    created = datetime.now(tz=timezone.utc)
+    created = datetime.now(tz=UTC)
 
     def _condition(
         lm: ThlLedgerManager,

@@ -1,7 +1,7 @@
 from enum import Enum
+from typing import Annotated
 
 from pydantic import StringConstraints
-from typing_extensions import Annotated
 
 # Note, this is called the KEY in the Question model
 InnovateQuestionID = Annotated[

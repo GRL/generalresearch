@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Literal
+from datetime import UTC, datetime, timedelta, timezone
+from typing import Any, Literal, Self
 
 from pydantic import (
     ConfigDict,
@@ -11,7 +11,6 @@ from pydantic import (
     model_validator,
 )
 from redis import Redis
-from typing_extensions import Self
 
 from generalresearch.decorators import LOG
 from generalresearch.managers.leaderboard import country_timezone
@@ -195,7 +194,7 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
     def should_end(self) -> tuple[bool, ContestEndReason | None]:
         if self.status == ContestStatus.ACTIVE:
             if self.end_condition.ends_at:
-                if datetime.now(tz=timezone.utc) >= self.end_condition.ends_at:
+                if datetime.now(tz=UTC) >= self.end_condition.ends_at:
                     return True, ContestEndReason.ENDS_AT
 
         return False, None
@@ -276,7 +275,7 @@ class LeaderboardContestUserView(LeaderboardContest, ContestUserView):
         if self.user_winnings:
             return False, "User already won"
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         if self.leaderboard_model.period_end_utc < now:
             return False, "Contest is over"
         if self.leaderboard_model.period_start_utc > now:

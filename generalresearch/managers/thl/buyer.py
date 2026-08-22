@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 from generalresearch.managers.base import Permission, PostgresManager
 from generalresearch.models import Source
@@ -45,7 +45,7 @@ class BuyerManager(PostgresManager):
             return None
 
     def bulk_get_or_create(self, source: Source, codes: Collection[str]) -> list[Buyer]:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         buyers = []
         params_seq = []
 

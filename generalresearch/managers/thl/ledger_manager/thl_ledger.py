@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from decimal import Decimal
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
+from collections.abc import Callable
 from uuid import UUID
 
 import numpy as np
@@ -244,10 +245,10 @@ class ThlLedgerManager(LedgerManager):
         time_end: datetime | None = None,
     ):
         if time_start is None:
-            time_start = datetime(year=2017, month=1, day=1, tzinfo=timezone.utc)
+            time_start = datetime(year=2017, month=1, day=1, tzinfo=UTC)
 
         if time_end is None:
-            time_end = datetime.now(tz=timezone.utc)
+            time_end = datetime.now(tz=UTC)
 
         assert all(
             isinstance(item, str) for item in account_uuids
@@ -798,7 +799,7 @@ class ThlLedgerManager(LedgerManager):
             skip_flag_check = True
 
         assert (
-            datetime.now(tz=timezone.utc) > created
+            datetime.now(tz=UTC) > created
         ), "created cannot be in the future"
         f = lambda: self.create_tx_bp_payout_(
             product=product,
@@ -904,7 +905,7 @@ class ThlLedgerManager(LedgerManager):
             for retry of a failed previous call.
         """
         assert (
-            datetime.now(tz=timezone.utc) > created
+            datetime.now(tz=UTC) > created
         ), "created cannot be in the future"
         assert isinstance(amount, int)
         assert isinstance(amount, USDCent)
@@ -1837,7 +1838,7 @@ class ThlLedgerManager(LedgerManager):
             user.product.user_wallet_config.enabled
         ), "Can't get wallet balance on non-managed account."
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         wallet = self.get_account_or_create_user_wallet(user)
         if user.product_id == JAMES_BILLINGS_BPID:
             assert since_days_ago is None
@@ -1867,7 +1868,7 @@ class ThlLedgerManager(LedgerManager):
         After 3 days, about 25% of all "future" recons have happened,
         7 days: 50%, 14 days: 75%, till end of next month: 100%.
         """
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         # The redeemable balance can NOT ever be more than the actual user_wallet_balance
 
         # Sum up the redeemable amount for each complete

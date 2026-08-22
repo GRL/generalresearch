@@ -1,9 +1,9 @@
 import logging
+from datetime import UTC, datetime, timedelta, timezone
+from decimal import Decimal
 from random import randint
 
 import pytest
-from datetime import datetime, timezone, timedelta
-from decimal import Decimal
 
 from generalresearch.models import Source
 from generalresearch.models.thl.definitions import (
@@ -31,16 +31,14 @@ def session_complete_with_wallet(session_with_tx_factory, user_with_wallet):
 
 @pytest.fixture()
 def session_fail(user, session_manager, wall_manager):
-    session = session_manager.create_dummy(
-        started=datetime.now(timezone.utc), user=user
-    )
+    session = session_manager.create_dummy(started=datetime.now(UTC), user=user)
     wall1 = wall_manager.create_dummy(
         session_id=session.id,
         user_id=user.user_id,
         source=Source.DYNATA,
         req_survey_id="72723",
         req_cpi=Decimal("3.22"),
-        started=datetime.now(timezone.utc),
+        started=datetime.now(UTC),
     )
     wall_manager.finish(
         wall=wall1,
@@ -109,7 +107,7 @@ class TestHandleRecons:
         assert ledger_manager.get_account_balance(commission_account) == 0
 
         # Now, say we get the exact same *adjust to incomplete* msg again. It should do nothing!
-        adjusted_timestamp = datetime.now(tz=timezone.utc)
+        adjusted_timestamp = datetime.now(tz=UTC)
         wall = wall_manager.get_from_uuid(wall_uuid=wall_uuid)
         with pytest.raises(match=" is already "):
             wall_manager.adjust_status(

@@ -8,7 +8,7 @@ import shutil
 import subprocess
 import warnings
 from concurrent.futures import Future
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 from os import R_OK, access, listdir
 from os.path import isdir
 from os.path import join as pjoin
@@ -17,9 +17,8 @@ from sys import platform
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Sequence,
 )
+from collections.abc import Callable, Sequence
 from uuid import uuid4
 
 import dask
@@ -43,7 +42,7 @@ from pydantic import (
 )
 from pydantic.json_schema import SkipJsonSchema
 from sentry_sdk import capture_exception
-from typing_extensions import Self
+from typing import Self
 
 from generalresearch.config import is_debug
 from generalresearch.incite.schemas import (
@@ -166,7 +165,7 @@ class CollectionBase(BaseModel):
     offset: str = Field(default="72h", max_length=5)
 
     start: AwareDatetimeISO = Field(
-        default=datetime(year=2018, month=1, day=1, tzinfo=timezone.utc),
+        default=datetime(year=2018, month=1, day=1, tzinfo=UTC),
         description="This is the starting point in which data will be retrieved"
         "in chunks from.",
         frozen=True,
@@ -208,7 +207,7 @@ class CollectionBase(BaseModel):
             return self
 
         offset_total_sec = pd.Timedelta(self.offset).total_seconds()
-        start_total_sec = (datetime.now(tz=timezone.utc) - self.start).total_seconds()
+        start_total_sec = (datetime.now(tz=UTC) - self.start).total_seconds()
 
         if offset_total_sec > start_total_sec:
             raise ValueError("Offset must be equal to, or smaller the start timestamp")
@@ -294,14 +293,14 @@ class CollectionBase(BaseModel):
     @property
     def interval_range(self) -> list[tuple[datetime, datetime]]:
         """closed='left', so 0 <= x < 5"""
-        end = self.finished or datetime.now(tz=timezone.utc).replace(microsecond=0)
+        end = self.finished or datetime.now(tz=UTC).replace(microsecond=0)
         iv_r = self._interval_range(end)
         return [(iv.left.to_pydatetime(), iv.right.to_pydatetime()) for iv in iv_r]
 
     @property
     def progress(self) -> pd.DataFrame:
         records = [i.to_dict() for i in self.items]
-        end = self.finished if self.finished else datetime.now(tz=timezone.utc)
+        end = self.finished if self.finished else datetime.now(tz=UTC)
         return pd.DataFrame.from_records(records, index=self._interval_range(end))
 
     @property
@@ -626,15 +625,15 @@ class CollectionBase(BaseModel):
         return res
 
     def get_items_from_year(self, year: int) -> Items:
-        ts = datetime(year=year, month=1, day=1, tzinfo=timezone.utc)
+        ts = datetime(year=year, month=1, day=1, tzinfo=UTC)
         return self.get_items(since=ts)
 
     def get_items_last90(self) -> Items:
-        ts = datetime.now(tz=timezone.utc) - timedelta(days=90)
+        ts = datetime.now(tz=UTC) - timedelta(days=90)
         return self.get_items(since=ts)
 
     def get_items_last365(self) -> Items:
-        ts = datetime.now(tz=timezone.utc) - timedelta(days=365)
+        ts = datetime.now(tz=UTC) - timedelta(days=365)
         return self.get_items(since=ts)
 
 
@@ -642,7 +641,7 @@ class CollectionItemBase(BaseModel):
     # I want to intentionally keep these as native python types, and not
     # pandas specific types.
     start: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc).replace(microsecond=0)
+        default_factory=lambda: datetime.now(tz=UTC).replace(microsecond=0)
     )
 
     # --- Private attrs ---
@@ -839,7 +838,7 @@ class CollectionItemBase(BaseModel):
         if archive_after is None:
             return False
 
-        return datetime.now(tz=timezone.utc) > self.finish + archive_after
+        return datetime.now(tz=UTC) > self.finish + archive_after
 
     def set_empty(self):
         assert (

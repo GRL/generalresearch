@@ -13,7 +13,7 @@ from generalresearch.models.thl.definitions import (
 
 thl_task_adj_columns = THLTaskAdjustmentSchema.columns.copy()
 
-COUNTRY_ISOS: Set[str] = Localelator().get_all_countries()
+COUNTRY_ISOS: set[str] = Localelator().get_all_countries()
 kosovo = "xk"
 COUNTRY_ISOS.add(kosovo)
 BIGINT = 9223372036854775807

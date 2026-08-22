@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 
 import pymysql
 from pymysql import IntegrityError
@@ -104,7 +104,7 @@ class PrecisionSurveyManager(SurveyManager):
         return surveys
 
     def create(self, survey: PrecisionSurvey) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         d = survey.to_mysql()
         conn: pymysql.Connection = self.sql_helper.make_connection()
         conn.autocommit(False)
@@ -151,7 +151,7 @@ class PrecisionSurveyManager(SurveyManager):
         return True
 
     def update_one(self, survey: PrecisionSurvey) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         d = survey.to_mysql()
         d["updated"] = now
 

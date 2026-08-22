@@ -6,16 +6,17 @@ import stat
 import subprocess
 import sys
 import tempfile
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable, Generator
+from datetime import UTC, datetime, timedelta, timezone
 from os.path import join as pjoin
 from pathlib import Path
-from typing import Callable, Generator
 from uuid import uuid4
 
 import pytest
 from _pytest.config import Config
 from dotenv import load_dotenv
 from pydantic import MariaDBDsn, PostgresDsn, TypeAdapter
+from pytest import TempPathFactory
 
 from generalresearch.config import GRLBaseSettings
 from generalresearch.currency import USDCent
@@ -93,7 +94,7 @@ def postgres_instance(settings: GRLBaseSettings) -> Generator[PostgresDsn]:
     from psycopg import connect
     from psycopg.sql import SQL, Identifier
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ts: str = now.strftime("%Y-%m-%d")
     db_name = f"unittest-{ts}-{uuid4().hex[:6]}"
 
@@ -152,38 +153,48 @@ def postgres_instance_host(
     yield value
 
 
-# @pytest.fixture(scope="session")
-# def git_key_path(settings: GRLBaseSettings) -> Path:
-#     return Path('/tmp/')
-
-
 @pytest.fixture(scope="session")
 def git_key_path(
+    tmp_path_factory: TempPathFactory,
     settings: GRLBaseSettings,
 ) -> Generator[Path]:
+    # We are using the tmp_path_factory because unlike the tmp_path (which
+    # is function scoped), this is session scoped.
 
-    assert settings.git_creds
-    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix="_id_rsa") as f:
-        f.write(settings.git_creds)
-        key_path = f.name
+    assert settings.git_creds, "Must define key to download alternative models"
+    fn = tmp_path_factory.mktemp("keys") / "git_creds"
+    fn.write_text(settings.git_creds, encoding="utf-8")
+    os.chmod(fn, stat.S_IRUSR | stat.S_IWUSR)
 
-    os.chmod(key_path, stat.S_IRUSR | stat.S_IWUSR)
+    yield Path(fn)
 
-    yield Path(key_path)
-
-    os.unlink(key_path)
+    os.unlink(fn)
 
 
 @pytest.fixture(scope="session")
-def gr_repo(git_key_path: Path) -> Callable[..., Path]:
+def gr_repo(
+    git_key_path: Path,
+    tmp_path_factory: TempPathFactory,
+) -> Callable[..., Path | None]:
     repo_url = "ssh://code.g-r-l.com/general-research/gr-carer.git"
-    repo_path = Path("/tmp/gr-carer")
+
+    _ran = {}
+    if _ran.get(repo_url, False):
+        print(f"Already ran django_db_factory.{repo_url}")
+        return
+
+    _ran[repo_url] = True
+
+    fn = tmp_path_factory.mktemp("repos")
+    repo_path = fn / "gr-carer"
+    repo_path.mkdir(parents=True, exist_ok=True)
 
     def _inner() -> Path:
+
         ssh_cmd = (
             f"ssh -i {git_key_path} "
             "-o IdentitiesOnly=yes "
-            "-o StrictHostKeyChecking=no "  # or accept-new, see note below
+            "-o StrictHostKeyChecking=no "
         )
         env = {"GIT_SSH_COMMAND": ssh_cmd}
 
@@ -196,6 +207,11 @@ def gr_repo(git_key_path: Path) -> Callable[..., Path]:
                 env=env,
             )
 
+        result = subprocess.run(
+            ["cat", git_key_path], capture_output=True, text=True, check=False
+        )
+        print(repr(result.stdout))
+
         return repo_path
 
     return _inner
@@ -206,20 +222,28 @@ def django_db_factory(
     postgres_instance: PostgresDsn,
     postgres_instance_dict: PostgresDict,
     gr_repo: Callable[..., Path],
-) -> Callable[..., PostgresDsn]:
+) -> Callable[..., PostgresDsn | None]:
+
+    _ran = {}
 
     import django
+    from django.apps import apps
     from django.conf import settings as django_settings
     from django.core.management import call_command
 
-    def _inner(django_project: str = "generalresearch.thl_django"):
+    def _inner(
+        django_project: str = "generalresearch.thl_django",
+    ) -> PostgresDsn | None:
+
+        if _ran.get(django_project, False):
+            print(f"Already ran django_db_factory.{django_project}")
+            return
+        _ran[django_project] = True
 
         if "gr" in django_project:
             # We need model files that are NOT in this repo.
             gr_path = gr_repo()
             sys.path.insert(0, str(gr_path))
-
-            print(sys.path)
 
         # 1. Bootstrapping Django settings
         if not django_settings.configured:
@@ -242,10 +266,11 @@ def django_db_factory(
             )
         django.setup()
 
-        # for model in apps.get_models():
-        #     print(f"Discovered model: {model._meta.label}")
+        for model in apps.get_models():
+            print(f"Discovered model: {model._meta.label}")
 
         # 2. Run migrations directly during fixture activation
+        call_command("makemigrations", "gr", interactive=False)
         call_command("migrate")
 
         # 3. Return the Dsn so the factory gives a way to connect
@@ -276,37 +301,37 @@ def spectrum_rw(settings: GRLBaseSettings) -> SqlHelper:
 
 @pytest.fixture
 def start() -> datetime:
-    return datetime(year=1900, month=1, day=1, tzinfo=timezone.utc)
+    return datetime(year=1900, month=1, day=1, tzinfo=UTC)
 
 
 @pytest.fixture
 def utc_now() -> datetime:
-    return datetime.now(tz=timezone.utc)
+    return datetime.now(tz=UTC)
 
 
 @pytest.fixture
 def utc_hour_ago() -> datetime:
-    return datetime.now(tz=timezone.utc) - timedelta(hours=1)
+    return datetime.now(tz=UTC) - timedelta(hours=1)
 
 
 @pytest.fixture
 def utc_day_ago() -> datetime:
-    return datetime.now(tz=timezone.utc) - timedelta(hours=24)
+    return datetime.now(tz=UTC) - timedelta(hours=24)
 
 
 @pytest.fixture
 def utc_90days_ago() -> datetime:
-    return datetime.now(tz=timezone.utc) - timedelta(days=90)
+    return datetime.now(tz=UTC) - timedelta(days=90)
 
 
 @pytest.fixture
 def utc_60days_ago() -> datetime:
-    return datetime.now(tz=timezone.utc) - timedelta(days=60)
+    return datetime.now(tz=UTC) - timedelta(days=60)
 
 
 @pytest.fixture
 def utc_30days_ago() -> datetime:
-    return datetime.now(tz=timezone.utc) - timedelta(days=30)
+    return datetime.now(tz=UTC) - timedelta(days=30)
 
 
 # === Clean up ===
@@ -322,7 +347,7 @@ def delete_df_collection(
         DFCollectionType,
     )
 
-    def _inner(coll: "DFCollection"):
+    def _inner(coll: DFCollection):
         match coll.data_type:
             case DFCollectionType.LEDGER:
                 for table in [
