@@ -77,12 +77,12 @@ class TestWallManager:
         assert isinstance(res, list)
         assert len(res) == 50
 
-        res1 = list(set([w.session_id for w in res]))
+        res1 = list({w.session_id for w in res})
         res1.sort()
 
         assert session_ids == res1
 
-    def test_create_wall(self, wall_manager, session_manager, user, session):
+    def test_create_wall(self, wall_manager, user, session):
         w = wall_manager.create(
             session_id=session.id,
             user_id=user.user_id,
@@ -98,9 +98,7 @@ class TestWallManager:
         w2 = wall_manager.get_from_uuid(wall_uuid=w.uuid)
         assert w == w2
 
-    def test_report_wall_abandon(
-        self, wall_manager, session_manager, user, session, utc_hour_ago
-    ):
+    def test_report_wall_abandon(self, wall_manager, user, session, utc_hour_ago):
         w1 = wall_manager.create(
             session_id=session.id,
             user_id=user.user_id,
@@ -176,12 +174,10 @@ class TestWallManager:
         assert Status.COMPLETE == w2.status
         assert "This survey blows!" == w2.report_notes
 
-    def test_filter_wall_attempts(
-        self, wall_manager, session_manager, user, session, utc_hour_ago
-    ):
+    def test_filter_wall_attempts(self, wall_manager, user, session, utc_hour_ago):
         res = wall_manager.filter_wall_attempts(user_id=user.user_id)
         assert len(res) == 0
-        w1 = wall_manager.create(
+        wall_manager.create(
             session_id=session.id,
             user_id=user.user_id,
             uuid_id=uuid4().hex,
@@ -193,7 +189,7 @@ class TestWallManager:
         )
         res = wall_manager.filter_wall_attempts(user_id=user.user_id)
         assert len(res) == 1
-        w2 = wall_manager.create(
+        wall_manager.create(
             session_id=session.id,
             user_id=user.user_id,
             uuid_id=uuid4().hex,
@@ -221,7 +217,7 @@ class TestWallCacheManager:
         start3 = datetime.now(UTC) - timedelta(hours=1)
 
         session = session_manager.create_dummy(started=start1, user=user)
-        wall1 = wall_manager.create_dummy(
+        wall_manager.create_dummy(
             session_id=session.id,
             user_id=session.user_id,
             started=start1,

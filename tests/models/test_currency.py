@@ -14,7 +14,7 @@ class TestUSDCentModel:
     def test_construct_int(self):
         from generalresearch.currency import USDCent
 
-        for i in range(100):
+        for _ in range(100):
             int_val = randint(0, 999_999)
             instance = USDCent(int_val)
             assert int_val == instance
@@ -102,7 +102,7 @@ class TestUSDCentModel:
             instance = USDCent(int_val)
 
             with pytest.raises(expected_exception=ValueError) as cm:
-                instance - USDCent(1_000_000)
+                _ = instance - USDCent(1_000_000)
 
             assert "USDCent not be less than zero" in str(cm.value)
 
@@ -147,16 +147,16 @@ class TestUSDCentModel:
         instance = USDCent(int_val)
 
         with pytest.raises(expected_exception=AssertionError):
-            instance + 0.10
+            _ = instance + 0.10
 
         with pytest.raises(expected_exception=AssertionError):
-            instance + Decimal(".10")
+            _ = instance + Decimal(".10")
 
         with pytest.raises(expected_exception=AssertionError):
-            instance + "9.9"
+            _ = instance + "9.9"
 
         with pytest.raises(expected_exception=AssertionError):
-            instance + True
+            _ = instance + True
 
     def test_abs(self):
         from generalresearch.currency import USDCent
@@ -247,6 +247,8 @@ class TestUSDMillModel:
         with pytest.warns(expected_warning=Warning) as record:
             decimal_val: Decimal = Decimal("10.6789")
             instance = USDMill(decimal_val)
+
+            assert isinstance(instance, USDMill)
 
         assert len(record) == 1
         assert (

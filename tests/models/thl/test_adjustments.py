@@ -60,7 +60,7 @@ class TestSessionAdjustments:
         )
 
         # Confirm only the last Wall Event is a complete
-        assert not s1.wall_events[0].status == Status.COMPLETE
+        assert s1.wall_events[0].status != Status.COMPLETE
         assert s1.wall_events[1].status == Status.COMPLETE
 
         # Confirm the Session is marked as finished and the simple brokerage
@@ -532,9 +532,13 @@ class TestAdjustments:
         w1 = s1.wall_events[0]
 
         status, status_code_1 = s1.determine_session_status()
-        thl_net, commission_amount, bp_pay, user_pay = s1.determine_payments()
+        _, _, bp_pay, user_pay = s1.determine_payments()
         s1.update(
-            status=status, status_code_1=status_code_1, finished=utc_hour_ago + timedelta(minutes=10), payout=bp_pay, user_payout=user_pay
+            status=status,
+            status_code_1=status_code_1,
+            finished=utc_hour_ago + timedelta(minutes=10),
+            payout=bp_pay,
+            user_payout=user_pay,
         )
         w1.update(
             adjusted_status=WallAdjustedStatus.ADJUSTED_TO_FAIL,
@@ -586,7 +590,11 @@ class TestAdjustments:
         thl_net = Decimal(sum(w.cpi for w in s1.wall_events if w.is_visible_complete()))
         payout = user.product.determine_bp_payment(thl_net=thl_net)
         s1.update(
-            status=status, status_code_1=status_code_1, finished=utc_hour_ago + timedelta(minutes=25), payout=payout, user_payout=None
+            status=status,
+            status_code_1=status_code_1,
+            finished=utc_hour_ago + timedelta(minutes=25),
+            payout=payout,
+            user_payout=None,
         )
 
         # Test. Adjust first fail to complete. Now we have 2 completes.
@@ -634,7 +642,11 @@ class TestAdjustments:
         thl_net = Decimal(sum(w.cpi for w in s1.wall_events if w.is_visible_complete()))
         payout = user.product.determine_bp_payment(thl_net)
         s1.update(
-            status=status, status_code_1=status_code_1, finished=utc_hour_ago + timedelta(minutes=25), payout=payout, user_payout=None
+            status=status,
+            status_code_1=status_code_1,
+            finished=utc_hour_ago + timedelta(minutes=25),
+            payout=payout,
+            user_payout=None,
         )
 
         # Test. Adjust complete to fail. Now we have 2 fails.

@@ -161,9 +161,9 @@ class TestSurvey:
                 calc_answers={"i:adhoc_13126": ("3", "4")},
             ),
         ]
-        uqad = dict()
+        uqad = {}
         for uqa in uqas:
-            for k, v in uqa.calc_answers.items():
+            for k, _ in uqa.calc_answers.items():
                 if k in qualifying_questions:
                     uqad[k] = uqa
                     uqad[uqa.property_code] = uqa
@@ -234,7 +234,7 @@ class TestSurveyStat:
     ):
         survey = surveys_fixture[0].model_copy()
         surveys = []
-        for idx in range(20_000):
+        for _ in range(20_000):
             s = survey.model_copy()
             s.survey_id = uuid.uuid4().hex
             surveys.append(s)
@@ -269,9 +269,9 @@ class TestSurveyStat:
             s.conv_beta = 20
             s.updated_at = now
         # and 1,000 don't change
-        print(f"----c-----: {datetime.now().isoformat()}")
+        print(f"----c-----: {datetime.now(tz=UTC).isoformat()}")
         res2 = surveystat_manager.update_or_create(ss)
-        print(f"----d-----: {datetime.now().isoformat()}")
+        print(f"----d-----: {datetime.now(tz=UTC).isoformat()}")
         assert len(res2) == 20_000
 
     def test_ymsp(

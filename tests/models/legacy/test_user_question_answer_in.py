@@ -295,7 +295,7 @@ class TestUserQuestionAnswerIn:
         )
 
         answer = ["aaa" for i in range(5)]
-        with pytest.raises(ValueError) as cm:
+        with pytest.raises(ValueError):
             UserQuestionAnswerIn.model_validate(
                 {"question_id": uuid4().hex, "answer": answer}
             )

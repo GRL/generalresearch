@@ -1,20 +1,46 @@
+from __future__ import annotations
+
 import os
-from datetime import timedelta
+from collections.abc import Callable
+from datetime import datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 import pandas as pd
+from dask.distributed import Client as DaskClient
+from distributed.utils_test import (
+    client_no_amm,
+)
+
+from generalresearch.incite.base import GRLDatasets
+from generalresearch.incite.collections.thl_web import (
+    SessionDFCollection,
+    WallDFCollection,
+)
+from generalresearch.incite.mergers.foundations.enriched_session import (
+    EnrichedSessionMerge,
+)
+from generalresearch.incite.mergers.foundations.enriched_wall import EnrichedWallMerge
+from generalresearch.managers.gr.team import MembershipManager, TeamManager
+from generalresearch.models.gr.authentication import GRUser
+from generalresearch.models.gr.business import Business
+from generalresearch.models.gr.team import Membership, Team
+from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.session import Session
+from generalresearch.models.thl.user import User
+from generalresearch.pg_helper import PostgresConfig
+from generalresearch.redis_helper import RedisConfig
 
 
 class TestTeam:
 
-    def test_init(self, team):
-        from generalresearch.models.gr.team import Team
+    def test_init(self, team: Team):
 
         assert isinstance(team, Team)
         assert isinstance(team.id, int)
         assert isinstance(team.uuid, str)
 
-    def test_memberships_none(self, team, gr_user_factory, gr_db):
+    def test_memberships_none(self, team: Team, gr_db: PostgresConfig):
         assert team.memberships is None
 
         team.prefetch_memberships(pg_config=gr_db)
@@ -23,13 +49,11 @@ class TestTeam:
 
     def test_memberships(
         self,
-        team,
-        membership,
-        gr_user,
-        gr_user_factory,
-        membership_factory,
-        membership_manager,
-        gr_db,
+        team: Team,
+        gr_user: GRUser,
+        gr_user_factory: Callable[..., GRUser],
+        membership_manager: MembershipManager,
+        gr_db: PostgresConfig,
     ):
         assert team.memberships is None
 
@@ -45,7 +69,12 @@ class TestTeam:
         assert len(team.memberships) == 2
 
     def test_gr_users(
-        self, team, gr_user_factory, membership_manager, gr_db, gr_redis_config
+        self,
+        team: Team,
+        gr_user_factory: Callable[..., GRUser],
+        membership_manager: MembershipManager,
+        gr_db: PostgresConfig,
+        gr_redis_config: RedisConfig,
     ):
         assert team.gr_users is None
 
@@ -65,8 +94,14 @@ class TestTeam:
         team.prefetch_gr_users(pg_config=gr_db, redis_config=gr_redis_config)
         assert len(team.gr_users) == 2
 
-    def test_businesses(self, team, business, team_manager, gr_db, gr_redis_config):
-        from generalresearch.models.gr.business import Business
+    def test_businesses(
+        self,
+        team: Team,
+        business: Business,
+        team_manager: TeamManager,
+        gr_db: PostgresConfig,
+        gr_redis_config: RedisConfig,
+    ):
 
         assert team.businesses is None
 
@@ -81,8 +116,12 @@ class TestTeam:
         assert isinstance(team.businesses[0], Business)
         assert team.businesses[0].uuid == business.uuid
 
-    def test_products(self, team, product_factory, thl_web_rr):
-        from generalresearch.models.thl.product import Product
+    def test_products(
+        self,
+        team: Team,
+        product_factory: Callable[..., Product],
+        thl_web_rr: PostgresConfig,
+    ):
 
         assert team.products is None
 
@@ -99,23 +138,23 @@ class TestTeam:
 
 class TestTeamMethods:
 
-    def test_cache_key(self, team, gr_redis):
+    def test_cache_key(self, team: Team):
         assert isinstance(team.cache_key, str)
         assert ":" in team.cache_key
         assert str(team.uuid) in team.cache_key
 
     def test_set_cache(
         self,
-        team,
-        gr_redis,
-        gr_db,
-        thl_web_rr,
-        gr_redis_config,
-        client_no_amm,
-        mnt_filepath,
-        mnt_gr_api_dir,
-        enriched_wall_merge,
-        enriched_session_merge,
+        team: Team,
+        gr_redis: RedisConfig,
+        gr_db: PostgresConfig,
+        thl_web_rr: PostgresConfig,
+        gr_redis_config: RedisConfig,
+        client_no_amm: DaskClient,
+        mnt_filepath: GRLDatasets,
+        mnt_gr_api_dir: Path,
+        enriched_wall_merge: EnrichedWallMerge,
+        enriched_session_merge: EnrichedSessionMerge,
     ):
         assert gr_redis.get(name=team.cache_key) is None
 
@@ -134,20 +173,17 @@ class TestTeamMethods:
 
     def test_set_cache_team(
         self,
-        gr_user,
-        gr_user_token,
-        gr_redis,
-        gr_db,
-        thl_web_rr,
-        product_factory,
-        team,
-        membership_factory,
-        gr_redis_config,
-        client_no_amm,
-        mnt_filepath,
-        mnt_gr_api_dir,
-        enriched_wall_merge,
-        enriched_session_merge,
+        gr_user: GRUser,
+        gr_db: PostgresConfig,
+        thl_web_rr: PostgresConfig,
+        product_factory: Callable[..., Product],
+        team: Team,
+        membership_factory: Callable[..., Membership],
+        gr_redis_config: RedisConfig,
+        mnt_filepath: GRLDatasets,
+        mnt_gr_api_dir: Path,
+        enriched_wall_merge: EnrichedWallMerge,
+        enriched_session_merge: EnrichedSessionMerge,
     ):
         from generalresearch.models.gr.team import Team
 
@@ -171,6 +207,9 @@ class TestTeamMethods:
             gr_redis_config=gr_redis_config,
         )
 
+        assert isinstance(team2, Team)
+        assert isinstance(team2.products, list)
+        assert isinstance(team2.gr_users, list)
         assert team.model_dump_json() == team2.model_dump_json()
         assert p1.uuid in [p.uuid for p in team2.products]
         assert len(team2.gr_users) == 1
@@ -178,22 +217,19 @@ class TestTeamMethods:
 
     def test_prebuild_enriched_session_parquet(
         self,
-        event_report_request,
-        enriched_session_merge,
-        client_no_amm,
-        wall_collection,
-        session_collection,
-        thl_web_rr,
-        session_report_request,
-        user_factory,
-        start,
-        session_factory,
-        product_factory,
-        delete_df_collection,
-        business,
-        mnt_filepath,
-        mnt_gr_api_dir,
-        team,
+        enriched_session_merge: EnrichedSessionMerge,
+        client_no_amm: DaskClient,
+        wall_collection: WallDFCollection,
+        session_collection: SessionDFCollection,
+        thl_web_rr: PostgresConfig,
+        user_factory: Callable[..., User],
+        start: datetime,
+        session_factory: Callable[..., Session],
+        product_factory: Callable[..., Product],
+        delete_df_collection: Callable[..., None],
+        mnt_filepath: GRLDatasets,
+        mnt_gr_api_dir: Path,
+        team: Team,
     ):
 
         delete_df_collection(coll=wall_collection)
@@ -205,7 +241,7 @@ class TestTeamMethods:
         for p in [p1, p2]:
             u = user_factory(product=p)
             for i in range(50):
-                s = session_factory(
+                session_factory(
                     user=u,
                     wall_count=1,
                     wall_req_cpi=Decimal("1.00"),
@@ -237,23 +273,19 @@ class TestTeamMethods:
 
     def test_prebuild_enriched_wall_parquet(
         self,
-        event_report_request,
-        enriched_session_merge,
-        enriched_wall_merge,
-        client_no_amm,
-        wall_collection,
-        session_collection,
-        thl_web_rr,
-        session_report_request,
-        user_factory,
-        start,
-        session_factory,
-        product_factory,
-        delete_df_collection,
-        business,
-        mnt_filepath,
-        mnt_gr_api_dir,
-        team,
+        enriched_wall_merge: EnrichedWallMerge,
+        client_no_amm: DaskClient,
+        wall_collection: WallDFCollection,
+        session_collection: EnrichedSessionMerge,
+        thl_web_rr: PostgresConfig,
+        user_factory: Callable[..., User],
+        start: datetime,
+        session_factory: Callable[..., Session],
+        product_factory: Callable[..., Product],
+        delete_df_collection: Callable[..., None],
+        mnt_filepath: GRLDatasets,
+        mnt_gr_api_dir: Path,
+        team: Team,
     ):
 
         delete_df_collection(coll=wall_collection)
@@ -265,7 +297,7 @@ class TestTeamMethods:
         for p in [p1, p2]:
             u = user_factory(product=p)
             for i in range(50):
-                s = session_factory(
+                session_factory(
                     user=u,
                     wall_count=1,
                     wall_req_cpi=Decimal("1.00"),

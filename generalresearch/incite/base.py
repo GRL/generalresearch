@@ -711,7 +711,7 @@ class CollectionItemBase(BaseModel):
 
     @property
     def path(self) -> FilePath:
-        return_filepath_adapter.validate_python(
+        return _filepath_adapter.validate_python(
             os.path.join(self._collection.archive_path, self.filename)
         )
 

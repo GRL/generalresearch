@@ -60,7 +60,7 @@ def test_user_txs(
         amount=5,
         created=utc_now,
         payout_type=PayoutType.AMT_HIT,
-        request_data=dict(),
+        request_data={},
     )
     thl_lm.create_tx_user_payout_request(
         user=user,
@@ -73,7 +73,7 @@ def test_user_txs(
         amount=127,
         created=utc_now,
         payout_type=PayoutType.AMT_BONUS,
-        request_data=dict(),
+        request_data={},
     )
     thl_lm.create_tx_user_payout_request(
         user=user,
@@ -140,12 +140,7 @@ def test_user_txs_pagination(
     product_amt_true: Product,
     create_main_accounts: Callable[..., None],
     thl_lm: ThlLedgerManager,
-    lm: LedgerManager,
     delete_ledger_db: Callable[..., None],
-    session_with_tx_factory: Callable[..., Session],
-    adj_to_fail_with_tx_factory,
-    user_payout_event_manager,
-    utc_now: datetime,
 ):
     delete_ledger_db()
     create_main_accounts()
@@ -253,7 +248,7 @@ def test_user_txs_rolling_balance(
         cashout_method_uuid=settings.amt_bonus_cashout_method_id,
         amount=150,
         payout_type=PayoutType.AMT_BONUS,
-        request_data=dict(),
+        request_data={},
     )
     thl_lm.create_tx_user_payout_request(
         user=user,

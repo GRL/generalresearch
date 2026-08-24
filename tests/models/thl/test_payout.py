@@ -42,6 +42,8 @@ class TestBusinessPayoutEvent:
             products=[],
             bank_accounts=[],
         )
+        assert isinstance(b, Business)
+
         ext_ref_id = uuid4().hex
         bpe = BusinessPayoutEvent(
             business_id=uuid4().hex,

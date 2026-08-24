@@ -392,7 +392,7 @@ class TestUserCreated:
         from generalresearch.models.thl.user import User
 
         with pytest.raises(ValueError) as cm:
-            User(user_id=self.user_id, created=datetime.now(tz=None))
+            User(user_id=self.user_id, created=datetime.now(tz=None))  # noqa
         assert "1 validation error for User" in str(cm.value)
         assert "Input should have timezone info" in str(cm.value)
 
@@ -401,7 +401,7 @@ class TestUserCreated:
 
         user = User(user_id=self.user_id)
         with pytest.raises(ValueError) as cm:
-            user.created = datetime.now(tz=None)
+            user.created = datetime.now(tz=None)  # noqa
         assert "1 validation error for User" in str(cm.value)
         assert "Input should have timezone info" in str(cm.value)
 
@@ -453,7 +453,7 @@ class TestUserLastSeen:
         from generalresearch.models.thl.user import User
 
         with pytest.raises(ValueError) as cm:
-            User(user_id=self.user_id, last_seen=datetime.now(tz=None))
+            User(user_id=self.user_id, last_seen=datetime.now(tz=None))  # noqa
         assert "1 validation error for User" in str(cm.value)
         assert "Input should have timezone info" in str(cm.value)
 
@@ -462,7 +462,7 @@ class TestUserLastSeen:
 
         user = User(user_id=self.user_id)
         with pytest.raises(ValueError) as cm:
-            user.last_seen = datetime.now(tz=None)
+            user.last_seen = datetime.now(tz=None)  # noqa
         assert "1 validation error for User" in str(cm.value)
         assert "Input should have timezone info" in str(cm.value)
 

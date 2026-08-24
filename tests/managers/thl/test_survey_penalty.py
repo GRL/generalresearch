@@ -88,10 +88,8 @@ class TestSurveyPenalty:
         )
         assert res == {"t:a": 0.1, "t:b": 0.2, "u:b": 0.1}
         assert surveypenalty_manager.cache.currsize == 1
-        cached_key = tuple(list(list(surveypenalty_manager.cache.keys())[0])[1:])
-        assert cached_key == tuple(
-            ["product_id", product_uuid, "team_id", team_id_random]
-        )
+        cached_key = tuple(list(next(iter(surveypenalty_manager.cache.keys())))[1:])
+        assert cached_key == ("product_id", product_uuid, "team_id", team_id_random)
 
         # Both don't exist, return nothing
         res = surveypenalty_manager.get_penalties_for(

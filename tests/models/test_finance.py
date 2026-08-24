@@ -697,7 +697,6 @@ class TestProductFinanceData:
 
         item_finishes = [i.finish for i in ledger_collection.items]
         item_finishes.sort(reverse=True)
-        last_item_finish = item_finishes[0]
 
         # --
         account = thl_lm.get_account_or_create_bp_wallet(product=u.product)
