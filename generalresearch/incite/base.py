@@ -7,8 +7,9 @@ import re
 import shutil
 import subprocess
 import warnings
+from collections.abc import Callable, Sequence
 from concurrent.futures import Future
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import UTC, datetime, timedelta
 from os import R_OK, access, listdir
 from os.path import isdir
 from os.path import join as pjoin
@@ -17,8 +18,8 @@ from sys import platform
 from typing import (
     TYPE_CHECKING,
     Any,
+    Self,
 )
-from collections.abc import Callable, Sequence
 from uuid import uuid4
 
 import dask
@@ -42,7 +43,6 @@ from pydantic import (
 )
 from pydantic.json_schema import SkipJsonSchema
 from sentry_sdk import capture_exception
-from typing import Self
 
 from generalresearch.config import is_debug
 from generalresearch.incite.schemas import (
@@ -481,7 +481,7 @@ class CollectionBase(BaseModel):
             item.cleanup_partials()
 
     def clear_tmp_archives(self) -> None:
-        regex = re.compile(r"\.parquet\.[0-9a-f]{32}", re.I)
+        regex = re.compile(r"\.parquet\.[0-9a-f]{32}", re.IGNORECASE)
 
         for fn in os.listdir(self.archive_path):
             if regex.search(fn):
@@ -554,7 +554,7 @@ class CollectionBase(BaseModel):
 
             try:
                 pq.ParquetDataset(highest_version).read().to_pandas()
-            except (Exception,):
+            except Exception:
                 # If the most recent version isn't valid, we don't want to
                 # create a symlink to it.
                 # TODO: We could try to be smart and iterate down the most recent

@@ -1,9 +1,9 @@
 import faker
 
 from generalresearch.managers.thl.ipinfo import (
+    GeoIpInfoManager,
     IPGeonameManager,
     IPInformationManager,
-    GeoIpInfoManager,
 )
 from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation
 

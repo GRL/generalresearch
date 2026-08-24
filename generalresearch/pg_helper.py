@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from datetime import UTC, timezone
+from datetime import UTC
 
 import psycopg
-from psycopg.adapt import Buffer
 from psycopg.rows import RowFactory, dict_row
 from psycopg.types.datetime import TimestampLoader
-from psycopg.types.net import Address, InetLoader, Interface
+from psycopg.types.net import InetLoader
 from psycopg.types.string import TextLoader
 from psycopg.types.uuid import UUIDLoader
 from pydantic import PostgresDsn
@@ -103,10 +102,9 @@ class PostgresConfig:
         # This is only intended for SELECT queries
         assert "SELECT" in query.upper(), "Supports SELECTs only"
 
-        with self.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query=query, params=params)
-                return c.fetchall()
+        with self.make_connection() as conn, conn.cursor() as c:
+            c.execute(query=query, params=params)
+            return c.fetchall()
 
     def execute_write(self, query, params=None) -> int:
         cmd = query.lstrip().upper()

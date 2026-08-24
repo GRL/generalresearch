@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Collection
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pandas as pd
@@ -280,7 +280,6 @@ class SurveyManager(PostgresManager):
             query=query,
             params={"survey_pks": survey_pks},
         )
-        return None
 
     def update_surveys_categories(self, surveys: list[Survey] | None = None) -> None:
         for chunk in chunked(surveys, 500):
@@ -329,12 +328,11 @@ class SurveyManager(PostgresManager):
         ]
         with self.pg_config.make_connection() as conn:
             # noinspection PyArgumentList
-            with conn.transaction():
-                with conn.cursor() as c:
-                    c.execute(temp_table_sql)
-                    c.executemany(insert_values_sql, rows)
-                    c.execute(delete_sql)
-                    c.execute(upsert_sql)
+            with conn.transaction(), conn.cursor() as c:
+                c.execute(temp_table_sql)
+                c.executemany(insert_values_sql, rows)
+                c.execute(delete_sql)
+                c.execute(upsert_sql)
             conn.commit()
 
     def get_survey_categories(self):
@@ -760,12 +758,11 @@ class SurveyStatManager(PostgresManager):
             print(query)
             print(params)
 
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute("SET work_mem = '256MB';")
-                c.execute("SET statement_timeout = '10s';")
-                c.execute(query, params=params)
-                res = c.fetchall()
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute("SET work_mem = '256MB';")
+            c.execute("SET statement_timeout = '10s';")
+            c.execute(query, params=params)
+            res = c.fetchall()
 
         return [SurveyStat.model_validate(x) for x in res]
 

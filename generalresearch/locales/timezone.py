@@ -1,4 +1,3 @@
-from typing import Optional
 
 from pytz import country_timezones
 

@@ -111,7 +111,6 @@ class MarketplaceTask(BaseModel, ABC):
         """
         The Condition Model for this survey class
         """
-        pass
 
     @property
     @abstractmethod
@@ -119,7 +118,6 @@ class MarketplaceTask(BaseModel, ABC):
         """
         The age question ID
         """
-        pass
 
     @property
     @abstractmethod
@@ -129,7 +127,6 @@ class MarketplaceTask(BaseModel, ABC):
         """
         Mapping of generic Gender to the marketplace condition for that gender
         """
-        pass
 
     @property
     def marketplace_age_groups(

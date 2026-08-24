@@ -1,5 +1,4 @@
 import unicodedata
-from typing import Optional
 
 
 def remove_nbsp(s: str | None) -> str | None:

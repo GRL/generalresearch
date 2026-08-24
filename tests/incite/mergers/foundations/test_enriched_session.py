@@ -1,7 +1,6 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from itertools import product
-from typing import Optional
 
 import dask.dataframe as dd
 import pandas as pd
@@ -11,10 +10,6 @@ from generalresearch.incite.schemas.admin_responses import (
     AdminPOPSessionSchema,
 )
 from generalresearch.pg_helper import PostgresConfig
-from test_utils.incite.collections.conftest import (
-    session_collection,
-    wall_collection,
-)
 
 
 @pytest.mark.parametrize(

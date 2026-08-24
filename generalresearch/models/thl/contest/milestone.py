@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -10,7 +10,6 @@ from pydantic import (
     Field,
     PositiveInt,
 )
-from typing import Self
 
 from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.thl.contest.contest import (

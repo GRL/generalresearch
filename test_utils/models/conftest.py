@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from random import choice as randchoice
 from random import randint
@@ -19,17 +19,15 @@ from generalresearch.models.thl.definitions import (
 )
 from generalresearch.models.thl.survey.model import Buyer, Survey
 from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
 
 if TYPE_CHECKING:
     from generalresearch.currency import USDCent
-    from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
     from generalresearch.managers.gr.business import (
         BusinessAddressManager,
         BusinessBankAccountManager,
         BusinessManager,
     )
-    from generalresearch.managers.gr.team import MembershipManager, TeamManager
+    from generalresearch.managers.gr.team import TeamManager
     from generalresearch.managers.thl.buyer import BuyerManager
     from generalresearch.managers.thl.ipinfo import (
         IPGeonameManager,
@@ -45,13 +43,12 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.user_manager.user_manager import UserManager
     from generalresearch.managers.thl.userhealth import AuditLogManager, IPRecordManager
     from generalresearch.managers.thl.wall import WallManager
-    from generalresearch.models.gr.authentication import GRToken, GRUser
     from generalresearch.models.gr.business import (
         Business,
         BusinessAddress,
         BusinessBankAccount,
     )
-    from generalresearch.models.gr.team import Membership, Team
+    from generalresearch.models.gr.team import Team
     from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation
     from generalresearch.models.thl.payout import (
         BrokerageProductPayoutEvent,

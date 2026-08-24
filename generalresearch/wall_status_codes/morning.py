@@ -52,7 +52,7 @@ short_code_to_status_codes_morning: dict[str, str] = {
     "sur_tim": "survey_timeout",
     "tem_ban": "temporarily_banned",
 }
-status_map = defaultdict(lambda: Status.FAIL, **{"complete": Status.COMPLETE})
+status_map = defaultdict(lambda: Status.FAIL, complete=Status.COMPLETE)
 
 status_codes_ext_map: dict[StatusCode1, list[str]] = {
     StatusCode1.COMPLETE: ["complete"],

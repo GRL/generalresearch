@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Collection
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 from functools import lru_cache
 from uuid import uuid4
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from uuid import UUID, uuid4
@@ -190,14 +190,7 @@ class SessionManager(PostgresManager):
         # re-run model_validate after
         finished = finished if finished else datetime.now(tz=UTC)
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "status_code_2": status_code_2,
-                "finished": finished,
-                "payout": payout,
-                "user_payout": user_payout,
-            }
+            status=status, status_code_1=status_code_1, status_code_2=status_code_2, finished=finished, payout=payout, user_payout=user_payout
         )
         d = session.model_dump_mysql()
         self.pg_config.execute_write(

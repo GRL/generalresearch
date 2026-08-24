@@ -4,7 +4,7 @@ import json
 import logging
 import operator
 from collections.abc import Collection
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 from decimal import Decimal
 from threading import Lock
 from typing import TYPE_CHECKING
@@ -94,9 +94,9 @@ class ProductManager(PostgresManager):
             return self.fetch_uuids(
                 product_uuids=[product_uuid],
             )[0]
-        except (AssertionError,):
+        except AssertionError:
             return None
-        except (IndexError,):
+        except IndexError:
             return None
 
     def get_by_uuids_if_exists(
@@ -397,11 +397,11 @@ class ProductManager(PostgresManager):
         #
         # from pymysql import IntegrityError
         # except IntegrityError as e:
-        except (Exception,) as e:
+        except Exception as e:
 
             try:
                 return self.get_by_uuid(product_uuid=instance.id)
-            except (Exception,) as e2:
+            except Exception:
                 pass
             finally:
                 self.cache_clear(instance.id)

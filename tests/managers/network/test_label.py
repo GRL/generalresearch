@@ -9,8 +9,8 @@ from generalresearch.managers.network.label import IPLabelManager
 from generalresearch.models.network.label import (
     IPLabel,
     IPLabelKind,
-    IPLabelSource,
     IPLabelMetadata,
+    IPLabelSource,
 )
 from generalresearch.models.thl.ipinfo import normalize_ip
 

@@ -77,7 +77,6 @@ if TYPE_CHECKING:
     from generalresearch.models.thl.payout import (
         BrokerageProductPayoutEvent,
     )
-    from generalresearch.models.thl.user import User
 
 
 # fmt: off
@@ -1088,7 +1087,6 @@ class Product(BaseModel, validate_assignment=True):
         from generalresearch.incite.schemas.mergers.pop_ledger import (
             numerical_col_names,
         )
-        from generalresearch.models.thl.ledger import LedgerAccount
 
         account: LedgerAccount = thl_lm.get_account_or_create_bp_wallet(product=self)
         assert self.id == account.reference_uuid

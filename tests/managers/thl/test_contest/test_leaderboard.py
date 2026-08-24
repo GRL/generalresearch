@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from generalresearch.currency import USDCent
@@ -12,12 +12,6 @@ from generalresearch.models.thl.contest.leaderboard import (
 )
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
-from test_utils.managers.contest.conftest import (
-    leaderboard_contest_create as contest_create,
-)
-from test_utils.managers.contest.conftest import (
-    leaderboard_contest_in_db as contest_in_db,
-)
 
 
 class TestLeaderboardContestCRUD:

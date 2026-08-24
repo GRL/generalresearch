@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal, Self
 
 from faker import Faker

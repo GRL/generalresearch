@@ -1,7 +1,6 @@
 import os
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Optional
 from uuid import uuid4
 
 import pandas as pd

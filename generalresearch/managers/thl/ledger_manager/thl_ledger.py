@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Collection
-from datetime import datetime, timedelta, timezone, UTC
+from collections.abc import Callable, Collection
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
-from collections.abc import Callable
 from uuid import UUID
 
 import numpy as np
@@ -407,8 +406,7 @@ class ThlLedgerManager(LedgerManager):
                 f"bp_pay {bp_pay} > thl_net {thl_net}. Capping bp_pay to thl_net."
             )
             bp_pay = thl_net
-            if user_pay > bp_pay:
-                user_pay = bp_pay
+            user_pay = min(user_pay, bp_pay)
 
         commission_amount = round(thl_net - bp_pay)
 
@@ -538,7 +536,7 @@ class ThlLedgerManager(LedgerManager):
             ]
 
         else:
-            logger.info(f"create_transaction_task_adjustment. No transactions needed.")
+            logger.info("create_transaction_task_adjustment. No transactions needed.")
             return None
 
         amt_str = f"${abs(change_amount) / 100:,.2f}"
@@ -666,7 +664,7 @@ class ThlLedgerManager(LedgerManager):
 
             else:
                 logger.info(
-                    f"create_transaction_bp_adjustment. No transactions needed."
+                    "create_transaction_bp_adjustment. No transactions needed."
                 )
                 return None
         else:
@@ -738,7 +736,7 @@ class ThlLedgerManager(LedgerManager):
 
             else:
                 logger.info(
-                    f"create_transaction_bp_adjustment. No transactions needed."
+                    "create_transaction_bp_adjustment. No transactions needed."
                 )
                 return None
 
@@ -856,7 +854,7 @@ class ThlLedgerManager(LedgerManager):
             ),
         ]
 
-        ext_description = f"BP Payout"
+        ext_description = "BP Payout"
         t = self.create_tx(
             entries=entries,
             metadata=metadata,
@@ -983,7 +981,7 @@ class ThlLedgerManager(LedgerManager):
                 raise ValueError("Invalid Direction")
 
         if description is None:
-            description = f"BP Plug"
+            description = "BP Plug"
 
         t = self.create_tx(
             entries=entries,
@@ -1191,7 +1189,7 @@ class ThlLedgerManager(LedgerManager):
                 f"Trying to cancel user payout {payout_event.uuid} with no request tx found."
             )
 
-        description = f"User Payout Cancelled"
+        description = "User Payout Cancelled"
         f = lambda: self.create_tx_user_payout_cancelled_(
             user=user,
             payout_event=payout_event,
@@ -1900,7 +1898,7 @@ class ThlLedgerManager(LedgerManager):
             reserve = round(wall["user_payout_int"].sum() - wall["redeemable"].sum())
 
         redeemable_balance = user_wallet_balance - reserve
-        redeemable_balance = 0 if redeemable_balance < 0 else redeemable_balance
+        redeemable_balance = max(redeemable_balance, 0)
 
         if redeemable_balance > 0:
             # it is possible the user_wallet_balance is negative, in which case

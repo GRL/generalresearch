@@ -4,10 +4,10 @@ from uuid import uuid4
 import pytest
 
 from generalresearch.models.thl.product import (
-    UserWalletConfig,
     PayoutConfig,
     PayoutTransformation,
     PayoutTransformationPercentArgs,
+    UserWalletConfig,
 )
 from generalresearch.models.thl.user import User
 

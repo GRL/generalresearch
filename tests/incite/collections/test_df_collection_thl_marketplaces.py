@@ -1,6 +1,5 @@
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from itertools import product
-from typing import TYPE_CHECKING
 
 import pytest
 from pandera.pandas import Column, DataFrameSchema, Index
@@ -12,10 +11,6 @@ from generalresearch.incite.collections.thl_marketplaces import (
     SagoSurveyHistoryCollection,
     SpectrumSurveyTimeseriesCollection,
 )
-from test_utils.incite.conftest import mnt_filepath
-
-if TYPE_CHECKING:
-    from generalresearch.incite.base import GRLDatasets
 
 
 def combo_object():

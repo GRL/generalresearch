@@ -103,7 +103,6 @@ class UserManager:
             event_value=event_value,
         )
 
-        return None
 
     def cache_clear(self):
         # Generally this is used in testing. This clears the .get_user's lru_cache.

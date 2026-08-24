@@ -20,14 +20,12 @@ from generalresearch.managers.thl.ipinfo import (
     IPGeonameManager,
     IPInformationManager,
 )
-from generalresearch.managers.thl.profiling.uqa import UQAManager
 from generalresearch.managers.thl.userhealth import (
     AuditLogManager,
     IPRecordManager,
     UserIpHistoryManager,
 )
 from generalresearch.models import Source
-from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
 from generalresearch.sql_helper import SqlHelper

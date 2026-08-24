@@ -117,7 +117,7 @@ def annotate_product_and_team_id(
             try:
                 with conn.cursor() as c:
                     c.execute(
-                        query=f"""
+                        query="""
                             SELECT  u.id AS user_id, u.product_id, 
                                     bp.team_id
                             FROM thl_user u

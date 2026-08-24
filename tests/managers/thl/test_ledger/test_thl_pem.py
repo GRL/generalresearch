@@ -1,6 +1,5 @@
-import uuid
 from random import randint
-from uuid import uuid4, UUID
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -33,7 +32,6 @@ class TestThlPayoutEventManager:
         thl_lm,
         brokerage_product_payout_event_manager,
     ):
-        from generalresearch.models.thl.payout import UserPayoutEvent
 
         N_PRODUCTS = randint(3, 10)
         N_PAYOUT_EVENTS = randint(3, 10)
@@ -73,7 +71,6 @@ class TestThlPayoutEventManager:
         brokerage_product_payout_event_manager,
         thl_lm,
     ):
-        from generalresearch.models.thl.payout import UserPayoutEvent
 
         N_PRODUCTS = randint(3, 10)
         N_PAYOUT_EVENTS = randint(3, 10)
@@ -119,7 +116,6 @@ class TestThlPayoutEventManager:
         description can't be None
         """
         from generalresearch.models.thl.payout import (
-            UserPayoutEvent,
             PayoutType,
         )
 
@@ -174,7 +170,6 @@ class TestThlPayoutEventManager:
         brokerage_product_payout_event_manager,
         lm,
     ):
-        from generalresearch.models.thl.payout import UserPayoutEvent
 
         delete_ledger_db()
         create_main_accounts()

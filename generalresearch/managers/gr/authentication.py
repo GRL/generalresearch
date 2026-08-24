@@ -3,7 +3,7 @@ from __future__ import annotations
 import binascii
 import logging
 import os
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from psycopg import sql
@@ -146,7 +146,7 @@ class GRUserManager(PostgresManagerWithRedis):
 
         for item in res:
             for k, v in item.items():
-                if isinstance(item[k], datetime):
+                if isinstance(v, datetime):
                     item[k] = item[k].replace(tzinfo=UTC)
 
         return [GRUser.model_validate(item) for item in res]
@@ -270,7 +270,6 @@ class GRTokenManager(PostgresManager):
                 )
             conn.commit()
 
-        return
 
     def get_by_user_id(self, user_id: PositiveInt) -> GRToken | None:
         # django authtoken_token table has (user_id) UNIQUE constraint

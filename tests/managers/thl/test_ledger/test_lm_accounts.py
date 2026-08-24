@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from itertools import product as iproduct
 from random import randint
 from typing import TYPE_CHECKING
@@ -22,7 +21,6 @@ from generalresearch.models.thl.ledger import (
 if TYPE_CHECKING:
     from pydantic import PositiveInt
 
-    from generalresearch.config import GRLSettings
     from generalresearch.currency import LedgerCurrency
     from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
     from generalresearch.models.custom_types import AccountType, Direction, UUIDStr
@@ -32,10 +30,6 @@ if TYPE_CHECKING:
         LedgerAccount,
         LedgerTransaction,
     )
-    from generalresearch.models.thl.product import Product
-    from generalresearch.models.thl.session import Session
-    from generalresearch.models.thl.user import User
-    from generalresearch.models.thl.wallet import PayoutType
 
 
 @pytest.mark.parametrize(

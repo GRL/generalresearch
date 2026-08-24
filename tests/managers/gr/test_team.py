@@ -1,7 +1,5 @@
 from uuid import uuid4
 
-from test_utils.models.conftest import team
-
 
 class TestMembershipManager:
 

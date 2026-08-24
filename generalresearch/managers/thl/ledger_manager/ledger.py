@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from collections.abc import Collection
-from datetime import datetime, timedelta, timezone, UTC
+from collections.abc import Callable, Collection
+from datetime import UTC, datetime, timedelta
 from typing import Any
-from collections.abc import Callable
 from uuid import UUID
 
 import redis
@@ -343,7 +342,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         assert len(tag) > 6, "Please confirm the tag is valid"
 
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
                 SELECT lt.id
                 FROM ledger_transaction AS lt
                 WHERE tag = %s
@@ -361,7 +360,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
 
     def get_tx_ids_by_tags(self, tags: list[str]) -> set[PositiveInt]:
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
                 SELECT lt.id, lt.tag, lt.created, lt.ext_description
                 FROM ledger_transaction AS lt
                 WHERE tag = ANY(%s)
@@ -869,7 +868,7 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
 
         # qualified_name has a unique index so there can only be 0 or 1 match.
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
             SELECT  
                 uuid, display_name, qualified_name, account_type, 
                 normal_balance, reference_type,  
@@ -928,7 +927,7 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
 
         # TODO: Move to RR with long timeout (2min+), it causes problems
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
                 SELECT SUM(amount * direction) AS total
                 FROM ledger_entry
                 WHERE account_id = %s
@@ -1046,7 +1045,7 @@ class LedgerManager(
         """This is for testing only, as it'll take forever to run this if
         the ledger_manager is huge
         """
-        res = self.pg_config.execute_sql_query(f"""
+        res = self.pg_config.execute_sql_query("""
             SELECT
                 SUM(CASE WHEN normal_balance = -1 THEN total ELSE 0 END) AS credit_total,
                 SUM(CASE WHEN normal_balance = 1 THEN total ELSE 0 END)  AS debit_total

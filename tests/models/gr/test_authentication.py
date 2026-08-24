@@ -2,7 +2,7 @@ import binascii
 import json
 import os
 from collections.abc import Callable
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from random import randint
 from uuid import uuid4
 

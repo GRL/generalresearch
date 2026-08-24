@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Collection
 from datetime import datetime
 from typing import Any
-from collections.abc import Collection
 
 from psycopg import sql
 from pydantic import NonNegativeInt, PositiveInt
@@ -611,7 +611,7 @@ class GrlIqDataManager:
                         if res and res["c"] >= 0:
                             return int(res["c"])
 
-            except (Exception,) as e:
+            except Exception:
                 pass
 
         query = f"""

@@ -367,7 +367,7 @@ class UpkQuestion(BaseModel):
                 self.choices is None
             ), f"No `choices` are allowed for type `{self.type}`"
         else:
-            assert self.choices is not None, f"`choices` must be set"
+            assert self.choices is not None, "`choices` must be set"
         return self
 
     @model_validator(mode="after")

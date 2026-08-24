@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 from collections.abc import Collection
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from itertools import zip_longest
 from typing import Any
 

@@ -28,7 +28,7 @@ status_codes_map: dict[str, str] = {
     "su_al_ta": "survey_already_taken",
     "complete": "complete",
 }
-status_map = defaultdict(lambda: Status.FAIL, **{"complete": Status.COMPLETE})
+status_map = defaultdict(lambda: Status.FAIL, complete=Status.COMPLETE)
 status_codes_ext_map: dict[StatusCode1, list[str]] = {
     StatusCode1.COMPLETE: ["complete"],
     StatusCode1.BUYER_FAIL: ["third_party_termination", "screenout"],

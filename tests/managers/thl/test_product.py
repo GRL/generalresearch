@@ -5,15 +5,14 @@ import pytest
 from generalresearch.models import Source
 from generalresearch.models.thl.product import (
     Product,
-    SourceConfig,
-    UserCreateConfig,
-    SourcesConfig,
-    UserHealthConfig,
     ProfilingConfig,
-    SupplyPolicy,
+    SourceConfig,
+    SourcesConfig,
     SupplyConfig,
+    SupplyPolicy,
+    UserCreateConfig,
+    UserHealthConfig,
 )
-from test_utils.models.conftest import product_factory
 
 
 class TestProductManagerGetMethods:

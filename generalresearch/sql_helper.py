@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import MariaDBDsn, MySQLDsn, PostgresDsn
@@ -39,14 +39,7 @@ class SqlConnector:
 
         # I'm intentionally doing a match case here so that we'll make sure
         # we can NOT use this on old versions of python 😈
-        if "mysql" in self.dsn.scheme:
-            import pymysql as engine_module
-
-            self.engine_module = engine_module
-            self.cursor_class = engine_module.cursors.DictCursor
-            self.quote_char = "`"
-
-        elif "maria" in self.dsn.scheme:
+        if "mysql" in self.dsn.scheme or "maria" in self.dsn.scheme:
             import pymysql as engine_module
 
             self.engine_module = engine_module
@@ -199,7 +192,6 @@ class SqlHelper(SqlConnector):
         if cursor is None:
             c.connection.commit()
 
-        return None
 
     def bulk_update(
         self,
@@ -233,7 +225,7 @@ class SqlHelper(SqlConnector):
         if cursor is None:
             c.connection.commit()
 
-        return None
+        return
 
     def get_or_create(
         self,
@@ -253,7 +245,7 @@ class SqlHelper(SqlConnector):
         lookup_fns = ",".join(
             ["`" + x + "`" for x in set(lookup_dict.keys()) | {primary_key}]
         )
-        lookup_vals = " AND ".join([f"`{fn}`=%({fn})s" for fn in lookup_dict.keys()])
+        lookup_vals = " AND ".join([f"`{fn}`=%({fn})s" for fn in lookup_dict])
         table_name_str = self._quote(table_name)
         query = f"SELECT {lookup_fns} FROM {table_name_str} WHERE {lookup_vals} LIMIT 2"
         if cursor is None:
@@ -293,7 +285,7 @@ class SqlHelper(SqlConnector):
         else:
             c = cursor
         field_names = ",".join(map(self._quote, create_dict))
-        vals = ",".join([f"%({fn})s" for fn in create_dict.keys()])
+        vals = ",".join([f"%({fn})s" for fn in create_dict])
         table_name_str = self._quote(table_name)
         query = f"INSERT INTO {table_name_str} ({field_names}) VALUES ({vals})"
         c.execute(query, create_dict)
@@ -352,4 +344,3 @@ class SqlHelper(SqlConnector):
         if cursor is None:
             c.connection.commit()
 
-        return None

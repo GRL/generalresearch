@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 
 from generalresearch.managers.thl.profiling.user_upk import UserUpkManager
 

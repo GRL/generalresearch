@@ -2,8 +2,6 @@ from uuid import uuid4
 
 import pytest
 
-from test_utils.models.conftest import business
-
 
 class TestBusinessBankAccountManager:
 
@@ -12,8 +10,8 @@ class TestBusinessBankAccountManager:
 
     def test_create(self, business, business_bank_account_manager):
         from generalresearch.models.gr.business import (
-            TransferMethod,
             BusinessBankAccount,
+            TransferMethod,
         )
 
         instance = business_bank_account_manager.create(

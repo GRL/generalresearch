@@ -1,11 +1,10 @@
 from uuid import uuid4
-from django.utils import timezone
-from django.contrib.postgres.indexes import GistIndex, GinIndex
 
+from django.contrib.postgres.indexes import GinIndex, GistIndex
 from django.db import models
+from django.utils import timezone
 
 from generalresearch.thl_django.fields import CIDRField
-
 
 #######
 # ** Signals **

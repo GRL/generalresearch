@@ -60,17 +60,17 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
             return
 
         # --- Session ---
-        LOG.warning(f"EnrichedSessionMergeItem: get session_collection")
+        LOG.warning("EnrichedSessionMergeItem: get session_collection")
         session_items = [w for w in session_coll.items if w.interval.overlaps(ir)]
         if len(session_items) == 0:
-            LOG.warning(f"EnrichedSessionMergeItem: no session items. set_empty.")
+            LOG.warning("EnrichedSessionMergeItem: no session items. set_empty.")
             if self.should_archive():
                 self.set_empty()
             return
         if not (
             session_items[-1].has_partial_archive() or session_items[-1].has_archive()
         ):
-            LOG.warning(f"EnrichedSessionMergeItem: session isn't updated!")
+            LOG.warning("EnrichedSessionMergeItem: session isn't updated!")
             return
 
         sddf = session_coll.ddf(
@@ -81,7 +81,7 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
         )
 
         # --- Walls ---
-        LOG.warning(f"EnrichedSessionMergeItem: merge wall_collection")
+        LOG.warning("EnrichedSessionMergeItem: merge wall_collection")
         wall_items = [
             w
             for w in wall_coll.items
@@ -95,7 +95,7 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
         ]
 
         if len(wall_items) == 0:
-            LOG.error(f"EnrichedSessionMergeItem: no wall items")
+            LOG.error("EnrichedSessionMergeItem: no wall items")
             return
 
         wddf = wall_coll.ddf(

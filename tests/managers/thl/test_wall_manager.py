@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -10,7 +10,6 @@ from generalresearch.models.thl.session import (
     Status,
     StatusCode1,
 )
-from test_utils.models.conftest import session, user
 
 
 class TestWallManager:
@@ -92,7 +91,7 @@ class TestWallManager:
             source=Source.DYNATA,
             buyer_id="123",
             req_survey_id="456",
-            req_cpi=Decimal("1"),
+            req_cpi=Decimal(1),
         )
 
         assert w is not None
@@ -110,7 +109,7 @@ class TestWallManager:
             source=Source.DYNATA,
             buyer_id="123",
             req_survey_id="456",
-            req_cpi=Decimal("1"),
+            req_cpi=Decimal(1),
         )
         wall_manager.report(
             wall=w1,
@@ -151,7 +150,7 @@ class TestWallManager:
             source=Source.DYNATA,
             buyer_id="123",
             req_survey_id="456",
-            req_cpi=Decimal("1"),
+            req_cpi=Decimal(1),
         )
 
         finish_ts = utc_hour_ago + timedelta(minutes=10)
@@ -190,7 +189,7 @@ class TestWallManager:
             source=Source.DYNATA,
             buyer_id="123",
             req_survey_id="456",
-            req_cpi=Decimal("1"),
+            req_cpi=Decimal(1),
         )
         res = wall_manager.filter_wall_attempts(user_id=user.user_id)
         assert len(res) == 1
@@ -202,7 +201,7 @@ class TestWallManager:
             source=Source.DYNATA,
             buyer_id="123",
             req_survey_id="555",
-            req_cpi=Decimal("1"),
+            req_cpi=Decimal(1),
         )
         res = wall_manager.filter_wall_attempts(user_id=user.user_id)
         assert len(res) == 2

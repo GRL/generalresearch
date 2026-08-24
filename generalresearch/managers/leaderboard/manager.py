@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from functools import cached_property
 from typing import TYPE_CHECKING

@@ -93,7 +93,6 @@ def _example_raffle(schema: dict) -> None:
         product_id=EXAMPLE_PRODUCT_ID,
     ).model_dump(mode="json")
 
-    return None
 
 
 def _example_raffle_user_view(schema: dict[str, Any]) -> None:
@@ -144,7 +143,6 @@ def _example_raffle_user_view(schema: dict[str, Any]) -> None:
         product_user_id="test-user",
     ).model_dump(mode="json")
 
-    return None
 
 
 def _example_milestone_create(schema: dict[str, Any]) -> None:
@@ -185,7 +183,6 @@ def _example_milestone_create(schema: dict[str, Any]) -> None:
         terms_and_conditions=HttpUrl("https://www.example.com"),
     ).model_dump(mode="json")
 
-    return None
 
 
 def _example_milestone(schema: dict[str, Any]) -> None:
@@ -231,7 +228,6 @@ def _example_milestone(schema: dict[str, Any]) -> None:
         win_count=12,
     ).model_dump(mode="json")
 
-    return None
 
 
 def _example_milestone_user_view(schema: dict[str, Any]) -> None:
@@ -277,7 +273,6 @@ def _example_milestone_user_view(schema: dict[str, Any]) -> None:
         product_user_id="test-user",
     ).model_dump(mode="json")
 
-    return None
 
 
 def _example_leaderboard_contest_create(schema: dict[str, Any]) -> None:
@@ -322,7 +317,6 @@ def _example_leaderboard_contest_create(schema: dict[str, Any]) -> None:
         leaderboard_key=f"leaderboard:{EXAMPLE_PRODUCT_ID}:us:weekly:2025-05-26:complete_count",
     ).model_dump(mode="json")
 
-    return None
 
 
 def _example_leaderboard_contest(schema: dict[str, Any]) -> None:
@@ -368,7 +362,6 @@ def _example_leaderboard_contest(schema: dict[str, Any]) -> None:
         product_id=EXAMPLE_PRODUCT_ID,
     ).model_dump(mode="json")
 
-    return None
 
 
 def _example_leaderboard_contest_user_view(schema: dict[str, Any]) -> None:

@@ -7,11 +7,10 @@ from faker import Faker
 from generalresearch.models import DeviceType
 from generalresearch.models.legacy.bucket import Bucket
 from generalresearch.models.thl.definitions import (
+    SessionStatusCode2,
     Status,
     StatusCode1,
-    SessionStatusCode2,
 )
-from test_utils.models.conftest import user
 
 fake = Faker()
 
@@ -21,8 +20,8 @@ class TestSessionManager:
         bucket = Bucket(
             loi_min=timedelta(seconds=60),
             loi_max=timedelta(seconds=120),
-            user_payout_min=Decimal("1"),
-            user_payout_max=Decimal("2"),
+            user_payout_min=Decimal(1),
+            user_payout_max=Decimal(2),
         )
 
         s1 = session_manager.create(

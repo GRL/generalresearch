@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import abc
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter

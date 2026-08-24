@@ -62,7 +62,7 @@ class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
         )
         ddf = ddf[ddf["started"] > start]
 
-        LOG.warning(f"YMSurveyWallMerge: merge session_collection")
+        LOG.warning("YMSurveyWallMerge: merge session_collection")
         session_items = [
             s
             for s in enriched_session.items
@@ -98,17 +98,16 @@ class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
         df.dropna(subset="product_id", how="any", inplace=True)
         df.sort_values(by="started", inplace=True)
 
-        LOG.debug(f"YMSurveyWallMerge.build() validation")
+        LOG.debug("YMSurveyWallMerge.build() validation")
 
         df = self.validate_df(df=df)
         if df is not None:
             ddf = dd.from_pandas(df, npartitions=4)
-            LOG.info(f"YMSurveyWallMerge.build() saving")
+            LOG.info("YMSurveyWallMerge.build() saving")
             self.to_archive_symlink(client=client, ddf=ddf)
         else:
             LOG.warning("YMSurveyWallMerge failed validation")
 
-        return None
 
 
 class YMSurveyWallMerge(MergeCollection):
@@ -144,8 +143,7 @@ class YMSurveyWallMerge(MergeCollection):
                 wall_coll=wall_coll,
                 enriched_session=enriched_session,
             )
-        except (Exception,) as e:
+        except Exception as e:
             capture_exception(error=e)
-            pass
 
         item.delete_dangling_partials(keep_latest=2, target_path=item.path)

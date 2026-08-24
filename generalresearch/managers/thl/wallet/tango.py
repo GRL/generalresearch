@@ -44,7 +44,7 @@ def complete_tango_order(
             tango_client=tango_client,
         )
 
-    except Exception as e:
+    except Exception:
         # todo: its possible the order went through, but something else was wrong
         # we should try to retrieve the order by its ref_id and confirm it really
         # failed...

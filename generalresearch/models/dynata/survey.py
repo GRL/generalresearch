@@ -132,9 +132,7 @@ class DynataCondition(MarketplaceCondition):
 
         if cell["kind"] == "RANGE":
             d["values"] = [
-                "{0}-{1}".format(
-                    cell["range"]["from"] or "inf", cell["range"]["to"] or "inf"
-                )
+                f"{cell["range"]["from"] or "inf"}-{cell["range"]["to"] or "inf"}"
             ]
             d["value_type"] = ConditionValueType.RANGE
             return cls.model_validate(d)

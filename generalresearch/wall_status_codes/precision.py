@@ -45,7 +45,7 @@ status_codes_precision: dict[str, str] = {
     "60": "Client Reject",
     "80": "Final Complete",
 }
-status_map = defaultdict(lambda: Status.FAIL, **{"s": Status.COMPLETE})
+status_map = defaultdict(lambda: Status.FAIL, s=Status.COMPLETE)
 status_codes_ext_map: dict[StatusCode1, list[str]] = {
     StatusCode1.COMPLETE: ["10"],
     StatusCode1.BUYER_FAIL: ["20", "30"],

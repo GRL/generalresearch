@@ -36,36 +36,35 @@ class GrlIqEventManager:
             "uuid": uuid4().hex,
         }
 
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (session_uuid,))
-                # Try to update first
-                update_query = sql.SQL("""
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (session_uuid,))
+            # Try to update first
+            update_query = sql.SQL("""
                     UPDATE grliq_forensicevents
                     SET timing_data = %(timing_data)s
                     WHERE session_uuid = %(session_uuid)s
                       AND timing_data IS NULL
                     RETURNING id
                 """)
-                c.execute(update_query, data)
-                result = c.fetchone()
+            c.execute(update_query, data)
+            result = c.fetchone()
 
-                if result:
-                    pk = result["id"]
-                    conn.commit()
-                    return pk
+            if result:
+                pk = result["id"]
+                conn.commit()
+                return pk
 
-                # No matching row to update. Do an insert
-                insert_query = sql.SQL("""
+            # No matching row to update. Do an insert
+            insert_query = sql.SQL("""
                     INSERT INTO grliq_forensicevents
                         (uuid, session_uuid, timing_data)
                     VALUES
                         (%(uuid)s, %(session_uuid)s, %(timing_data)s)
                     RETURNING id
                 """)
-                c.execute(insert_query, data)
-                pk = c.fetchone()["id"]
-                conn.commit()
+            c.execute(insert_query, data)
+            pk = c.fetchone()["id"]
+            conn.commit()
 
         return int(pk)
 
@@ -88,11 +87,10 @@ class GrlIqEventManager:
             "event_end": event_end,
         }
 
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (session_uuid,))
-                # Try to update first
-                update_query = sql.SQL("""
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (session_uuid,))
+            # Try to update first
+            update_query = sql.SQL("""
                     UPDATE grliq_forensicevents
                     SET events = %(events)s, 
                         mouse_events = %(mouse_events)s,
@@ -102,16 +100,16 @@ class GrlIqEventManager:
                       AND events IS NULL
                     RETURNING id
                 """)
-                c.execute(update_query, data)
-                result = c.fetchone()
+            c.execute(update_query, data)
+            result = c.fetchone()
 
-                if result:
-                    pk = result["id"]
-                    conn.commit()
-                    return pk
+            if result:
+                pk = result["id"]
+                conn.commit()
+                return pk
 
-                # No matching row to update. Do an insert
-                insert_query = sql.SQL("""
+            # No matching row to update. Do an insert
+            insert_query = sql.SQL("""
                      INSERT INTO grliq_forensicevents
                         (uuid, session_uuid, events, mouse_events,
                         event_start, event_end)
@@ -120,9 +118,9 @@ class GrlIqEventManager:
                         %(event_start)s, %(event_end)s)
                      RETURNING id
                 """)
-                c.execute(insert_query, data)
-                pk = c.fetchone()["id"]
-                conn.commit()
+            c.execute(insert_query, data)
+            pk = c.fetchone()["id"]
+            conn.commit()
 
         return int(pk)
 
@@ -167,10 +165,9 @@ class GrlIqEventManager:
         {filter_str}
         ORDER BY {order_by} LIMIT {limit}
         """
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query=query, params=params)
-                res = c.fetchall()
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query=query, params=params)
+            res = c.fetchall()
 
         for x in res:
             if x.get("mouse_events"):
@@ -206,10 +203,9 @@ class GrlIqEventManager:
         AND timing_data IS NOT NULL
         ORDER BY session_uuid, fe.id DESC;
         """)
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query, params)
-                res = c.fetchall()
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, params)
+            res = c.fetchall()
 
         for x in res:
             x["timing_data"] = TimingData.model_validate(x["timing_data"])

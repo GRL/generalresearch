@@ -1,24 +1,13 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from itertools import product
 
 import pandas as pd
 import pytest
 
 # noinspection PyUnresolvedReferences
-from distributed.utils_test import (
-    cleanup,
-    client,
-    client_no_amm,
-    cluster_fixture,
-    gen_cluster,
-    loop,
-    loop_in_thread,
-)
-
 from generalresearch.incite.mergers.foundations.user_id_product import (
     UserIdProductMergeItem,
 )
-from test_utils.incite.mergers.conftest import user_id_product_merge
 
 
 @pytest.mark.parametrize(
@@ -51,7 +40,7 @@ class TestUserIDProduct:
 
             try:
                 modified_time1 = path.stat().st_mtime
-            except (Exception,):
+            except Exception:
                 modified_time1 = 0
 
             user_id_product_merge.build(client=client_no_amm, user_coll=user_collection)

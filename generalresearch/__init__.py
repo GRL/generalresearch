@@ -129,7 +129,7 @@ def synchronized(wrapped):
 
                 if lock is None:
                     lock = threading.RLock()
-                    setattr(context, "_synchronized_lock", lock)
+                    context._synchronized_lock = lock
 
         return lock
 

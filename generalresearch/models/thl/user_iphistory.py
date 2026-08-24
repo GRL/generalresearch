@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Self
 
 from faker import Faker
@@ -204,7 +204,6 @@ class UserIPHistory(BaseModel):
             if res.get(x.ip):
                 x.information = res[x.ip]
 
-        return None
 
     def collapse_ip_records(self):
         """

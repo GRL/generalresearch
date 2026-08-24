@@ -13,9 +13,7 @@ from pandera.pandas import DataFrameSchema
 from generalresearch.incite.collections import DFCollection, DFCollectionType
 
 if TYPE_CHECKING:
-    from generalresearch.incite.base import GRLDatasets
     from generalresearch.incite.collections import (
-        DFCollectionItem,
         DFCollectionType,
     )
 

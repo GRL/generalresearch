@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -9,7 +9,6 @@ from generalresearch.incite.collections import (
     DFCollection,
     DFCollectionType,
 )
-from test_utils.incite.conftest import mnt_filepath
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets

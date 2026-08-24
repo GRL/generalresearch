@@ -1,7 +1,7 @@
-from generalresearch.models.network.mtr.execute import execute_mtr
 import faker
 
-from generalresearch.models.network.tool_run import ToolName, ToolClass
+from generalresearch.models.network.mtr.execute import execute_mtr
+from generalresearch.models.network.tool_run import ToolClass, ToolName
 
 fake = faker.Faker()
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from datetime import UTC, timezone
+from datetime import UTC
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -28,8 +28,7 @@ payout_example = random.randint(150, 750 * 100)
 adjustment_example = random.randint(-1_000, 50 * 100)
 
 if TYPE_CHECKING:
-    from generalresearch.managers.thl.product import ProductManager
-    from generalresearch.models.thl.ledger import AccountType, Direction, LedgerAccount
+    from generalresearch.models.thl.ledger import LedgerAccount
 
 
 class AdjustmentType(BaseModel):

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from zoneinfo import ZoneInfo
+
 import pytz
 from cachetools import LRUCache, cached
-from zoneinfo import ZoneInfo
 
 
 @cached(cache=LRUCache(maxsize=1))

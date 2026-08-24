@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from decimal import ROUND_DOWN, Decimal
 from random import choice as rand_choice
 from random import choice as rchoice

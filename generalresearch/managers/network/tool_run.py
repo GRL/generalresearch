@@ -49,7 +49,6 @@ class ToolRunManager(PostgresManager):
         c.execute(query, params)
         run_id = c.fetchone()["id"]
         run.id = run_id
-        return None
 
     def create_tool_run(self, run: NmapRun | RDNSRun | MTRRun):
         if type(run) is NmapRun:
@@ -77,10 +76,9 @@ class ToolRunManager(PostgresManager):
         """
         Insert a PortScan + PortScanPorts from a Pydantic NmapResult.
         """
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                self._create_tool_run(run, c)
-                self.nmap_manager._create(run, c=c)
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            self._create_tool_run(run, c)
+            self.nmap_manager._create(run, c=c)
         return run
 
     def get_nmap_run(self, id: int) -> NmapRun:
@@ -98,10 +96,9 @@ class ToolRunManager(PostgresManager):
         """
         Insert a RDnsRun + RDNSResult
         """
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                self._create_tool_run(run, c)
-                self.rdns_manager._create(run, c=c)
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            self._create_tool_run(run, c)
+            self.rdns_manager._create(run, c=c)
         return run
 
     def get_rdns_run(self, id: int) -> RDNSRun:
@@ -120,10 +117,9 @@ class ToolRunManager(PostgresManager):
         return RDNSRun.model_validate(res)
 
     def create_mtr_run(self, run: MTRRun) -> MTRRun:
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                self._create_tool_run(run, c)
-                self.mtr_manager._create(run, c=c)
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            self._create_tool_run(run, c)
+            self.mtr_manager._create(run, c=c)
         return run
 
     def get_mtr_run(self, id: int) -> MTRRun:

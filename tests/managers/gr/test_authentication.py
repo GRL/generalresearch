@@ -1,11 +1,9 @@
 import logging
-from random import randint
 from uuid import uuid4
 
 import pytest
 
 from generalresearch.models.gr.authentication import GRUser
-from test_utils.models.conftest import gr_user
 
 SSO_ISSUER = ""
 
@@ -13,7 +11,6 @@ SSO_ISSUER = ""
 class TestGRUserManager:
 
     def test_create(self, gr_um):
-        from generalresearch.models.gr.authentication import GRUser
 
         user: GRUser = gr_um.create_dummy()
         instance = gr_um.get_by_id(user.id)

@@ -55,7 +55,7 @@ class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
         LOG.warning(f"EnrichedReconMergeItem.build({ir})")
 
         # --- Task Adjustments ---
-        LOG.warning(f"EnrichedReconMergeItem: get session_collection")
+        LOG.warning("EnrichedReconMergeItem: get session_collection")
         task_adj_coll_items = [
             w for w in task_adj_coll.items if w.interval.overlaps(ir)
         ]
@@ -209,6 +209,5 @@ class EnrichedTaskAdjustMerge(MergeCollection):
                 enriched_wall=enriched_wall,
                 pg_config=pg_config,
             )
-        except (Exception,) as e:
+        except Exception as e:
             capture_exception(error=e)
-            pass

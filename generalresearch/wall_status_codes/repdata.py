@@ -46,7 +46,7 @@ rd_threat_name: dict[str, str] = {
     "18": "MaxMind Failure",
 }
 
-status_map = defaultdict(lambda: Status.FAIL, **{"complete": Status.COMPLETE})
+status_map = defaultdict(lambda: Status.FAIL, complete=Status.COMPLETE)
 status_code_map: dict[StatusCode1, list[str]] = {
     StatusCode1.COMPLETE: ["1000"],
     StatusCode1.BUYER_FAIL: ["2000", "4000"],

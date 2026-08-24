@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Self
 from uuid import uuid4
 
@@ -167,7 +167,7 @@ class Contest(ContestBase):
                 ended_at=datetime.now(tz=UTC),
                 end_reason=reason,
             )
-        return None
+        return
 
     def model_dump_mysql(self, **kwargs) -> dict[str, Any]:
         d = self.model_dump(mode="json", **kwargs)

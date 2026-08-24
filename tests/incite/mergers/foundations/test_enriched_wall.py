@@ -1,33 +1,14 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from itertools import product as iter_product
-from typing import Optional
 
 import dask.dataframe as dd
 import pandas as pd
 import pytest
 
 # noinspection PyUnresolvedReferences
-from distributed.utils_test import (
-    cleanup,
-    client,
-    client_no_amm,
-    cluster_fixture,
-    gen_cluster,
-    loop,
-    loop_in_thread,
-)
-
 from generalresearch.incite.mergers.foundations.enriched_wall import (
     EnrichedWallMergeItem,
-)
-from test_utils.incite.collections.conftest import (
-    session_collection,
-    wall_collection,
-)
-from test_utils.incite.conftest import incite_item_factory
-from test_utils.incite.mergers.conftest import (
-    enriched_wall_merge,
 )
 
 
@@ -118,7 +99,7 @@ class TestEnrichedWall:
 
             try:
                 modified_time1 = path.stat().st_mtime
-            except (Exception,):
+            except Exception:
                 modified_time1 = 0
 
             item.build(

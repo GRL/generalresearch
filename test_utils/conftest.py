@@ -5,9 +5,8 @@ import shutil
 import stat
 import subprocess
 import sys
-import tempfile
 from collections.abc import Callable, Generator
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from os.path import join as pjoin
 from pathlib import Path
 from uuid import uuid4

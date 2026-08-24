@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from os.path import join as pjoin
 from pathlib import Path
 from uuid import uuid4

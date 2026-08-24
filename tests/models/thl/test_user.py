@@ -197,7 +197,7 @@ class TestUserProductUserID:
         assert "Input should be a valid string" in str(cm.value)
 
         with pytest.raises(ValueError) as cm:
-            User(user_id=self.user_id, product_user_id=Decimal("0"))
+            User(user_id=self.user_id, product_user_id=Decimal(0))
         assert "1 validation error for User" in str(cm.value)
         assert "Input should be a valid string" in str(cm.value)
 
@@ -236,7 +236,7 @@ class TestUserProductUserID:
     def test_invalid_chars_slash(self):
         from generalresearch.models.thl.user import User
 
-        product_user_id = f"{self.randomword(50)}\{self.randomword(50)}"
+        product_user_id = rf"{self.randomword(50)}\{self.randomword(50)}"
         with pytest.raises(expected_exception=ValueError) as cm:
             User(user_id=self.user_id, product_user_id=product_user_id)
         assert "1 validation error for User" in str(cm.value)
@@ -310,7 +310,7 @@ class TestUserUUID:
         assert "Input should be a valid string" in str(cm.value)
 
         with pytest.raises(ValueError) as cm:
-            User(user_id=self.user_id, uuid=Decimal("0"))
+            User(user_id=self.user_id, uuid=Decimal(0))
         assert "1 validation error for User" in str(cm.value)
         assert "Input should be a valid string" in str(cm.value)
 

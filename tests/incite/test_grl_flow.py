@@ -1,15 +1,16 @@
 class TestGRLFlow:
 
     def test_init(self, mnt_filepath, thl_web_rr):
-        from generalresearch.incite.defaults import (
-            ledger_df_collection,
-            task_df_collection,
-            pop_ledger as plm,
-        )
-
         from generalresearch.incite.collections.thl_web import (
             LedgerDFCollection,
             TaskAdjustmentDFCollection,
+        )
+        from generalresearch.incite.defaults import (
+            ledger_df_collection,
+            task_df_collection,
+        )
+        from generalresearch.incite.defaults import (
+            pop_ledger as plm,
         )
         from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import UTC, datetime, timedelta
 
 from generalresearch.managers.base import PostgresManagerWithRedis
 from generalresearch.models.thl.profiling.user_question_answer import (

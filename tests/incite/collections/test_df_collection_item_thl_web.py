@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Generator
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from itertools import product as iter_product
 from os.path import join as pjoin
 from pathlib import Path, PurePath
@@ -236,7 +236,6 @@ class TestDFCollectionItemMethod:
         incite_item_factory,
         delete_df_collection,
     ):
-        from generalresearch.models.thl.user import User
 
         if df_collection.data_type in unsupported_mock_types:
             return
@@ -280,7 +279,6 @@ class TestDFCollectionItemMethod:
         incite_item_factory,
         delete_df_collection,
     ):
-        from generalresearch.models.thl.user import User
 
         if df_collection.data_type in unsupported_mock_types:
             return
@@ -333,7 +331,6 @@ class TestDFCollectionItemMethod:
         delete_df_collection,
         mnt_filepath,
     ):
-        from generalresearch.models.thl.user import User
 
         if df_collection.data_type != DFCollectionType.LEDGER:
             return
@@ -385,7 +382,6 @@ class TestDFCollectionItemMethod:
         delete_df_collection,
         mnt_filepath,
     ):
-        from generalresearch.models.thl.user import User
 
         if df_collection.data_type in unsupported_mock_types:
             return
@@ -766,7 +762,6 @@ class TestDFCollectionItemFunctionalTest:
         delete_df_collection,
         mnt_filepath: GRLDatasets,
     ):
-        from generalresearch.models.thl.user import User
 
         if df_collection.data_type in unsupported_mock_types:
             return
@@ -828,7 +823,6 @@ class TestDFCollectionItemFunctionalTest:
 
         import pyarrow.parquet as pq
 
-        from generalresearch.models.thl.user import User
 
         if df_collection.data_type in unsupported_mock_types:
             return
@@ -864,7 +858,6 @@ class TestDFCollectionItemFunctionalTest:
         delete_df_collection,
         mnt_filepath: GRLDatasets,
     ):
-        from generalresearch.models.thl.user import User
 
         delete_df_collection(coll=df_collection)
         df_collection._client = client_no_amm
@@ -920,7 +913,6 @@ class TestDFCollectionItemFunctionalTest:
         """Don't allow creating an archive for data that will likely be
         overwritten or updated
         """
-        from generalresearch.models.thl.user import User
 
         if df_collection.data_type in unsupported_mock_types:
             return
@@ -987,7 +979,6 @@ class TestDFCollectionItemFunctionalTest:
         duration: timedelta,
         mnt_filepath,
     ):
-        from generalresearch.models.thl.user import User
 
         delete_df_collection(coll=df_collection)
         df_collection._client = client_no_amm

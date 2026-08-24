@@ -13,7 +13,7 @@ def make_events_svg(
     mouse_events: list[MouseEvent], keyboard_events: list[KeyboardEvent]
 ) -> str:
     if len(mouse_events) + len(keyboard_events) == 0:
-        return f'<svg xmlns="http://www.w3.org/2000/svg">\n' + "\n</svg>"
+        return '<svg xmlns="http://www.w3.org/2000/svg">\n' + "\n</svg>"
 
     t = np.array([pm.timeStamp for pm in mouse_events])
     t_diff = t.max() - t.min()
@@ -88,7 +88,7 @@ def make_events_svg(
         svg_elements.append(svg_multiline_text(text, cx + 5, cy - 5, font_size))
 
     svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg">'
+        '<svg xmlns="http://www.w3.org/2000/svg">'
         + "\n".join(svg_elements)
         + "\n</svg>"
     )

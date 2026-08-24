@@ -1,5 +1,5 @@
 import logging
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from random import randint
 from uuid import uuid4
 
@@ -156,7 +156,7 @@ class TestCreateUserManager:
 
         # make sure thl_user row is created
         res_thl_user = thl_web_rw.execute_sql_query(
-            query=f"""
+            query="""
                 SELECT * 
                 FROM thl_user AS u
                 WHERE u.id = %s

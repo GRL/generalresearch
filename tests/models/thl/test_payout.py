@@ -5,13 +5,12 @@ from pydantic import ValidationError
 
 from generalresearch.currency import USDCent
 from generalresearch.models.gr import Team
+from generalresearch.models.gr.business import Business, BusinessAddress, BusinessType
 from generalresearch.models.thl.payout import (
-    BusinessPayoutEvent,
     BrokerageProductPayoutEvent,
+    BusinessPayoutEvent,
 )
 from generalresearch.models.thl.wallet import PayoutType
-
-from generalresearch.models.gr.business import Business, BusinessAddress, BusinessType
 
 
 class TestBusinessPayoutEvent:

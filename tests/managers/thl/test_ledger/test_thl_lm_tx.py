@@ -1,5 +1,5 @@
 import logging
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from random import randint
 from uuid import uuid4
@@ -114,7 +114,7 @@ class TestThlLedgerTxManager:
             user_wallet_config=UserWalletConfig(amt=True, enabled=True),
         )
         user = user_factory(product=product)
-        s1 = session_factory(user=user, wall_req_cpi=Decimal("1"))
+        s1 = session_factory(user=user, wall_req_cpi=Decimal(1))
 
         status, status_code_1 = s1.determine_session_status()
         assert status == Status.COMPLETE
@@ -207,9 +207,7 @@ class TestThlLedgerTxManager:
         # Update the finished timestamp, but nothing else. This means that
         #   there is no financial changes needed
         session.update(
-            **{
-                "finished": datetime.now(tz=UTC) + timedelta(minutes=10),
-            }
+            finished=datetime.now(tz=UTC) + timedelta(minutes=10)
         )
         assert session.finished
         with caplog.at_level(logging.INFO):
@@ -829,13 +827,7 @@ class TestThlLedgerTxManagerFlows:
         status, status_code_1 = s1.determine_session_status()
         thl_net, commission_amount, bp_pay, user_pay = s1.determine_payments()
         s1.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": s1.started + timedelta(minutes=10),
-                "payout": bp_pay,
-                "user_payout": user_pay,
-            }
+            status=status, status_code_1=status_code_1, finished=s1.started + timedelta(minutes=10), payout=bp_pay, user_payout=user_pay
         )
         print(thl_net, commission_amount, bp_pay, user_pay)
         thl_lm.create_tx_bp_payment(session=s1, created=w1.started)
@@ -892,13 +884,7 @@ class TestThlLedgerTxManagerFlows:
         status, status_code_1 = session.determine_session_status()
         thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": session.started + timedelta(minutes=10),
-                "payout": bp_pay,
-                "user_payout": user_pay,
-            }
+            status=status, status_code_1=status_code_1, finished=session.started + timedelta(minutes=10), payout=bp_pay, user_payout=user_pay
         )
 
         print(thl_net, commission_amount, bp_pay, user_pay)
@@ -930,13 +916,7 @@ class TestThlLedgerTxManagerFlows:
         status, status_code_1 = session.determine_session_status()
         # thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": session.started + timedelta(minutes=10),
-                "payout": Decimal("1.53"),
-                "user_payout": Decimal("1.53"),
-            }
+            status=status, status_code_1=status_code_1, finished=session.started + timedelta(minutes=10), payout=Decimal("1.53"), user_payout=Decimal("1.53")
         )
 
         thl_lm.create_tx_bp_payment(session=session, created=wall1.started)
@@ -971,13 +951,7 @@ class TestThlLedgerTxManagerFlows:
         status, status_code_1 = session.determine_session_status()
         # thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": session.started + timedelta(minutes=10),
-                "payout": Decimal("0.39"),
-                "user_payout": Decimal("0.26"),
-            }
+            status=status, status_code_1=status_code_1, finished=session.started + timedelta(minutes=10), payout=Decimal("0.39"), user_payout=Decimal("0.26")
         )
         # with pytest.logs(logger, level=logging.WARNING) as cm:
         #     tx = thl_lm.create_transaction_bp_payment(session, created=wall1.started)
@@ -1310,13 +1284,7 @@ class TestThlLedgerManagerAdj:
         status, status_code_1 = session.determine_session_status()
         thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": utc_hour_ago + timedelta(minutes=10),
-                "payout": bp_pay,
-                "user_payout": user_pay,
-            }
+            status=status, status_code_1=status_code_1, finished=utc_hour_ago + timedelta(minutes=10), payout=bp_pay, user_payout=user_pay
         )
         thl_lm.create_tx_bp_payment(session, created=wall1.started)
 
@@ -1484,13 +1452,7 @@ class TestThlLedgerManagerAdj:
         assert user_pay == Decimal("1.52")
 
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": now + timedelta(minutes=10),
-                "payout": bp_pay,
-                "user_payout": user_pay,
-            }
+            status=status, status_code_1=status_code_1, finished=now + timedelta(minutes=10), payout=bp_pay, user_payout=user_pay
         )
 
         tx = thl_lm.create_tx_bp_adjustment(session=session, created=wall1.started)
@@ -1664,13 +1626,7 @@ class TestThlLedgerManagerAdj:
         status, status_code_1 = session.determine_session_status()
         thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": utc_hour_ago + timedelta(minutes=10),
-                "payout": bp_pay,
-                "user_payout": user_pay,
-            }
+            status=status, status_code_1=status_code_1, finished=utc_hour_ago + timedelta(minutes=10), payout=bp_pay, user_payout=user_pay
         )
         thl_lm.create_tx_bp_payment(session, created=wall1.started)
 

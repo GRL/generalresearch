@@ -90,10 +90,9 @@ class GrlIqCategoryResultsReader:
         ORDER BY created_at DESC LIMIT {limit}
         """
 
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query, params)
-                res = c.fetchall()
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, params)
+            res = c.fetchall()
 
         for x in res:
             x["client_ip"] = str(x["client_ip"])

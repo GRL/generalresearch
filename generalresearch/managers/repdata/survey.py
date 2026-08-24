@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Collection
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 
 import pymysql
 
@@ -105,7 +105,7 @@ class RepDataSurveyManager(SurveyManager):
         surveys = {s.survey_id: s for s in surveys}
         if surveys:
             res = self.sql_helper.execute_sql_query(
-                query=f"""
+                query="""
                     SELECT *
                     FROM `thl-repdata`.`repdata_surveystream`
                     WHERE survey_id IN %s

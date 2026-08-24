@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import UTC, datetime, timedelta
 
 from psycopg import sql
 from pydantic import IPvAnyNetwork, TypeAdapter
@@ -28,10 +28,9 @@ class IPLabelManager(PostgresManager):
             %(provider)s, %(metadata)s
         ) RETURNING id;""")
         params = ip_label.model_dump_postgres()
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query, params)
-                pk = c.fetchone()["id"]
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, params)
+            pk = c.fetchone()["id"]
         return ip_label
 
     def make_filter_str(

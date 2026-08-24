@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -8,7 +8,6 @@ from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerMana
 from generalresearch.managers.thl.user_compensate import user_compensate
 from generalresearch.models.thl.definitions import (
     Status,
-    WallAdjustedStatus,
 )
 from generalresearch.models.thl.ledger import (
     TransactionType,

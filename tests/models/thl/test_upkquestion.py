@@ -201,18 +201,10 @@ class TestUpkQuestion:
         )
 
         q = MorningQuestion(
-            **{
-                "id": "gender",
-                "country_iso": "us",
-                "language_iso": "eng",
-                "name": "Gender",
-                "text": "What is your gender?",
-                "type": "s",
-                "options": [
+            id="gender", country_iso="us", language_iso="eng", name="Gender", text="What is your gender?", type="s", options=[
                     {"id": "1", "text": "yes", "order": 1},
                     {"id": "2", "text": "no", "order": 2},
-                ],
-            }
+                ]
         )
         q.to_upk_question()
         q = MorningQuestion(

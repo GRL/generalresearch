@@ -61,7 +61,7 @@ client_status_map: dict[str, StatusCode1] = {
     "35": StatusCode1.BUYER_QUALITY_FAIL,
 }
 
-status_map = defaultdict(lambda: Status.FAIL, **{"s": Status.COMPLETE})
+status_map = defaultdict(lambda: Status.FAIL, s=Status.COMPLETE)
 status_codes_ext_map: dict[StatusCode1, list[str]] = {
     StatusCode1.COMPLETE: [],
     StatusCode1.BUYER_FAIL: ["3"],

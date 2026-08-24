@@ -1,5 +1,5 @@
 import logging
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -12,7 +12,6 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
 from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet import PayoutType
-from test_utils.managers.ledger.conftest import create_main_accounts
 
 
 class TestLedgerManagerAMT:

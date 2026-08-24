@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -23,7 +23,6 @@ from generalresearch.models.thl.session import (
     WallAdjustedStatus,
 )
 from generalresearch.models.thl.user import User
-from test_utils.models.conftest import product_user_wallet_no, session, user_factory
 
 logger = logging.getLogger("LedgerManager")
 
@@ -56,7 +55,7 @@ class TestLedgerLocks:
         s1 = session_factory(
             user=user,
             wall_count=3,
-            wall_req_cpis=[Decimal("1.23"), Decimal("3.21"), Decimal("4")],
+            wall_req_cpis=[Decimal("1.23"), Decimal("3.21"), Decimal(4)],
             wall_statuses=[Status.COMPLETE, Status.COMPLETE, Status.COMPLETE],
         )
 
@@ -187,7 +186,7 @@ class TestLedgerLocks:
             user_id=user.user_id,
             source=Source.DYNATA,
             req_survey_id="xxx",
-            req_cpi=Decimal("4"),
+            req_cpi=Decimal(4),
             session_id=1,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
@@ -292,13 +291,7 @@ class TestLedgerLocks:
         status, status_code_1 = session.determine_session_status()
         thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": session.started + timedelta(minutes=10),
-                "payout": bp_pay,
-                "user_payout": user_pay,
-            }
+            status=status, status_code_1=status_code_1, finished=session.started + timedelta(minutes=10), payout=bp_pay, user_payout=user_pay
         )
         print(thl_net, commission_amount, bp_pay, user_pay)
 
@@ -336,13 +329,7 @@ class TestLedgerLocks:
         status, status_code_1 = session.determine_session_status()
         thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": session.started + timedelta(minutes=10),
-                "payout": bp_pay,
-                "user_payout": user_pay,
-            }
+            status=status, status_code_1=status_code_1, finished=session.started + timedelta(minutes=10), payout=bp_pay, user_payout=user_pay
         )
         print(thl_net, commission_amount, bp_pay, user_pay)
 

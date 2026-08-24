@@ -4,6 +4,7 @@ import pytest
 
 from generalresearch.models.network.nmap.parser import parse_nmap_xml
 
+
 @pytest.fixture
 def nmap_raw_output_2(request) -> str:
     fp = os.path.join(request.config.rootpath, "data/nmaprun2.xml")

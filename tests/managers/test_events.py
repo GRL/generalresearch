@@ -1,11 +1,10 @@
 import math
 import random
 import time
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from functools import partial
 from math import floor
-from typing import Optional
 from uuid import uuid4
 
 import pytest
@@ -384,7 +383,7 @@ class TestTaskStatsManager:
             "task_created_count_last_24h": AggregateBySource(total=0),
         }
         event_manager.set_source_task_stats(
-            source=Source.TESTING, live_task_count=0, live_tasks_max_payout=Decimal("0")
+            source=Source.TESTING, live_task_count=0, live_tasks_max_payout=Decimal(0)
         )
         assert event_manager.get_task_stats_raw() == {
             "live_task_count": AggregateBySource(
@@ -400,7 +399,7 @@ class TestTaskStatsManager:
         event_manager.set_source_task_stats(
             source=Source.TESTING,
             live_task_count=0,
-            live_tasks_max_payout=Decimal("0"),
+            live_tasks_max_payout=Decimal(0),
             created_count=10,
         )
         res = event_manager.get_task_stats_raw()
@@ -414,7 +413,7 @@ class TestTaskStatsManager:
         event_manager.set_source_task_stats(
             source=Source.TESTING,
             live_task_count=0,
-            live_tasks_max_payout=Decimal("0"),
+            live_tasks_max_payout=Decimal(0),
             created_count=10,
         )
         res = event_manager.get_task_stats_raw()
@@ -428,7 +427,7 @@ class TestTaskStatsManager:
         event_manager.set_source_task_stats(
             source=Source.TESTING2,
             live_task_count=0,
-            live_tasks_max_payout=Decimal("0"),
+            live_tasks_max_payout=Decimal(0),
             created_count=1,
         )
         res = event_manager.get_task_stats_raw()
@@ -481,7 +480,7 @@ class TestChannelsSubscriptions:
 
         wall = Wall(
             req_survey_id="a",
-            req_cpi=Decimal("1"),
+            req_cpi=Decimal(1),
             source=Source.TESTING,
             session_id=session.id,
             user_id=user.user_id,
@@ -497,7 +496,7 @@ class TestChannelsSubscriptions:
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
             finished=datetime.now(tz=UTC),
-            cpi=Decimal("1"),
+            cpi=Decimal(1),
         )
         event_manager.handle_task_finish(wall, session, user)
         msg = event_subscriber.get_next_message()

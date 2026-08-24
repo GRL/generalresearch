@@ -779,7 +779,6 @@ class GrlIqData(BaseModel):
             minutes=90
         ), "expired session"
 
-        return None
 
     def model_dump_sql(self, **kwargs) -> dict[str, Any]:
         d = dict()

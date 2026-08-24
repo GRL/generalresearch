@@ -3,7 +3,6 @@ from __future__ import annotations
 import random
 from typing import (
     Literal,
-    Optional,
     Union,
     get_args,
     get_origin,
@@ -125,7 +124,7 @@ def generate_GrlIqCheckerResultsSummary():
         if base_type == GrlIqCheckerResult:
             if is_opt:
                 fields[f"{field_name}_avg"] = (
-                    Optional[GrlIqAvgScore],
+                    GrlIqAvgScore | None,
                     Field(default=None, examples=[random.randint(0, 100)]),
                 )
                 fields[f"{field_name}_pct_none"] = (

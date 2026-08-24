@@ -1,7 +1,6 @@
 import uuid
 
 import pytest
-from cachetools.keys import _HashedTuple
 
 from generalresearch.models import Source
 from generalresearch.models.thl.survey.penalty import (

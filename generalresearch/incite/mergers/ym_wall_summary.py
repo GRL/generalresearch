@@ -117,9 +117,8 @@ class YMWallSummaryMerge(MergeCollection):
                 #   item every time build is run even if it isn't closed
                 # if item.should_archive():
                 item.fetch(wall_collection, session_collection, user_id_product)
-            except (Exception,) as e:
+            except Exception as e:
                 capture_exception(e)
-                pass
 
     @staticmethod
     def build_groupbys(df: pd.DataFrame) -> pd.DataFrame:

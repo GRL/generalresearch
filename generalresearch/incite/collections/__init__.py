@@ -214,13 +214,13 @@ class DFCollectionItem(CollectionItemBase):
                 """,
                 params=[start, finish],
             )
-        except (Exception,) as e:
+        except Exception as e:
             capture_exception(error=e)
             LOG.error(f"_from_mysql Exception: {e}")
             return None
 
         if not res:
-            LOG.warning(f"_from_mysql query returned nothing")
+            LOG.warning("_from_mysql query returned nothing")
             # Return an empty df.DataFrame with the correct columns
             return empty_dataframe_from_schema(coll._schema)
 
@@ -228,7 +228,7 @@ class DFCollectionItem(CollectionItemBase):
         df = self.validate_df(df=df)
 
         if df is None:
-            LOG.warning(f"_from_mysql query results failed validation")
+            LOG.warning("_from_mysql query results failed validation")
             # Schema validation can fail...
             return None
 
@@ -265,13 +265,13 @@ class DFCollectionItem(CollectionItemBase):
                 """,
                 params=[start, finish],
             )
-        except (Exception,) as e:
+        except Exception as e:
             capture_exception(error=e)
             LOG.error(f"_from_postgres Exception: {e}")
             return None
 
         if not res:
-            LOG.warning(f"_from_postgres query returned nothing")
+            LOG.warning("_from_postgres query returned nothing")
             # Return an empty df.DataFrame with the correct columns
             return empty_dataframe_from_schema(coll._schema)
 
@@ -279,7 +279,7 @@ class DFCollectionItem(CollectionItemBase):
         df = self.validate_df(df=df)
 
         if df is None:
-            LOG.warning(f"_from_postgres query results failed validation")
+            LOG.warning("_from_postgres query results failed validation")
             # Schema validation can fail...
             return None
 
@@ -351,7 +351,7 @@ class DFCollectionItem(CollectionItemBase):
         c: Cursor = conn.cursor()
         for chunk in chunked(tx_ids, n=5_000):
             c.execute(
-                query=f"""
+                query="""
                 SELECT  ltm.transaction_id AS tx_id, 
                         ltm.id AS tx_metadata_id,
                         ltm.key, ltm.value
@@ -466,7 +466,7 @@ class DFCollectionItem(CollectionItemBase):
                 compression="brotli",
             )
 
-        except (Exception,) as e:
+        except Exception as e:
             LOG.exception(e)
             self.delete_archive(tmp_path)
             return False
@@ -553,7 +553,7 @@ class DFCollectionItem(CollectionItemBase):
                 write_metadata_file=True,
                 compression="brotli",
             )
-        except (Exception,) as e:
+        except Exception as e:
             LOG.exception(e)
             self.delete_archive(next_numbered_path)
             return False

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from generalresearch.models.thl.user_iphistory import (
     UserIPHistory,

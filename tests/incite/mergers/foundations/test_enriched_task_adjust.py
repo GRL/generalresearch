@@ -5,13 +5,6 @@ import dask.dataframe as dd
 import pandas as pd
 import pytest
 
-from test_utils.incite.collections.conftest import (
-    wall_collection,
-    task_adj_collection,
-    session_collection,
-)
-from test_utils.incite.mergers.conftest import enriched_wall_merge
-
 
 @pytest.mark.parametrize(
     argnames="offset, duration,",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 
 from generalresearch.managers.base import Permission, PostgresManager
 from generalresearch.models import Source

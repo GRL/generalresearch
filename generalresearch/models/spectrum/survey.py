@@ -75,7 +75,7 @@ class SpectrumCondition(MarketplaceCondition):
                     rs["from"] = round(rs["from"] / 12)
                     rs["to"] = round(rs["to"] / 12)
             d["values"] = [
-                "{0}-{1}".format(rs["from"] or "inf", rs["to"] or "inf")
+                f"{rs["from"] or "inf"}-{rs["to"] or "inf"}"
                 for rs in d["range_sets"]
             ]
             d["value_type"] = ConditionValueType.RANGE

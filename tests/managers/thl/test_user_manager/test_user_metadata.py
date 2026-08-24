@@ -3,7 +3,6 @@ from uuid import uuid4
 import pytest
 
 from generalresearch.models.thl.user_profile import UserMetadata
-from test_utils.models.conftest import user, user_manager, user_factory
 
 
 class TestUserMetadataManager:

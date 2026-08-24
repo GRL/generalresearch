@@ -1,6 +1,6 @@
 import copy
 import logging
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from pymysql import IntegrityError

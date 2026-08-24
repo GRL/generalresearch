@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
@@ -194,7 +194,6 @@ class Team(BaseModel):
         except Exception as e:
             raise OSError(f"Parquet verification failed: {e}")
 
-        return
 
     def prebuild_enriched_wall_parquet(
         self,
@@ -239,7 +238,6 @@ class Team(BaseModel):
         except Exception as e:
             raise OSError(f"Parquet verification failed: {e}")
 
-        return None
 
     @classmethod
     def required_fields(cls) -> list[str]:
@@ -325,7 +323,6 @@ class Team(BaseModel):
             enriched_wall=enriched_wall,
         )
 
-        return
 
     # --- ORM ---
 
@@ -344,5 +341,5 @@ class Team(BaseModel):
             d = {val: json.loads(res[idx]) for idx, val in enumerate(keys)}
             return Team.model_validate(d)
 
-        except (Exception,) as e:
+        except Exception:
             return None

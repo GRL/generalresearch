@@ -420,7 +420,7 @@ class Business(BaseModel):
             #   that is still valid. Don't attempt to build a balance, leave it
             #   as None rather than all zeros
             LOG.warning(f"Business({self.uuid=}).prebuild_balance empty dataframe")
-            return None
+            return
 
         LOG.debug(f"Business.prebuild_balance.groupby() {df.head()}")
         df = df.groupby("account_id").sum()
@@ -442,13 +442,11 @@ class Business(BaseModel):
             order_by=OrderBy.DESC,
         )
         self.prebuild_payouts_total()
-        return None
 
     def prebuild_payouts_total(self):
         assert self.payouts is not None
         self.payouts_total = USDCent(sum([po.amount for po in self.payouts]))
         self.payouts_total_str = self.payouts_total.to_usd_str()
-        return None
 
     def prebuild_pop_financial(
         self,
@@ -548,7 +546,6 @@ class Business(BaseModel):
         except Exception as e:
             raise OSError(f"Parquet verification failed: {e}")
 
-        return None
 
     def prebuild_enriched_wall_parquet(
         self,
@@ -593,7 +590,6 @@ class Business(BaseModel):
         except Exception as e:
             raise OSError(f"Parquet verification failed: {e}")
 
-        return None
 
     @classmethod
     def required_fields(cls) -> list[str]:

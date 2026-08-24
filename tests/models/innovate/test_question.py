@@ -1,15 +1,15 @@
 from generalresearch.models import Source
 from generalresearch.models.innovate.question import (
     InnovateQuestion,
-    InnovateQuestionType,
     InnovateQuestionOption,
+    InnovateQuestionType,
 )
 from generalresearch.models.thl.profiling.upk_question import (
-    UpkQuestionSelectorTE,
     UpkQuestion,
-    UpkQuestionSelectorMC,
-    UpkQuestionType,
     UpkQuestionChoice,
+    UpkQuestionSelectorMC,
+    UpkQuestionSelectorTE,
+    UpkQuestionType,
 )
 
 

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from itertools import product
 
 import pandas as pd
@@ -9,7 +9,6 @@ from generalresearch.incite.mergers import (
     MergeCollection,
     MergeType,
 )
-from test_utils.incite.conftest import mnt_filepath
 
 merge_types = list(e for e in MergeType if e != MergeType.TEST)
 

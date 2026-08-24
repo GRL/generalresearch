@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from functools import cached_property
 
@@ -148,10 +148,7 @@ class TaskAdjustmentManager(PostgresManager):
         if (
             wall.status == Status.COMPLETE
             and adjusted_status == WallAdjustedStatus.ADJUSTED_TO_COMPLETE
-        ):
-            new_adjusted_status = None
-            new_adjusted_cpi = None
-        elif (
+        ) or (
             wall.status != Status.COMPLETE
             and adjusted_status == WallAdjustedStatus.ADJUSTED_TO_FAIL
         ):

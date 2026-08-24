@@ -3,7 +3,7 @@ from __future__ import annotations
 import binascii
 import json
 import os
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import (
@@ -181,7 +181,7 @@ class GRUser(BaseModel):
         team_products = pm.fetch_uuids(team_uuids=team_uuids) if team_uuids else []
         products = {p.id: p for p in business_products + team_products}
 
-        self.products = sorted(products.values(), key=lambda x: getattr(x, "created"))
+        self.products = sorted(products.values(), key=lambda x: x.created)
 
     def prefetch_token(self, pg_config: PostgresConfig):
         from generalresearch.managers.gr.authentication import (
@@ -283,7 +283,6 @@ class GRUser(BaseModel):
             ex=ex_secs,
         )
 
-        return None
 
     # --- ORM ---
 

@@ -1,4 +1,3 @@
-from test_utils.models.conftest import user, user_manager
 
 
 class TestUserManagerMysqlNew:

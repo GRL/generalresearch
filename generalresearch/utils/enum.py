@@ -19,7 +19,7 @@ class ReprEnumMeta(EnumMeta):
                 [f" - __{e.value}__ *({e.name})*: {descriptions[e.name]}" for e in self]
             )
         else:
-            return f"\nAllowed values: \n" + "\n".join(
+            return "\nAllowed values: \n" + "\n".join(
                 [f" - __{e.value}__ *({e.name})*: {descriptions[e.name]}" for e in self]
             )
 
@@ -35,7 +35,7 @@ class ReprEnumMeta(EnumMeta):
                 [f" - __{e.name}__: {descriptions[e.name]}" for e in self]
             )
         else:
-            return f"\nAllowed values: \n" + "\n".join(
+            return "\nAllowed values: \n" + "\n".join(
                 [f" - __{e.name}__: {descriptions[e.name]}" for e in self]
             )
 

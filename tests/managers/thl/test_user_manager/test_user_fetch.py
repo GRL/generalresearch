@@ -3,7 +3,6 @@ from uuid import uuid4
 import pytest
 
 from generalresearch.models.thl.user import User
-from test_utils.models.conftest import product, user_manager, user_factory
 
 
 class TestUserManagerFetch:

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import UTC, datetime, timedelta
 
 import pandas as pd
 from pandera.pandas import Check, Column, DataFrameSchema, Index, MultiIndex

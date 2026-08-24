@@ -12,14 +12,12 @@ class SurveyManager(SqlManager, ABC):
         """
         Create a single survey
         """
-        ...
 
     def update(self, surveys: list[MarketplaceTask]) -> bool:
         """
         Update a list of surveys. Depending on the implementation, this may
           operate one by one or as a bulk update.
         """
-        ...
 
     def update_field(self, survey: MarketplaceTask, field: str) -> bool:
         """

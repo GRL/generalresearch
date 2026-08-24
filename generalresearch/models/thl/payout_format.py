@@ -45,7 +45,7 @@ def format_payout_format(payout_format: str, payout_int: int) -> str:
 
     try:
         xform, formatstr = inside.split(":")
-    except ValueError as e:
+    except ValueError:
         raise ValueError(
             "Payout format string must contain ':' to distinguish between transformations and formatting."
         )
@@ -61,17 +61,17 @@ def format_payout_format(payout_format: str, payout_int: int) -> str:
 
         payout = decimal.Decimal(eval(xform, {"payout": payout_int}))
 
-    except NameError as e:
+    except NameError:
         raise ValueError("Payout format string must contain 'payout' variable.")
 
-    except ZeroDivisionError as e:
+    except ZeroDivisionError:
         raise ValueError("Cannot divide by zero.")
 
-    except TypeError as e:
+    except TypeError:
         # "{payout()*1:}" - TypeError: 'int' object is not callable
         raise ValueError("Invalid type reference.")
-    except Exception as e:
-        raise ValueError(f"Invalid payout transformation")
+    except Exception:
+        raise ValueError("Invalid payout transformation")
 
     formatstr = f"{{:{formatstr}}}"
 

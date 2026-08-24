@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import random
 from collections import defaultdict
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal, Self
 
 from pydantic import (

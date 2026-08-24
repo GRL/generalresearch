@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -28,18 +28,6 @@ from generalresearch.models.thl.contest.raffle import (
 )
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
-from test_utils.managers.contest.conftest import (
-    raffle_contest as contest,
-)
-from test_utils.managers.contest.conftest import (
-    raffle_contest_create as contest_create,
-)
-from test_utils.managers.contest.conftest import (
-    raffle_contest_factory as contest_factory,
-)
-from test_utils.managers.contest.conftest import (
-    raffle_contest_in_db as contest_in_db,
-)
 
 
 class TestRaffleContest:

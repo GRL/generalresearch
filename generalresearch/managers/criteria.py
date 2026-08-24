@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Collection
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 
 from more_itertools import chunked
 
@@ -30,7 +30,6 @@ class CriteriaManager(SqlManager, ABC):
         """
         Create a single criterion
         """
-        ...
 
     def filter(self, hashes: Collection[str]) -> dict[str, MarketplaceCondition]:
         """
@@ -96,7 +95,6 @@ class CriteriaManager(SqlManager, ABC):
                 )
                 conn.commit()
 
-        return None
 
     @property
     def mysql_fields(self) -> str:

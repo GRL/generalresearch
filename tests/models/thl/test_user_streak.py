@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import ValidationError
-from zoneinfo import ZoneInfo
 
 from generalresearch.models.thl.user_streak import (
     StreakFulfillment,

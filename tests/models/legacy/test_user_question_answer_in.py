@@ -263,12 +263,12 @@ class TestUserQuestionAnswerIn:
             UserQuestionAnswerIn,
         )
 
-        for qid in {
+        for qid in (
             "2fbedb2b9f7647b09ff5e52fa119cc5e",
             "4030c52371b04e80b64e058d9c5b82e9",
             "a91cb1dea814480dba12d9b7b48696dd",
             "1d1e2e8380ac474b87fb4e4c569b48df",
-        }:
+        ):
             # This is the UserAgent question which only allows a single answer
             with pytest.raises(ValueError) as cm:
                 UserQuestionAnswerIn.model_validate(

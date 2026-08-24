@@ -1,17 +1,10 @@
-from datetime import datetime, timezone, timedelta
+from datetime import timedelta
 from itertools import product
 from pathlib import PurePath
 
 import pytest
 
 from generalresearch.incite.mergers import MergeCollectionItem, MergeType
-from generalresearch.incite.mergers.foundations.enriched_session import (
-    EnrichedSessionMerge,
-)
-from generalresearch.incite.mergers.foundations.enriched_wall import (
-    EnrichedWallMerge,
-)
-from test_utils.incite.mergers.conftest import merge_collection
 
 
 @pytest.mark.parametrize(

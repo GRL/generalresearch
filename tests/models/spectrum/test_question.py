@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 
 from generalresearch.models import Source
 from generalresearch.models.spectrum.question import (

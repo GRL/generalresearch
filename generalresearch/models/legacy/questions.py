@@ -106,7 +106,6 @@ class UserQuestionAnswerIn(BaseModel):
         if self.question_id == user_agent_qid:
             val = self.answer[0]
             # assert val == request.user_agent.to_header():
-            pass
 
         return self
 
@@ -217,7 +216,6 @@ class UserQuestionAnswers(BaseModel):
 
     # --- Prefetch ---
     def prefetch_user(self, um: UserManager) -> None:
-        from generalresearch.models.thl.user import User
 
         res: User | None = um.get_user_if_exists(
             product_id=self.product_id, product_user_id=self.product_user_id
@@ -230,7 +228,6 @@ class UserQuestionAnswers(BaseModel):
 
     def prefetch_wall(self, wm: WallManager) -> None:
         from generalresearch.models import Source
-        from generalresearch.models.thl.session import Wall
 
         res: Wall | None = wm.get_from_uuid_if_exists(wall_uuid=self.session_id)
 

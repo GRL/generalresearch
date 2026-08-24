@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 from typing import Any, Literal, cast
 from uuid import UUID
 
@@ -827,7 +827,6 @@ class MilestoneContestManager(ContestBaseManager):
             )
             self.end_milestone_contest(contest)
 
-        return None
 
     def enter_contest_db_work_milestone(
         self, contest: MilestoneUserView, user: User, incr: PositiveInt

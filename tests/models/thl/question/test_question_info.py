@@ -1,6 +1,6 @@
 from generalresearch.models.thl.profiling.upk_property import (
-    UpkProperty,
     ProfilingInfo,
+    UpkProperty,
 )
 
 

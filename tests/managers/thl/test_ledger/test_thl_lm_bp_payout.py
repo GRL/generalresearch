@@ -1,5 +1,5 @@
 import logging
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from random import randint
 from uuid import uuid4
@@ -78,13 +78,7 @@ class TestThlLedgerManagerBPPayout:
         status, status_code_1 = session.determine_session_status()
         thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": now + timedelta(minutes=10),
-                "payout": bp_pay,
-                "user_payout": user_pay,
-            }
+            status=status, status_code_1=status_code_1, finished=now + timedelta(minutes=10), payout=bp_pay, user_payout=user_pay
         )
         thl_lm.create_tx_bp_payment(session=session, created=wall1.started)
 

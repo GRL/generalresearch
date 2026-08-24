@@ -5,7 +5,7 @@ import math
 import socket
 import threading
 import time
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -724,7 +724,6 @@ class EventManager(StatsManager):
             )
         )
         self.publish_event(msg, product_id=user.product_id)
-        return
 
     def handle_task_finish(self, wall: Wall, session: Session, user: User):
         self.mark_user_active(user=user)
@@ -818,7 +817,6 @@ class EventSubscriber(RedisManager):
         p.subscribe(self.get_channel_name())
         self.pubsub_client = r
         self.pubsub = p
-        return
 
     def get_channel_name(self):
         return f"{self.cache_prefix}:event-channel:{self.product_id}"

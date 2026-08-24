@@ -70,7 +70,7 @@ UnitInterval = Column(
 
 SID_CHECKS = [
     Check.str_length(min_value=3, max_value=67),
-    Check.str_matches("^[a-z]{1,2}\:[A-Za-z0-9]+"),
+    Check.str_matches(r"^[a-z]{1,2}\:[A-Za-z0-9]+"),
     Check(
         lambda x: len(set(x.str.split(":").str[0])) == 1,
         error="the sources must all be the same",

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 
 from generalresearch.models.thl.contest.definitions import (
     ContestEndReason,
@@ -12,18 +12,6 @@ from generalresearch.models.thl.contest.milestone import (
 )
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
-from test_utils.managers.contest.conftest import (
-    milestone_contest as contest,
-)
-from test_utils.managers.contest.conftest import (
-    milestone_contest_create as contest_create,
-)
-from test_utils.managers.contest.conftest import (
-    milestone_contest_factory as contest_factory,
-)
-from test_utils.managers.contest.conftest import (
-    milestone_contest_in_db as contest_in_db,
-)
 
 
 class TestMilestoneContest:

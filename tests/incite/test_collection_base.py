@@ -10,7 +10,6 @@ import pytest
 from _pytest._code.code import ExceptionInfo
 
 from generalresearch.incite.base import CollectionBase
-from test_utils.incite.conftest import mnt_filepath
 
 AGO_15min = (datetime.now(tz=UTC) - timedelta(minutes=15)).replace(microsecond=0)
 AGO_1HR = (datetime.now(tz=UTC) - timedelta(hours=1)).replace(microsecond=0)
@@ -108,7 +107,7 @@ class TestCollectionBase:
 
         with pytest.raises(expected_exception=ValueError) as cm:
             cm: ExceptionInfo
-            CollectionBase(offset=f"59sec", archive_path=mnt_filepath.data_src)
+            CollectionBase(offset="59sec", archive_path=mnt_filepath.data_src)
         assert "Must be equal to, or longer than 1 min" in str(cm.value)
 
         with pytest.raises(expected_exception=ValueError) as cm:

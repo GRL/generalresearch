@@ -4,7 +4,6 @@ from uuid import uuid4
 import pytest
 
 from generalresearch.models.thl.product import Product
-from test_utils.models.conftest import product_factory
 
 logger = logging.getLogger()
 
@@ -79,4 +78,3 @@ class TestProductManagerGetAll:
         products = product_manager.get_all(rand_limit=50)
         logger.info(f"Fetching {len(products)} product uuids")
         # todo: once timebucks stops spamming broken accounts, fetch more
-        pass

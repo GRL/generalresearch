@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Collection
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 
 import pymysql
 from pymysql import IntegrityError
@@ -125,7 +125,7 @@ class PrecisionSurveyManager(SurveyManager):
 
         country_data = [(survey.survey_id, c) for c in survey.country_isos]
         c.executemany(
-            f"""
+            """
         INSERT INTO `thl-precision`.`precision_survey_country`
         (survey_id, country_iso, is_active) VALUES
         (%s, %s, TRUE)
@@ -134,7 +134,7 @@ class PrecisionSurveyManager(SurveyManager):
         )
         lang_data = [(survey.survey_id, c) for c in survey.language_isos]
         c.executemany(
-            f"""
+            """
         INSERT INTO `thl-precision`.`precision_survey_language`
         (survey_id, language_iso, is_active) VALUES
         (%s, %s, TRUE)
@@ -188,7 +188,7 @@ class PrecisionSurveyManager(SurveyManager):
         country_data = [(survey.survey_id, c) for c in survey.country_isos]
         # Turn ON countries in this survey's list of countries, insert row, if already exists, set active.
         c.executemany(
-            query=f"""
+            query="""
         INSERT INTO `thl-precision`.`precision_survey_country`
         (survey_id, country_iso, is_active) VALUES
         (%s, %s, TRUE) ON DUPLICATE KEY UPDATE is_active = TRUE;
@@ -207,7 +207,7 @@ class PrecisionSurveyManager(SurveyManager):
         )
         language_data = [(survey.survey_id, c) for c in survey.language_isos]
         c.executemany(
-            query=f"""
+            query="""
         INSERT INTO `thl-precision`.`precision_survey_language`
         (survey_id, language_iso, is_active) VALUES
         (%s, %s, TRUE) ON DUPLICATE KEY UPDATE is_active = TRUE;

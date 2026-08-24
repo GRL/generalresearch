@@ -8,9 +8,9 @@ class TestThlLedgerManagerAccounts:
     def test_get_account_or_create_user_wallet(self, user, thl_lm, lm):
         from generalresearch.currency import LedgerCurrency
         from generalresearch.models.thl.ledger import (
-            LedgerAccount,
-            Direction,
             AccountType,
+            Direction,
+            LedgerAccount,
         )
 
         account = thl_lm.get_account_or_create_user_wallet(user=user)
@@ -31,9 +31,9 @@ class TestThlLedgerManagerAccounts:
     def test_get_account_or_create_bp_wallet(self, product, thl_lm, lm):
         from generalresearch.currency import LedgerCurrency
         from generalresearch.models.thl.ledger import (
-            LedgerAccount,
-            Direction,
             AccountType,
+            Direction,
+            LedgerAccount,
         )
 
         account = thl_lm.get_account_or_create_bp_wallet(product=product)
@@ -54,8 +54,8 @@ class TestThlLedgerManagerAccounts:
     def test_get_account_or_create_bp_commission(self, product, thl_lm, lm):
         from generalresearch.currency import LedgerCurrency
         from generalresearch.models.thl.ledger import (
-            Direction,
             AccountType,
+            Direction,
         )
 
         account = thl_lm.get_account_or_create_bp_commission(product=product)
@@ -76,8 +76,8 @@ class TestThlLedgerManagerAccounts:
     def test_get_account_or_create_bp_expense(self, product, expense, thl_lm, lm):
         from generalresearch.currency import LedgerCurrency
         from generalresearch.models.thl.ledger import (
-            Direction,
             AccountType,
+            Direction,
         )
 
         account = thl_lm.get_account_or_create_bp_expense(
@@ -98,8 +98,8 @@ class TestThlLedgerManagerAccounts:
     def test_get_or_create_bp_pending_payout_account(self, product, thl_lm, lm):
         from generalresearch.currency import LedgerCurrency
         from generalresearch.models.thl.ledger import (
-            Direction,
             AccountType,
+            Direction,
         )
 
         account = thl_lm.get_or_create_bp_pending_payout_account(product=product)
@@ -132,8 +132,8 @@ class TestThlLedgerManagerAccounts:
         self, account_cash, account_revenue_task_complete, thl_lm, lm
     ):
         from generalresearch.models.thl.ledger import (
-            LedgerAccount,
             AccountType,
+            LedgerAccount,
         )
 
         res = thl_lm.get_account_task_complete_revenue()
@@ -155,8 +155,8 @@ class TestThlLedgerManagerAccounts:
 
     def test_get_account_cash(self, account_cash, thl_lm, lm):
         from generalresearch.models.thl.ledger import (
-            LedgerAccount,
             AccountType,
+            LedgerAccount,
         )
 
         res = thl_lm.get_account_cash()
@@ -167,10 +167,10 @@ class TestThlLedgerManagerAccounts:
         assert res.display_name == "Operating Cash Account"
 
     def test_get_accounts(self, setup_accounts, product, user_factory, thl_lm, lm, lam):
-        from generalresearch.models.thl.user import User
         from generalresearch.managers.thl.ledger_manager.exceptions import (
             LedgerAccountDoesntExistError,
         )
+        from generalresearch.models.thl.user import User
 
         user1: User = user_factory(product=product)
         user2: User = user_factory(product=product)
@@ -276,9 +276,9 @@ class TestLedgerAccountManager:
             LedgerAccountDoesntExistError,
         )
         from generalresearch.models.thl.ledger import (
-            LedgerAccount,
-            Direction,
             AccountType,
+            Direction,
+            LedgerAccount,
         )
 
         u = uuid4().hex
@@ -311,8 +311,8 @@ class TestLedgerAccountManager:
             LedgerAccountDoesntExistError,
         )
         from generalresearch.models.thl.ledger import (
-            LedgerAccount,
             AccountType,
+            LedgerAccount,
         )
 
         with pytest.raises(LedgerAccountDoesntExistError):
@@ -326,10 +326,10 @@ class TestLedgerAccountManager:
         assert user.product.uuid == account.reference_uuid
 
     def test_get_many(self, product_factory, thl_lm, lm, lam, currency):
-        from generalresearch.models.thl.product import Product
         from generalresearch.managers.thl.ledger_manager.exceptions import (
             LedgerAccountDoesntExistError,
         )
+        from generalresearch.models.thl.product import Product
 
         p1: Product = product_factory()
         p2: Product = product_factory()
@@ -388,9 +388,9 @@ class TestLedgerAccountManager:
 
     def test_create_account(self, thl_lm, lm, lam):
         from generalresearch.models.thl.ledger import (
-            LedgerAccount,
-            Direction,
             AccountType,
+            Direction,
+            LedgerAccount,
         )
 
         u = uuid4().hex
