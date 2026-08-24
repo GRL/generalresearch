@@ -53,7 +53,7 @@ from generalresearch.incite.schemas import (
 from generalresearch.models.custom_types import AwareDatetimeISO
 
 if TYPE_CHECKING:
-    from generalresearch.incite.collections import DFCollection
+    from generalresearch.incite.collections import DFCollection, DFCollectionItem
     from generalresearch.incite.collections.thl_marketplaces import (
         DFCollectionType,
     )
@@ -712,7 +712,7 @@ class CollectionItemBase(BaseModel):
 
     @property
     def path(self) -> FilePath:
-        return_filepath_adapter.validate_python(
+        return _filepath_adapter.validate_python(
             os.path.join(self._collection.archive_path, self.filename)
         )
 
