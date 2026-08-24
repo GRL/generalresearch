@@ -92,6 +92,7 @@ class TaskCalculationType(str, Enum):
             "survey start": cls.STARTS,
             "survey starts": cls.STARTS,
             "start": cls.STARTS,
+            "starts": cls.STARTS,
             "prescreens": cls.STARTS,
             "prescreen": cls.STARTS,
         }[v.lower()]
