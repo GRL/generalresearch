@@ -12,7 +12,9 @@ class TestUserMetadataManager:
         um1 = user_metadata_manager.get(user_id=user.user_id)
         assert um1 == UserMetadata(user_id=user.user_id)
 
-    def test_create(self, user_factory, product, user_metadata_manager):
+    def test_create(
+        self, user_factory: Callable[..., User], product: Product, user_metadata_manager
+    ):
         from generalresearch.models.thl.user import User
 
         u1: User = user_factory(product=product)
@@ -26,7 +28,9 @@ class TestUserMetadataManager:
         um2 = user_metadata_manager.get(email_address=email_address)
         assert um == um2
 
-    def test_create_no_email(self, product, user_factory, user_metadata_manager):
+    def test_create_no_email(
+        self, product: Product, user_factory: Callable[..., User], user_metadata_manager
+    ):
         from generalresearch.models.thl.user import User
 
         u1: User = user_factory(product=product)
@@ -37,7 +41,9 @@ class TestUserMetadataManager:
         um2 = user_metadata_manager.get(user_id=u1.user_id)
         assert um == um2
 
-    def test_update(self, product, user_factory, user_metadata_manager):
+    def test_update(
+        self, product: Product, user_factory: Callable[..., User], user_metadata_manager
+    ):
         from generalresearch.models.thl.user import User
 
         u: User = user_factory(product=product)
@@ -57,7 +63,9 @@ class TestUserMetadataManager:
             email_address=email_address.replace("example1", "example2"),
         )
 
-    def test_filter(self, user_factory, product, user_metadata_manager):
+    def test_filter(
+        self, user_factory: Callable[..., User], product: Product, user_metadata_manager
+    ):
         from generalresearch.models.thl.user import User
 
         user1: User = user_factory(product=product)

@@ -459,7 +459,7 @@ class TestAdjustments:
         assert Status.FAIL == new_status
         assert Decimal(0) == new_payout
 
-        assert isinstance(user.product, Product)
+        assert isinstance(user.product: Product, Product)
         assert not user.product.user_wallet_config.enabled
         assert new_user_payout is None
 

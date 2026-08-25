@@ -89,10 +89,10 @@ class TestTeamManager:
         gr_user_token,
         gr_user,
         membership,
-        product_factory,
+        product_factory: Callable[..., Product],
         membership_factory,
         team,
-        thl_web_rr,
+        thl_web_rr: PostgresConfig,
         gr_redis_config,
         gr_db,
     ):

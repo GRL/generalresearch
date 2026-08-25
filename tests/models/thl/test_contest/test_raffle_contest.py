@@ -243,7 +243,7 @@ class TestRaffleContestWinners(TestRaffleContest):
         assert len(winners) == 2
 
     def test_winners_3_prizes_3_entries(
-        self, ended_raffle_contest, product, user_1, user_2, user_3
+        self, ended_raffle_contest, product: Product, user_1, user_2, user_3
     ):
         ended_raffle_contest.prizes = [
             ContestPrize(

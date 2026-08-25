@@ -15,12 +15,12 @@ class TestUserQuestionAnswers:
 
     def test_json_init(
         self,
-        product_manager,
+        product_manager: ProductManager,
         user_manager,
         session_manager,
         wall_manager,
-        user_factory,
-        product,
+        user_factory: Callable[..., User],
+        product: Product,
         session_factory,
         utc_hour_ago,
     ):
@@ -60,7 +60,11 @@ class TestUserQuestionAnswers:
         assert isinstance(instance, UserQuestionAnswers)
 
     def test_simple_validation_errors(
-        self, product_manager, user_manager, session_manager, wall_manager
+        self,
+        product_manager: ProductManager,
+        user_manager,
+        session_manager,
+        wall_manager,
     ):
         from generalresearch.models.legacy.questions import (
             UserQuestionAnswers,
@@ -162,8 +166,8 @@ class TestUserQuestionAnswers:
     def test_allow_answer_failures_silent(
         self,
         user_manager,
-        product,
-        user_factory,
+        product: Product,
+        user_factory: Callable[..., User],
         utc_hour_ago,
         session_factory,
     ):

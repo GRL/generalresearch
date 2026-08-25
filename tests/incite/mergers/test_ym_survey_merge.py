@@ -28,20 +28,20 @@ class TestYMSurveyMerge:
     def test_base(
         self,
         client_no_amm,
-        user_factory,
-        product,
+        user_factory: Callable[..., User],
+        product: Product,
         ym_survey_wall_merge,
         wall_collection,
         session_collection,
         enriched_session_merge,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         incite_item_factory,
-        thl_web_rr,
+        thl_web_rr: PostgresConfig,
     ):
         from generalresearch.models.thl.user import User
 
         delete_df_collection(coll=session_collection)
-        user: User = user_factory(product=product, created=session_collection.start)
+        user: User = user_factory(product=product: Product, created=session_collection.start)
 
         # -- Build & Setup
         assert ym_survey_wall_merge.start is None
@@ -61,7 +61,7 @@ class TestYMSurveyMerge:
             client=client_no_amm,
             session_coll=session_collection,
             wall_coll=wall_collection,
-            pg_config=thl_web_rr,
+            pg_config=thl_web_rr: PostgresConfig,
         )
         assert enriched_session_merge.progress.has_archive.eq(True).all()
 

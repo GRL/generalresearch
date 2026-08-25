@@ -8,7 +8,7 @@ class TestBusinessBankAccountManager:
     def test_init(self, business_bank_account_manager, gr_db):
         assert business_bank_account_manager.pg_config == gr_db
 
-    def test_create(self, business, business_bank_account_manager):
+    def test_create(self, business: Business, business_bank_account_manager):
         from generalresearch.models.gr.business import (
             BusinessBankAccount,
             TransferMethod,
@@ -33,7 +33,7 @@ class TestBusinessBankAccountManager:
 
 class TestBusinessAddressManager:
 
-    def test_create(self, business, business_address_manager):
+    def test_create(self, business: Business, business_address_manager):
         from generalresearch.models.gr.business import BusinessAddress
 
         res = business_address_manager.create(uuid=uuid4().hex, business_id=business.id)
@@ -81,7 +81,7 @@ class TestBusinessManager:
         res = business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 0
 
-        # Create a Business, but don't add it to anything
+        # Create a business: Business, but don't add it to anything
         b1 = business_manager.create_dummy()
         res = business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 0
@@ -113,11 +113,11 @@ class TestBusinessManager:
     def test_get_uuids_by_user_id(self):
         pass
 
-    def test_get_by_uuid(self, business, business_manager):
+    def test_get_by_uuid(self, business: Business, business_manager):
         instance = business_manager.get_by_uuid(business_uuid=business.uuid)
         assert business.id == instance.id
 
-    def test_get_by_id(self, business, business_manager):
+    def test_get_by_id(self, business: Business, business_manager):
         instance = business_manager.get_by_id(business_id=business.id)
         assert business.uuid == instance.uuid
 
@@ -131,7 +131,7 @@ class TestBusinessManager:
     #     business = BusinessManager.create(
     #         uuid=b_uuid,
     #         name=f"test-{b_uuid[:6]}")
-    #     assert isinstance(business, Business)
+    #     assert isinstance(business: Business, Business)
     #
     #     # Try to make it again
     #     with pytest.raises(expected_exception=psycopg.errors.UniqueViolation):

@@ -14,14 +14,16 @@ from generalresearch.models.thl.definitions import (
 
 
 @pytest.fixture()
-def session_complete(session_with_tx_factory, user):
+def session_complete(session_with_tx_factory: Callable[..., None], user):
     return session_with_tx_factory(
         user=user, final_status=Status.COMPLETE, wall_req_cpi=Decimal("1.23")
     )
 
 
 @pytest.fixture()
-def session_complete_with_wallet(session_with_tx_factory, user_with_wallet):
+def session_complete_with_wallet(
+    session_with_tx_factory: Callable[..., None], user_with_wallet
+):
     return session_with_tx_factory(
         user=user_with_wallet,
         final_status=Status.COMPLETE,

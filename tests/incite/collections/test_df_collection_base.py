@@ -89,7 +89,7 @@ class TestDFCollectionBaseMethods:
     @pytest.mark.skip
     def test_initial_load(self, mnt_filepath: GRLDatasets, thl_web_rr):
         instance = DFCollection(
-            pg_config=thl_web_rr,
+            pg_config=thl_web_rr: PostgresConfig,
             data_type=DFCollectionType.USER,
             start=datetime(year=2022, month=1, day=1, minute=0, tzinfo=UTC),
             finished=datetime(year=2022, month=1, day=1, minute=5, tzinfo=UTC),

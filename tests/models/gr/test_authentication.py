@@ -44,10 +44,10 @@ class TestGRUser:
         gr_user_token,
         gr_user: GRUser,
         membership: Membership,
-        product_factory,
+        product_factory: Callable[..., Product],
         membership_factory,
         team: Team,
-        thl_web_rr,
+        thl_web_rr: PostgresConfig,
         gr_redis_config,
         gr_db,
     ):
@@ -64,11 +64,11 @@ class TestGRUser:
     def test_products(
         self,
         gr_user: GRUser,
-        product_factory,
+        product_factory: Callable[..., Product],
         team: Team,
         membership: Membership,
         gr_db,
-        thl_web_rr,
+        thl_web_rr: PostgresConfig,
         gr_redis_config,
     ):
         from generalresearch.models.thl.product import Product
@@ -87,7 +87,7 @@ class TestGRUser:
 
         gr_user.prefetch_products(
             pg_config=gr_db,
-            thl_pg_config=thl_web_rr,
+            thl_pg_config=thl_web_rr: PostgresConfig,
             redis_config=gr_redis_config,
         )
         assert isinstance(gr_user.products, list)
@@ -107,8 +107,8 @@ class TestGRUserMethods:
         gr_user: GRUser,
         gr_redis,
         team: Team,
-        business,
-        product_factory,
+        business: Business,
+        product_factory: Callable[..., Product],
         membership_factory: Callable[Membership],
     ):
         product_factory(team=team, business=business)
@@ -128,7 +128,7 @@ class TestGRUserMethods:
         gr_user_token,
         gr_redis,
         gr_db,
-        thl_web_rr,
+        thl_web_rr: PostgresConfig,
         gr_redis_config,
     ):
         assert gr_redis.get(name=gr_user.cache_key) is None
@@ -137,7 +137,7 @@ class TestGRUserMethods:
         assert gr_redis.get(name=f"{gr_user.cache_key}:product_uuids") is None
 
         gr_user.set_cache(
-            pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
+            pg_config=gr_db, thl_web_rr=thl_web_rr: PostgresConfig, redis_config=gr_redis_config
         )
 
         assert gr_redis.get(name=gr_user.cache_key) is not None
@@ -152,11 +152,11 @@ class TestGRUserMethods:
         gr_redis,
         gr_redis_config,
         gr_db,
-        thl_web_rr,
-        product_factory,
+        thl_web_rr: PostgresConfig,
+        product_factory: Callable[..., Product],
         team,
         membership_factory,
-        thl_redis_config,
+        thl_redis_config: RedisConfig,
     ):
         from generalresearch.models.gr.authentication import GRUser
 
@@ -164,7 +164,7 @@ class TestGRUserMethods:
         membership_factory(team=team, gr_user=gr_user)
 
         gr_user.set_cache(
-            pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
+            pg_config=gr_db, thl_web_rr=thl_web_rr: PostgresConfig, redis_config=gr_redis_config
         )
 
         res: str = gr_redis.get(name=gr_user.cache_key)
@@ -176,8 +176,8 @@ class TestGRUserMethods:
 
         gru2.prefetch_products(
             pg_config=gr_db,
-            thl_pg_config=thl_web_rr,
-            redis_config=thl_redis_config,
+            thl_pg_config=thl_web_rr: PostgresConfig,
+            redis_config=thl_redis_config: RedisConfig,
         )
         assert gru2.product_uuids == [p1.uuid]
 
@@ -188,15 +188,15 @@ class TestGRUserMethods:
         gr_user_token,
         gr_redis,
         gr_db,
-        thl_web_rr,
-        product_factory,
+        thl_web_rr: PostgresConfig,
+        product_factory: Callable[..., Product],
         team,
         gr_redis_config,
     ):
         product_factory(team=team)
 
         gr_user.set_cache(
-            pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
+            pg_config=gr_db, thl_web_rr=thl_web_rr: PostgresConfig, redis_config=gr_redis_config
         )
         res = json.loads(gr_redis.get(name=f"{gr_user.cache_key}:team_uuids"))
         assert len(res) == 1
@@ -208,16 +208,16 @@ class TestGRUserMethods:
         gr_user: GRUser,
         gr_redis,
         gr_db,
-        thl_web_rr,
-        product_factory,
-        business,
+        thl_web_rr: PostgresConfig,
+        product_factory: Callable[..., Product],
+        business: Business,
         team,
         gr_redis_config,
     ):
         product_factory(team=team, business=business)
 
         gr_user.set_cache(
-            pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
+            pg_config=gr_db, thl_web_rr=thl_web_rr: PostgresConfig, redis_config=gr_redis_config
         )
         res = json.loads(gr_redis.get(name=f"{gr_user.cache_key}:business_uuids"))
         assert len(res) == 1
@@ -230,15 +230,15 @@ class TestGRUserMethods:
         gr_user_token,
         gr_redis,
         gr_db,
-        thl_web_rr,
-        product_factory,
+        thl_web_rr: PostgresConfig,
+        product_factory: Callable[..., Product],
         team,
         gr_redis_config,
     ):
         product_factory(team=team)
 
         gr_user.set_cache(
-            pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
+            pg_config=gr_db, thl_web_rr=thl_web_rr: PostgresConfig, redis_config=gr_redis_config
         )
         res = json.loads(gr_redis.get(name=f"{gr_user.cache_key}:product_uuids"))
         assert len(res) == 1

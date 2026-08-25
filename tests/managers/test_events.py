@@ -35,8 +35,8 @@ def user_factory(product_id):
 
 
 @pytest.fixture(scope="function")
-def event_subscriber(thl_redis_config, product_id):
-    return EventSubscriber(redis_config=thl_redis_config, product_id=product_id)
+def event_subscriber(thl_redis_config: RedisConfig, product_id):
+    return EventSubscriber(redis_config=thl_redis_config: RedisConfig, product_id=product_id)
 
 
 def create_dummy(
@@ -185,7 +185,7 @@ class TestSessionStats:
             "session_fail_avg_loi_last_24h": None,
         }
 
-    def test_run(self, event_manager, product_id, user_factory, utc_now, utc_hour_ago):
+    def test_run(self, event_manager, product_id, user_factory: Callable[..., User], utc_now, utc_hour_ago):
         event_manager.clear_global_session_stats()
 
         user: User = user_factory()
@@ -448,7 +448,7 @@ class TestChannelsSubscriptions:
         event_manager,
         event_subscriber,
         product_id,
-        user_factory,
+        user_factory: Callable[..., User],
         utc_hour_ago,
         utc_now,
     ):

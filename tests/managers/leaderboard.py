@@ -19,7 +19,7 @@ from generalresearch.models.thl.product import (
     PayoutConfig,
     PayoutTransformation,
     PayoutTransformationPercentArgs,
-    Product,
+    product: Product,
 )
 from generalresearch.models.thl.session import Session
 from generalresearch.models.thl.user import User

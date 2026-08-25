@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from random import randint
@@ -9,7 +12,7 @@ import redis
 from pydantic import RedisDsn
 from redis.lock import Lock
 
-from generalresearch.currency import USDCent
+from generalresearch.currency import LedgerCurrency, USDCent
 from generalresearch.managers.base import Permission
 from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionConditionFailedError,
@@ -19,9 +22,13 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
 )
 from generalresearch.managers.thl.ledger_manager.ledger import LedgerTransaction
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+from generalresearch.managers.thl.payout import (
+    BrokerageProductPayoutEventManager,
+)
 from generalresearch.models import Source
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.ledger import Direction, TransactionType
+from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import (
     Session,
     Status,
@@ -30,6 +37,7 @@ from generalresearch.models.thl.session import (
 )
 from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet import PayoutType
+from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
 
 
@@ -45,12 +53,12 @@ class TestThlLedgerManagerBPPayout:
 
     def test_create_tx_with_bp_payment(
         self,
-        user_factory,
-        product_user_wallet_no,
-        create_main_accounts,
+        user_factory: Callable[..., User],
+        product_user_wallet_no: Product,
+        create_main_accounts: Callable[..., None],
         caplog,
-        thl_lm,
-        delete_ledger_db,
+        thl_ledger_manager: ThlLedgerManager,
+        delete_ledger_db: Callable[..., None],
     ):
         delete_ledger_db()
         create_main_accounts()
@@ -69,25 +77,29 @@ class TestThlLedgerManagerBPPayout:
             started=now,
             finished=now + timedelta(seconds=1),
         )
-        tx = thl_lm.create_tx_task_complete(
+        tx = thl_ledger_manager.create_tx_task_complete(
             wall=wall1, user=user, created=wall1.started
         )
         assert isinstance(tx, LedgerTransaction)
 
         session = Session(started=wall1.started, user=user, wall_events=[wall1])
         status, status_code_1 = session.determine_session_status()
-        thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
+        _, _, bp_pay, user_pay = session.determine_payments()
         session.update(
-            status=status, status_code_1=status_code_1, finished=now + timedelta(minutes=10), payout=bp_pay, user_payout=user_pay
+            status=status,
+            status_code_1=status_code_1,
+            finished=now + timedelta(minutes=10),
+            payout=bp_pay,
+            user_payout=user_pay,
         )
-        thl_lm.create_tx_bp_payment(session=session, created=wall1.started)
+        thl_ledger_manager.create_tx_bp_payment(session=session, created=wall1.started)
 
         lock_key = f"test:bp_payout:{user.product.id}"
-        flag_name = f"{thl_lm.cache_prefix}:transaction_flag:{lock_key}"
-        thl_lm.redis_client.delete(flag_name)
+        flag_name = f"{thl_ledger_manager.cache_prefix}:transaction_flag:{lock_key}"
+        thl_ledger_manager.redis_client.delete(flag_name)
 
         payoutevent_uuid = uuid4().hex
-        thl_lm.create_tx_bp_payout(
+        thl_ledger_manager.create_tx_bp_payout(
             product=user.product,
             amount=USDCent(200),
             created=now,
@@ -95,7 +107,7 @@ class TestThlLedgerManagerBPPayout:
         )
 
         payoutevent_uuid = uuid4().hex
-        thl_lm.create_tx_bp_payout(
+        thl_ledger_manager.create_tx_bp_payout(
             product=user.product,
             amount=USDCent(200),
             created=now + timedelta(minutes=2),
@@ -103,13 +115,15 @@ class TestThlLedgerManagerBPPayout:
             payoutevent_uuid=payoutevent_uuid,
         )
 
-        cash = thl_lm.get_account_cash()
-        bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(user.product)
-        assert 170 == thl_lm.get_account_balance(bp_wallet_account)
-        assert 200 == thl_lm.get_account_balance(cash)
+        cash = thl_ledger_manager.get_account_cash()
+        bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
+            user.product
+        )
+        assert 170 == thl_ledger_manager.get_account_balance(bp_wallet_account)
+        assert 200 == thl_ledger_manager.get_account_balance(cash)
 
         with pytest.raises(expected_exception=LedgerTransactionFlagAlreadyExistsError):
-            thl_lm.create_tx_bp_payout(
+            thl_ledger_manager.create_tx_bp_payout(
                 user.product,
                 amount=USDCent(200),
                 created=now + timedelta(minutes=2),
@@ -121,7 +135,7 @@ class TestThlLedgerManagerBPPayout:
         payoutevent_uuid = uuid4().hex
         with caplog.at_level(logging.INFO):
             with pytest.raises(LedgerTransactionConditionFailedError):
-                thl_lm.create_tx_bp_payout(
+                thl_ledger_manager.create_tx_bp_payout(
                     user.product,
                     amount=USDCent(10_000),
                     created=now + timedelta(minutes=2),
@@ -131,7 +145,7 @@ class TestThlLedgerManagerBPPayout:
                 )
         assert "failed condition check balance:" in caplog.text
 
-        thl_lm.create_tx_bp_payout(
+        thl_ledger_manager.create_tx_bp_payout(
             product=user.product,
             amount=USDCent(10_00),
             created=now + timedelta(minutes=2),
@@ -139,16 +153,22 @@ class TestThlLedgerManagerBPPayout:
             skip_wallet_balance_check=True,
             payoutevent_uuid=payoutevent_uuid,
         )
-        assert 170 - 1000 == thl_lm.get_account_balance(bp_wallet_account)
+        assert 170 - 1000 == thl_ledger_manager.get_account_balance(bp_wallet_account)
 
-    def test_create_tx(self, product, caplog, thl_lm, currency):
+    def test_create_tx(
+        self,
+        product: Product,
+        caplog,
+        thl_ledger_manager: ThlLedgerManager,
+        currency: LedgerCurrency,
+    ):
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         payoutevent_uuid = uuid4().hex
 
         # Create a BP Payout for a Product without any activity. By issuing,
         #   the skip_* checks, we should be able to force it to work, and will
         #   then ultimately result in a negative balance
-        tx = thl_lm.create_tx_bp_payout(
+        tx = thl_ledger_manager.create_tx_bp_payout(
             product=product,
             amount=rand_amount,
             payoutevent_uuid=payoutevent_uuid,
@@ -171,15 +191,15 @@ class TestThlLedgerManagerBPPayout:
         # Check the Product's balance, it should be negative the amount that was
         #   paid out. That's because the Product earned nothing.. and then was
         #   sent something.
-        balance = thl_lm.get_account_balance(
-            account=thl_lm.get_account_or_create_bp_wallet(product=product)
+        balance = thl_ledger_manager.get_account_balance(
+            account=thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
         )
         assert balance == int(rand_amount) * -1
 
         # Test some basic assertions
         with caplog.at_level(logging.INFO):
             with pytest.raises(expected_exception=Exception):
-                thl_lm.create_tx_bp_payout(
+                thl_ledger_manager.create_tx_bp_payout(
                     product=product,
                     amount=rand_amount,
                     payoutevent_uuid=uuid4().hex,
@@ -190,12 +210,17 @@ class TestThlLedgerManagerBPPayout:
                 )
         assert "failed condition check >1 tx per day" in caplog.text
 
-    def test_create_tx_redis_failure(self, product, thl_web_rw, thl_lm):
+    def test_create_tx_redis_failure(
+        self,
+        product: Product,
+        thl_web_rw: PostgresConfig,
+        thl_ledger_manager: ThlLedgerManager,
+    ):
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         payoutevent_uuid = uuid4().hex
         now = datetime.now(tz=UTC)
 
-        thl_lm.create_tx_plug_bp_wallet(
+        thl_ledger_manager.create_tx_plug_bp_wallet(
             product, rand_amount, now, direction=Direction.CREDIT
         )
 
@@ -216,7 +241,7 @@ class TestThlLedgerManagerBPPayout:
         )
 
         with pytest.raises(expected_exception=Exception) as e:
-            tx = thl_lm_redis_0.create_tx_bp_payout(
+            thl_lm_redis_0.create_tx_bp_payout(
                 product=product,
                 amount=rand_amount,
                 payoutevent_uuid=payoutevent_uuid,
@@ -224,21 +249,27 @@ class TestThlLedgerManagerBPPayout:
             )
         assert e.type is redis.exceptions.TimeoutError
         # No txs were created
-        bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(product=product)
-        txs = thl_lm.get_tx_filtered_by_account(account_uuid=bp_wallet_account.uuid)
+        bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
+            product=product
+        )
+        txs = thl_ledger_manager.get_tx_filtered_by_account(
+            account_uuid=bp_wallet_account.uuid
+        )
         txs = [tx for tx in txs if tx.metadata["tx_type"] != "plug"]
         assert len(txs) == 0
 
-    def test_create_tx_multiple_per_day(self, product, thl_lm):
+    def test_create_tx_multiple_per_day(
+        self, product: Product, thl_ledger_manager: ThlLedgerManager
+    ):
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         payoutevent_uuid = uuid4().hex
         now = datetime.now(tz=UTC)
 
-        thl_lm.create_tx_plug_bp_wallet(
+        thl_ledger_manager.create_tx_plug_bp_wallet(
             product, rand_amount * USDCent(2), now, direction=Direction.CREDIT
         )
 
-        tx = thl_lm.create_tx_bp_payout(
+        thl_ledger_manager.create_tx_bp_payout(
             product=product,
             amount=rand_amount,
             payoutevent_uuid=payoutevent_uuid,
@@ -248,7 +279,7 @@ class TestThlLedgerManagerBPPayout:
         # Try to create another
         # Will fail b/c it has the same payout event uuid
         with pytest.raises(expected_exception=Exception) as e:
-            tx = thl_lm.create_tx_bp_payout(
+            thl_ledger_manager.create_tx_bp_payout(
                 product=product,
                 amount=rand_amount,
                 payoutevent_uuid=payoutevent_uuid,
@@ -260,7 +291,7 @@ class TestThlLedgerManagerBPPayout:
         # Will fail due to multiple per day
         payoutevent_uuid2 = uuid4().hex
         with pytest.raises(expected_exception=Exception) as e:
-            tx = thl_lm.create_tx_bp_payout(
+            tx = thl_ledger_manager.create_tx_bp_payout(
                 product=product,
                 amount=rand_amount,
                 payoutevent_uuid=payoutevent_uuid2,
@@ -270,7 +301,7 @@ class TestThlLedgerManagerBPPayout:
         assert str(e.value) == ">1 tx per day"
 
         # Make it run by skipping one per day check
-        tx = thl_lm.create_tx_bp_payout(
+        thl_ledger_manager.create_tx_bp_payout(
             product=product,
             amount=rand_amount,
             payoutevent_uuid=payoutevent_uuid2,
@@ -278,13 +309,17 @@ class TestThlLedgerManagerBPPayout:
             skip_one_per_day_check=True,
         )
 
-    def test_create_tx_redis_lock_release_error(self, product, thl_lm):
+    def test_create_tx_redis_lock_release_error(
+        self, product: Product, thl_ledger_manager: ThlLedgerManager
+    ):
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         payoutevent_uuid = uuid4().hex
         now = datetime.now(tz=UTC)
-        bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(product=product)
+        bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
+            product=product
+        )
 
-        thl_lm.create_tx_plug_bp_wallet(
+        thl_ledger_manager.create_tx_plug_bp_wallet(
             product, rand_amount * USDCent(2), now, direction=Direction.CREDIT
         )
 
@@ -294,7 +329,7 @@ class TestThlLedgerManagerBPPayout:
 
         # Create TX will fail on lock enter, no tx will actually get created
         with pytest.raises(expected_exception=Exception) as e:
-            tx = thl_lm.create_tx_bp_payout(
+            thl_ledger_manager.create_tx_bp_payout(
                 product=product,
                 amount=rand_amount,
                 payoutevent_uuid=payoutevent_uuid,
@@ -302,7 +337,9 @@ class TestThlLedgerManagerBPPayout:
             )
         assert e.type is LedgerTransactionCreateError
         assert str(e.value) == "Redis error: Simulated timeout during acquire"
-        txs = thl_lm.get_tx_filtered_by_account(account_uuid=bp_wallet_account.uuid)
+        txs = thl_ledger_manager.get_tx_filtered_by_account(
+            account_uuid=bp_wallet_account.uuid
+        )
         txs = [tx for tx in txs if tx.metadata["tx_type"] != "plug"]
         assert len(txs) == 0
 
@@ -311,7 +348,7 @@ class TestThlLedgerManagerBPPayout:
 
         # Create TX will fail on lock exit, after the tx was created!
         with pytest.raises(expected_exception=Exception) as e:
-            tx = thl_lm.create_tx_bp_payout(
+            tx = thl_ledger_manager.create_tx_bp_payout(
                 product=product,
                 amount=rand_amount,
                 payoutevent_uuid=payoutevent_uuid,
@@ -321,7 +358,9 @@ class TestThlLedgerManagerBPPayout:
         assert str(e.value) == "Redis error: Simulated timeout during release"
 
         # Transaction was still created!
-        txs = thl_lm.get_tx_filtered_by_account(account_uuid=bp_wallet_account.uuid)
+        txs = thl_ledger_manager.get_tx_filtered_by_account(
+            account_uuid=bp_wallet_account.uuid
+        )
         txs = [tx for tx in txs if tx.metadata["tx_type"] != "plug"]
         assert len(txs) == 1
         Lock.release = original_release
@@ -329,34 +368,45 @@ class TestThlLedgerManagerBPPayout:
 
 class TestPayoutEventManagerBPPayout:
 
-    def test_create(self, product, thl_lm, brokerage_product_payout_event_manager):
+    def test_create(
+        self,
+        product: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+    ):
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         now = datetime.now(tz=UTC)
-        bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(product=product)
-        assert thl_lm.get_account_balance(bp_wallet_account) == 0
-        thl_lm.create_tx_plug_bp_wallet(
+        bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
+            product=product
+        )
+        assert thl_ledger_manager.get_account_balance(bp_wallet_account) == 0
+        thl_ledger_manager.create_tx_plug_bp_wallet(
             product, rand_amount, now, direction=Direction.CREDIT
         )
-        assert thl_lm.get_account_balance(bp_wallet_account) == rand_amount
+        assert thl_ledger_manager.get_account_balance(bp_wallet_account) == rand_amount
         brokerage_product_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
 
         pe = brokerage_product_payout_event_manager.create_bp_payout_event(
-            thl_ledger_manager=thl_lm,
+            thl_ledger_manager=thl_ledger_manager,
             product=product,
             created=now,
             amount=rand_amount,
             payout_type=PayoutType.ACH,
         )
         assert brokerage_product_payout_event_manager.check_for_ledger_tx(
-            thl_ledger_manager=thl_lm,
+            thl_ledger_manager=thl_ledger_manager,
             product_id=product.id,
             amount=rand_amount,
             payout_event=pe,
         )
-        assert thl_lm.get_account_balance(bp_wallet_account) == 0
+        assert thl_ledger_manager.get_account_balance(bp_wallet_account) == 0
 
     def test_create_with_redis_error(
-        self, product, caplog, thl_lm, brokerage_product_payout_event_manager
+        self,
+        product: Product,
+        caplog,
+        thl_ledger_manager: ThlLedgerManager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
     ):
         caplog.set_level("WARNING")
         original_acquire = Lock.acquire
@@ -364,19 +414,23 @@ class TestPayoutEventManagerBPPayout:
 
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         now = datetime.now(tz=UTC)
-        bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(product=product)
-        assert thl_lm.get_account_balance(bp_wallet_account) == 0
-        thl_lm.create_tx_plug_bp_wallet(
-            product, rand_amount, now, direction=Direction.CREDIT
+        bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
+            product=product
         )
-        assert thl_lm.get_account_balance(bp_wallet_account) == rand_amount
-        brokerage_product_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
+        assert thl_ledger_manager.get_account_balance(bp_wallet_account) == 0
+        thl_ledger_manager.create_tx_plug_bp_wallet(
+            product=product, amount=rand_amount, now=now, direction=Direction.CREDIT
+        )
+        assert thl_ledger_manager.get_account_balance(bp_wallet_account) == rand_amount
+        brokerage_product_payout_event_manager.set_account_lookup_table(
+            thl_lm=thl_ledger_manager
+        )
 
         # Will fail on lock enter, no tx will actually get created
         Lock.acquire = broken_acquire
         with pytest.raises(expected_exception=Exception) as e:
             pe = brokerage_product_payout_event_manager.create_bp_payout_event(
-                thl_ledger_manager=thl_lm,
+                thl_ledger_manager=thl_ledger_manager,
                 product=product,
                 created=now,
                 amount=rand_amount,
@@ -389,13 +443,15 @@ class TestPayoutEventManagerBPPayout:
             for m in caplog.messages
         )
 
-        txs = thl_lm.get_tx_filtered_by_account(account_uuid=bp_wallet_account.uuid)
+        txs = thl_ledger_manager.get_tx_filtered_by_account(
+            account_uuid=bp_wallet_account.uuid
+        )
         txs = [tx for tx in txs if tx.metadata["tx_type"] != "plug"]
         # One payout event is created, status is failed, and no ledger txs exist
         assert len(txs) == 0
         pes = (
             brokerage_product_payout_event_manager.get_bp_bp_payout_events_for_products(
-                thl_ledger_manager=thl_lm, product_uuids=[product.id]
+                thl_ledger_manager=thl_ledger_manager, product_uuids=[product.id]
             )
         )
         assert len(pes) == 1
@@ -407,17 +463,21 @@ class TestPayoutEventManagerBPPayout:
 
         # Try to fix the failed payout, by trying ledger tx again
         brokerage_product_payout_event_manager.retry_create_bp_payout_event_tx(
-            product=product, thl_ledger_manager=thl_lm, payout_event_uuid=pe.uuid
+            product=product,
+            thl_ledger_manager=thl_ledger_manager,
+            payout_event_uuid=pe.uuid,
         )
-        txs = thl_lm.get_tx_filtered_by_account(account_uuid=bp_wallet_account.uuid)
+        txs = thl_ledger_manager.get_tx_filtered_by_account(
+            account_uuid=bp_wallet_account.uuid
+        )
         txs = [tx for tx in txs if tx.metadata["tx_type"] != "plug"]
         assert len(txs) == 1
-        assert thl_lm.get_account_balance(bp_wallet_account) == 0
+        assert thl_ledger_manager.get_account_balance(bp_wallet_account) == 0
 
         # And then try to run it again, it'll fail because a payout event with the same info exists
         with pytest.raises(expected_exception=Exception) as e:
             pe = brokerage_product_payout_event_manager.create_bp_payout_event(
-                thl_ledger_manager=thl_lm,
+                thl_ledger_manager=thl_ledger_manager,
                 product=product,
                 created=now,
                 amount=rand_amount,
@@ -432,7 +492,7 @@ class TestPayoutEventManagerBPPayout:
         now = datetime.now(tz=UTC)
         with pytest.raises(LedgerTransactionConditionFailedError) as e:
             pe = brokerage_product_payout_event_manager.create_bp_payout_event(
-                thl_ledger_manager=thl_lm,
+                thl_ledger_manager=thl_ledger_manager,
                 product=product,
                 created=now,
                 amount=rand_amount,
@@ -446,7 +506,7 @@ class TestPayoutEventManagerBPPayout:
         # And if we really want to, we can make it again
         now = datetime.now(tz=UTC)
         pe = brokerage_product_payout_event_manager.create_bp_payout_event(
-            thl_ledger_manager=thl_lm,
+            thl_ledger_manager=thl_ledger_manager,
             product=product,
             created=now,
             amount=rand_amount,
@@ -455,17 +515,25 @@ class TestPayoutEventManagerBPPayout:
             skip_wallet_balance_check=True,
         )
 
-        txs = thl_lm.get_tx_filtered_by_account(account_uuid=bp_wallet_account.uuid)
+        txs = thl_ledger_manager.get_tx_filtered_by_account(
+            account_uuid=bp_wallet_account.uuid
+        )
         txs = [tx for tx in txs if tx.metadata["tx_type"] != "plug"]
         assert len(txs) == 2
         # since they were paid twice
-        assert thl_lm.get_account_balance(bp_wallet_account) == 0 - rand_amount
+        assert (
+            thl_ledger_manager.get_account_balance(bp_wallet_account) == 0 - rand_amount
+        )
 
         Lock.release = original_release
         Lock.acquire = original_acquire
 
     def test_create_with_redis_error_release(
-        self, product, caplog, thl_lm, brokerage_product_payout_event_manager
+        self,
+        product: Product,
+        caplog,
+        thl_ledger_manager: ThlLedgerManager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
     ):
         caplog.set_level("WARNING")
 
@@ -473,20 +541,24 @@ class TestPayoutEventManagerBPPayout:
 
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         now = datetime.now(tz=UTC)
-        bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(product=product)
-        brokerage_product_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
+        bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
+            product=product
+        )
+        brokerage_product_payout_event_manager.set_account_lookup_table(
+            thl_lm=thl_ledger_manager
+        )
 
-        assert thl_lm.get_account_balance(bp_wallet_account) == 0
-        thl_lm.create_tx_plug_bp_wallet(
+        assert thl_ledger_manager.get_account_balance(bp_wallet_account) == 0
+        thl_ledger_manager.create_tx_plug_bp_wallet(
             product, rand_amount, now, direction=Direction.CREDIT
         )
-        assert thl_lm.get_account_balance(bp_wallet_account) == rand_amount
+        assert thl_ledger_manager.get_account_balance(bp_wallet_account) == rand_amount
 
         # Will fail on lock exit, after the tx was created!
         # But it'll see that the tx was created and so everything will be fine
         Lock.release = broken_release
         pe = brokerage_product_payout_event_manager.create_bp_payout_event(
-            thl_ledger_manager=thl_lm,
+            thl_ledger_manager=thl_ledger_manager,
             product=product,
             created=now,
             amount=rand_amount,
@@ -497,12 +569,14 @@ class TestPayoutEventManagerBPPayout:
             for m in caplog.messages
         )
 
-        txs = thl_lm.get_tx_filtered_by_account(account_uuid=bp_wallet_account.uuid)
+        txs = thl_ledger_manager.get_tx_filtered_by_account(
+            account_uuid=bp_wallet_account.uuid
+        )
         txs = [tx for tx in txs if tx.metadata["tx_type"] != "plug"]
         assert len(txs) == 1
         pes = (
             brokerage_product_payout_event_manager.get_bp_bp_payout_events_for_products(
-                thl_ledger_manager=thl_lm, product_uuids=[product.uuid]
+                thl_ledger_manager=thl_ledger_manager, product_uuids=[product.uuid]
             )
         )
         assert len(pes) == 1

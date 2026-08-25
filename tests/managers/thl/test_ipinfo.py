@@ -12,7 +12,7 @@ fake = faker.Faker()
 
 class TestIPGeonameManager:
 
-    def test_init(self, thl_web_rr, ip_geoname_manager: IPGeonameManager):
+    def test_init(self, thl_web_rr: PostgresConfig, ip_geoname_manager: IPGeonameManager):
 
         instance = IPGeonameManager(pg_config=thl_web_rr)
         assert isinstance(instance, IPGeonameManager)
@@ -31,7 +31,7 @@ class TestIPGeonameManager:
 
 class TestIPInformationManager:
 
-    def test_init(self, thl_web_rr, ip_information_manager: IPInformationManager):
+    def test_init(self, thl_web_rr: PostgresConfig, ip_information_manager: IPInformationManager):
         instance = IPInformationManager(pg_config=thl_web_rr)
         assert isinstance(instance, IPInformationManager)
         assert isinstance(ip_information_manager, IPInformationManager)
@@ -57,9 +57,12 @@ class TestIPInformationManager:
 
 class TestGeoIpInfoManager:
     def test_init(
-        self, thl_web_rr, thl_redis_config, geoipinfo_manager: GeoIpInfoManager
+        self,
+        thl_web_rr: PostgresConfig,
+        thl_redis_config: RedisConfig,
+        geoipinfo_manager: GeoIpInfoManager,
     ):
-        instance = GeoIpInfoManager(pg_config=thl_web_rr, redis_config=thl_redis_config)
+        instance = GeoIpInfoManager(pg_config=thl_web_rr: PostgresConfig, redis_config=thl_redis_config)
         assert isinstance(instance, GeoIpInfoManager)
         assert isinstance(geoipinfo_manager, GeoIpInfoManager)
 

@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from generalresearch.config import GRLBaseSettings
+from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+from generalresearch.managers.thl.payout import UserPayoutEventManager
 from generalresearch.managers.thl.user_compensate import user_compensate
 from generalresearch.models.thl.definitions import (
     Status,
@@ -15,41 +18,38 @@ from generalresearch.models.thl.ledger import (
     UserLedgerTransactionTypesSummary,
     UserLedgerTransactionTypeSummary,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.config import GRLSettings
-    from generalresearch.models.thl.product import Product
-    from generalresearch.models.thl.session import Session
-    from generalresearch.models.thl.user import User
-    from generalresearch.models.thl.wallet import PayoutType
+from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.session import Session
+from generalresearch.models.thl.user import User
+from generalresearch.models.thl.wallet import PayoutType
 
 
 def test_user_txs(
     user_factory: Callable[..., User],
     product_amt_true: Product,
     create_main_accounts: Callable[..., None],
-    thl_lm: ThlLedgerManager,
-    lm,
+    thl_ledger_manager: ThlLedgerManager,
+    ledger_manager: LedgerManager,
     delete_ledger_db: Callable[..., None],
-    session_with_tx_factory,
-    adj_to_fail_with_tx_factory,
-    adj_to_complete_with_tx_factory,
-    session_factory,
-    user_payout_event_manager,
+    session_with_tx_factory: Callable[..., Session],
+    adj_to_fail_with_tx_factory: Callable[..., None],
+    adj_to_complete_with_tx_factory: Callable[..., None],
+    session_factory: Callable[..., Session],
+    user_payout_event_manager: UserPayoutEventManager,
     utc_now: datetime,
-    settings: GRLSettings,
+    settings: GRLBaseSettings,
 ):
     delete_ledger_db()
     create_main_accounts()
 
     user: User = user_factory(product=product_amt_true)
-    account = thl_lm.get_account_or_create_user_wallet(user)
+    account = thl_ledger_manager.get_account_or_create_user_wallet(user)
     print(f"{account.uuid=}")
 
     s: Session = session_with_tx_factory(user=user, wall_req_cpi=Decimal("1.00"))
 
     user_compensate(
-        ledger_manager=thl_lm,
+        ledger_manager=ledger_manager,
         user=user,
         amount_int=100,
     )
@@ -63,7 +63,7 @@ def test_user_txs(
         payout_type=PayoutType.AMT_HIT,
         request_data={},
     )
-    thl_lm.create_tx_user_payout_request(
+    thl_ledger_manager.create_tx_user_payout_request(
         user=user,
         payout_event=pe,
     )
@@ -76,7 +76,7 @@ def test_user_txs(
         payout_type=PayoutType.AMT_BONUS,
         request_data={},
     )
-    thl_lm.create_tx_user_payout_request(
+    thl_ledger_manager.create_tx_user_payout_request(
         user=user,
         payout_event=pe,
     )
@@ -93,16 +93,16 @@ def test_user_txs(
     )
     adj_to_complete_with_tx_factory(session=s_fail, created=utc_now)
 
-    # txs = thl_lm.get_tx_filtered_by_account(account.uuid)
+    # txs = thl_ledger_manager.get_tx_filtered_by_account(account.uuid)
     # print(len(txs), txs)
-    txs = thl_lm.get_user_txs(user)
+    txs = thl_ledger_manager.get_user_txs(user)
     assert len(txs.transactions) == 6
     assert txs.total == 6
     assert txs.page == 1
     assert txs.size == 50
 
     # print(len(txs.transactions), txs)
-    d = txs.model_dump_json()
+    # d = txs.model_dump_json()
     # print(d)
 
     descriptions = {x.description for x in txs.transactions}
@@ -140,25 +140,26 @@ def test_user_txs_pagination(
     user_factory: Callable[..., User],
     product_amt_true: Product,
     create_main_accounts: Callable[..., None],
-    thl_lm: ThlLedgerManager,
+    ledger_manager: LedgerManager,
+    thl_ledger_manager: ThlLedgerManager,
     delete_ledger_db: Callable[..., None],
 ):
     delete_ledger_db()
     create_main_accounts()
 
     user: User = user_factory(product=product_amt_true)
-    account = thl_lm.get_account_or_create_user_wallet(user)
+    account = thl_ledger_manager.get_account_or_create_user_wallet(user)
     print(f"{account.uuid=}")
 
     for _ in range(12):
         user_compensate(
-            ledger_manager=thl_lm,
+            ledger_manager=ledger_manager,
             user=user,
             amount_int=100,
             skip_flag_check=True,
         )
 
-    txs = thl_lm.get_user_txs(user, page=1, size=5)
+    txs = thl_ledger_manager.get_user_txs(user, page=1, size=5)
     assert len(txs.transactions) == 5
     assert txs.total == 12
     assert txs.page == 1
@@ -167,7 +168,7 @@ def test_user_txs_pagination(
     assert txs.summary.user_bonus.entry_count == 12
 
     # Skip to the 3rd page. We made 12, so there are 2 left
-    txs = thl_lm.get_user_txs(user, page=3, size=5)
+    txs = thl_ledger_manager.get_user_txs(user, page=3, size=5)
     assert len(txs.transactions) == 2
     assert txs.total == 12
     assert txs.page == 3
@@ -175,7 +176,7 @@ def test_user_txs_pagination(
     assert txs.summary.user_bonus.entry_count == 12
 
     # Should be empty, not fail
-    txs = thl_lm.get_user_txs(user, page=4, size=5)
+    txs = thl_ledger_manager.get_user_txs(user, page=4, size=5)
     assert len(txs.transactions) == 0
     assert txs.total == 12
     assert txs.page == 4
@@ -185,12 +186,12 @@ def test_user_txs_pagination(
     # Test filtering. We should pull back only this one
     now = datetime.now(tz=UTC)
     user_compensate(
-        ledger_manager=thl_lm,
+        ledger_manager=ledger_manager,
         user=user,
         amount_int=100,
         skip_flag_check=True,
     )
-    txs = thl_lm.get_user_txs(user, page=1, size=5, time_start=now)
+    txs = thl_ledger_manager.get_user_txs(user, page=1, size=5, time_start=now)
     assert len(txs.transactions) == 1
     assert txs.total == 1
     assert txs.page == 1
@@ -200,7 +201,7 @@ def test_user_txs_pagination(
 
     # And filtering with 0 results
     now = datetime.now(tz=UTC)
-    txs = thl_lm.get_user_txs(user, page=1, size=5, time_start=now)
+    txs = thl_ledger_manager.get_user_txs(user, page=1, size=5, time_start=now)
     assert len(txs.transactions) == 0
     assert txs.total == 0
     assert txs.page == 1
@@ -213,13 +214,10 @@ def test_user_txs_pagination(
 def test_user_txs_rolling_balance(
     user_factory: Callable[..., User],
     product_amt_true: Product,
-    create_main_accounts,
+    create_main_accounts: Callable[..., None],
     thl_ledger_manager: ThlLedgerManager,
-    ledger_manager: LedgerManager,
     delete_ledger_db: Callable[..., None],
-    session_with_tx_factory,
-    adj_to_fail_with_tx_factory,
-    user_payout_event_manager,
+    user_payout_event_manager: UserPayoutEventManager,
     settings: GRLBaseSettings,
 ):
     """

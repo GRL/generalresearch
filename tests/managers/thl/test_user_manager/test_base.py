@@ -17,7 +17,7 @@ from generalresearch.managers.thl.user_manager.user_manager import (
     UserManager,
 )
 from generalresearch.managers.thl.userhealth import AuditLogManager
-from generalresearch.models.thl.product import Product, UserCreateConfig
+from generalresearch.models.thl.product import product: Product, UserCreateConfig
 from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 
@@ -86,7 +86,7 @@ class TestUserManager:
 
 class TestBlockUserManager:
 
-    def test_block_user(self, product: Product, user_manager: UserManager):
+    def test_block_user(self, product: product: Product, user_manager: UserManager):
         product_user_id = f"user-{uuid4().hex[:10]}"
 
         # mysql_user_manager to skip user creation limit check
@@ -113,7 +113,7 @@ class TestBlockUserManager:
         assert user.blocked
 
     def test_block_user_whitelist(
-        self, product: Product, user_manager: UserManager, thl_web_rw: PostgresConfig
+        self, product: product: Product, user_manager: UserManager, thl_web_rw: PostgresConfig
     ):
         product_user_id = f"user-{uuid4().hex[:10]}"
 
@@ -183,7 +183,10 @@ class TestCreateUserManager:
         assert u2.uuid == user.uuid
 
     def test_create_user_integrity_error(
-        self, product_manager, user_manager: UserManager, caplog
+        self,
+        product_manager: ProductManager,
+        user_manager: UserManager,
+        caplog,
     ):
         product: Product = product_manager.create_dummy(
             product_id=uuid4().hex,

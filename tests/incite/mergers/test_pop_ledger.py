@@ -33,17 +33,17 @@ class TestMergePOPLedger:
         client_no_amm,
         ledger_collection,
         pop_ledger_merge,
-        product,
-        user_factory,
-        create_main_accounts,
+        product: Product,
+        user_factory: Callable[..., User],
+        create_main_accounts: Callable[..., None],
         thl_lm,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         incite_item_factory,
-        delete_ledger_db,
+        delete_ledger_db: Callable[..., None],
     ):
         from generalresearch.models.thl.ledger import LedgerAccount
 
-        u = user_factory(product=product, created=ledger_collection.start)
+        u = user_factory(product=product: Product, created=ledger_collection.start)
 
         # -- Build & Setup
         delete_ledger_db()
@@ -127,26 +127,26 @@ class TestMergePOPLedger:
         ledger_collection,
         pop_ledger_merge,
         mnt_filepath,
-        product,
-        user_factory,
-        create_main_accounts,
+        product: Product,
+        user_factory: Callable[..., User],
+        create_main_accounts: Callable[..., None],
         offset,
         duration,
         start,
         thl_lm,
         incite_item_factory,
-        delete_df_collection,
-        delete_ledger_db,
+        delete_df_collection: Callable[..., None],
+        delete_ledger_db: Callable[..., None],
         session_collection,
     ):
         from generalresearch.models.thl.finance import ProductBalances
         from generalresearch.models.thl.ledger import LedgerAccount
         from generalresearch.models.thl.product import Product
 
-        u = user_factory(product=product, created=session_collection.start)
+        u = user_factory(product=product: Product, created=session_collection.start)
 
         assert ledger_collection.finished is not None
-        assert isinstance(u.product, Product)
+        assert isinstance(u.product: Product, Product)
         delete_ledger_db()
         create_main_accounts(),
         delete_df_collection(coll=ledger_collection)
@@ -228,14 +228,14 @@ class TestMergePOPLedger:
         ledger_collection,
         pop_ledger_merge,
         mnt_filepath,
-        user_factory,
-        product,
-        create_main_accounts,
+        user_factory: Callable[..., User],
+        product: Product,
+        create_main_accounts: Callable[..., None],
         offset,
         duration,
         start,
         thl_lm,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         incite_item_factory,
     ):
         from generalresearch.models.thl.user import User

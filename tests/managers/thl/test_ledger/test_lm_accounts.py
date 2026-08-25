@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from itertools import product as iproduct
 from random import randint
-from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
+from pydantic import PositiveInt
 
 from generalresearch.currency import LedgerCurrency
 from generalresearch.managers.base import Permission
@@ -11,25 +13,12 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerAccountDoesntExistError,
 )
 from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
+from generalresearch.models.custom_types import AccountType, Direction, UUIDStr
 from generalresearch.models.thl.ledger import (
-    AccountType,
-    Direction,
     LedgerAccount,
     LedgerEntry,
+    LedgerTransaction,
 )
-
-if TYPE_CHECKING:
-    from pydantic import PositiveInt
-
-    from generalresearch.currency import LedgerCurrency
-    from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
-    from generalresearch.models.custom_types import AccountType, Direction, UUIDStr
-    from generalresearch.models.thl import Direction
-    from generalresearch.models.thl.ledger import (
-        AccountType,
-        LedgerAccount,
-        LedgerTransaction,
-    )
 
 
 @pytest.mark.parametrize(
@@ -55,7 +44,7 @@ class TestLedgerAccountManagerNoResults:
         we either get the expected None result or it raises the correct
         exception
         """
-        qn = ":".join([currency, kind, acct_id])
+        qn = f"{currency}:{kind}:{acct_id}"
 
         # (1) .get_account is just a wrapper for .get_account_many_ but
         #   call it either way

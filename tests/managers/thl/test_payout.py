@@ -2,7 +2,6 @@ import io
 import logging
 import os
 from collections.abc import Callable
-from dask.distributed import Client as DaskClient
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from random import choice as rand_choice
@@ -11,12 +10,26 @@ from uuid import uuid4
 
 import pandas as pd
 import pytest
+from dask.distributed import Client as DaskClient
 
 from generalresearch.currency import USDCent
+from generalresearch.incite.base import GRLDatasets
+from generalresearch.incite.collections.thl_web import (
+    LedgerDFCollection,
+)
+from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.managers.thl.payout import UserPayoutEventManager
+from generalresearch.managers.thl.payout import (
+    BrokerageProductPayoutEventManager,
+    BusinessPayoutEventManager,
+    PayoutEventManager,
+    UserPayoutEventManager,
+)
+from generalresearch.managers.thl.product import ProductManager
+from generalresearch.models.gr.business import Business
 from generalresearch.models.thl.definitions import PayoutStatus
+from generalresearch.models.thl.finance import BusinessBalances
 from generalresearch.models.thl.ledger import LedgerAccount
 from generalresearch.models.thl.payout import (
     BrokerageProductPayoutEvent,
@@ -24,10 +37,11 @@ from generalresearch.models.thl.payout import (
     UserPayoutEvent,
 )
 from generalresearch.models.thl.product import Product
-from generalresearch.models.gr.business import Business
+from generalresearch.models.thl.session import Session
 from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.pg_helper import PostgresConfig
+from generalresearch.redis_helper import RedisConfig
 
 logger = logging.getLogger()
 
@@ -66,14 +80,11 @@ class TestPayout:
     def test_update(
         self,
         user: User,
-        user_payout_event_manager,
+        user_payout_event_manager: UserPayoutEventManager,
         ledger_manager: LedgerManager,
         thl_ledger_manager: ThlLedgerManager,
         utc_now: datetime,
     ):
-        from generalresearch.models.thl.definitions import PayoutStatus
-        from generalresearch.models.thl.wallet import PayoutType
-
         user_account = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
 
         pe1 = user_payout_event_manager.create(
@@ -113,7 +124,7 @@ class TestPayout:
         thl_web_rw: PostgresConfig,
         product: Product,
         thl_lm: ThlLedgerManager,
-        brokerage_product_payout_event_manager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
         utc_now: datetime,
     ) -> BrokerageProductPayoutEvent:
         account = thl_lm.get_account_or_create_bp_wallet(product=product)
@@ -144,11 +155,11 @@ class TestPayout:
     def test_create_bp_payout_quick_dupe(
         self,
         product: Product,
-        brokerage_product_payout_event_manager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
         thl_lm: ThlLedgerManager,
-        ledger_manager,
+        ledger_manager: LedgerManager,
         utc_now: datetime,
-        pending_bp_pe,
+        pending_bp_pe: BrokerageProductPayoutEvent,
     ):
         thl_lm.get_account_or_create_bp_wallet(product=product)
 
@@ -171,10 +182,10 @@ class TestPayout:
     def test_filter(
         self,
         thl_ledger_manager: ThlLedgerManager,
-        ledger_manager,
+        ledger_manager: LedgerManager,
         product: Product,
         user: User,
-        user_payout_event_manager,
+        user_payout_event_manager: UserPayoutEventManager,
         utc_now: datetime,
     ):
         from generalresearch.models.thl.definitions import PayoutStatus
@@ -264,14 +275,14 @@ class TestBusinessPayoutEventManager:
 
     def test_base(
         self,
-        brokerage_product_payout_event_manager,
-        business_payout_event_manager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        business_payout_event_manager: BusinessPayoutEventManager,
         delete_ledger_db: Callable[..., None],
-        create_main_accounts,
+        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         product_factory: Callable[..., Product],
-        bp_payout_factory,
-        business,
+        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        business: Business,
     ):
         delete_ledger_db()
         create_main_accounts()
@@ -298,6 +309,7 @@ class TestBusinessPayoutEventManager:
             bpem=business_payout_event_manager,
         )
 
+        assert isinstance(business.payouts, list)
         assert len(business.payouts) == 3
         assert business.payouts_total == sum([pe.amount for pe in business.payouts])
         assert business.payouts[0].created > business.payouts[1].created
@@ -313,20 +325,20 @@ class TestBusinessPayoutEventManager:
 
     def test_update_ext_reference_ids(
         self,
-        business_payout_event_manager,
-        delete_ledger_db: Callable[..., None],,
+        business_payout_event_manager: BusinessPayoutEventManager,
+        delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
-        thl_ledger_manager,
+        thl_ledger_manager: ThlLedgerManager,
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
-        delete_df_collection,
-        user_factory,
-        ledger_collection,
-        session_with_tx_factory,
-        pop_ledger_merge,
-        client_no_amm,
-        mnt_filepath: GRLDataset,
-        product_manager,
+        delete_df_collection: Callable[..., None],
+        user_factory: Callable[..., User],
+        ledger_collection: LedgerDFCollection,
+        session_with_tx_factory: Callable[..., Session],
+        pop_ledger_merge: PopLedgerMerge,
+        client_no_amm: DaskClient,
+        mnt_filepath: GRLDatasets,
+        product_manager: ProductManager,
         start: datetime,
         business: Business,
     ):
@@ -392,8 +404,10 @@ class TestBusinessPayoutEventManager:
 
         assert business_payout_event_manager.get_by_ext_ref_id(ext_ref_id=ach_id2)
 
-    def test_recoup_empty(self, business_payout_event_manager):
-        res = {uuid4().hex: USDCent(0) for i in range(100)}
+    def test_recoup_empty(
+        self, business_payout_event_manager: BusinessPayoutEventManager
+    ):
+        res = {uuid4().hex: USDCent(0) for _ in range(100)}
         df = pd.DataFrame.from_dict(res, orient="index").reset_index()
         df.columns = ["product_id", "available_balance"]
 
@@ -403,10 +417,12 @@ class TestBusinessPayoutEventManager:
             )
         assert "Total available amount is empty, cannot recoup" in str(cm)
 
-    def test_recoup_exceeds(self, business_payout_event_manager):
+    def test_recoup_exceeds(
+        self, business_payout_event_manager: BusinessPayoutEventManager
+    ):
         from random import randint
 
-        res = {uuid4().hex: USDCent(randint(a=0, b=1_000_00)) for i in range(100)}
+        res = {uuid4().hex: USDCent(randint(a=0, b=1_000_00)) for _ in range(100)}
         df = pd.DataFrame.from_dict(res, orient="index").reset_index()
         df.columns = ["product_id", "available_balance"]
 
@@ -418,10 +434,10 @@ class TestBusinessPayoutEventManager:
             )
         assert " exceeds total available " in str(cm)
 
-    def test_recoup(self, business_payout_event_manager):
+    def test_recoup(self, business_payout_event_manager: BusinessPayoutEventManager):
         from random import randint, random
 
-        res = {uuid4().hex: USDCent(randint(a=0, b=1_000_00)) for i in range(100)}
+        res = {uuid4().hex: USDCent(randint(a=0, b=1_000_00)) for _ in range(100)}
         df = pd.DataFrame.from_dict(res, orient="index").reset_index()
         df.columns = ["product_id", "available_balance"]
 
@@ -437,7 +453,9 @@ class TestBusinessPayoutEventManager:
         assert res.deduction.sum() == random_recoup_amount
         assert res.remaining_balance.sum() == avail_balance - random_recoup_amount
 
-    def test_recoup_loop(self, business_payout_event_manager, request):
+    def test_recoup_loop(
+        self, business_payout_event_manager: BusinessPayoutEventManager, request
+    ):
         # TODO: Generate this file at random
         fp = os.path.join(
             request.config.rootpath, "data/pytest_recoup_proportional.csv"
@@ -451,9 +469,11 @@ class TestBusinessPayoutEventManager:
 
         assert int(res.deduction.sum()) == 1416089
 
-    def test_recoup_loop_single_profitable_account(self, business_payout_event_manager):
-        res = [{"product_id": uuid4().hex, "available_balance": 0} for i in range(1000)]
-        for x in range(100):
+    def test_recoup_loop_single_profitable_account(
+        self, business_payout_event_manager: BusinessPayoutEventManager
+    ):
+        res = [{"product_id": uuid4().hex, "available_balance": 0} for _ in range(1000)]
+        for _ in range(100):
             item = rand_choice(res)
             item["available_balance"] = randint(8, 12)
 
@@ -464,14 +484,16 @@ class TestBusinessPayoutEventManager:
         # res = res[res["remaining_balance"] > 0]
         assert int(res.deduction.sum()) == 500
 
-    def test_recoup_loop_assertions(self, business_payout_event_manager):
+    def test_recoup_loop_assertions(
+        self, business_payout_event_manager: BusinessPayoutEventManager
+    ):
         df = pd.DataFrame(
             [
                 {
                     "product_id": uuid4().hex,
                     "available_balance": randint(0, 999_999),
                 }
-                for i in range(10_000)
+                for _ in range(10_000)
             ]
         )
         available_balance = int(df.available_balance.sum())
@@ -501,7 +523,9 @@ class TestBusinessPayoutEventManager:
         assert res.remaining_balance.sum() == available_balance
         assert int(res.deduction.sum()) == 0
 
-    def test_distribute_amount(self, business_payout_event_manager):
+    def test_distribute_amount(
+        self, business_payout_event_manager: BusinessPayoutEventManager
+    ):
 
         df = pd.read_csv(
             io.StringIO(
@@ -517,29 +541,29 @@ class TestBusinessPayoutEventManager:
 
     def test_ach_payment_min_amount(
         self,
-        product,
-        mnt_filepath,
-        thl_lm,
-        client_no_amm,
-        thl_redis_config,
-        payout_event_manager,
-        brokerage_product_payout_event_manager,
-        business_payout_event_manager,
-        delete_ledger_db,
-        create_main_accounts,
-        delete_df_collection,
-        ledger_collection,
-        business,
-        user_factory,
-        product_factory,
-        session_with_tx_factory,
-        pop_ledger_merge,
-        start,
-        bp_payout_factory,
-        adj_to_fail_with_tx_factory,
-        thl_web_rr,
-        lm,
-        product_manager,
+        product: Product,
+        mnt_filepath: GRLDatasets,
+        thl_ledger_manager: ThlLedgerManager,
+        client_no_amm: DaskClient,
+        thl_redis_config: RedisConfig,
+        payout_event_manager: PayoutEventManager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        business_payout_event_manager: BusinessPayoutEventManager,
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
+        delete_df_collection: Callable[..., None],
+        ledger_collection: LedgerDFCollection,
+        business: Business,
+        user_factory: Callable[..., User],
+        product_factory: Callable[..., Product],
+        session_with_tx_factory: Callable[..., Session],
+        pop_ledger_merge: PopLedgerMerge,
+        start: datetime,
+        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        adj_to_fail_with_tx_factory: Callable[..., None],
+        thl_web_rr: PostgresConfig,
+        ledger_manager: LedgerManager,
+        product_manager: ProductManager,
     ):
         """Test having a Business with three products. One that lost money
         and two that gained money. Ensure that the Business balance
@@ -554,7 +578,7 @@ class TestBusinessPayoutEventManager:
 
         p1: Product = product_factory(business=business)
         u1: User = user_factory(product=p1)
-        thl_lm.get_account_or_create_bp_wallet(product=p1)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
 
         session_with_tx_factory(
             user=u1,
@@ -576,7 +600,7 @@ class TestBusinessPayoutEventManager:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         business.prebuild_balance(
             thl_pg_config=thl_web_rr,
-            lm=lm,
+            lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
@@ -587,38 +611,30 @@ class TestBusinessPayoutEventManager:
                 business=business,
                 amount=USDCent(500),
                 pm=product_manager,
-                thl_lm=thl_lm,
+                thl_lm=thl_ledger_manager,
                 transaction_id=uuid4().hex,
             )
         assert "Must issue Supplier Payouts at least $100 minimum." in str(cm)
 
     def test_create_from_ach_or_wire(
         self,
-        product,
-        mnt_filepath,
-        thl_lm,
-        client_no_amm,
-        thl_redis_config,
-        payout_event_manager,
-        brokerage_product_payout_event_manager,
-        business_payout_event_manager,
-        delete_ledger_db,
-        create_main_accounts,
-        delete_df_collection,
-        ledger_collection,
-        business,
-        user_factory,
-        product_factory,
-        session_with_tx_factory,
-        pop_ledger_merge,
-        start,
-        bp_payout_factory,
-        adj_to_fail_with_tx_factory,
-        thl_web_rr,
-        lm,
-        product_manager,
-        rm_ledger_collection,
-        rm_pop_ledger_merge,
+        mnt_filepath: GRLDatasets,
+        thl_ledger_manager: ThlLedgerManager,
+        client_no_amm: DaskClient,
+        business_payout_event_manager: BusinessPayoutEventManager,
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
+        delete_df_collection: Callable[..., None],
+        ledger_collection: LedgerDFCollection,
+        business: Business,
+        user_factory: Callable[..., User],
+        product_factory: Callable[..., Product],
+        session_with_tx_factory: Callable[..., None],
+        pop_ledger_merge: PopLedgerMerge,
+        start: datetime,
+        thl_web_rr: PostgresConfig,
+        ledger_manager: LedgerManager,
+        product_manager: ProductManager,
         caplog,
     ):
         """Test having a Business with three products"""
@@ -630,12 +646,12 @@ class TestBusinessPayoutEventManager:
         p1: Product = product_factory(business=business)
         p2: Product = product_factory(business=business)
         p3: Product = product_factory(business=business)
-        u1: User = user_factory(product=p1)
+        _: User = user_factory(product=p1)
         u2: User = user_factory(product=p2)
         u3: User = user_factory(product=p3)
-        thl_lm.get_account_or_create_bp_wallet(product=p1)
-        thl_lm.get_account_or_create_bp_wallet(product=p2)
-        thl_lm.get_account_or_create_bp_wallet(product=p3)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=p2)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=p3)
 
         ach_id1 = uuid4().hex
         ach_id2 = uuid4().hex
@@ -660,13 +676,14 @@ class TestBusinessPayoutEventManager:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         business.prebuild_balance(
             thl_pg_config=thl_web_rr,
-            lm=lm,
+            lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
         )
 
         bb = business.balance
+        assert isinstance(bb, BusinessBalances)
         assert bb.payout == 475_00  # $500 * .95% = $475
         assert bb.net == 475_00
 
@@ -674,7 +691,7 @@ class TestBusinessPayoutEventManager:
             business=business,
             amount=USDCent(100_00),
             pm=product_manager,
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             created=start + timedelta(days=1, hours=5),
             transaction_id=ach_id1,
         )
@@ -686,7 +703,7 @@ class TestBusinessPayoutEventManager:
             business=business,
             amount=USDCent(bb.available_balance),
             pm=product_manager,
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             created=start + timedelta(days=2, hours=5),
             transaction_id=ach_id2,
         )
@@ -696,7 +713,7 @@ class TestBusinessPayoutEventManager:
 
         with caplog.at_level(logging.WARNING):
             business_payout_event_manager.resume_failed_business_payout(
-                ext_ref_id=ach_id1, thl_lm=thl_lm, pm=product_manager
+                ext_ref_id=ach_id1, thl_lm=thl_ledger_manager, pm=product_manager
             )
             assert "Nothing to do!" in caplog.text
 
@@ -714,31 +731,31 @@ class TestBusinessPayoutEventManager:
 
     def test_ach_payment(
         self,
-        product,
-        mnt_filepath,
-        thl_lm,
-        client_no_amm,
-        thl_redis_config,
-        payout_event_manager,
-        brokerage_product_payout_event_manager,
-        business_payout_event_manager,
-        delete_ledger_db,
-        create_main_accounts,
-        delete_df_collection,
-        ledger_collection,
-        business,
-        user_factory,
-        product_factory,
-        session_with_tx_factory,
-        pop_ledger_merge,
-        start,
-        bp_payout_factory,
-        adj_to_fail_with_tx_factory,
-        thl_web_rr,
-        lm,
-        product_manager,
-        rm_ledger_collection,
-        rm_pop_ledger_merge,
+        product: Product,
+        mnt_filepath: GRLDatasets,
+        thl_ledger_manager: ThlLedgerManager,
+        client_no_amm: DaskClient,
+        thl_redis_config: RedisConfig,
+        payout_event_manager: PayoutEventManager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        business_payout_event_manager: BusinessPayoutEventManager,
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
+        delete_df_collection: Callable[..., None],
+        ledger_collection: LedgerDFCollection,
+        business: Business,
+        user_factory: Callable[..., User],
+        product_factory: Callable[..., Product],
+        session_with_tx_factory: Callable[..., None],
+        pop_ledger_merge: PopLedgerMerge,
+        start: datetime,
+        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        adj_to_fail_with_tx_factory: Callable[..., None],
+        thl_web_rr: PostgresConfig,
+        ledger_manager: LedgerManager,
+        product_manager: ProductManager,
+        rm_ledger_collection: Callable[..., None],
+        rm_pop_ledger_merge: Callable[..., None],
     ):
         """Test having a Business with three products.. one that lost money
         and two that gained money. Ensure that the Business balance
@@ -757,9 +774,9 @@ class TestBusinessPayoutEventManager:
         u1: User = user_factory(product=p1)
         u2: User = user_factory(product=p2)
         u3: User = user_factory(product=p3)
-        thl_lm.get_account_or_create_bp_wallet(product=p1)
-        thl_lm.get_account_or_create_bp_wallet(product=p2)
-        thl_lm.get_account_or_create_bp_wallet(product=p3)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=p2)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=p3)
 
         ach_id1 = uuid4().hex
 
@@ -796,18 +813,19 @@ class TestBusinessPayoutEventManager:
                 started=start + timedelta(days=1, hours=3, minutes=1 + idx),
             )
 
-        # Now that we paid out the business, let's confirm the updated balances
+        # Now that we paid out the business: Business, let's confirm the updated balances
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         business.prebuild_balance(
             thl_pg_config=thl_web_rr,
-            lm=lm,
+            lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
         )
 
         bb1 = business.balance
+        assert isinstance(bb1, BusinessBalances)
         pb1 = bb1.product_balances[0]
         pb2 = bb1.product_balances[1]
         pb3 = bb1.product_balances[2]
@@ -833,9 +851,10 @@ class TestBusinessPayoutEventManager:
         assert business.payouts is None
         business.prebuild_payouts(
             thl_pg_config=thl_web_rr,
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
+        assert isinstance(business.payouts, list)
         assert len(business.payouts) == 1
         assert business.payouts[0].ext_ref_id == ach_id1
 
@@ -843,7 +862,7 @@ class TestBusinessPayoutEventManager:
             business=business,
             amount=USDCent(bb1.available_balance),
             pm=product_manager,
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             created=start + timedelta(days=1, hours=5),
         )
         assert isinstance(bp1, BusinessPayoutEvent)
@@ -851,7 +870,7 @@ class TestBusinessPayoutEventManager:
         assert bp1.bp_payouts[0].status == PayoutStatus.COMPLETE
         assert bp1.bp_payouts[1].status == PayoutStatus.COMPLETE
         bp1_tx = brokerage_product_payout_event_manager.check_for_ledger_tx(
-            thl_ledger_manager=thl_lm,
+            thl_ledger_manager=thl_ledger_manager,
             payout_event=bp1.bp_payouts[0],
             product_id=bp1.bp_payouts[0].product_id,
             amount=bp1.bp_payouts[0].amount,
@@ -859,14 +878,14 @@ class TestBusinessPayoutEventManager:
         assert bp1_tx
 
         bp2_tx = brokerage_product_payout_event_manager.check_for_ledger_tx(
-            thl_ledger_manager=thl_lm,
+            thl_ledger_manager=thl_ledger_manager,
             payout_event=bp1.bp_payouts[1],
             product_id=bp1.bp_payouts[1].product_id,
             amount=bp1.bp_payouts[1].amount,
         )
         assert bp2_tx
 
-        # Now that we paid out the business, let's confirm the updated balances
+        # Now that we paid out the business: Business, let's confirm the updated balances
         rm_ledger_collection()
         rm_pop_ledger_merge()
         ledger_collection.initial_load(client=None, sync=True)
@@ -874,16 +893,17 @@ class TestBusinessPayoutEventManager:
 
         business.prebuild_balance(
             thl_pg_config=thl_web_rr,
-            lm=lm,
+            lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
         )
         business.prebuild_payouts(
             thl_pg_config=thl_web_rr,
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
+        assert isinstance(business.payouts, list)
         assert len(business.payouts) == 2
         assert len(business.payouts[0].bp_payouts) == 2
         assert len(business.payouts[1].bp_payouts) == 1
@@ -892,6 +912,8 @@ class TestBusinessPayoutEventManager:
 
         # Okay os we have the balance before, and after the Business Payout
         #    of bb1.available_balance worth..
+        assert isinstance(bb1, BusinessBalances)
+        assert isinstance(bb2, BusinessBalances)
         assert bb1.payout == bb2.payout
         assert bb1.adjustment == bb2.adjustment
         assert bb1.net == bb2.net
@@ -908,34 +930,34 @@ class TestBusinessPayoutEventManager:
 
     def test_ach_payment_partial_amount(
         self,
-        product,
-        mnt_filepath,
+        product: Product,
+        mnt_filepath: GRLDatasets,
         thl_ledger_manager: ThlLedgerManager,
         client_no_amm: DaskClient,
-        thl_redis_config,
-        payout_event_manager,
-        brokerage_product_payout_event_manager,
-        business_payout_event_manager,
-        delete_ledger_db,
-        create_main_accounts,
-        delete_df_collection,
-        ledger_collection,
-        business,
-        user_factory,
-        product_factory,
-        session_with_tx_factory,
-        pop_ledger_merge,
-        start,
-        bp_payout_factory,
-        adj_to_fail_with_tx_factory,
-        thl_web_rr,
-        ledger_manager,
-        product_manager,
-        rm_ledger_collection,
-        rm_pop_ledger_merge,
+        thl_redis_config: RedisConfig,
+        payout_event_manager: PayoutEventManager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        business_payout_event_manager: BusinessPayoutEventManager,
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
+        delete_df_collection: Callable[..., None],
+        ledger_collection: LedgerDFCollection,
+        business: Business,
+        user_factory: Callable[..., User],
+        product_factory: Callable[..., Product],
+        session_with_tx_factory: Callable[..., None],
+        pop_ledger_merge: PopLedgerMerge,
+        start: datetime,
+        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        adj_to_fail_with_tx_factory: Callable[..., None],
+        thl_web_rr: PostgresConfig,
+        ledger_manager: LedgerManager,
+        product_manager: ProductManager,
+        rm_ledger_collection: Callable[..., None],
+        rm_pop_ledger_merge: Callable[..., None],
     ):
         """There are valid instances when we want issue a ACH or Wire to a
-        Business, but not for the full Available Balance amount in their
+        business: Business, but not for the full Available Balance amount in their
         account.
 
         To test this, we'll create a Business with multiple Products, and
@@ -956,9 +978,9 @@ class TestBusinessPayoutEventManager:
         u1: User = user_factory(product=p1)
         u2: User = user_factory(product=p2)
         u3: User = user_factory(product=p3)
-        thl_lm.get_account_or_create_bp_wallet(product=p1)
-        thl_lm.get_account_or_create_bp_wallet(product=p2)
-        thl_lm.get_account_or_create_bp_wallet(product=p3)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=p2)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=p3)
 
         # Product 1, 2, 3: Complete, and Payout multiple times.
         for idx in range(5):
@@ -968,9 +990,9 @@ class TestBusinessPayoutEventManager:
                     wall_req_cpi=Decimal("50.00"),
                     started=start + timedelta(days=1, hours=2, minutes=1 + idx),
                 )
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
+        payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
 
-        # Now that we paid out the business, let's confirm the updated balances
+        # Now that we paid out the business: Business, let's confirm the updated balances
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         business.prebuild_balance(
@@ -987,6 +1009,8 @@ class TestBusinessPayoutEventManager:
         # Confirm the initial amounts.
         assert len(business.payouts) == 0
         bb1 = business.balance
+
+        assert isinstance(bb1, BusinessBalances)
         assert bb1.payout == 3 * 5 * 4750
         assert bb1.adjustment == 0
         assert bb1.payout == bb1.net
@@ -999,6 +1023,7 @@ class TestBusinessPayoutEventManager:
             assert bb1.product_balances[x].available_balance_usd_str == "$178.13"
 
         assert business.payouts_total_str == "$0.00"
+        assert isinstance(business.balance, BusinessBalances)
         assert business.balance.payment_usd_str == "$0.00"
         assert business.balance.available_balance_usd_str == "$534.39"
 
@@ -1009,13 +1034,13 @@ class TestBusinessPayoutEventManager:
             business=business,
             amount=USDCent(250_00),
             pm=product_manager,
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             created=start + timedelta(days=1, hours=3),
         )
         assert isinstance(bp1, BusinessPayoutEvent)
         assert len(bp1.bp_payouts) == 3
 
-        # Now that we paid out the business, let's confirm the updated
+        # Now that we paid out the business: Business, let's confirm the updated
         # balances. Clear and rebuild the parquet files.
         rm_ledger_collection()
         rm_pop_ledger_merge()
@@ -1034,40 +1059,40 @@ class TestBusinessPayoutEventManager:
         )
         business.prebuild_payouts(
             thl_pg_config=thl_web_rr,
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
+        assert isinstance(business.payouts, list)
         assert len(business.payouts) == 1
         assert len(business.payouts[0].bp_payouts) == 3
         assert business.payouts_total_str == "$250.00"
+        assert isinstance(business.balance, BusinessBalances)
         assert business.balance.payment_usd_str == "$250.00"
         assert business.balance.available_balance_usd_str == "$346.88"
 
     def test_ach_tx_id_reference(
         self,
-        mnt_filepath,
-        thl_ledger_manager,
-        client_no_amm,
-        payout_event_manager,
-        brokerage_product_payout_event_manager,
-        business_payout_event_manager,
-        delete_ledger_db,
-        create_main_accounts,
-        delete_df_collection,
-        ledger_collection,
+        mnt_filepath: GRLDatasets,
+        thl_ledger_manager: ThlLedgerManager,
+        client_no_amm: DaskClient,
+        payout_event_manager: PayoutEventManager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        business_payout_event_manager: BusinessPayoutEventManager,
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
+        delete_df_collection: Callable[..., None],
+        ledger_collection: LedgerDFCollection,
         business: Business,
-        user_factory,
-        product_factory,
-        session_with_tx_factory,
-        pop_ledger_merge,
+        user_factory: Callable[..., User],
+        product_factory: Callable[..., Product],
+        session_with_tx_factory: Callable[..., Session],
+        pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory,
-        adj_to_fail_with_tx_factory,
-        thl_web_rr,
-        lm,
-        product_manager,
-        rm_ledger_collection,
-        rm_pop_ledger_merge,
+        thl_web_rr: PostgresConfig,
+        ledger_manager: LedgerManager,
+        product_manager: ProductManager,
+        rm_ledger_collection: Callable[..., None],
+        rm_pop_ledger_merge: Callable[..., None],
     ):
 
         # Now let's load it up and actually test some things
@@ -1103,7 +1128,7 @@ class TestBusinessPayoutEventManager:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         business.prebuild_balance(
             thl_pg_config=thl_web_rr,
-            lm=lm,
+            lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
@@ -1124,7 +1149,7 @@ class TestBusinessPayoutEventManager:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         business.prebuild_balance(
             thl_pg_config=thl_web_rr,
-            lm=lm,
+            lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
@@ -1153,10 +1178,11 @@ class TestBusinessPayoutEventManager:
         )
         business.prebuild_balance(
             thl_pg_config=thl_web_rr,
-            lm=lm,
+            lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
         )
+        assert isinstance(business.payouts, list)
         assert business.payouts[0].ext_ref_id == ach_id2
         assert business.payouts[1].ext_ref_id == ach_id1

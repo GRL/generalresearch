@@ -666,7 +666,11 @@ class TestUserMethods:
         assert len(user.audit_log) == 1
 
     def test_transactions(
-        self, user_factory, thl_lm, session_with_tx_factory, product_user_wallet_yes
+        self,
+        user_factory: Callable[..., User],
+        thl_lm,
+        session_with_tx_factory: Callable[..., None],
+        product_user_wallet_yes,
     ):
         u1 = user_factory(product=product_user_wallet_yes)
 

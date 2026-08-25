@@ -25,7 +25,7 @@ class TestLeaderboardContest(TestContest):
 
     @pytest.fixture
     def leaderboard_contest(
-        self, product: Product, thl_redis, user_manager
+        self, product: product: Product, thl_redis, user_manager
     ) -> LeaderboardContest:
         board_key = f"leaderboard:{product.uuid}:us:weekly:2025-05-26:complete_count"
 

@@ -10,7 +10,7 @@ logger = logging.getLogger()
 
 class TestProductManagerGetMethods:
 
-    def test_get_by_uuid(self, product_manager, product_factory):
+    def test_get_by_uuid(self, product_manager: ProductManager, product_factory):
         # Just test that we load properly
         for p in [product_factory(), product_factory(), product_factory()]:
             instance = product_manager.get_by_uuid(product_uuid=p.id)
@@ -22,7 +22,7 @@ class TestProductManagerGetMethods:
             product_manager.get_by_uuid(product_uuid=uuid4().hex)
         assert "product not found" in str(cm.value)
 
-    def test_get_by_uuids(self, product_manager, product_factory):
+    def test_get_by_uuids(self, product_manager: ProductManager, product_factory):
         products = [product_factory(), product_factory(), product_factory()]
         cnt = len(products)
         res = product_manager.get_by_uuids(product_uuids=[p.id for p in products])
@@ -42,7 +42,9 @@ class TestProductManagerGetMethods:
             )
         assert "invalid uuid passed" in str(cm.value)
 
-    def test_get_by_uuid_if_exists(self, product_factory, product_manager):
+    def test_get_by_uuid_if_exists(
+        self, product_factory: Callable[..., Product], product_manager
+    ):
         products = [product_factory(), product_factory(), product_factory()]
 
         instance = product_manager.get_by_uuid_if_exists(product_uuid=products[0].id)
@@ -51,7 +53,9 @@ class TestProductManagerGetMethods:
         instance = product_manager.get_by_uuid_if_exists(product_uuid="abc123")
         assert instance is None
 
-    def test_get_by_uuids_if_exists(self, product_manager, product_factory):
+    def test_get_by_uuids_if_exists(
+        self, product_manager: ProductManager, product_factory
+    ):
         products = [product_factory(), product_factory(), product_factory()]
 
         res = product_manager.get_by_uuids_if_exists(

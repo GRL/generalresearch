@@ -47,7 +47,7 @@ class TestUserManagerRedis:
 
         um1 = UserManager(
             pg_config=thl_web_rw,
-            pg_config_rr=thl_web_rr,
+            pg_config_rr=thl_web_rr: PostgresConfig,
             sql_permissions=[Permission.UPDATE, Permission.CREATE],
             redis=settings.redis,
             redis_timeout=settings.redis_timeout,
@@ -55,7 +55,7 @@ class TestUserManagerRedis:
 
         um2 = UserManager(
             pg_config=thl_web_rw,
-            pg_config_rr=thl_web_rr,
+            pg_config_rr=thl_web_rr: PostgresConfig,
             sql_permissions=[Permission.UPDATE, Permission.CREATE],
             redis=settings.redis,
             redis_timeout=settings.redis_timeout,

@@ -143,7 +143,7 @@ class TestDFCollectionItemMethod:
         offset: str,
         duration: timedelta,
         df_collection_data_type,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
     ):
         delete_df_collection(coll=df_collection)
 
@@ -173,7 +173,7 @@ class TestDFCollectionItemMethod:
         duration: timedelta,
         thl_web_rw: PostgresConfig,
         df_collection_data_type,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
     ):
         # for i in collection.items:
         #     assert i.update_partial_archive()
@@ -186,15 +186,15 @@ class TestDFCollectionItemMethod:
         df_collection,
         offset: str,
         duration: str,
-        create_main_accounts,
+        create_main_accounts: Callable[..., None],
         thl_web_rw: PostgresConfig,
         thl_lm,
         df_collection_data_type,
         user_factory: Callable[..., User],
-        product: Product,
+        product: product: Product,
         client_no_amm,
         incite_item_factory,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         mnt_filepath: GRLDatasets,
     ):
         assert 1 + 1 == 2
@@ -205,7 +205,7 @@ class TestDFCollectionItemMethod:
         offset: str,
         duration: timedelta,
         df_collection,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
     ):
         delete_df_collection(coll=df_collection)
 
@@ -229,12 +229,12 @@ class TestDFCollectionItemMethod:
         df_collection,
         offset: str,
         duration: timedelta,
-        create_main_accounts,
+        create_main_accounts: Callable[..., None],
         thl_web_rw: PostgresConfig,
         user_factory: Callable[..., User],
-        product: Product,
+        product: product: Product,
         incite_item_factory,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
     ):
 
         if df_collection.data_type in unsupported_mock_types:
@@ -275,9 +275,9 @@ class TestDFCollectionItemMethod:
         offset: str,
         duration: timedelta,
         user_factory: Callable[..., User],
-        product: Product,
+        product: product: Product,
         incite_item_factory,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
     ):
 
         if df_collection.data_type in unsupported_mock_types:
@@ -318,17 +318,17 @@ class TestDFCollectionItemMethod:
         self,
         df_collection,
         user: User,
-        create_main_accounts,
+        create_main_accounts: Callable[..., None],
         offset: str,
         duration: timedelta,
         thl_web_rw: PostgresConfig,
         thl_lm,
         df_collection_data_type,
         user_factory: Callable[..., User],
-        product: Product,
+        product: product: Product,
         client_no_amm,
         incite_item_factory,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         mnt_filepath,
     ):
 
@@ -376,10 +376,10 @@ class TestDFCollectionItemMethod:
         duration: timedelta,
         df_collection_data_type,
         user_factory: Callable[..., User],
-        product: Product,
+        product: product: Product,
         client_no_amm,
         incite_item_factory,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         mnt_filepath,
     ):
 
@@ -410,13 +410,13 @@ class TestDFCollectionItemMethod:
         df_collection_data_type,
         df_collection,
         user_factory: Callable[..., User],
-        product: Product,
+        product: product: Product,
         offset: str,
         duration: timedelta,
         client_no_amm,
         user: User,
         incite_item_factory,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         mnt_filepath,
     ):
         """We already have a test for the "non-private" version of this,
@@ -757,9 +757,9 @@ class TestDFCollectionItemFunctionalTest:
         df_collection,
         user: User,
         user_factory: Callable[..., User],
-        product: Product,
+        product: product: Product,
         incite_item_factory,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         mnt_filepath: GRLDatasets,
     ):
 
@@ -805,10 +805,10 @@ class TestDFCollectionItemFunctionalTest:
         duration: timedelta,
         client_no_amm,
         user_factory: Callable[..., User],
-        product: Product,
+        product: product: Product,
         df_collection_data_type,
         incite_item_factory,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         mnt_filepath: GRLDatasets,
     ):
         """A functional test to write some Parquet files for the
@@ -822,7 +822,6 @@ class TestDFCollectionItemFunctionalTest:
         import os
 
         import pyarrow.parquet as pq
-
 
         if df_collection.data_type in unsupported_mock_types:
             return
@@ -850,12 +849,12 @@ class TestDFCollectionItemFunctionalTest:
         client_no_amm,
         df_collection,
         user_factory: Callable[..., User],
-        product: Product,
+        product: product: Product,
         offset: str,
         duration: timedelta,
         df_collection_data_type,
         incite_item_factory,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         mnt_filepath: GRLDatasets,
     ):
 
@@ -886,7 +885,7 @@ class TestDFCollectionItemFunctionalTest:
 
     @pytest.mark.skip
     def test_get_items(
-        self, df_collection, product: Product, offset: str, duration: timedelta
+        self, df_collection, product: product: Product, offset: str, duration: timedelta
     ):
         with pytest.warns(expected_warning=ResourceWarning) as cm:
             df_collection.get_items_last365()
@@ -903,9 +902,9 @@ class TestDFCollectionItemFunctionalTest:
         df_collection_data_type,
         df_collection,
         incite_item_factory,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         user_factory: Callable[..., User],
-        product: Product,
+        product: product: Product,
         offset: str,
         duration: timedelta,
         mnt_filepath: GRLDatasets,
@@ -944,7 +943,7 @@ class TestDFCollectionItemFunctionalTest:
         df_collection_data_type,
         df_collection,
         incite_item_factory,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         user: User,
         offset: str,
         duration: timedelta,
@@ -972,9 +971,9 @@ class TestDFCollectionItemFunctionalTest:
         df_collection_data_type,
         df_collection,
         incite_item_factory,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         user_factory: Callable[..., User],
-        product: Product,
+        product: product: Product,
         offset: str,
         duration: timedelta,
         mnt_filepath,

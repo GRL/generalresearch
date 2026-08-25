@@ -26,20 +26,20 @@ class TestEnrichedSession:
     def test_base(
         self,
         client_no_amm,
-        product,
-        user_factory,
+        product: Product,
+        user_factory: Callable[..., User],
         wall_collection,
         session_collection,
         enriched_session_merge,
         thl_web_rr: PostgresConfig,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         incite_item_factory,
     ):
         from generalresearch.models.thl.user import User
 
         delete_df_collection(coll=session_collection)
 
-        u1: User = user_factory(product=product, created=session_collection.start)
+        u1: User = user_factory(product=product: Product, created=session_collection.start)
 
         for item in session_collection.items:
             incite_item_factory(item=item, user=u1)
@@ -52,7 +52,7 @@ class TestEnrichedSession:
             client=client_no_amm,
             wall_coll=wall_collection,
             session_coll=session_collection,
-            pg_config=thl_web_rr,
+            pg_config=thl_web_rr: PostgresConfig,
         )
 
         # --
@@ -92,11 +92,11 @@ class TestEnrichedSessionAdmin:
         session_collection,
         thl_web_rr: PostgresConfig,
         session_report_request,
-        user_factory,
+        user_factory: Callable[..., User],
         start,
         session_factory,
-        product_factory,
-        delete_df_collection,
+        product_factory: Callable[..., Product],
+        delete_df_collection: Callable[..., None],
     ):
         delete_df_collection(coll=wall_collection)
         delete_df_collection(coll=session_collection)
@@ -120,7 +120,7 @@ class TestEnrichedSessionAdmin:
             client=client_no_amm,
             session_coll=session_collection,
             wall_coll=wall_collection,
-            pg_config=thl_web_rr,
+            pg_config=thl_web_rr: PostgresConfig,
         )
 
         df = enriched_session_merge.to_admin_response(

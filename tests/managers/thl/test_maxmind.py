@@ -70,8 +70,8 @@ IP_v6_US_SAME_64 = "2600:1700:ece0:9410:55d:faf3:c15d:aaaa"
 
 # class TestMaxmindManager:
 
-#     def test_init(self, thl_web_rr, thl_redis_config, maxmind_manager: MaxmindManager):
-#         instance = MaxmindManager(pg_config=thl_web_rr, redis_config=thl_redis_config)
+#     def test_init(self, thl_web_rr: PostgresConfig, thl_redis_config: RedisConfig, maxmind_manager: MaxmindManager):
+#         instance = MaxmindManager(pg_config=thl_web_rr: PostgresConfig, redis_config=thl_redis_config)
 #         assert isinstance(instance, MaxmindManager)
 #         assert isinstance(maxmind_manager, MaxmindManager)
 

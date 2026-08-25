@@ -71,7 +71,7 @@ class TestTaskStatus:
     def test_task_status_complete_1(
         self,
         bp1,
-        user_factory,
+        user_factory: Callable[..., User],
         finished_session_factory,
         session_manager: SessionManager,
     ):
@@ -130,7 +130,11 @@ class TestTaskStatus:
         assert tsr == expected_tsr
 
     def test_task_status_complete_2(
-        self, bp2, user_factory, finished_session_factory, session_manager
+        self,
+        bp2,
+        user_factory: Callable[..., User],
+        finished_session_factory,
+        session_manager,
     ):
         # User Payout xform 40%
         user2: User = user_factory(product=bp2)
@@ -197,7 +201,11 @@ class TestTaskStatus:
         assert tsr == expected_tsr
 
     def test_task_status_complete_3(
-        self, bp3, user_factory, finished_session_factory, session_manager
+        self,
+        bp3,
+        user_factory: Callable[..., User],
+        finished_session_factory,
+        session_manager,
     ):
         # Wallet enabled User Payout xform 50% (the response is identical
         # to the user wallet disabled w same xform)
@@ -232,7 +240,11 @@ class TestTaskStatus:
         assert tsr == expected_tsr
 
     def test_task_status_fail(
-        self, bp1, user_factory, finished_session_factory, session_manager
+        self,
+        bp1,
+        user_factory: Callable[..., User],
+        finished_session_factory,
+        session_manager,
     ):
         # User Payout xform NULL: user payout is None always
         user1: User = user_factory(product=bp1)
@@ -268,7 +280,11 @@ class TestTaskStatus:
         assert tsr == expected_tsr
 
     def test_task_status_fail_xform(
-        self, bp2, user_factory, finished_session_factory, session_manager
+        self,
+        bp2,
+        user_factory: Callable[..., User],
+        finished_session_factory,
+        session_manager,
     ):
         # User Payout xform 40%: user_payout is 0 (not None)
 
@@ -303,7 +319,11 @@ class TestTaskStatus:
         assert tsr == expected_tsr
 
     def test_task_status_abandon(
-        self, bp1, user_factory, session_factory, session_manager
+        self,
+        bp1,
+        user_factory: Callable[..., User],
+        session_factory,
+        session_manager,
     ):
         # User Payout xform NULL: all payout fields are None
         user: User = user_factory(product=bp1)
@@ -337,7 +357,11 @@ class TestTaskStatus:
         assert tsr == expected_tsr
 
     def test_task_status_abandon_xform(
-        self, bp2, user_factory, session_factory, session_manager
+        self,
+        bp2,
+        user_factory: Callable[..., User],
+        session_factory,
+        session_manager,
     ):
         # User Payout xform 40%: all payout fields are None (same as when payout xform is null)
         user: User = user_factory(product=bp2)
@@ -376,7 +400,7 @@ class TestTaskStatus:
     def test_task_status_adj_fail(
         self,
         bp1,
-        user_factory,
+        user_factory: Callable[..., User],
         finished_session_factory,
         wall_manager,
         session_manager,
@@ -425,7 +449,7 @@ class TestTaskStatus:
     def test_task_status_adj_fail_xform(
         self,
         bp2,
-        user_factory,
+        user_factory: Callable[..., User],
         finished_session_factory,
         wall_manager,
         session_manager,
@@ -477,7 +501,7 @@ class TestTaskStatus:
     def test_task_status_adj_complete_from_abandon(
         self,
         bp1,
-        user_factory,
+        user_factory: Callable[..., User],
         session_factory,
         wall_manager,
         session_manager,
@@ -531,7 +555,7 @@ class TestTaskStatus:
     def test_task_status_adj_complete_from_abandon_xform(
         self,
         bp2,
-        user_factory,
+        user_factory: Callable[..., User],
         session_factory,
         wall_manager,
         session_manager,
@@ -588,7 +612,7 @@ class TestTaskStatus:
     def test_task_status_adj_complete_from_fail(
         self,
         bp1,
-        user_factory,
+        user_factory: Callable[..., User],
         finished_session_factory,
         wall_manager,
         session_manager,
@@ -642,7 +666,7 @@ class TestTaskStatus:
     def test_task_status_adj_complete_from_fail_xform(
         self,
         bp2,
-        user_factory,
+        user_factory: Callable[..., User],
         finished_session_factory,
         wall_manager,
         session_manager,

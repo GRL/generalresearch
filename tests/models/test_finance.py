@@ -31,7 +31,7 @@ from generalresearch.models.thl.user import User
 from test_utils.incite.collections.conftest import ledger_collection
 from test_utils.incite.mergers.conftest import pop_ledger_merge
 from test_utils.managers.ledger.conftest import (
-    session_with_tx_factory,
+    session_with_tx_factory: Callable[..., None],
 )
 
 fake = Faker()
@@ -665,7 +665,7 @@ class TestProductFinanceData:
 
     def test_base(
         self,
-        product: Product,
+        product: product: Product,
         user_factory: Callable[..., User],
         start: datetime,
         duration: timedelta,
@@ -675,7 +675,7 @@ class TestProductFinanceData:
         # -- Build & Setup
         # assert ledger_collection.start is None
         # assert ledger_collection.offset is None
-        u: User = user_factory(product=product, created=ledger_collection.start)
+        u: User = user_factory(product=product: Product, created=ledger_collection.start)
 
         for item in ledger_collection.items:
 
@@ -748,14 +748,14 @@ class TestPOPFinancialData:
         ledger_collection: LedgerDFCollection,
         pop_ledger_merge: PopLedgerMerge,
         user_factory: Callable[..., User],
-        product: Product,
+        product: product: Product,
         start: datetime,
         duration: timedelta,
-        create_main_accounts,
+        create_main_accounts: Callable[..., None],
         session_with_tx_factory: Callable[..., Session],
         thl_lm: ThlLedgerManager,
-        delete_df_collection,
-        delete_ledger_db,
+        delete_df_collection: Callable[..., None],
+        delete_ledger_db: Callable[..., None],
     ):
         # -- Build & Setup
         delete_ledger_db()
@@ -820,7 +820,7 @@ class TestPOPFinancialData:
             # This does not return the AccountID, it's the Product ID
             assert i.product_id in [u.product_id for u in users]
 
-        # 1 Product, multiple Users
+        # 1 product: Product, multiple Users
         assert len(users) == len(accounts)
 
         # We group on days, and duration is a parameter to parametrize
@@ -846,12 +846,12 @@ class TestBusinessBalanceData:
         ledger_collection: LedgerDFCollection,
         pop_ledger_merge: PopLedgerMerge,
         user_factory: Callable[..., User],
-        product: Product,
-        create_main_accounts,
+        product: product: Product,
+        create_main_accounts: Callable[..., None],
         thl_lm: ThlLedgerManager,
-        thl_web_rr,
-        delete_df_collection,
-        delete_ledger_db,
+        thl_web_rr: PostgresConfig,
+        delete_df_collection: Callable[..., None],
+        delete_ledger_db: Callable[..., None],
         session_with_tx_factory: Callable[..., Session],
         rm_ledger_collection,
     ):
@@ -863,7 +863,7 @@ class TestBusinessBalanceData:
         rm_ledger_collection()
 
         for _ in range(5):
-            u: User = user_factory(product=product, created=ledger_collection.start)
+            u: User = user_factory(product=product: Product, created=ledger_collection.start)
 
             for item in ledger_collection.items:
                 item_time = fake.date_time_between(

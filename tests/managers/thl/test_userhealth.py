@@ -19,7 +19,7 @@ fake = faker.Faker()
 
 class TestAuditLog:
 
-    def test_init(self, thl_web_rr, audit_log_manager):
+    def test_init(self, thl_web_rr: PostgresConfig, audit_log_manager):
         from generalresearch.managers.thl.userhealth import AuditLogManager
 
         alm = AuditLogManager(pg_config=thl_web_rr)
@@ -55,8 +55,8 @@ class TestAuditLog:
 
     def test_filter_by_product(
         self,
-        user_factory,
-        product_factory,
+        user_factory: Callable[..., User],
+        product_factory: Callable[..., Product],
         audit_log_factory,
         audit_log_manager,
     ):
@@ -82,7 +82,7 @@ class TestAuditLog:
         assert len(res) == 1
 
     def test_filter_by_user_id(
-        self, user_factory, product, audit_log_factory, audit_log_manager
+        self, user_factory: Callable[..., User], product: Product, audit_log_factory, audit_log_manager
     ):
         u1 = user_factory(product=product)
         u2 = user_factory(product=product)
@@ -108,8 +108,8 @@ class TestAuditLog:
 
     def test_filter(
         self,
-        user_factory,
-        product_factory,
+        user_factory: Callable[..., User],
+        product_factory: Callable[..., Product],
         audit_log_factory,
         audit_log_manager,
     ):
@@ -142,8 +142,8 @@ class TestAuditLog:
 
     def test_filter_count(
         self,
-        user_factory,
-        product_factory,
+        user_factory: Callable[..., User],
+        product_factory: Callable[..., Product],
         audit_log_factory,
         audit_log_manager,
     ):
@@ -205,8 +205,8 @@ class TestAuditLog:
 
 class TestIPRecordManager:
 
-    def test_init(self, thl_web_rr, thl_redis_config, ip_record_manager):
-        instance = IPRecordManager(pg_config=thl_web_rr, redis_config=thl_redis_config)
+    def test_init(self, thl_web_rr: PostgresConfig, thl_redis_config: RedisConfig, ip_record_manager):
+        instance = IPRecordManager(pg_config=thl_web_rr: PostgresConfig, redis_config=thl_redis_config)
         assert isinstance(instance, IPRecordManager)
         assert isinstance(ip_record_manager, IPRecordManager)
 
@@ -232,8 +232,8 @@ class TestIPRecordManager:
         ip_information_factory,
         ip_geoname,
         user,
-        thl_web_rr,
-        thl_redis_config,
+        thl_web_rr: PostgresConfig,
+        thl_redis_config: RedisConfig,
     ):
 
         ip = fake.ipv4_public()
@@ -246,8 +246,8 @@ class TestIPRecordManager:
         assert fipr.information is None
 
         ipr.prefetch_ipinfo(
-            pg_config=thl_web_rr,
-            redis_config=thl_redis_config,
+            pg_config=thl_web_rr: PostgresConfig,
+            redis_config=thl_redis_config: RedisConfig,
             include_forwarded=True,
         )
         assert isinstance(ipr.information, GeoIPInformation)
@@ -256,8 +256,8 @@ class TestIPRecordManager:
 
         ip_information_factory(ip=fipr.ip, geoname=ip_geoname)
         ipr.prefetch_ipinfo(
-            pg_config=thl_web_rr,
-            redis_config=thl_redis_config,
+            pg_config=thl_web_rr: PostgresConfig,
+            redis_config=thl_redis_config: RedisConfig,
             include_forwarded=True,
         )
         assert fipr.information is not None
@@ -265,9 +265,9 @@ class TestIPRecordManager:
 
 @pytest.mark.usefixtures("user_iphistory_manager_clear_cache")
 class TestUserIpHistoryManager:
-    def test_init(self, thl_web_rr, thl_redis_config, user_iphistory_manager):
+    def test_init(self, thl_web_rr: PostgresConfig, thl_redis_config: RedisConfig, user_iphistory_manager):
         instance = UserIpHistoryManager(
-            pg_config=thl_web_rr, redis_config=thl_redis_config
+            pg_config=thl_web_rr: PostgresConfig, redis_config=thl_redis_config
         )
         assert isinstance(instance, UserIpHistoryManager)
         assert isinstance(user_iphistory_manager, UserIpHistoryManager)

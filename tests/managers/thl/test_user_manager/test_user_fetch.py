@@ -7,7 +7,9 @@ from generalresearch.models.thl.user import User
 
 class TestUserManagerFetch:
 
-    def test_fetch(self, user_factory, product, user_manager):
+    def test_fetch(
+        self, user_factory: Callable[..., User], product: Product, user_manager
+    ):
         user1: User = user_factory(product=product)
         user2: User = user_factory(product=product)
         res = user_manager.fetch_by_bpuids(

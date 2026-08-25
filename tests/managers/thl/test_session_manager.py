@@ -75,7 +75,12 @@ class TestSessionManagerFilter:
         assert len(res) == 2
 
     def test_product(
-        self, product_factory, user_factory, session_manager, user, utc_hour_ago
+        self,
+        product_factory: Callable[..., Product],
+        user_factory: Callable[..., User],
+        session_manager,
+        user,
+        utc_hour_ago,
     ):
         from generalresearch.models.thl.session import Session
         from generalresearch.models.thl.user import User
@@ -95,13 +100,13 @@ class TestSessionManagerFilter:
 
     def test_team(
         self,
-        product_factory,
-        user_factory,
+        product_factory: Callable[..., Product],
+        user_factory: Callable[..., User],
         team,
         session_manager,
         user,
         utc_hour_ago,
-        thl_web_rr,
+        thl_web_rr: PostgresConfig,
     ):
         p1 = product_factory(team=team)
 
@@ -116,13 +121,13 @@ class TestSessionManagerFilter:
 
     def test_business(
         self,
-        product_factory,
-        business,
-        user_factory,
+        product_factory: Callable[..., Product],
+        business: Business,
+        user_factory: Callable[..., User],
         session_manager,
         user,
         utc_hour_ago,
-        thl_web_rr,
+        thl_web_rr: PostgresConfig,
     ):
         p1 = product_factory(business=business)
 

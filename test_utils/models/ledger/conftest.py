@@ -502,74 +502,77 @@ def setup_accounts(
     lm: LedgerManager,
     user: User,
     currency: LedgerCurrency,
-) -> None:
+) -> Callable[..., None]:
     from generalresearch.models.thl.ledger import (
         AccountType,
         Direction,
         LedgerAccount,
     )
 
-    # BP's wallet and a revenue from their commissions account.
-    p1 = product_factory()
+    def _inner():
+        # BP's wallet and a revenue from their commissions account.
+        p1 = product_factory()
 
-    account = LedgerAccount(
-        display_name=f"Revenue from {p1.name} commission",
-        qualified_name=f"{currency.value}:revenue:bp_commission:{p1.uuid}",
-        normal_balance=Direction.CREDIT,
-        account_type=AccountType.REVENUE,
-        reference_type="bp",
-        reference_uuid=p1.uuid,
-        currency=currency,
-    )
-    lm.get_account_or_create(account=account)
+        account = LedgerAccount(
+            display_name=f"Revenue from {p1.name} commission",
+            qualified_name=f"{currency.value}:revenue:bp_commission:{p1.uuid}",
+            normal_balance=Direction.CREDIT,
+            account_type=AccountType.REVENUE,
+            reference_type="bp",
+            reference_uuid=p1.uuid,
+            currency=currency,
+        )
+        lm.get_account_or_create(account=account)
 
-    account = LedgerAccount.model_validate(
-        {
-            "display_name": f"{p1.name} Wallet",
-            "qualified_name": f"{currency.value}:bp_wallet:{p1.uuid}",
-            "normal_balance": Direction.CREDIT,
-            "account_type": AccountType.BP_WALLET,
-            "reference_type": "bp",
-            "reference_uuid": p1.uuid,
-            "currency": currency,
-        }
-    )
-    lm.get_account_or_create(account=account)
+        account = LedgerAccount.model_validate(
+            {
+                "display_name": f"{p1.name} Wallet",
+                "qualified_name": f"{currency.value}:bp_wallet:{p1.uuid}",
+                "normal_balance": Direction.CREDIT,
+                "account_type": AccountType.BP_WALLET,
+                "reference_type": "bp",
+                "reference_uuid": p1.uuid,
+                "currency": currency,
+            }
+        )
+        lm.get_account_or_create(account=account)
 
-    # BP's wallet, user's wallet, and a revenue from their commissions account.
-    p2 = product_factory()
-    account = LedgerAccount(
-        display_name=f"Revenue from {p2.name} commission",
-        qualified_name=f"{currency.value}:revenue:bp_commission:{p2.uuid}",
-        normal_balance=Direction.CREDIT,
-        account_type=AccountType.REVENUE,
-        reference_type="bp",
-        reference_uuid=p2.uuid,
-        currency=currency,
-    )
-    lm.get_account_or_create(account)
+        # BP's wallet, user's wallet, and a revenue from their commissions account.
+        p2 = product_factory()
+        account = LedgerAccount(
+            display_name=f"Revenue from {p2.name} commission",
+            qualified_name=f"{currency.value}:revenue:bp_commission:{p2.uuid}",
+            normal_balance=Direction.CREDIT,
+            account_type=AccountType.REVENUE,
+            reference_type="bp",
+            reference_uuid=p2.uuid,
+            currency=currency,
+        )
+        lm.get_account_or_create(account)
 
-    account = LedgerAccount(
-        display_name=f"{p2.name} Wallet",
-        qualified_name=f"{currency.value}:bp_wallet:{p2.uuid}",
-        normal_balance=Direction.CREDIT,
-        account_type=AccountType.BP_WALLET,
-        reference_type="bp",
-        reference_uuid=p2.uuid,
-        currency=currency,
-    )
-    lm.get_account_or_create(account)
+        account = LedgerAccount(
+            display_name=f"{p2.name} Wallet",
+            qualified_name=f"{currency.value}:bp_wallet:{p2.uuid}",
+            normal_balance=Direction.CREDIT,
+            account_type=AccountType.BP_WALLET,
+            reference_type="bp",
+            reference_uuid=p2.uuid,
+            currency=currency,
+        )
+        lm.get_account_or_create(account)
 
-    account = LedgerAccount(
-        display_name=f"{user.uuid} Wallet",
-        qualified_name=f"{currency.value}:user_wallet:{user.uuid}",
-        normal_balance=Direction.CREDIT,
-        account_type=AccountType.USER_WALLET,
-        reference_type="user",
-        reference_uuid=user.uuid,
-        currency="test",
-    )
-    lm.get_account_or_create(account=account)
+        account = LedgerAccount(
+            display_name=f"{user.uuid} Wallet",
+            qualified_name=f"{currency.value}:user_wallet:{user.uuid}",
+            normal_balance=Direction.CREDIT,
+            account_type=AccountType.USER_WALLET,
+            reference_type="user",
+            reference_uuid=user.uuid,
+            currency="test",
+        )
+        lm.get_account_or_create(account=account)
+
+    return _inner
 
 
 @pytest.fixture

@@ -1,19 +1,26 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
 
+from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
+from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+from generalresearch.managers.thl.product import ProductManager
 from generalresearch.models.thl.product import (
     PayoutConfig,
     PayoutTransformation,
     PayoutTransformationPercentArgs,
+    Product,
     UserWalletConfig,
 )
 from generalresearch.models.thl.user import User
 
 
 @pytest.fixture()
-def schrute_product(product_manager):
+def schrute_product(product_manager: ProductManager) -> Product:
     return product_manager.create_dummy(
         user_wallet_config=UserWalletConfig(enabled=True, amt=False),
         payout_config=PayoutConfig(
@@ -27,25 +34,30 @@ def schrute_product(product_manager):
 
 
 class TestGetUserWalletBalance:
-    def test_get_user_wallet_balance_non_managed(self, user, thl_lm):
+    def test_get_user_wallet_balance_non_managed(
+        self, user: User, thl_ledger_manager: ThlLedgerManager
+    ):
         with pytest.raises(
             AssertionError,
             match="Can't get wallet balance on non-managed account.",
         ):
-            thl_lm.get_user_wallet_balance(user=user)
+            thl_ledger_manager.get_user_wallet_balance(user=user)
 
     def test_get_user_wallet_balance_managed_0(
-        self, schrute_product, user_factory, thl_lm
+        self,
+        schrute_product: Product,
+        user_factory: Callable[..., User],
+        thl_ledger_manager: ThlLedgerManager,
     ):
         assert (
             schrute_product.payout_config.payout_format == "{payout:,.0f} Schrute Bucks"
         )
         user: User = user_factory(schrute_product)
-        balance = thl_lm.get_user_wallet_balance(user=user)
+        balance = thl_ledger_manager.get_user_wallet_balance(user=user)
         assert balance == 0
         balance_string = user.product.format_payout_format(Decimal(balance) / 100)
         assert balance_string == "0 Schrute Bucks"
-        redeemable_balance = thl_lm.get_user_redeemable_wallet_balance(
+        redeemable_balance = thl_ledger_manager.get_user_redeemable_wallet_balance(
             user=user, user_wallet_balance=balance
         )
         assert redeemable_balance == 0
@@ -55,10 +67,14 @@ class TestGetUserWalletBalance:
         assert redeemable_balance_string == "0 Schrute Bucks"
 
     def test_get_user_wallet_balance_managed(
-        self, schrute_product, user_factory, thl_lm, session_with_tx_factory
+        self,
+        schrute_product: Product,
+        user_factory: Callable[..., User],
+        thl_ledger_manager: ThlLedgerManager,
+        session_with_tx_factory: Callable[..., None],
     ):
         user: User = user_factory(schrute_product)
-        thl_lm.create_tx_user_bonus(
+        thl_ledger_manager.create_tx_user_bonus(
             user=user,
             amount=Decimal(1),
             ref_uuid=uuid4().hex,
@@ -69,10 +85,10 @@ class TestGetUserWalletBalance:
         # This product has a payout xform of 40% and commission of 5%
         # 1.23 * 0.05 = 0.06 of commission
         # 1.17 of payout * 0.40 = 0.47 of user pay and (1.17-0.47) 0.70 bp pay
-        balance = thl_lm.get_user_wallet_balance(user=user)
+        balance = thl_ledger_manager.get_user_wallet_balance(user=user)
         assert balance == 47 + 100  # plus the $1 bribe
 
-        redeemable_balance = thl_lm.get_user_redeemable_wallet_balance(
+        redeemable_balance = thl_ledger_manager.get_user_redeemable_wallet_balance(
             user=user, user_wallet_balance=balance
         )
         assert redeemable_balance == 20 + 100

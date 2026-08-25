@@ -21,16 +21,16 @@ class TestEnrichedTaskAdjust:
     def test_base(
         self,
         client_no_amm,
-        user_factory,
-        product,
+        user_factory: Callable[..., User],
+        product: Product,
         task_adj_collection,
         wall_collection,
         session_collection,
         enriched_wall_merge,
         enriched_task_adjust_merge,
         incite_item_factory,
-        delete_df_collection,
-        thl_web_rr,
+        delete_df_collection: Callable[..., None],
+        thl_web_rr: PostgresConfig,
     ):
         from generalresearch.models.thl.user import User
 
@@ -48,14 +48,14 @@ class TestEnrichedTaskAdjust:
             client=client_no_amm,
             session_coll=session_collection,
             wall_coll=wall_collection,
-            pg_config=thl_web_rr,
+            pg_config=thl_web_rr: PostgresConfig,
         )
 
         enriched_task_adjust_merge.build(
             client=client_no_amm,
             task_adjust_coll=task_adj_collection,
             enriched_wall=enriched_wall_merge,
-            pg_config=thl_web_rr,
+            pg_config=thl_web_rr: PostgresConfig,
         )
 
         # --

@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from generalresearch.currency import USDCent
 from generalresearch.models.gr import Team
-from generalresearch.models.gr.business import Business, BusinessAddress, BusinessType
+from generalresearch.models.gr.business import business: Business, BusinessAddress, BusinessType
 from generalresearch.models.thl.payout import (
     BrokerageProductPayoutEvent,
     BusinessPayoutEvent,

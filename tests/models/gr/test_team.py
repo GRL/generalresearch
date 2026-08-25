@@ -97,7 +97,7 @@ class TestTeam:
     def test_businesses(
         self,
         team: Team,
-        business: Business,
+        business: business: Business,
         team_manager: TeamManager,
         gr_db: PostgresConfig,
         gr_redis_config: RedisConfig,
@@ -160,7 +160,7 @@ class TestTeamMethods:
 
         team.set_cache(
             pg_config=gr_db,
-            thl_web_rr=thl_web_rr,
+            thl_web_rr=thl_web_rr: PostgresConfig,
             redis_config=gr_redis_config,
             client=client_no_amm,
             ds=mnt_filepath,
@@ -192,7 +192,7 @@ class TestTeamMethods:
 
         team.set_cache(
             pg_config=gr_db,
-            thl_web_rr=thl_web_rr,
+            thl_web_rr=thl_web_rr: PostgresConfig,
             redis_config=gr_redis_config,
             client=client_no_amm,
             ds=mnt_filepath,
@@ -254,11 +254,11 @@ class TestTeamMethods:
             client=client_no_amm,
             session_coll=session_collection,
             wall_coll=wall_collection,
-            pg_config=thl_web_rr,
+            pg_config=thl_web_rr: PostgresConfig,
         )
 
         team.prebuild_enriched_session_parquet(
-            thl_pg_config=thl_web_rr,
+            thl_pg_config=thl_web_rr: PostgresConfig,
             ds=mnt_filepath,
             client=client_no_amm,
             mnt_gr_api=mnt_gr_api_dir,
@@ -310,11 +310,11 @@ class TestTeamMethods:
             client=client_no_amm,
             session_coll=session_collection,
             wall_coll=wall_collection,
-            pg_config=thl_web_rr,
+            pg_config=thl_web_rr: PostgresConfig,
         )
 
         team.prebuild_enriched_wall_parquet(
-            thl_pg_config=thl_web_rr,
+            thl_pg_config=thl_web_rr: PostgresConfig,
             ds=mnt_filepath,
             client=client_no_amm,
             mnt_gr_api=mnt_gr_api_dir,

@@ -1,7 +1,13 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from generalresearch.currency import USDCent
+from generalresearch.managers.thl.contest_manager import ContestManager
+from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
+from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+from generalresearch.managers.thl.user_manager.user_manager import UserManager
 from generalresearch.models.thl.contest.definitions import (
     ContestEndReason,
     ContestStatus,
@@ -12,6 +18,7 @@ from generalresearch.models.thl.contest.leaderboard import (
 )
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
+from generalresearch.redis_helper import RedisConfig
 
 
 class TestLeaderboardContestCRUD:
@@ -20,8 +27,8 @@ class TestLeaderboardContestCRUD:
         self,
         contest_create: LeaderboardContestCreate,
         product_user_wallet_yes: Product,
-        thl_lm,
-        contest_manager,
+        thl_ledger_manager: ThlLedgerManager,
+        contest_manager: ContestManager,
     ):
         c = contest_manager.create(
             product_id=product_user_wallet_yes.uuid, contest_create=contest_create
@@ -41,10 +48,10 @@ class TestLeaderboardContestCRUD:
         self,
         user_with_wallet: User,
         contest_in_db: LeaderboardContest,
-        thl_lm,
-        contest_manager,
-        user_manager,
-        thl_redis,
+        thl_ledger_manager: ThlLedgerManager,
+        contest_manager: ContestManager,
+        user_manager: UserManager,
+        thl_redis: RedisConfig,
     ):
         contest = contest_in_db
         user = user_with_wallet
@@ -74,10 +81,10 @@ class TestLeaderboardContestCRUD:
         self,
         user_with_wallet: User,
         contest_in_db: LeaderboardContest,
-        thl_lm,
-        contest_manager,
-        user_manager,
-        thl_redis,
+        thl_ledger_manager: ThlLedgerManager,
+        contest_manager: ContestManager,
+        user_manager: UserManager,
+        thl_redis: RedisConfig,
     ):
         # The contest should be over. We need to trigger it.
         contest = contest_in_db
@@ -96,11 +103,13 @@ class TestLeaderboardContestCRUD:
         )
         assert c.user_rank == 1
 
-        bp_wallet = thl_lm.get_account_or_create_bp_wallet_by_uuid(user.product_id)
-        bp_wallet_balance = thl_lm.get_account_balance(account=bp_wallet)
+        bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet_by_uuid(
+            user.product_id
+        )
+        bp_wallet_balance = thl_ledger_manager.get_account_balance(account=bp_wallet)
         assert bp_wallet_balance == 0
-        user_wallet = thl_lm.get_account_or_create_user_wallet(user=user)
-        user_balance = thl_lm.get_account_balance(user_wallet)
+        user_wallet = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
+        user_balance = thl_ledger_manager.get_account_balance(user_wallet)
         assert user_balance == 0
 
         decision, reason = contest.should_end()
@@ -125,10 +134,12 @@ class TestLeaderboardContestCRUD:
         assert w.prize.cash_amount == USDCent(15_00)
 
         # The prize is $15.00, so the user should get $15, paid by the bp
-        assert thl_lm.get_account_balance(account=user_wallet) == 15_00
+        assert thl_ledger_manager.get_account_balance(account=user_wallet) == 15_00
         # contest wallet is 0, and the BP gets 20c
-        contest_wallet = thl_lm.get_account_or_create_contest_wallet_by_uuid(
-            contest_uuid=c.uuid
+        contest_wallet = (
+            thl_ledger_manager.get_account_or_create_contest_wallet_by_uuid(
+                contest_uuid=c.uuid
+            )
         )
-        assert thl_lm.get_account_balance(account=contest_wallet) == 0
-        assert thl_lm.get_account_balance(account=bp_wallet) == -15_00
+        assert thl_ledger_manager.get_account_balance(account=contest_wallet) == 0
+        assert thl_ledger_manager.get_account_balance(account=bp_wallet) == -15_00

@@ -66,7 +66,7 @@ class TestDFCollectionItemMethods:
             start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
             finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),
-            pg_config=thl_web_rr,
+            pg_config=thl_web_rr: PostgresConfig,
         )
 
         # Has RR, assume unittest server is online

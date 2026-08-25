@@ -21,13 +21,13 @@ class TestEnrichedWall:
     def test_base(
         self,
         client_no_amm,
-        product,
-        user_factory,
+        product: Product,
+        user_factory: Callable[..., User],
         wall_collection,
-        thl_web_rr,
+        thl_web_rr: PostgresConfig,
         session_collection,
         enriched_wall_merge,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
         incite_item_factory,
     ):
         from generalresearch.models.thl.user import User
@@ -35,7 +35,7 @@ class TestEnrichedWall:
         # -- Build & Setup
         delete_df_collection(coll=session_collection)
         delete_df_collection(coll=wall_collection)
-        u1: User = user_factory(product=product, created=session_collection.start)
+        u1: User = user_factory(product=product: Product, created=session_collection.start)
 
         for item in session_collection.items:
             incite_item_factory(item=item, user=u1)
@@ -48,7 +48,7 @@ class TestEnrichedWall:
             client=client_no_amm,
             wall_coll=wall_collection,
             session_coll=session_collection,
-            pg_config=thl_web_rr,
+            pg_config=thl_web_rr: PostgresConfig,
         )
 
         # --
@@ -64,18 +64,18 @@ class TestEnrichedWall:
     def test_base_item(
         self,
         client_no_amm,
-        product,
-        user_factory,
+        product: Product,
+        user_factory: Callable[..., User],
         wall_collection,
         session_collection,
         enriched_wall_merge,
-        delete_df_collection,
-        thl_web_rr,
+        delete_df_collection: Callable[..., None],
+        thl_web_rr: PostgresConfig,
         incite_item_factory,
     ):
         # -- Build & Setup
         delete_df_collection(coll=session_collection)
-        u = user_factory(product=product, created=session_collection.start)
+        u = user_factory(product=product: Product, created=session_collection.start)
 
         for item in session_collection.items:
             incite_item_factory(item=item, user=u)
@@ -87,7 +87,7 @@ class TestEnrichedWall:
             client=client_no_amm,
             wall_coll=wall_collection,
             session_coll=session_collection,
-            pg_config=thl_web_rr,
+            pg_config=thl_web_rr: PostgresConfig,
         )
 
         # --
@@ -106,7 +106,7 @@ class TestEnrichedWall:
                 client=client_no_amm,
                 wall_coll=wall_collection,
                 session_coll=session_collection,
-                pg_config=thl_web_rr,
+                pg_config=thl_web_rr: PostgresConfig,
             )
             modified_time2 = path.stat().st_mtime
 
@@ -172,12 +172,12 @@ class TestEnrichedWallToAdmin:
         client_no_amm,
         wall_collection,
         session_collection,
-        thl_web_rr,
+        thl_web_rr: PostgresConfig,
         user,
         session_factory,
-        delete_df_collection,
-        product_factory,
-        user_factory,
+        delete_df_collection: Callable[..., None],
+        product_factory: Callable[..., Product],
+        user_factory: Callable[..., User],
         start,
     ):
         delete_df_collection(coll=wall_collection)
@@ -203,7 +203,7 @@ class TestEnrichedWallToAdmin:
             client=client_no_amm,
             wall_coll=wall_collection,
             session_coll=session_collection,
-            pg_config=thl_web_rr,
+            pg_config=thl_web_rr: PostgresConfig,
         )
 
         df = enriched_wall_merge.to_admin_response(

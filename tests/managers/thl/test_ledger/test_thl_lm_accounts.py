@@ -1,19 +1,38 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from uuid import uuid4
 
 import pytest
 
+from generalresearch.currency import LedgerCurrency
+from generalresearch.managers.thl.ledger_manager.exceptions import (
+    LedgerAccountDoesntExistError,
+)
+from generalresearch.managers.thl.ledger_manager.ledger import (
+    LedgerAccountManager,
+    LedgerManager,
+)
+from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+from generalresearch.models.thl.ledger import (
+    AccountType,
+    Direction,
+    LedgerAccount,
+)
+from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.user import User
+
 
 class TestThlLedgerManagerAccounts:
 
-    def test_get_account_or_create_user_wallet(self, user, thl_lm, lm):
-        from generalresearch.currency import LedgerCurrency
-        from generalresearch.models.thl.ledger import (
-            AccountType,
-            Direction,
-            LedgerAccount,
-        )
+    def test_get_account_or_create_user_wallet(
+        self,
+        user: User,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+    ):
 
-        account = thl_lm.get_account_or_create_user_wallet(user=user)
+        account = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
         assert isinstance(account, LedgerAccount)
 
         assert user.uuid in account.qualified_name
@@ -25,18 +44,20 @@ class TestThlLedgerManagerAccounts:
         assert account.currency == LedgerCurrency.TEST
 
         # Actually query for it to confirm
-        res = lm.get_account(qualified_name=account.qualified_name, raise_on_error=True)
+        res = ledger_manager.get_account(
+            qualified_name=account.qualified_name, raise_on_error=True
+        )
+        assert isinstance(res, LedgerAccount)
         assert res.model_dump_json() == account.model_dump_json()
 
-    def test_get_account_or_create_bp_wallet(self, product, thl_lm, lm):
-        from generalresearch.currency import LedgerCurrency
-        from generalresearch.models.thl.ledger import (
-            AccountType,
-            Direction,
-            LedgerAccount,
-        )
+    def test_get_account_or_create_bp_wallet(
+        self,
+        product: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+    ):
 
-        account = thl_lm.get_account_or_create_bp_wallet(product=product)
+        account = thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
         assert isinstance(account, LedgerAccount)
 
         assert product.uuid in account.qualified_name
@@ -48,17 +69,22 @@ class TestThlLedgerManagerAccounts:
         assert account.currency == LedgerCurrency.TEST
 
         # Actually query for it to confirm
-        res = lm.get_account(qualified_name=account.qualified_name, raise_on_error=True)
+        res = ledger_manager.get_account(
+            qualified_name=account.qualified_name, raise_on_error=True
+        )
+        assert isinstance(res, LedgerAccount)
         assert res.model_dump_json() == account.model_dump_json()
 
-    def test_get_account_or_create_bp_commission(self, product, thl_lm, lm):
-        from generalresearch.currency import LedgerCurrency
-        from generalresearch.models.thl.ledger import (
-            AccountType,
-            Direction,
-        )
+    def test_get_account_or_create_bp_commission(
+        self,
+        product: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+    ):
 
-        account = thl_lm.get_account_or_create_bp_commission(product=product)
+        account = thl_ledger_manager.get_account_or_create_bp_commission(
+            product=product
+        )
 
         assert product.uuid in account.qualified_name
         assert account.display_name == f"Revenue from commission {product.uuid}"
@@ -69,18 +95,21 @@ class TestThlLedgerManagerAccounts:
         assert account.currency == LedgerCurrency.TEST
 
         # Actually query for it to confirm
-        res = lm.get_account(qualified_name=account.qualified_name, raise_on_error=True)
+        res = ledger_manager.get_account(
+            qualified_name=account.qualified_name, raise_on_error=True
+        )
+        assert isinstance(res, LedgerAccount)
         assert res.model_dump_json() == account.model_dump_json()
 
     @pytest.mark.parametrize("expense", ["tango", "paypal", "gift", "tremendous"])
-    def test_get_account_or_create_bp_expense(self, product, expense, thl_lm, lm):
-        from generalresearch.currency import LedgerCurrency
-        from generalresearch.models.thl.ledger import (
-            AccountType,
-            Direction,
-        )
-
-        account = thl_lm.get_account_or_create_bp_expense(
+    def test_get_account_or_create_bp_expense(
+        self,
+        product: Product,
+        expense,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+    ):
+        account = thl_ledger_manager.get_account_or_create_bp_expense(
             product=product, expense_name=expense
         )
         assert product.uuid in account.qualified_name
@@ -92,17 +121,22 @@ class TestThlLedgerManagerAccounts:
         assert account.currency == LedgerCurrency.TEST
 
         # Actually query for it to confirm
-        res = lm.get_account(qualified_name=account.qualified_name, raise_on_error=True)
+        res = ledger_manager.get_account(
+            qualified_name=account.qualified_name, raise_on_error=True
+        )
+        assert isinstance(res, LedgerAccount)
         assert res.model_dump_json() == account.model_dump_json()
 
-    def test_get_or_create_bp_pending_payout_account(self, product, thl_lm, lm):
-        from generalresearch.currency import LedgerCurrency
-        from generalresearch.models.thl.ledger import (
-            AccountType,
-            Direction,
-        )
+    def test_get_or_create_bp_pending_payout_account(
+        self,
+        product: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+    ):
 
-        account = thl_lm.get_or_create_bp_pending_payout_account(product=product)
+        account = thl_ledger_manager.get_or_create_bp_pending_payout_account(
+            product=product
+        )
 
         assert product.uuid in account.qualified_name
         assert account.display_name == f"BP Wallet Pending {product.uuid}"
@@ -113,11 +147,17 @@ class TestThlLedgerManagerAccounts:
         assert account.currency == LedgerCurrency.TEST
 
         # Actually query for it to confirm
-        res = lm.get_account(qualified_name=account.qualified_name, raise_on_error=True)
+        res = ledger_manager.get_account(
+            qualified_name=account.qualified_name, raise_on_error=True
+        )
+        assert isinstance(res, LedgerAccount)
         assert res.model_dump_json() == account.model_dump_json()
 
     def test_get_account_task_complete_revenue_raises(
-        self, delete_ledger_db, thl_lm, lm
+        self,
+        delete_ledger_db: Callable[..., None],
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
     ):
         from generalresearch.managers.thl.ledger_manager.exceptions import (
             LedgerAccountDoesntExistError,
@@ -126,63 +166,75 @@ class TestThlLedgerManagerAccounts:
         delete_ledger_db()
 
         with pytest.raises(expected_exception=LedgerAccountDoesntExistError):
-            thl_lm.get_account_task_complete_revenue()
+            thl_ledger_manager.get_account_task_complete_revenue()
 
     def test_get_account_task_complete_revenue(
-        self, account_cash, account_revenue_task_complete, thl_lm, lm
+        self,
+        thl_ledger_manager: ThlLedgerManager,
     ):
         from generalresearch.models.thl.ledger import (
             AccountType,
             LedgerAccount,
         )
 
-        res = thl_lm.get_account_task_complete_revenue()
+        res = thl_ledger_manager.get_account_task_complete_revenue()
         assert isinstance(res, LedgerAccount)
         assert res.reference_type is None
         assert res.reference_uuid is None
         assert res.account_type == AccountType.REVENUE
         assert res.display_name == "Cash flow task complete"
 
-    def test_get_account_cash_raises(self, delete_ledger_db, thl_lm, lm):
-        from generalresearch.managers.thl.ledger_manager.exceptions import (
-            LedgerAccountDoesntExistError,
-        )
+    def test_get_account_cash_raises(
+        self,
+        delete_ledger_db: Callable[..., None],
+        thl_ledger_manager: ThlLedgerManager,
+    ):
 
         delete_ledger_db()
 
         with pytest.raises(expected_exception=LedgerAccountDoesntExistError):
-            thl_lm.get_account_cash()
+            thl_ledger_manager.get_account_cash()
 
-    def test_get_account_cash(self, account_cash, thl_lm, lm):
+    def test_get_account_cash(
+        self,
+        thl_ledger_manager: ThlLedgerManager,
+    ):
         from generalresearch.models.thl.ledger import (
             AccountType,
             LedgerAccount,
         )
 
-        res = thl_lm.get_account_cash()
+        res = thl_ledger_manager.get_account_cash()
         assert isinstance(res, LedgerAccount)
         assert res.reference_type is None
         assert res.reference_uuid is None
         assert res.account_type == AccountType.CASH
         assert res.display_name == "Operating Cash Account"
 
-    def test_get_accounts(self, setup_accounts, product, user_factory, thl_lm, lm, lam):
-        from generalresearch.managers.thl.ledger_manager.exceptions import (
-            LedgerAccountDoesntExistError,
-        )
-        from generalresearch.models.thl.user import User
+    def test_get_accounts(
+        self,
+        setup_accounts: Callable[..., None],
+        product: Product,
+        user_factory: Callable[..., User],
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        ledger_account_manager: LedgerAccountManager,
+    ):
+        setup_accounts()
 
-        user1: User = user_factory(product=product)
-        user2: User = user_factory(product=product)
+        _: User = user_factory(product=product)
+        _: User = user_factory(product=product)
 
-        account1 = thl_lm.get_account_or_create_bp_wallet(product=product)
+        account1 = thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
 
         # (1) known account and confirm it comes back
-        res = lm.get_account(qualified_name=account1.qualified_name)
+        res = ledger_manager.get_account(qualified_name=account1.qualified_name)
         assert account1.model_dump_json() == res.model_dump_json()
 
         # (2) known accounts and confirm they both come back
-        res = lam.get_accounts(qualified_names=[account1.qualified_name])
+        res = ledger_account_manager.get_accounts(
+            qualified_names=[account1.qualified_name]
+        )
         assert isinstance(res, list)
         assert len(res) == 1
         assert account1 in res
@@ -190,28 +242,34 @@ class TestThlLedgerManagerAccounts:
         # Get 2 known and 1 made up qualified names, and confirm it raises
         # an error
         with pytest.raises(LedgerAccountDoesntExistError):
-            lam.get_accounts(
+            ledger_account_manager.get_accounts(
                 qualified_names=[
                     account1.qualified_name,
                     f"test:bp_wall:{uuid4().hex}",
                 ]
             )
 
-    def test_get_accounts_if_exists(self, product_factory, currency, thl_lm, lm):
-        from generalresearch.models.thl.product import Product
+    def test_get_accounts_if_exists(
+        self,
+        product_factory: Callable[..., Product],
+        currency: LedgerCurrency,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+    ):
 
         p1: Product = product_factory()
         p2: Product = product_factory()
 
-        account1 = thl_lm.get_account_or_create_bp_wallet(product=p1)
-        account2 = thl_lm.get_account_or_create_bp_wallet(product=p2)
+        account1 = thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
+        account2 = thl_ledger_manager.get_account_or_create_bp_wallet(product=p2)
 
         # (1) known account and confirm it comes back
-        res = lm.get_account(qualified_name=account1.qualified_name)
+        res = ledger_manager.get_account(qualified_name=account1.qualified_name)
+        assert isinstance(res, LedgerAccount)
         assert account1.model_dump_json() == res.model_dump_json()
 
         # (2) known accounts and confirm they both come back
-        res = lm.get_accounts(
+        res = ledger_manager.get_accounts(
             qualified_names=[account1.qualified_name, account2.qualified_name]
         )
         assert isinstance(res, list)
@@ -221,7 +279,7 @@ class TestThlLedgerManagerAccounts:
 
         # Get 2 known and 1 made up qualified names, and confirm only 2
         # come back
-        lm.get_accounts_if_exists(
+        ledger_manager.get_accounts_if_exists(
             qualified_names=[
                 account1.qualified_name,
                 account2.qualified_name,
@@ -233,53 +291,49 @@ class TestThlLedgerManagerAccounts:
         assert len(res) == 2
 
         # Confirm an empty array comes back for all unknown qualified names
-        res = lm.get_accounts_if_exists(
+        res = ledger_manager.get_accounts_if_exists(
             qualified_names=[
-                f"{lm.currency.value}:bp_wall:{uuid4().hex}" for i in range(5)
+                f"{ledger_manager.currency.value}:bp_wall:{uuid4().hex}"
+                for _ in range(5)
             ]
         )
         assert isinstance(res, list)
         assert len(res) == 0
 
-    def test_get_accounts_for_products(self, product_factory, thl_lm, lm):
-        from generalresearch.managers.thl.ledger_manager.exceptions import (
-            LedgerAccountDoesntExistError,
-        )
-        from generalresearch.models.thl.ledger import (
-            LedgerAccount,
-        )
-
+    def test_get_accounts_for_products(
+        self,
+        product_factory: Callable[..., Product],
+        thl_ledger_manager: ThlLedgerManager,
+    ):
         # Create 5 Products
         product_uuids = []
-        for i in range(5):
+        for _ in range(5):
             _p = product_factory()
             product_uuids.append(_p.uuid)
 
         # Confirm that this fails.. because none of those accounts have been
         #   created yet
         with pytest.raises(expected_exception=LedgerAccountDoesntExistError):
-            thl_lm.get_accounts_bp_wallet_for_products(product_uuids=product_uuids)
+            thl_ledger_manager.get_accounts_bp_wallet_for_products(
+                product_uuids=product_uuids
+            )
 
         # Create the bp_wallet accounts and then try again
         for p_uuid in product_uuids:
-            thl_lm.get_account_or_create_bp_wallet_by_uuid(product_uuid=p_uuid)
+            thl_ledger_manager.get_account_or_create_bp_wallet_by_uuid(
+                product_uuid=p_uuid
+            )
 
-        res = thl_lm.get_accounts_bp_wallet_for_products(product_uuids=product_uuids)
+        res = thl_ledger_manager.get_accounts_bp_wallet_for_products(
+            product_uuids=product_uuids
+        )
         assert len(res) == len(product_uuids)
         assert all([isinstance(i, LedgerAccount) for i in res])
 
 
 class TestLedgerAccountManager:
 
-    def test_get_or_create(self, thl_lm, lm, lam):
-        from generalresearch.managers.thl.ledger_manager.exceptions import (
-            LedgerAccountDoesntExistError,
-        )
-        from generalresearch.models.thl.ledger import (
-            AccountType,
-            Direction,
-            LedgerAccount,
-        )
+    def test_get_or_create(self, ledger_account_manager: LedgerAccountManager):
 
         u = uuid4().hex
         name = f"test-{u[:8]}"
@@ -306,39 +360,42 @@ class TestLedgerAccountManager:
         assert isinstance(instance, LedgerAccount)
         assert instance.reference_uuid == u
 
-    def test_get(self, user, thl_lm, lm, lam):
-        from generalresearch.managers.thl.ledger_manager.exceptions import (
-            LedgerAccountDoesntExistError,
-        )
-        from generalresearch.models.thl.ledger import (
-            AccountType,
-            LedgerAccount,
-        )
+    def test_get(
+        self,
+        user: User,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        ledger_account_manager: LedgerAccountManager,
+    ):
 
         with pytest.raises(LedgerAccountDoesntExistError):
-            lam.get_account(qualified_name=f"test:bp_wallet:{user.product.id}")
+            ledger_account_manager.get_account(
+                qualified_name=f"test:bp_wallet:{user.product.id}"
+            )
 
-        thl_lm.get_account_or_create_bp_wallet(product=user.product)
-        account = lam.get_account(qualified_name=f"test:bp_wallet:{user.product.id}")
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=user.product)
+        account = ledger_account_manager.get_account(
+            qualified_name=f"test:bp_wallet:{user.product.id}"
+        )
 
         assert isinstance(account, LedgerAccount)
         assert AccountType.BP_WALLET == account.account_type
         assert user.product.uuid == account.reference_uuid
 
-    def test_get_many(self, product_factory, thl_lm, lm, lam, currency):
-        from generalresearch.managers.thl.ledger_manager.exceptions import (
-            LedgerAccountDoesntExistError,
-        )
-        from generalresearch.models.thl.product import Product
-
+    def test_get_many(
+        self,
+        product_factory: Callable[..., Product],
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_account_manager: LedgerAccountManager,
+    ):
         p1: Product = product_factory()
         p2: Product = product_factory()
 
-        account1 = thl_lm.get_account_or_create_bp_wallet(product=p1)
-        account2 = thl_lm.get_account_or_create_bp_wallet(product=p2)
+        account1 = thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
+        account2 = thl_ledger_manager.get_account_or_create_bp_wallet(product=p2)
 
         # Get 1 known account and confirm it comes back
-        res = lam.get_account_many(
+        res = ledger_account_manager.get_account_many(
             qualified_names=[account1.qualified_name, account2.qualified_name]
         )
         assert isinstance(res, list)
@@ -346,7 +403,7 @@ class TestLedgerAccountManager:
         assert account1 in res
 
         # Get 2 known accounts and confirm they both come back
-        res = lam.get_account_many(
+        res = ledger_account_manager.get_account_many(
             qualified_names=[account1.qualified_name, account2.qualified_name]
         )
         assert isinstance(res, list)
@@ -356,7 +413,7 @@ class TestLedgerAccountManager:
 
         # Get 2 known and 1 made up qualified names, and confirm only 2 come
         # back. Don't raise on error, so we can confirm the array is "short"
-        res = lam.get_account_many(
+        res = ledger_account_manager.get_account_many(
             qualified_names=[
                 account1.qualified_name,
                 account2.qualified_name,
@@ -369,7 +426,7 @@ class TestLedgerAccountManager:
 
         # Same as above, but confirm the raise works on checking res length
         with pytest.raises(LedgerAccountDoesntExistError):
-            lam.get_account_many(
+            ledger_account_manager.get_account_many(
                 qualified_names=[
                     account1.qualified_name,
                     account2.qualified_name,
@@ -379,19 +436,14 @@ class TestLedgerAccountManager:
             )
 
         # Confirm an empty array comes back for all unknown qualified names
-        res = lam.get_account_many(
-            qualified_names=[f"test:bp_wall:{uuid4().hex}" for i in range(5)],
+        res = ledger_account_manager.get_account_many(
+            qualified_names=[f"test:bp_wall:{uuid4().hex}" for _ in range(5)],
             raise_on_error=False,
         )
         assert isinstance(res, list)
         assert len(res) == 0
 
-    def test_create_account(self, thl_lm, lm, lam):
-        from generalresearch.models.thl.ledger import (
-            AccountType,
-            Direction,
-            LedgerAccount,
-        )
+    def test_create_account(self, ledger_account_manager: LedgerAccountManager):
 
         u = uuid4().hex
         name = f"test-{u[:8]}"
@@ -406,6 +458,6 @@ class TestLedgerAccountManager:
             reference_uuid=u,
         )
 
-        lam.create_account(account=account)
-        assert lam.get_account(f"test:bp_wallet:{u}") == account
-        assert lam.get_account_or_create(account) == account
+        ledger_account_manager.create_account(account=account)
+        assert ledger_account_manager.get_account(f"test:bp_wallet:{u}") == account
+        assert ledger_account_manager.get_account_or_create(account) == account

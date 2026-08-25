@@ -4,7 +4,7 @@ import pytest
 
 from generalresearch.models import Source
 from generalresearch.models.thl.product import (
-    Product,
+    product: Product,
     ProfilingConfig,
     SourceConfig,
     SourcesConfig,
@@ -178,7 +178,13 @@ class TestProductManager:
         ]
     ]
 
-    def test_get_by_uuid1(self, product_manager, team, product, product_factory):
+    def test_get_by_uuid1(
+        self,
+        product_manager: ProductManager,
+        team,
+        product: Product,
+        product_factory,
+    ):
         p1 = product_factory(team=team)
         instance = product_manager.get_by_uuid(product_uuid=p1.uuid)
         assert instance.id == p1.id
@@ -191,7 +197,7 @@ class TestProductManager:
         assert 0 == instance.user_create_config.min_hourly_create_limit
         assert instance.user_create_config.max_hourly_create_limit is None
 
-    def test_get_by_uuid2(self, product_manager, product_factory):
+    def test_get_by_uuid2(self, product_manager: ProductManager, product_factory):
         p2 = product_factory()
         instance = product_manager.get_by_uuid(p2.id)
         assert instance.id, p2.id
@@ -203,7 +209,7 @@ class TestProductManager:
         assert 0 == instance.user_create_config.min_hourly_create_limit
         assert instance.user_create_config.max_hourly_create_limit is None
 
-    def test_get_by_uuid3(self, product_manager, product_factory):
+    def test_get_by_uuid3(self, product_manager: ProductManager, product_factory):
         p3 = product_factory()
         instance = product_manager.get_by_uuid(p3.id)
         assert instance.id == p3.id

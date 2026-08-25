@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from decimal import Decimal
 from random import randint
 from uuid import uuid4
@@ -5,9 +7,12 @@ from uuid import uuid4
 import pytest
 
 from generalresearch.currency import LedgerCurrency
-from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
+from generalresearch.managers.thl.ledger_manager.ledger import (
+    LedgerManager,
+)
 from generalresearch.models.thl.ledger import (
     Direction,
+    LedgerAccount,
     LedgerEntry,
     LedgerTransaction,
 )
@@ -15,7 +20,7 @@ from generalresearch.models.thl.ledger import (
 
 class TestLedgerManagerCreateTx:
 
-    def test_create_account_error_permission(self, lm):
+    def test_create_account_error_permission(self, ledger_manager: LedgerManager):
         """Confirm that the Permission values that are set on the Ledger Manger
         allow the Creation action to occur.
         """
@@ -23,11 +28,11 @@ class TestLedgerManagerCreateTx:
 
         # (1) With no Permissions defined
         test_lm = LedgerManager(
-            pg_config=lm.pg_config,
+            pg_config=ledger_manager.pg_config,
             permissions=[],
-            redis_config=lm.redis_config,
-            cache_prefix=lm.cache_prefix,
-            testing=lm.testing,
+            redis_config=ledger_manager.redis_config,
+            cache_prefix=ledger_manager.cache_prefix,
+            testing=ledger_manager.testing,
         )
 
         with pytest.raises(expected_exception=AssertionError) as excinfo:
@@ -37,9 +42,14 @@ class TestLedgerManagerCreateTx:
             == "LedgerTransactionManager has insufficient Permissions"
         )
 
-    def test_create_assertions(self, ledger_account_debit, ledger_account_credit, lm):
+    def test_create_assertions(
+        self,
+        ledger_account_debit: LedgerAccount,
+        ledger_account_credit: LedgerAccount,
+        ledger_manager: LedgerManager,
+    ):
         with pytest.raises(expected_exception=ValueError) as excinfo:
-            lm.create_tx(
+            ledger_manager.create_tx(
                 entries=[
                     {
                         "direction": Direction.CREDIT,
@@ -53,7 +63,12 @@ class TestLedgerManagerCreateTx:
             in str(excinfo.value)
         )
 
-    def test_create(self, ledger_account_credit, ledger_account_debit, lm):
+    def test_create(
+        self,
+        ledger_account_credit: LedgerAccount,
+        ledger_account_debit: LedgerAccount,
+        ledger_manager: LedgerManager,
+    ):
         amount = int(Decimal("1.00") * 100)
 
         entries = [
@@ -70,15 +85,20 @@ class TestLedgerManagerCreateTx:
         ]
 
         # Create a Transaction and validate the operation was successful
-        tx = lm.create_tx(entries=entries)
+        tx = ledger_manager.create_tx(entries=entries)
         assert isinstance(tx, LedgerTransaction)
 
-        res = lm.get_tx_by_id(transaction_id=tx.id)
+        res = ledger_manager.get_tx_by_id(transaction_id=tx.id)
         assert isinstance(res, LedgerTransaction)
         assert len(res.entries) == 2
         assert tx.id == res.id
 
-    def test_create_and_reverse(self, ledger_account_credit, ledger_account_debit, lm):
+    def test_create_and_reverse(
+        self,
+        ledger_account_credit: LedgerAccount,
+        ledger_account_debit: LedgerAccount,
+        ledger_manager: LedgerManager,
+    ):
         amount = int(Decimal("1.00") * 100)
 
         entries = [
@@ -94,13 +114,13 @@ class TestLedgerManagerCreateTx:
             ),
         ]
 
-        tx = lm.create_tx(entries=entries)
-        res = lm.get_tx_by_id(transaction_id=tx.id)
-        assert res.id == tx.id
+        tx = ledger_manager.create_tx(entries=entries)
+        res = ledger_manager.get_tx_by_id(transaction_id=tx.id)
+        assert ledger_manager.id == tx.id
 
-        assert lm.get_account_balance(account=ledger_account_credit) == 100
-        assert lm.get_account_balance(account=ledger_account_debit) == 100
-        assert lm.check_ledger_balanced() is True
+        assert ledger_manager.get_account_balance(account=ledger_account_credit) == 100
+        assert ledger_manager.get_account_balance(account=ledger_account_debit) == 100
+        assert ledger_manager.check_ledger_balanced() is True
 
         # Reverse it
         entries = [
@@ -116,13 +136,13 @@ class TestLedgerManagerCreateTx:
             ),
         ]
 
-        tx = lm.create_tx(entries=entries)
-        res = lm.get_tx_by_id(transaction_id=tx.id)
+        tx = ledger_manager.create_tx(entries=entries)
+        res = ledger_manager.get_tx_by_id(transaction_id=tx.id)
         assert res.id == tx.id
 
-        assert lm.get_account_balance(ledger_account_credit) == 0
-        assert lm.get_account_balance(ledger_account_debit) == 0
-        assert lm.check_ledger_balanced()
+        assert ledger_manager.get_account_balance(ledger_account_credit) == 0
+        assert ledger_manager.get_account_balance(ledger_account_debit) == 0
+        assert ledger_manager.check_ledger_balanced()
 
         # subtract again
         entries = [
@@ -137,52 +157,60 @@ class TestLedgerManagerCreateTx:
                 amount=amount,
             ),
         ]
-        tx = lm.create_tx(entries=entries)
-        res = lm.get_tx_by_id(transaction_id=tx.id)
+        tx = ledger_manager.create_tx(entries=entries)
+        res = ledger_manager.get_tx_by_id(transaction_id=tx.id)
         assert res.id == tx.id
 
-        assert lm.get_account_balance(ledger_account_credit) == -100
-        assert lm.get_account_balance(ledger_account_debit) == -100
-        assert lm.check_ledger_balanced()
+        assert ledger_manager.get_account_balance(ledger_account_credit) == -100
+        assert ledger_manager.get_account_balance(ledger_account_debit) == -100
+        assert ledger_manager.check_ledger_balanced()
 
 
 class TestLedgerManagerGetTx:
 
     # @pytest.mark.parametrize("currency", [LedgerCurrency.TEST], indirect=True)
-    def test_get_tx_by_id(self, ledger_tx, lm):
+    def test_get_tx_by_id(
+        self, ledger_tx: LedgerTransaction, ledger_manager: LedgerManager
+    ):
         with pytest.raises(expected_exception=AssertionError):
-            lm.get_tx_by_id(transaction_id=ledger_tx)
+            ledger_manager.get_tx_by_id(transaction_id=ledger_tx)
 
-        res = lm.get_tx_by_id(transaction_id=ledger_tx.id)
+        res = ledger_manager.get_tx_by_id(transaction_id=ledger_tx.id)
         assert res.id == ledger_tx.id
 
     # @pytest.mark.parametrize("currency", [LedgerCurrency.TEST], indirect=True)
-    def test_get_tx_by_ids(self, ledger_tx, lm):
-        res = lm.get_tx_by_id(transaction_id=ledger_tx.id)
+    def test_get_tx_by_ids(
+        self, ledger_tx: LedgerTransaction, ledger_manager: LedgerManager
+    ):
+        res = ledger_manager.get_tx_by_id(transaction_id=ledger_tx.id)
         assert res.id == ledger_tx.id
 
     @pytest.mark.parametrize(
         "tag", [f"{LedgerCurrency.TEST}:{uuid4().hex}"], indirect=True
     )
-    def test_get_tx_ids_by_tag(self, ledger_tx, tag, lm):
+    def test_get_tx_ids_by_tag(
+        self, ledger_tx: LedgerTransaction, tag: str, ledger_manager: LedgerManager
+    ):
         # (1) search for a random tag
-        res = lm.get_tx_ids_by_tag(tag="aaa:bbb")
+        res = ledger_manager.get_tx_ids_by_tag(tag="aaa:bbb")
         assert isinstance(res, set)
         assert len(res) == 0
 
         # (2) search for the tag that was used during ledger_transaction creation
-        res = lm.get_tx_ids_by_tag(tag=tag)
+        res = ledger_manager.get_tx_ids_by_tag(tag=tag)
         assert isinstance(res, set)
         assert len(res) == 1
 
-    def test_get_tx_by_tag(self, ledger_tx, tag, lm):
+    def test_get_tx_by_tag(
+        self, ledger_tx: LedgerTransaction, tag: str, ledger_manager: LedgerManager
+    ):
         # (1) search for a random tag
-        res = lm.get_tx_by_tag(tag="aaa:bbb")
+        res = ledger_manager.get_tx_by_tag(tag="aaa:bbb")
         assert isinstance(res, list)
         assert len(res) == 0
 
         # (2) search for the tag that was used during ledger_transaction creation
-        res = lm.get_tx_by_tag(tag=tag)
+        res = ledger_manager.get_tx_by_tag(tag=tag)
         assert isinstance(res, list)
         assert len(res) == 1
 
@@ -190,42 +218,60 @@ class TestLedgerManagerGetTx:
         assert ledger_tx.id == res[0].id
 
     def test_get_tx_filtered_by_account(
-        self, ledger_tx, ledger_account, ledger_account_debit, ledger_account_credit, lm
+        self,
+        ledger_tx: LedgerTransaction,
+        ledger_account: LedgerAccount,
+        ledger_account_debit: LedgerAccount,
+        ledger_account_credit: LedgerAccount,
+        ledger_manager: LedgerManager,
     ):
         # (1) Do basic assertion checks first
         with pytest.raises(expected_exception=AssertionError) as excinfo:
-            lm.get_tx_filtered_by_account(account_uuid=ledger_account)
+            ledger_manager.get_tx_filtered_by_account(account_uuid=ledger_account)
         assert str(excinfo.value) == "account_uuid must be a str"
 
         # (2) This search doesn't return anything because this ledger account
         #   wasn't actually used in the entries for the ledger_transaction
-        res = lm.get_tx_filtered_by_account(account_uuid=ledger_account.uuid)
+        res = ledger_manager.get_tx_filtered_by_account(
+            account_uuid=ledger_account.uuid
+        )
         assert len(res) == 0
 
         # (3) Either the credit or the debit example ledger_accounts wll work
         #    to find this transaction because they're both used in the entries
-        res = lm.get_tx_filtered_by_account(account_uuid=ledger_account_debit.uuid)
+        res = ledger_manager.get_tx_filtered_by_account(
+            account_uuid=ledger_account_debit.uuid
+        )
         assert len(res) == 1
         assert res[0].id == ledger_tx.id
 
-        res = lm.get_tx_filtered_by_account(account_uuid=ledger_account_credit.uuid)
+        res = ledger_manager.get_tx_filtered_by_account(
+            account_uuid=ledger_account_credit.uuid
+        )
         assert len(res) == 1
         assert ledger_tx.id == res[0].id
 
-        res2 = lm.get_tx_by_id(transaction_id=ledger_tx.id)
+        res2 = ledger_manager.get_tx_by_id(transaction_id=ledger_tx.id)
         assert res2.model_dump_json() == res[0].model_dump_json()
 
-    def test_filter_metadata(self, ledger_tx, tx_metadata, lm):
+    def test_filter_metadata(
+        self,
+        ledger_tx: LedgerTransaction,
+        tx_metadata: dict[str, str] | None,
+        ledger_manager: LedgerManager,
+    ):
         key, value = next(iter(tx_metadata.items()))
 
         # (1) Confirm a random key,value pair returns nothing
-        res = lm.get_tx_filtered_by_metadata(
+        res = ledger_manager.get_tx_filtered_by_metadata(
             metadata_key=f"key-{uuid4().hex[:10]}", metadata_value=uuid4().hex[:12]
         )
         assert len(res) == 0
 
         # (2) confirm a key,value pair return the correct results
-        res = lm.get_tx_filtered_by_metadata(metadata_key=key, metadata_value=value)
+        res = ledger_manager.get_tx_filtered_by_metadata(
+            metadata_key=key, metadata_value=value
+        )
         assert len(res) == 1
 
     #     assert 0 == THL_lm.get_filtered_account_balance(account2, "thl_wall", "ccc")
