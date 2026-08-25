@@ -42,7 +42,7 @@ class TestAwareDatetimeISO:
         AwareDatetimeISOModel.model_validate_json(t.model_dump_json())
 
     def test_no_tz(self):
-        dt = datetime(2023, 10, 10, 1, 1, 1)
+        dt = datetime(2023, 10, 10, 1, 1, 1)  # noqa
 
         with pytest.raises(expected_exception=ValidationError):
             AwareDatetimeISOModel(dt=dt, dt_optional=None)

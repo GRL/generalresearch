@@ -174,9 +174,9 @@ class TestSurvey:
         qs = sorted(qs, key=lambda x: x.importance.task_count if x.importance else 0)
         # qd = {q.id: q for q in qs}
 
-        q = [x for x in qs if x.ext_question_id == "i:adhoc_13126"][0]
+        q = next(x for x in qs if x.ext_question_id == "i:adhoc_13126")
         q.explanation_template = "You have been diagnosed with: {answer}."
-        q = [x for x in qs if x.ext_question_id == "gr:gender"][0]
+        q = next(x for x in qs if x.ext_question_id == "gr:gender")
         q.explanation_template = "Your gender is {answer}."
 
         ecs = []
@@ -251,9 +251,9 @@ class TestSurveyStat:
             survey_stats.append(ss)
         print(len(survey_stats))
         print(survey_stats[12].natural_key, survey_stats[2000].natural_key)
-        print(f"----a-----: {datetime.now().isoformat()}")
+        print(f"----a-----: {datetime.now(tz=UTC).isoformat()}")
         res = surveystat_manager.update_or_create(survey_stats)
-        print(f"----b-----: {datetime.now().isoformat()}")
+        print(f"----b-----: {datetime.now(tz=UTC).isoformat()}")
         assert len(res) == 20_000
         return
 

@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 
+from generalresearch.managers.thl.product import ProductManager
 from generalresearch.managers.thl.user_manager import (
     UserCreateNotAllowedError,
     get_bp_user_create_limit_hourly,
@@ -15,8 +16,10 @@ from generalresearch.managers.thl.user_manager.rate_limit import (
 from generalresearch.managers.thl.user_manager.user_manager import (
     UserManager,
 )
+from generalresearch.managers.thl.userhealth import AuditLogManager
 from generalresearch.models.thl.product import Product, UserCreateConfig
 from generalresearch.models.thl.user import User
+from generalresearch.pg_helper import PostgresConfig
 
 logger = logging.getLogger()
 
@@ -83,7 +86,7 @@ class TestUserManager:
 
 class TestBlockUserManager:
 
-    def test_block_user(self, product, user_manager: UserManager):
+    def test_block_user(self, product: Product, user_manager: UserManager):
         product_user_id = f"user-{uuid4().hex[:10]}"
 
         # mysql_user_manager to skip user creation limit check
@@ -109,7 +112,9 @@ class TestBlockUserManager:
         user = user_manager.get_user(user_id=user.user_id)
         assert user.blocked
 
-    def test_block_user_whitelist(self, product, user_manager, thl_web_rw):
+    def test_block_user_whitelist(
+        self, product: Product, user_manager: UserManager, thl_web_rw: PostgresConfig
+    ):
         product_user_id = f"user-{uuid4().hex[:10]}"
 
         # mysql_user_manager to skip user creation limit check
@@ -135,7 +140,12 @@ class TestBlockUserManager:
 
 class TestCreateUserManager:
 
-    def test_create_user(self, product_manager, thl_web_rw, user_manager):
+    def test_create_user(
+        self,
+        product_manager: ProductManager,
+        thl_web_rw: PostgresConfig,
+        user_manager: UserManager,
+    ):
         product: Product = product_manager.create_dummy(
             user_create_config=UserCreateConfig(
                 min_hourly_create_limit=10, max_hourly_create_limit=69
@@ -172,7 +182,9 @@ class TestCreateUserManager:
         assert u2.user_id == user.user_id
         assert u2.uuid == user.uuid
 
-    def test_create_user_integrity_error(self, product_manager, user_manager, caplog):
+    def test_create_user_integrity_error(
+        self, product_manager, user_manager: UserManager, caplog
+    ):
         product: Product = product_manager.create_dummy(
             product_id=uuid4().hex,
             team_id=uuid4().hex,
@@ -213,7 +225,9 @@ class TestCreateUserManager:
 
         assert user1 == user2
 
-    def test_raise_allow_user_create(self, product_manager, user_manager):
+    def test_raise_allow_user_create(
+        self, product_manager: ProductManager, user_manager: UserManager
+    ):
         rand_num = randint(25, 200)
         product: Product = product_manager.create_dummy(
             product_id=uuid4().hex,
@@ -250,7 +264,7 @@ class TestCreateUserManager:
         user_manager.user_manager_limiter.storage.clear(key=key)
 
         n = 0
-        with pytest.raises(expected_exception=UserCreateNotAllowedError) as cm:
+        with pytest.raises(expected_exception=UserCreateNotAllowedError):
             for n, _ in enumerate(range(rl_value + 5)):
                 user_manager.user_manager_limiter.raise_allow_user_create(
                     product=product
@@ -260,7 +274,9 @@ class TestCreateUserManager:
 
 class TestUserManagerMethods:
 
-    def test_audit_log(self, user_manager, user, audit_log_manager):
+    def test_audit_log(
+        self, user_manager: UserManager, user: User, audit_log_manager: AuditLogManager
+    ):
         from generalresearch.models.thl.userhealth import AuditLog
 
         res = audit_log_manager.filter_by_user_id(user_id=user.user_id)

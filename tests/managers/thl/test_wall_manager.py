@@ -233,7 +233,7 @@ class TestWallCacheManager:
         attempts = wall_cache_manager.get_attempts(user_id=user.user_id)
         assert len(attempts) == 1
 
-        wall2 = wall_manager.create_dummy(
+        wall_manager.create_dummy(
             session_id=session.id,
             user_id=session.user_id,
             started=start2,
@@ -260,7 +260,7 @@ class TestWallCacheManager:
         wall_cache_manager.update_attempts_redis_(attempts10000, user_id=user.user_id)
 
         session = session_manager.create_dummy(started=start3, user=user)
-        wall3 = wall_manager.create_dummy(
+        wall_manager.create_dummy(
             session_id=session.id,
             user_id=session.user_id,
             started=start3,
@@ -274,5 +274,5 @@ class TestWallCacheManager:
         redis_key = wall_cache_manager.get_cache_key_(user_id=user.user_id)
         assert wall_cache_manager.redis_client.llen(redis_key) == 5000
 
-        assert len(attempts) == 5000
+        assert len(attempts) == 5_000
         assert attempts[0].req_survey_id == "33333"

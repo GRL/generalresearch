@@ -1181,7 +1181,7 @@ class TestThlLedgerManagerAdj:
         thl_lm.create_tx_task_complete(wall=w2, user=user, created=w2.started)
 
         status, status_code_1 = s1.determine_session_status()
-        thl_net, commission_amount, bp_pay, user_pay = s1.determine_payments()
+        _, _, bp_pay, user_pay = s1.determine_payments()
         session_manager.finish_with_status(
             session=s1,
             status=status,
@@ -1251,7 +1251,7 @@ class TestThlLedgerManagerAdj:
             user=user,
             created=utc_hour_ago + timedelta(minutes=45),
         )
-        new_status, new_payout, new_user_payout = s1.determine_new_status_and_payouts()
+        _, _, _ = s1.determine_new_status_and_payouts()
         s1.adjust_status()
         thl_lm.create_tx_bp_adjustment(session=s1)
         assert 380 == thl_lm.get_account_balance(bp_wallet_account)
@@ -1261,13 +1261,13 @@ class TestThlLedgerManagerAdj:
 
     def test_create_tx_bp_adjustment_small(
         self,
-        user_factory,
+        user_factory: Callable[..., User],
         product_user_wallet_no,
         create_main_accounts,
         delete_ledger_db,
-        thl_lm,
-        lm,
-        utc_hour_ago,
+        thl_ledger_manager,
+        ledger_manager,
+        utc_hour_ago: datetime,
         currency,
     ):
         delete_ledger_db()
@@ -1296,7 +1296,7 @@ class TestThlLedgerManagerAdj:
 
         session = Session(started=wall1.started, user=user, wall_events=[wall1])
         status, status_code_1 = session.determine_session_status()
-        thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
+        _, _, bp_pay, user_pay = session.determine_payments()
         session.update(
             status=status,
             status_code_1=status_code_1,

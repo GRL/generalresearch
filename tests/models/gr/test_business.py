@@ -4,6 +4,7 @@ import os
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 from uuid import uuid4
 
 import pandas as pd
@@ -17,6 +18,8 @@ from distributed.utils_test import (
 from pytest import approx
 
 from generalresearch.currency import USDCent
+from generalresearch.incite.base import GRLDatasets
+from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 from generalresearch.managers.gr.business import BusinessBankAccountManager
 from generalresearch.managers.gr.team import TeamManager
 from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
@@ -31,7 +34,7 @@ from generalresearch.models.gr.business import (
     BusinessBankAccount,
     BusinessContact,
 )
-from generalresearch.models.gr.team import Membership, Team
+from generalresearch.models.gr.team import Team
 from generalresearch.models.thl.finance import (
     BusinessBalances,
     ProductBalances,
@@ -121,7 +124,7 @@ class TestBusiness:
         ledger_manager: LedgerManager,
         thl_ledger_manager: ThlLedgerManager,
         business_payout_event_manager: BusinessPayoutEventManager,
-        bp_payout_factory: Callable[..., Bus],
+        bp_payout_factory: Callable[..., BusinessPayoutEventManager],
         start: datetime,
         user_factory: Callable[..., User],
         session_with_tx_factory: Callable[..., Session],
@@ -244,8 +247,8 @@ class TestBusiness:
         assert business.products[0].uuid == p1.uuid
 
         # Add two more, but list is still one until we prefetch
-        p2 = product_factory(business=business)
-        p3 = product_factory(business=business)
+        product_factory(business=business)
+        product_factory(business=business)
         assert len(business.products) == 1
 
         business.prefetch_products(thl_pg_config=thl_web_rr)
@@ -262,11 +265,11 @@ class TestBusiness:
     def test_balance(
         self,
         business: Business,
-        mnt_filepath,
+        mnt_filepath: GRLDatasets,
         client_no_amm: DaskClient,
         thl_web_rr: PostgresConfig,
         ledger_manager: LedgerManager,
-        pop_ledger_merge,
+        pop_ledger_merge: PopLedgerMerge,
     ):
         assert business.balance is None
 
@@ -357,6 +360,7 @@ class TestBusiness:
             thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
+        assert isinstance(business.payouts, list)
         assert len(business.payouts) == 1
         assert len(business.payouts[0].bp_payouts) == 2
         assert sum([p.amount for p in business.payouts]) == 246
@@ -407,6 +411,7 @@ class TestBusiness:
             bpem=business_payout_event_manager,
         )
 
+        assert isinstance(business.payouts, list)
         assert len(business.payouts) == 1
         assert len(business.payouts[0].bp_payouts) == 3
         assert business.payouts_total == USDCent(76)
@@ -417,9 +422,9 @@ class TestBusiness:
         business: Business,
         thl_web_rr: PostgresConfig,
         thl_ledger_manager: ThlLedgerManager,
-        mnt_filepath,
+        mnt_filepath: GRLDatasets,
         client_no_amm: DaskClient,
-        pop_ledger_merge,
+        pop_ledger_merge: PopLedgerMerge,
     ):
         assert business.pop_financial is None
         business.prebuild_pop_financial(
@@ -479,20 +484,15 @@ class TestBusinessBalance:
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
         mnt_filepath,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
-        thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
-        duration: timedelta,
-        offset,
         start: datetime,
         thl_web_rr: PostgresConfig,
-        payout_event_manager: PayoutEventManager,
         session_with_tx_factory: Callable[..., Session],
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
         client_no_amm: DaskClient,
         ledger_collection,
-        pop_ledger_merge,
+        pop_ledger_merge: PopLedgerMerge,
         delete_df_collection: Callable[..., None],
     ):
         delete_ledger_db()
@@ -544,15 +544,10 @@ class TestBusinessBalance:
         business: Business,
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
-        mnt_filepath,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        mnt_filepath: GRLDatasets,
         ledger_manager: LedgerManager,
-        thl_ledger_manager: ThlLedgerManager,
-        duration: timedelta,
-        offset,
         start: datetime,
         thl_web_rr: PostgresConfig,
-        payout_event_manager: PayoutEventManager,
         session_with_tx_factory: Callable[..., Session],
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
@@ -633,12 +628,10 @@ class TestBusinessBalance:
         business: Business,
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
-        mnt_filepath,
+        mnt_filepath: GRLDatasets,
         bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
-        duration: timedelta,
-        offset,
         start: datetime,
         thl_web_rr: PostgresConfig,
         payout_event_manager: PayoutEventManager,
@@ -709,12 +702,10 @@ class TestBusinessBalance:
         business: Business,
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
-        mnt_filepath,
+        mnt_filepath: GRLDatasets,
         bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
         ledger_manager: LedgerManager,
         thl_ledger_manager: ThlLedgerManager,
-        duration: timedelta,
-        offset,
         start: datetime,
         thl_web_rr: PostgresConfig,
         payout_event_manager: PayoutEventManager,
@@ -724,8 +715,6 @@ class TestBusinessBalance:
         ledger_collection,
         task_adj_collection,
         pop_ledger_merge: PopLedgerMerge,
-        wall_manager: WallManager,
-        session_manager: SessionManager,
         adj_to_fail_with_tx_factory: Callable[..., None],
         delete_df_collection: Callable[..., None],
     ):
@@ -837,12 +826,9 @@ class TestBusinessBalance:
 
     def test_neg_balance_cache(
         self,
-        product: Product,
-        mnt_filepath,
+        mnt_filepath: GRLDatasets,
         thl_ledger_manager: ThlLedgerManager,
         client_no_amm: DaskClient,
-        thl_redis_config: RedisConfig,
-        brokerage_product_payout_event_manager,
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
         delete_df_collection: Callable[..., None],
@@ -913,13 +899,14 @@ class TestBusinessBalance:
 
         business.prebuild_balance(
             thl_pg_config=thl_web_rr,
-            lm=lm,
+            lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
         )
 
         # Check Product 1
+        assert isinstance(business.balance, BusinessBalances)
         pb1 = business.balance.product_balances[0]
         assert pb1.product_id == p1.uuid
         assert pb1.payout == 71
@@ -962,25 +949,21 @@ class TestBusinessBalance:
         business: Business,
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
-        mnt_filepath,
+        mnt_filepath: GRLDatasets,
         bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
-        duration: timedelta,
-        offset,
         start: datetime,
         thl_web_rr: PostgresConfig,
         payout_event_manager,
         session_with_tx_factory,
-        delete_ledger_db,
+        delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
         client_no_amm: DaskClient,
         ledger_collection,
         task_adj_collection,
-        pop_ledger_merge,
-        wall_manager: WallManager,
-        session_manager: SessionManager,
-        adj_to_fail_with_tx_factory,
+        pop_ledger_merge: PopLedgerMerge,
+        adj_to_fail_with_tx_factory: Callable[..., None],
         delete_df_collection: Callable[..., None],
     ):
         """
@@ -1205,22 +1188,21 @@ class TestBusinessMethods:
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         client_no_amm: DaskClient,
-        mnt_filepath,
+        mnt_filepath: GRLDatasets,
         ledger_manager: LedgerManager,
         thl_ledger_manager: ThlLedgerManager,
         business_payout_event_manager,
         product_factory: Callable[..., Product],
-        membership_factory: Callable[..., Membership],
         team: Team,
         session_with_tx_factory: Callable[..., Session],
         user_factory: Callable[..., User],
         ledger_collection,
-        pop_ledger_merge,
+        pop_ledger_merge: PopLedgerMerge,
         utc_60days_ago: datetime,
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
         gr_redis_config: RedisConfig,
-        mnt_gr_api_dir,
+        mnt_gr_api_dir: Path,
     ):
         assert gr_redis.get(name=business.cache_key) is None
 
@@ -1263,17 +1245,13 @@ class TestBusinessMethods:
 
     def test_set_cache_business(
         self,
-        gr_user: GRUser,
         business: Business,
-        gr_user_token: GRUserToken,
-        gr_redis: RedisConfig,
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
         team: Team,
-        membership_factory: Callable[..., Membership],
         client_no_amm: DaskClient,
-        mnt_filepath,
+        mnt_filepath: GRLDatasets,
         ledger_manager: LedgerManager,
         thl_ledger_manager: ThlLedgerManager,
         business_payout_event_manager,
@@ -1283,10 +1261,10 @@ class TestBusinessMethods:
         session_with_tx_factory: Callable[..., Session],
         ledger_collection,
         team_manager: TeamManager,
-        pop_ledger_merge,
+        pop_ledger_merge: PopLedgerMerge,
         gr_redis_config: RedisConfig,
         utc_60days_ago: datetime,
-        mnt_gr_api_dir,
+        mnt_gr_api_dir: Path,
     ):
         from generalresearch.models.gr.business import Business
 
@@ -1336,12 +1314,16 @@ class TestBusinessMethods:
             gr_redis_config=gr_redis_config,
         )
 
+        assert isinstance(business2, Business)
         assert business.model_dump_json() == business2.model_dump_json()
         # assert isinstance(business2.balance, BusinessBalances)
+        assert isinstance(business2.products, list)
+        assert isinstance(business2.teams, list)
         assert p1.uuid in [p.uuid for p in business2.products]
         assert len(business2.teams) == 1
         assert team.uuid in [t.uuid for t in business2.teams]
 
+        assert isinstance(business2.balance, BusinessBalances)
         assert business2.balance.payout == 48
         assert business2.balance.balance == 48
         assert business2.balance.net == 48
@@ -1354,27 +1336,26 @@ class TestBusinessMethods:
         assert len(business2.bp_accounts) == 1
         assert len(business2.bp_accounts) == len(business2.product_uuids)
 
+        assert isinstance(business2.pop_financial, list)
         assert len(business2.pop_financial) == 1
         assert business2.pop_financial[0].payout == business2.balance.payout
         assert business2.pop_financial[0].net == business2.balance.net
 
     def test_prebuild_enriched_session_parquet(
         self,
-        event_report_request,
         enriched_session_merge,
         client_no_amm: DaskClient,
         wall_collection,
         session_collection,
         thl_web_rr: PostgresConfig,
-        session_report_request,
         user_factory: Callable[..., User],
         start: datetime,
         session_factory: Callable[..., Session],
         product_factory: Callable[..., Product],
         delete_df_collection: Callable[..., None],
         business: Business,
-        mnt_filepath,
-        mnt_gr_api_dir,
+        mnt_filepath: GRLDatasets,
+        mnt_gr_api_dir: Path,
     ):
 
         delete_df_collection(coll=wall_collection)
@@ -1418,22 +1399,19 @@ class TestBusinessMethods:
 
     def test_prebuild_enriched_wall_parquet(
         self,
-        event_report_request,
-        enriched_session_merge,
         enriched_wall_merge,
         client_no_amm: DaskClient,
         wall_collection,
         session_collection,
         thl_web_rr: PostgresConfig,
-        session_report_request,
         user_factory: Callable[..., User],
         start: datetime,
         session_factory: Callable[..., Session],
         product_factory: Callable[..., Product],
         delete_df_collection: Callable[..., None],
         business: Business,
-        mnt_filepath,
-        mnt_gr_api_dir,
+        mnt_filepath: GRLDatasets,
+        mnt_gr_api_dir: Path,
     ):
 
         delete_df_collection(coll=wall_collection)

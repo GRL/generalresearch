@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from generalresearch.config import GRLBaseSettings
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.managers.thl.user_compensate import user_compensate
 from generalresearch.models.thl.definitions import (
@@ -47,7 +48,7 @@ def test_user_txs(
 
     s: Session = session_with_tx_factory(user=user, wall_req_cpi=Decimal("1.00"))
 
-    bribe_uuid = user_compensate(
+    user_compensate(
         ledger_manager=thl_lm,
         user=user,
         amount_int=100,
@@ -213,13 +214,13 @@ def test_user_txs_rolling_balance(
     user_factory: Callable[..., User],
     product_amt_true: Product,
     create_main_accounts,
-    thl_lm,
-    lm,
+    thl_ledger_manager: ThlLedgerManager,
+    ledger_manager: LedgerManager,
     delete_ledger_db: Callable[..., None],
     session_with_tx_factory,
     adj_to_fail_with_tx_factory,
     user_payout_event_manager,
-    settings: GRLSettings,
+    settings: GRLBaseSettings,
 ):
     """
     Creates 3 $1.00 bonuses (postive),
@@ -232,11 +233,11 @@ def test_user_txs_rolling_balance(
     create_main_accounts()
 
     user: User = user_factory(product=product_amt_true)
-    account = thl_lm.get_account_or_create_user_wallet(user)
+    account = thl_ledger_manager.get_account_or_create_user_wallet(user)
 
     for _ in range(3):
         user_compensate(
-            ledger_manager=thl_lm,
+            ledger_manager=thl_ledger_manager,
             user=user,
             amount_int=100,
             skip_flag_check=True,
@@ -250,19 +251,19 @@ def test_user_txs_rolling_balance(
         payout_type=PayoutType.AMT_BONUS,
         request_data={},
     )
-    thl_lm.create_tx_user_payout_request(
+    thl_ledger_manager.create_tx_user_payout_request(
         user=user,
         payout_event=pe,
     )
     for _ in range(3):
         user_compensate(
-            ledger_manager=thl_lm,
+            ledger_manager=thl_ledger_manager,
             user=user,
             amount_int=100,
             skip_flag_check=True,
         )
 
-    txs = thl_lm.get_user_txs(user, page=1, size=10)
+    txs = thl_ledger_manager.get_user_txs(user, page=1, size=10)
     assert txs.transactions[0].balance_after == 100
     assert txs.transactions[1].balance_after == 200
     assert txs.transactions[2].balance_after == 300
@@ -273,7 +274,7 @@ def test_user_txs_rolling_balance(
 
     # Ascending order, get 2nd page, make sure the balances include
     # the previous txs. (will return last 3 txs)
-    txs = thl_lm.get_user_txs(user, page=2, size=4)
+    txs = thl_ledger_manager.get_user_txs(user, page=2, size=4)
     assert len(txs.transactions) == 3
     assert txs.transactions[0].balance_after == 250
     assert txs.transactions[1].balance_after == 350
@@ -281,7 +282,7 @@ def test_user_txs_rolling_balance(
 
     # Descending order, get 1st page. Will
     # return most recent 3 txs in desc order
-    txs = thl_lm.get_user_txs(user, page=1, size=3, order_by="-created")
+    txs = thl_ledger_manager.get_user_txs(user, page=1, size=3, order_by="-created")
     assert len(txs.transactions) == 3
     assert txs.transactions[0].balance_after == 450
     assert txs.transactions[1].balance_after == 350

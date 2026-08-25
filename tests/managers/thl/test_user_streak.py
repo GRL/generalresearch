@@ -192,11 +192,11 @@ def test_user_streak_complete_active(user_streak_manager, user, session_manager)
     streaks = user_streak_manager.get_user_streaks(
         user_id=user.user_id, country_iso="us"
     )
-    streak = [
+    streak = next(
         s
         for s in streaks
         if s.fulfillment == StreakFulfillment.COMPLETE and s.period == StreakPeriod.DAY
-    ][0]
+    )
     assert streak == expected_streak
 
     # And now they complete today
