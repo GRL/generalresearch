@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import binascii
 import json
 import os
@@ -7,9 +9,14 @@ from random import randint
 from uuid import uuid4
 
 import pytest
+from redis import Redis
 
-from generalresearch.models.gr.authentication import GRUser
+from generalresearch.models.gr.authentication import Claims, GRToken, GRUser
+from generalresearch.models.gr.business import Business
 from generalresearch.models.gr.team import Membership, Team
+from generalresearch.models.thl.product import Product
+from generalresearch.pg_helper import PostgresConfig
+from generalresearch.redis_helper import RedisConfig
 
 SSO_ISSUER = ""
 
@@ -29,7 +36,13 @@ class TestGRUser:
     def test_businesses(self):
         pass
 
-    def test_teams(self, gr_user: GRUser, membership, gr_db, gr_redis_config):
+    def test_teams(
+        self,
+        gr_user: GRUser,
+        membership: Membership,
+        gr_db: PostgresConfig,
+        gr_redis_config: RedisConfig,
+    ):
 
         assert gr_user.teams is None
 
@@ -41,15 +54,15 @@ class TestGRUser:
 
     def test_prefetch_team_duplicates(
         self,
-        gr_user_token,
+        gr_user_token: GRToken,
         gr_user: GRUser,
         membership: Membership,
         product_factory: Callable[..., Product],
-        membership_factory,
+        membership_factory: Callable[..., Membership],
         team: Team,
         thl_web_rr: PostgresConfig,
-        gr_redis_config,
-        gr_db,
+        gr_redis_config: RedisConfig,
+        gr_db: PostgresConfig,
     ):
         product_factory(team=team)
         membership_factory(team=team, gr_user=gr_user)
@@ -67,9 +80,9 @@ class TestGRUser:
         product_factory: Callable[..., Product],
         team: Team,
         membership: Membership,
-        gr_db,
+        gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
-        gr_redis_config,
+        gr_redis_config: RedisConfig,
     ):
         from generalresearch.models.thl.product import Product
 
@@ -78,6 +91,8 @@ class TestGRUser:
         # Create a new Team membership, and then create a Product that
         #    is  part of that team
         membership.prefetch_team(pg_config=gr_db, redis_config=gr_redis_config)
+        assert isinstance(membership.team, Team)
+
         p: Product = product_factory(team=team)
         assert p.id_int
         assert team.uuid == membership.team.uuid
@@ -87,7 +102,7 @@ class TestGRUser:
 
         gr_user.prefetch_products(
             pg_config=gr_db,
-            thl_pg_config=thl_web_rr: PostgresConfig,
+            thl_pg_config=thl_web_rr,
             redis_config=gr_redis_config,
         )
         assert isinstance(gr_user.products, list)
@@ -97,7 +112,7 @@ class TestGRUser:
 
 class TestGRUserMethods:
 
-    def test_cache_key(self, gr_user, gr_redis):
+    def test_cache_key(self, gr_user: GRUser, gr_redis: RedisConfig):
         assert isinstance(gr_user.cache_key, str)
         assert ":" in gr_user.cache_key
         assert str(gr_user.id) in gr_user.cache_key
@@ -105,11 +120,11 @@ class TestGRUserMethods:
     def test_to_redis(
         self,
         gr_user: GRUser,
-        gr_redis,
+        gr_redis: Redis,
         team: Team,
         business: Business,
         product_factory: Callable[..., Product],
-        membership_factory: Callable[Membership],
+        membership_factory: Callable[..., Membership],
     ):
         product_factory(team=team, business=business)
         membership_factory(team=team, gr_user=gr_user)
@@ -125,11 +140,11 @@ class TestGRUserMethods:
     def test_set_cache(
         self,
         gr_user: GRUser,
-        gr_user_token,
-        gr_redis,
-        gr_db,
+        gr_user_token: GRToken,
+        gr_redis: Redis,
+        gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
-        gr_redis_config,
+        gr_redis_config: RedisConfig,
     ):
         assert gr_redis.get(name=gr_user.cache_key) is None
         assert gr_redis.get(name=f"{gr_user.cache_key}:team_uuids") is None
@@ -137,7 +152,7 @@ class TestGRUserMethods:
         assert gr_redis.get(name=f"{gr_user.cache_key}:product_uuids") is None
 
         gr_user.set_cache(
-            pg_config=gr_db, thl_web_rr=thl_web_rr: PostgresConfig, redis_config=gr_redis_config
+            pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
         )
 
         assert gr_redis.get(name=gr_user.cache_key) is not None
@@ -148,14 +163,14 @@ class TestGRUserMethods:
     def test_set_cache_gr_user(
         self,
         gr_user: GRUser,
-        gr_user_token,
-        gr_redis,
-        gr_redis_config,
-        gr_db,
+        gr_user_token: GRToken,
+        gr_redis: RedisConfig,
+        gr_redis_config: RedisConfig,
+        gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
-        team,
-        membership_factory,
+        team: Team,
+        membership_factory: Callable[..., Membership],
         thl_redis_config: RedisConfig,
     ):
         from generalresearch.models.gr.authentication import GRUser
@@ -164,7 +179,7 @@ class TestGRUserMethods:
         membership_factory(team=team, gr_user=gr_user)
 
         gr_user.set_cache(
-            pg_config=gr_db, thl_web_rr=thl_web_rr: PostgresConfig, redis_config=gr_redis_config
+            pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
         )
 
         res: str = gr_redis.get(name=gr_user.cache_key)
@@ -176,27 +191,27 @@ class TestGRUserMethods:
 
         gru2.prefetch_products(
             pg_config=gr_db,
-            thl_pg_config=thl_web_rr: PostgresConfig,
-            redis_config=thl_redis_config: RedisConfig,
+            thl_pg_config=thl_web_rr,
+            redis_config=thl_redis_config,
         )
         assert gru2.product_uuids == [p1.uuid]
 
     def test_set_cache_team_uuids(
         self,
-        gr_user,
-        membership,
-        gr_user_token,
-        gr_redis,
-        gr_db,
+        gr_user: GRUser,
+        membership: Membership,
+        gr_user_token: GRToken,
+        gr_redis: Redis,
+        gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
-        team,
-        gr_redis_config,
+        team: Team,
+        gr_redis_config: RedisConfig,
     ):
         product_factory(team=team)
 
         gr_user.set_cache(
-            pg_config=gr_db, thl_web_rr=thl_web_rr: PostgresConfig, redis_config=gr_redis_config
+            pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
         )
         res = json.loads(gr_redis.get(name=f"{gr_user.cache_key}:team_uuids"))
         assert len(res) == 1
@@ -206,18 +221,18 @@ class TestGRUserMethods:
     def test_set_cache_business_uuids(
         self,
         gr_user: GRUser,
-        gr_redis,
-        gr_db,
+        gr_redis: Redis,
+        gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
         business: Business,
-        team,
-        gr_redis_config,
+        team: Team,
+        gr_redis_config: RedisConfig,
     ):
         product_factory(team=team, business=business)
 
         gr_user.set_cache(
-            pg_config=gr_db, thl_web_rr=thl_web_rr: PostgresConfig, redis_config=gr_redis_config
+            pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
         )
         res = json.loads(gr_redis.get(name=f"{gr_user.cache_key}:business_uuids"))
         assert len(res) == 1
@@ -225,20 +240,20 @@ class TestGRUserMethods:
 
     def test_set_cache_product_uuids(
         self,
-        gr_user,
-        membership,
-        gr_user_token,
-        gr_redis,
-        gr_db,
+        gr_user: GRUser,
+        membership: Membership,
+        gr_user_token: GRToken,
+        gr_redis: Redis,
+        gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
-        team,
-        gr_redis_config,
+        team: Team,
+        gr_redis_config: RedisConfig,
     ):
         product_factory(team=team)
 
         gr_user.set_cache(
-            pg_config=gr_db, thl_web_rr=thl_web_rr: PostgresConfig, redis_config=gr_redis_config
+            pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
         )
         res = json.loads(gr_redis.get(name=f"{gr_user.cache_key}:product_uuids"))
         assert len(res) == 1
@@ -248,9 +263,7 @@ class TestGRUserMethods:
 class TestGRToken:
 
     @pytest.fixture
-    def gr_token(self, gr_user):
-        from generalresearch.models.gr.authentication import GRToken
-
+    def gr_token(self, gr_user: GRUser):
         now = datetime.now(tz=UTC)
         token = binascii.hexlify(os.urandom(20)).decode()
 
@@ -258,29 +271,26 @@ class TestGRToken:
 
         return gr_token
 
-    def test_init(self, gr_token):
-        from generalresearch.models.gr.authentication import GRToken
-
+    def test_init(self, gr_token: GRToken):
         assert isinstance(gr_token, GRToken)
         assert gr_token.created
 
-    def test_user(self, gr_token, gr_db, gr_redis_config):
-        from generalresearch.models.gr.authentication import GRUser
-
+    def test_user(
+        self, gr_token: GRToken, gr_db: PostgresConfig, gr_redis_config: RedisConfig
+    ):
         assert gr_token.user is None
 
         gr_token.prefetch_user(pg_config=gr_db, redis_config=gr_redis_config)
 
         assert isinstance(gr_token.user, GRUser)
 
-    def test_auth_header(self, gr_token):
+    def test_auth_header(self, gr_token: GRToken):
         assert isinstance(gr_token.auth_header, dict)
 
 
 class TestClaims:
 
     def test_init(self):
-        from generalresearch.models.gr.authentication import Claims
 
         d = {
             "iss": SSO_ISSUER,

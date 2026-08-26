@@ -1,9 +1,21 @@
+from __future__ import annotations
+
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
 
+from generalresearch.managers.thl.buyer import BuyerManager
+from generalresearch.managers.thl.profiling.question import (
+    QuestionManager,
+)
+from generalresearch.managers.thl.profiling.schema import (
+    UpkSchemaManager,
+)
+from generalresearch.managers.thl.profiling.uqa import UQAManager
+from generalresearch.managers.thl.survey import SurveyManager, SurveyStatManager
 from generalresearch.models import Source
 from generalresearch.models.legacy.bucket import (
     DurationSummary,
@@ -23,7 +35,7 @@ from generalresearch.models.thl.survey.model import (
 
 
 @pytest.fixture(scope="session")
-def surveys_fixture():
+def surveys_fixture() -> list[Survey]:
     return [
         Survey(source=Source.TESTING, survey_id="a", buyer_code="buyer1"),
         Survey(source=Source.TESTING, survey_id="b", buyer_code="buyer2"),
@@ -73,11 +85,13 @@ class TestSurvey:
 
     def test(
         self,
-        delete_buyers_surveys,
-        buyer_manager,
-        survey_manager,
-        surveys_fixture,
+        delete_buyers_surveys: Callable[..., None],
+        buyer_manager: BuyerManager,
+        survey_manager: SurveyManager,
+        surveys_fixture: list[Survey],
     ):
+        delete_buyers_surveys()
+
         survey_manager.create_or_update(surveys_fixture)
         survey_ids = {s.survey_id for s in surveys_fixture}
         res = survey_manager.filter_by_natural_key(
@@ -98,7 +112,7 @@ class TestSurvey:
         assert res2[0] == res[0]
         assert len(res2) == len(surveys2)
 
-    def test_category(self, survey_manager):
+    def test_category(self, survey_manager: SurveyManager):
         survey1 = Survey(id=562289, survey_id="a", source=Source.TESTING)
         survey2 = Survey(id=562290, survey_id="a", source=Source.TESTING)
         categories = list(survey_manager.category_manager.categories.values())
@@ -110,8 +124,14 @@ class TestSurvey:
         survey_manager.update_surveys_categories(surveys)
 
     def test_survey_eligibility(
-        self, survey_manager, upk_data, question_manager, uqa_manager
+        self,
+        survey_manager: SurveyManager,
+        upk_data: Callable[..., None],
+        question_manager: QuestionManager,
+        uqa_manager: UQAManager,
     ):
+        upk_data()
+
         bucket = TopNPlusBucket(
             id="c82cf98c578a43218334544ab376b00e",
             contents=[],
@@ -205,10 +225,10 @@ class TestSurvey:
 class TestSurveyStat:
     def test(
         self,
-        delete_buyers_surveys,
+        delete_buyers_surveys: Callable[..., None],
         surveystat_manager,
-        survey_manager,
-        surveys_fixture,
+        survey_manager: SurveyManager,
+        surveys_fixture: list[Survey],
     ):
         survey_manager.create_or_update(surveys_fixture)
         ss = [ssa, ssb]
@@ -276,15 +296,17 @@ class TestSurveyStat:
 
     def test_ymsp(
         self,
-        delete_buyers_surveys,
-        surveys_fixture,
-        survey_manager,
-        surveystat_manager,
+        delete_buyers_surveys: Callable[..., None],
+        surveys_fixture: list[Survey],
+        survey_manager: SurveyManager,
+        surveystat_manager: SurveyStatManager,
     ):
+        delete_buyers_surveys()
+
         source = Source.TESTING
         survey = surveys_fixture[0].model_copy()
         surveys = []
-        for idx in range(100):
+        for _ in range(100):
             s = survey.model_copy()
             s.survey_id = uuid.uuid4().hex
             surveys.append(s)
@@ -305,7 +327,7 @@ class TestSurveyStat:
         surveys = surveys[10:]
 
         # and 2 new ones are created
-        for idx in range(2):
+        for _ in range(2):
             s = survey.model_copy()
             s.survey_id = uuid.uuid4().hex
             surveys.append(s)
@@ -329,11 +351,13 @@ class TestSurveyStat:
 
     def test_filter(
         self,
-        delete_buyers_surveys,
-        surveys_fixture,
-        survey_manager,
-        surveystat_manager,
+        delete_buyers_surveys: Callable[..., None],
+        surveys_fixture: list[Survey],
+        survey_manager: SurveyManager,
+        surveystat_manager: SurveyStatManager,
     ):
+        delete_buyers_surveys()
+
         surveys = []
         survey = surveys_fixture[0].model_copy()
         survey.source = Source.TESTING

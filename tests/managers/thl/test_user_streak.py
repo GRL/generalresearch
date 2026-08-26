@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import copy
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -5,8 +7,13 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from generalresearch.managers.thl.user_streak import compute_streaks_from_days
+from generalresearch.managers.thl.session import SessionManager
+from generalresearch.managers.thl.user_streak import (
+    UserStreakManager,
+    compute_streaks_from_days,
+)
 from generalresearch.models.thl.definitions import Status, StatusCode1
+from generalresearch.models.thl.user import User
 from generalresearch.models.thl.user_streak import (
     StreakFulfillment,
     StreakPeriod,
@@ -59,7 +66,7 @@ def test_compute_streaks_from_days():
 
 
 @pytest.fixture
-def broken_active_streak(user):
+def broken_active_streak(user: User) -> list[UserStreak]:
     return [
         UserStreak(
             period=StreakPeriod.DAY,
@@ -94,7 +101,7 @@ def broken_active_streak(user):
     ]
 
 
-def create_session_fail(session_manager, start, user):
+def create_session_fail(session_manager: SessionManager, start: datetime, user: User):
     session = session_manager.create_dummy(started=start, country_iso="us", user=user)
     session_manager.finish_with_status(
         session,
@@ -104,7 +111,9 @@ def create_session_fail(session_manager, start, user):
     )
 
 
-def create_session_complete(session_manager, start, user):
+def create_session_complete(
+    session_manager: SessionManager, start: datetime, user: User
+):
     session = session_manager.create_dummy(started=start, country_iso="us", user=user)
     session_manager.finish_with_status(
         session,
@@ -115,7 +124,7 @@ def create_session_complete(session_manager, start, user):
     )
 
 
-def test_user_streak_empty(user_streak_manager, user):
+def test_user_streak_empty(user_streak_manager: UserStreakManager, user: User):
     streaks = user_streak_manager.get_user_streaks(
         user_id=user.user_id, country_iso="us"
     )
@@ -123,7 +132,10 @@ def test_user_streak_empty(user_streak_manager, user):
 
 
 def test_user_streaks_active_broken(
-    user_streak_manager, user, session_manager, broken_active_streak
+    user_streak_manager: UserStreakManager,
+    user: User,
+    session_manager: SessionManager,
+    broken_active_streak: list[UserStreak],
 ):
     # Testing active streak, but broken (not today or yesterday)
     start1 = datetime(2025, 2, 12, tzinfo=UTC)
@@ -171,7 +183,9 @@ def test_user_streaks_active_broken(
     assert streaks == expected_streaks
 
 
-def test_user_streak_complete_active(user_streak_manager, user, session_manager):
+def test_user_streak_complete_active(
+    user_streak_manager: UserStreakManager, user: User, session_manager: SessionManager
+):
     """Testing active streak that is today"""
 
     # They completed yesterday NY time. Today isn't over so streak is pending
@@ -217,9 +231,9 @@ def test_user_streak_complete_active(user_streak_manager, user, session_manager)
     streaks = user_streak_manager.get_user_streaks(
         user_id=user.user_id, country_iso="us"
     )
-    streak = [
+    streak = next(
         s
         for s in streaks
         if s.fulfillment == StreakFulfillment.COMPLETE and s.period == StreakPeriod.DAY
-    ][0]
+    )
     assert streak == expected_streak

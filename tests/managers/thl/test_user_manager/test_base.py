@@ -10,14 +10,18 @@ from generalresearch.managers.thl.user_manager import (
     UserCreateNotAllowedError,
     get_bp_user_create_limit_hourly,
 )
+from generalresearch.managers.thl.user_manager.mysql_user_manager import (
+    MysqlUserManager,
+)
 from generalresearch.managers.thl.user_manager.rate_limit import (
     RateLimitItemPerHourConstantKey,
+    UserManagerLimiter,
 )
 from generalresearch.managers.thl.user_manager.user_manager import (
     UserManager,
 )
 from generalresearch.managers.thl.userhealth import AuditLogManager
-from generalresearch.models.thl.product import product: Product, UserCreateConfig
+from generalresearch.models.thl.product import Product, UserCreateConfig, product
 from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 
@@ -86,10 +90,11 @@ class TestUserManager:
 
 class TestBlockUserManager:
 
-    def test_block_user(self, product: product: Product, user_manager: UserManager):
+    def test_block_user(self, product: Product, user_manager: UserManager):
         product_user_id = f"user-{uuid4().hex[:10]}"
 
         # mysql_user_manager to skip user creation limit check
+        assert isinstance(user_manager.mysql_user_manager, MysqlUserManager)
         user: User = user_manager.mysql_user_manager.create_user(
             product_id=product.id, product_user_id=product_user_id
         )
@@ -113,11 +118,12 @@ class TestBlockUserManager:
         assert user.blocked
 
     def test_block_user_whitelist(
-        self, product: product: Product, user_manager: UserManager, thl_web_rw: PostgresConfig
+        self, product: Product, user_manager: UserManager, thl_web_rw: PostgresConfig
     ):
         product_user_id = f"user-{uuid4().hex[:10]}"
 
         # mysql_user_manager to skip user creation limit check
+        assert isinstance(user_manager.mysql_user_manager, MysqlUserManager)
         user: User = user_manager.mysql_user_manager.create_user(
             product_id=product.id, product_user_id=product_user_id
         )
@@ -154,6 +160,7 @@ class TestCreateUserManager:
 
         product_user_id = f"user-{uuid4().hex[:10]}"
 
+        assert isinstance(user_manager.mysql_user_manager, MysqlUserManager)
         user: User = user_manager.mysql_user_manager.create_user(
             product_id=product.id, product_user_id=product_user_id
         )
@@ -200,6 +207,7 @@ class TestCreateUserManager:
         product_user_id = f"user-{uuid4().hex[:10]}"
         rand_msg = f"log-{uuid4().hex}"
 
+        assert isinstance(user_manager.mysql_user_manager, MysqlUserManager)
         with caplog.at_level(logging.INFO):
             logger.info(rand_msg)
             user1 = user_manager.mysql_user_manager.create_user(
@@ -264,6 +272,7 @@ class TestCreateUserManager:
         assert key == f"LIMITER/thl-grpc/allow_user_create/{instance.id}"
 
         # make sure we clear the key or subsequent tests will fail
+        assert isinstance(user_manager.user_manager_limiter, UserManagerLimiter)
         user_manager.user_manager_limiter.storage.clear(key=key)
 
         n = 0

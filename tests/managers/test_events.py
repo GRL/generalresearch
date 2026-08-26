@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import math
 import random
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from functools import partial
@@ -9,7 +12,8 @@ from uuid import uuid4
 
 import pytest
 
-from generalresearch.managers.events import EventSubscriber
+from generalresearch.managers.events import EventManager, EventSubscriber
+from generalresearch.managers.thl.product import ProductManager
 from generalresearch.models import Source
 from generalresearch.models.events import (
     AggregateBySource,
@@ -21,22 +25,23 @@ from generalresearch.models.legacy.bucket import Bucket
 from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.models.thl.session import Session, Wall
 from generalresearch.models.thl.user import User
+from generalresearch.redis_helper import RedisConfig
 
 
 # We don't need anything in the db, so not using the db fixtures
 @pytest.fixture(scope="function")
-def product_id(product_manager):
+def product_id(product_manager: ProductManager) -> str:
     return uuid4().hex
 
 
 @pytest.fixture(scope="function")
-def user_factory(product_id):
+def user_factory(product_id: str):
     return partial(create_dummy, product_id=product_id)
 
 
 @pytest.fixture(scope="function")
-def event_subscriber(thl_redis_config: RedisConfig, product_id):
-    return EventSubscriber(redis_config=thl_redis_config: RedisConfig, product_id=product_id)
+def event_subscriber(thl_redis_config: RedisConfig, product_id: str) -> EventSubscriber:
+    return EventSubscriber(redis_config=thl_redis_config, product_id=product_id)
 
 
 def create_dummy(
@@ -53,7 +58,7 @@ def create_dummy(
 
 class TestActiveUsers:
 
-    def test_run_empty(self, event_manager, product_id):
+    def test_run_empty(self, event_manager: EventManager, product_id: str):
         res = event_manager.get_user_stats(product_id)
         assert res == {
             "active_users_last_1h": 0,
@@ -62,7 +67,12 @@ class TestActiveUsers:
             "in_progress_users": 0,
         }
 
-    def test_run(self, event_manager, product_id, user_factory):
+    def test_run(
+        self,
+        event_manager: EventManager,
+        product_id: str,
+        user_factory: Callable[..., User],
+    ):
         event_manager.clear_global_user_stats()
         user1: User = user_factory()
 
@@ -89,6 +99,8 @@ class TestActiveUsers:
         # Create a 2nd user in another product
         product_id2 = uuid4().hex
         user2: User = user_factory(product_id=product_id2)
+        assert isinstance(user2, User)
+        assert isinstance(user2.created, datetime)
         # Change to say user was created >24 hrs ago
         user2.created = user2.created - timedelta(hours=25)
         event_manager.handle_user(user2)
@@ -115,7 +127,12 @@ class TestActiveUsers:
             "in_progress_users": 0,
         }
 
-    def test_inprogress(self, event_manager, product_id, user_factory):
+    def test_inprogress(
+        self,
+        event_manager: EventSubscriber,
+        product_id: str,
+        user_factory: Callable[..., User],
+    ):
         event_manager.clear_global_user_stats()
         user1: User = user_factory()
         user2: User = user_factory()
@@ -138,7 +155,12 @@ class TestActiveUsers:
         res = event_manager.get_user_stats(product_id)
         assert res["in_progress_users"] == 1
 
-    def test_expiry(self, event_manager, product_id, user_factory):
+    def test_expiry(
+        self,
+        event_manager: EventManager,
+        product_id: str,
+        user_factory: Callable[..., User],
+    ):
         event_manager.clear_global_user_stats()
         user1: User = user_factory()
         event_manager.handle_user(user1)
@@ -166,7 +188,7 @@ class TestActiveUsers:
 
 class TestSessionStats:
 
-    def test_run_empty(self, event_manager, product_id):
+    def test_run_empty(self, event_manager: EventManager, product_id: str):
         res = event_manager.get_session_stats(product_id)
         assert res == {
             "session_enters_last_1h": 0,
@@ -185,7 +207,14 @@ class TestSessionStats:
             "session_fail_avg_loi_last_24h": None,
         }
 
-    def test_run(self, event_manager, product_id, user_factory: Callable[..., User], utc_now, utc_hour_ago):
+    def test_run(
+        self,
+        event_manager: EventManager,
+        product_id: str,
+        user_factory: Callable[..., User],
+        utc_now: datetime,
+        utc_hour_ago: datetime,
+    ):
         event_manager.clear_global_session_stats()
 
         user: User = user_factory()
@@ -306,7 +335,7 @@ class TestSessionStats:
 
 
 class TestTaskStatsManager:
-    def test_empty(self, event_manager):
+    def test_empty(self, event_manager: EventManager):
         event_manager.clear_task_stats()
         assert event_manager.get_task_stats_raw() == {
             "live_task_count": AggregateBySource(total=0),
@@ -320,7 +349,7 @@ class TestTaskStatsManager:
         assert sm.data.task_created_count_last_24h.total == 0
         assert sm.data.live_tasks_max_payout.value is None
 
-    def test(self, event_manager):
+    def test(self, event_manager: EventManager):
         event_manager.clear_task_stats()
         event_manager.set_source_task_stats(
             source=Source.TESTING,
@@ -445,12 +474,12 @@ class TestTaskStatsManager:
 class TestChannelsSubscriptions:
     def test_stats_worker(
         self,
-        event_manager,
-        event_subscriber,
-        product_id,
+        event_manager: EventManager,
+        event_subscriber: EventSubscriber,
+        product_id: str,
         user_factory: Callable[..., User],
-        utc_hour_ago,
-        utc_now,
+        utc_hour_ago: datetime,
+        utc_now: datetime,
     ):
         event_manager.clear_stats()
         assert event_subscriber.pubsub

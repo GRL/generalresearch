@@ -4,7 +4,7 @@ import json
 import logging
 import re
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Annotated, Self
+from typing import TYPE_CHECKING, Annotated, Any, Self
 from uuid import UUID, uuid4
 
 from pydantic import (
@@ -104,7 +104,7 @@ class User(BaseModel):
 
     # --- Validation ---
     @field_validator("product_user_id")
-    def check_product_user_id(cls, v: str) -> str:
+    def check_product_user_id(cls, v: str | None) -> str:
         if v is not None:
             if " " in v:
                 raise ValueError("String cannot contain spaces")
@@ -122,23 +122,27 @@ class User(BaseModel):
     # noinspection PyNestedDecoratorsk
     @field_validator("created", "last_seen")
     @classmethod
-    def check_not_in_future(cls, v: AwareDatetime) -> AwareDatetime:
+    def check_not_in_future(cls, v: AwareDatetime | None) -> AwareDatetime:
         if v is not None:
             try:
                 assert v < datetime.now(tz=UTC)
-            except Exception:
+            except AssertionError:
                 raise ValueError("Input is in the future")
+
+        assert isinstance(v, AwareDatetime)
         return v
 
     # noinspection PyNestedDecorators
     @field_validator("created", "last_seen")
     @classmethod
-    def check_after_anno_domini(cls, v: AwareDatetime) -> AwareDatetime:
+    def check_after_anno_domini(cls, v: AwareDatetime | None) -> AwareDatetime:
         if v is not None:
             try:
                 assert v > datetime(year=2016, month=7, day=13, tzinfo=UTC)
-            except Exception:
+            except AssertionError:
                 raise ValueError("Input is before Anno Domini")
+
+        assert isinstance(v, AwareDatetime)
         return v
 
     @model_validator(mode="after")
@@ -168,7 +172,7 @@ class User(BaseModel):
         )
 
     @classmethod
-    def is_valid_ubp(cls, *, product_id, product_user_id) -> bool:
+    def is_valid_ubp(cls, *, product_id: str, product_user_id: str) -> bool:
         # Attempt to create common_struct solely for validation purposes,
         # using the product_id and product_user_id
         try:
@@ -178,7 +182,7 @@ class User(BaseModel):
                 product_id=product_id,
                 product_user_id=product_user_id,
             )
-        except Exception as e:
+        except ValueError as e:
             logger.info(e)
             return False
         else:
@@ -186,7 +190,7 @@ class User(BaseModel):
 
     # --- Methods ---
     @staticmethod
-    def check_bpuid_is_not_bpid(product_id, product_user_id):
+    def check_bpuid_is_not_bpid(product_id: str | None, product_user_id: str | None):
         """Unfortunately users were already created failing this constraint,
         so only check for new users!
         """
@@ -198,7 +202,7 @@ class User(BaseModel):
             raise ValueError("product_user_id must not equal the product_id")
         return True
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return self.model_dump(mode="python", exclude={"product"})
 
     def to_json(self) -> str:
@@ -291,7 +295,7 @@ class User(BaseModel):
     # --- Prebuild ---
 
     @classmethod
-    def from_db(cls, res) -> Self:
+    def from_db(cls, res: dict[str, Any]) -> Self:
         if res["created"]:
             res["created"] = res["created"].replace(tzinfo=UTC)
         if res["last_seen"]:

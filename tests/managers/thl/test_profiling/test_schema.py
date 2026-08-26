@@ -1,9 +1,18 @@
+from collections.abc import Callable
+
+from generalresearch.managers.thl.profiling.schema import (
+    UpkSchemaManager,
+)
 from generalresearch.models.thl.profiling.upk_property import PropertyType
 
 
 class TestUpkSchemaManager:
 
-    def test_get_props_info(self, upk_schema_manager, upk_data):
+    def test_get_props_info(
+        self, upk_schema_manager: UpkSchemaManager, upk_data: Callable[..., None]
+    ):
+        upk_data()
+
         props = upk_schema_manager.get_props_info()
         assert (
             len(props) == 16955
@@ -35,10 +44,10 @@ class TestUpkSchemaManager:
         assert age.prop_type == PropertyType.UPK_NUMERICAL
         assert age.gold_standard
 
-        cars = [
+        cars = next(
             x
             for x in props
             if x.country_iso == "us" and x.property_label == "household_auto_type"
-        ][0]
+        )
         assert not cars.gold_standard
         assert cars.categories[0].label == "Autos & Vehicles"

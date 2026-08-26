@@ -1,21 +1,35 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from uuid import uuid4
 
 import pytest
 
+from generalresearch.managers.thl.user_manager.user_metadata_manager import (
+    UserMetadataManager,
+)
+from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.user import User
 from generalresearch.models.thl.user_profile import UserMetadata
 
 
 class TestUserMetadataManager:
 
-    def test_get_notset(self, user, user_manager, user_metadata_manager):
+    def test_get_notset(
+        self,
+        user: User,
+        user_metadata_manager: UserMetadataManager,
+    ):
         # The row in the db won't exist. It just returns the default obj with everything None (except for the user_id)
         um1 = user_metadata_manager.get(user_id=user.user_id)
         assert um1 == UserMetadata(user_id=user.user_id)
 
     def test_create(
-        self, user_factory: Callable[..., User], product: Product, user_metadata_manager
+        self,
+        user_factory: Callable[..., User],
+        product: Product,
+        user_metadata_manager: UserMetadataManager,
     ):
-        from generalresearch.models.thl.user import User
 
         u1: User = user_factory(product=product)
 
@@ -29,9 +43,11 @@ class TestUserMetadataManager:
         assert um == um2
 
     def test_create_no_email(
-        self, product: Product, user_factory: Callable[..., User], user_metadata_manager
+        self,
+        product: Product,
+        user_factory: Callable[..., User],
+        user_metadata_manager: UserMetadataManager,
     ):
-        from generalresearch.models.thl.user import User
 
         u1: User = user_factory(product=product)
         um = UserMetadata(user_id=u1.user_id)
@@ -42,9 +58,11 @@ class TestUserMetadataManager:
         assert um == um2
 
     def test_update(
-        self, product: Product, user_factory: Callable[..., User], user_metadata_manager
+        self,
+        product: Product,
+        user_factory: Callable[..., User],
+        user_metadata_manager: UserMetadataManager,
     ):
-        from generalresearch.models.thl.user import User
 
         u: User = user_factory(product=product)
 
@@ -66,7 +84,6 @@ class TestUserMetadataManager:
     def test_filter(
         self, user_factory: Callable[..., User], product: Product, user_metadata_manager
     ):
-        from generalresearch.models.thl.user import User
 
         user1: User = user_factory(product=product)
         user2: User = user_factory(product=product)

@@ -1,14 +1,22 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from uuid import uuid4
 
 import pytest
 
+from generalresearch.managers.thl.user_manager.user_manager import UserManager
+from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
 
 
 class TestUserManagerFetch:
 
     def test_fetch(
-        self, user_factory: Callable[..., User], product: Product, user_manager
+        self,
+        user_factory: Callable[..., User],
+        product: Product,
+        user_manager: UserManager,
     ):
         user1: User = user_factory(product=product)
         user2: User = user_factory(product=product)
@@ -31,7 +39,7 @@ class TestUserManagerFetch:
         res = user_manager.fetch(user_uuids=[uuid4().hex])
         assert len(res) == 0
 
-    def test_fetch_invalid(self, user_manager):
+    def test_fetch_invalid(self, user_manager: UserManager):
         with pytest.raises(AssertionError) as e:
             user_manager.fetch(user_uuids=[], user_ids=None)
         assert "Must pass ONE of user_ids, user_uuids" in str(e.value)

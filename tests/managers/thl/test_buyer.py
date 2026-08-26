@@ -1,3 +1,8 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+
+from generalresearch.managers.thl.buyer import BuyerManager
 from generalresearch.models import Source
 
 
@@ -5,9 +10,11 @@ class TestBuyer:
 
     def test(
         self,
-        delete_buyers_surveys,
-        buyer_manager,
+        delete_buyers_surveys: Callable[..., None],
+        buyer_manager: BuyerManager,
     ):
+
+        delete_buyers_surveys()
 
         bs = buyer_manager.bulk_get_or_create(source=Source.TESTING, codes=["a", "b"])
         assert len(bs) == 2

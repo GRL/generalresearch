@@ -1,29 +1,37 @@
+from __future__ import annotations
+
 import pytest
 
+from generalresearch.config import GRLBaseSettings
 from generalresearch.managers.base import Permission
+from generalresearch.managers.thl.user_manager.redis_user_manager import (
+    RedisUserManager,
+)
+from generalresearch.models.thl.user import User
+from generalresearch.pg_helper import PostgresConfig
 
 
 class TestUserManagerRedis:
 
-    def test_get_notset(self, user_manager, user):
-        user_manager.clear_user_inmemory_cache(user=user)
-        assert user_manager.redis_user_manager.get_user(user_id=user.user_id) is None
+    def test_get_notset(self, redis_user_manager: RedisUserManager, user: User):
+        redis_user_manager.clear_user_inmemory_cache(user=user)
+        assert redis_user_manager.get_user(user_id=user.user_id) is None
 
-    def test_get_user_id(self, user_manager, user):
-        user_manager.redis_user_manager.set_user(user=user)
+    def test_get_user_id(self, redis_user_manager: RedisUserManager, user: User):
+        redis_user_manager.set_user(user=user)
 
-        assert user_manager.redis_user_manager.get_user(user_id=user.user_id) == user
+        assert redis_user_manager.get_user(user_id=user.user_id) == user
 
-    def test_get_uuid(self, user_manager, user):
-        user_manager.redis_user_manager.set_user(user=user)
+    def test_get_uuid(self, redis_user_manager: RedisUserManager, user: User):
+        redis_user_manager.set_user(user=user)
 
-        assert user_manager.redis_user_manager.get_user(user_uuid=user.uuid) == user
+        assert redis_user_manager.get_user(user_uuid=user.uuid) == user
 
-    def test_get_ubp(self, user_manager, user):
-        user_manager.redis_user_manager.set_user(user=user)
+    def test_get_ubp(self, redis_user_manager: RedisUserManager, user: User):
+        redis_user_manager.set_user(user=user)
 
         assert (
-            user_manager.redis_user_manager.get_user(
+            redis_user_manager.get_user(
                 product_id=user.product_id, product_user_id=user.product_user_id
             )
             == user
@@ -34,7 +42,13 @@ class TestUserManagerRedis:
         # I mean, the sets are implicitly tested by the get tests above. no point
         pass
 
-    def test_get_with_cache_prefix(self, settings, user, thl_web_rw, thl_web_rr):
+    def test_get_with_cache_prefix(
+        self,
+        settings: GRLBaseSettings,
+        user: User,
+        thl_web_rw: PostgresConfig,
+        thl_web_rr: PostgresConfig,
+    ):
         """
         Confirm the prefix functionality is working; we do this so it
         is easier to migrate between any potentially breaking versions
@@ -47,7 +61,7 @@ class TestUserManagerRedis:
 
         um1 = UserManager(
             pg_config=thl_web_rw,
-            pg_config_rr=thl_web_rr: PostgresConfig,
+            pg_config_rr=thl_web_rr,
             sql_permissions=[Permission.UPDATE, Permission.CREATE],
             redis=settings.redis,
             redis_timeout=settings.redis_timeout,
@@ -55,7 +69,7 @@ class TestUserManagerRedis:
 
         um2 = UserManager(
             pg_config=thl_web_rw,
-            pg_config_rr=thl_web_rr: PostgresConfig,
+            pg_config_rr=thl_web_rr,
             sql_permissions=[Permission.UPDATE, Permission.CREATE],
             redis=settings.redis,
             redis_timeout=settings.redis_timeout,
@@ -69,9 +83,11 @@ class TestUserManagerRedis:
             product_id=user.product_id, product_user_id=user.product_user_id
         )
 
+        assert isinstance(um1.redis_user_manager, RedisUserManager)
         res1 = um1.redis_user_manager.client.get(f"user-lookup:user_id:{user.user_id}")
         assert res1 is not None
 
+        assert isinstance(um2.redis_user_manager, RedisUserManager)
         res2 = um2.redis_user_manager.client.get(
             f"user-lookup-v2:user_id:{user.user_id}"
         )

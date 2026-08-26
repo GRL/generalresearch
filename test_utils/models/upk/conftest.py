@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -169,9 +170,13 @@ def upk_data(
     propertymarketplaceassociation_data,
     propertyitemrange_data,
     question_data,
-) -> None:
-    # Wait a second to make sure the HarmonizerCache refresh loop pulls these in
-    time.sleep(2)
+) -> Callable[..., None]:
+
+    def _inner():
+        # Wait a second to make sure the HarmonizerCache refresh loop pulls these in
+        time.sleep(2)
+
+    return _inner
 
 
 def test_fixtures(upk_data):

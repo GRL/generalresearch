@@ -20,6 +20,12 @@ from generalresearch.managers.thl.session import SessionManager
 from generalresearch.managers.thl.task_adjustment import (
     TaskAdjustmentManager,
 )
+from generalresearch.managers.thl.user_manager.mysql_user_manager import (
+    MysqlUserManager,
+)
+from generalresearch.managers.thl.user_manager.redis_user_manager import (
+    RedisUserManager,
+)
 from generalresearch.managers.thl.user_manager.user_manager import (
     UserManager,
 )
@@ -158,6 +164,16 @@ def user_manager(
         pg_config_rr=thl_web_rr,
         redis=settings.redis,
     )
+
+
+@pytest.fixture(scope="session")
+def mysql_user_manager(thl_web_rw: PostgresConfig) -> MysqlUserManager:
+    return MysqlUserManager(pg_config=thl_web_rw, is_read_replica=False)
+
+
+@pytest.fixture(scope="session")
+def redis_user_manager(thl_redis_config: RedisConfig) -> RedisUserManager:
+    return RedisUserManager(redis_dsn=thl_redis_config)
 
 
 @pytest.fixture(scope="session")

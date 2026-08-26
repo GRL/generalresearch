@@ -513,7 +513,7 @@ class TestBusinessPayoutEventManager:
         assert int(res.deduction.sum()) == available_balance - 1
 
         # Slightly less
-        with pytest.raises(expected_exception=Exception) as cm:
+        with pytest.raises(expected_exception=ValueError):
             res = business_payout_event_manager.recoup_proportional(
                 df=df, target_amount=available_balance + 1
             )
@@ -731,12 +731,9 @@ class TestBusinessPayoutEventManager:
 
     def test_ach_payment(
         self,
-        product: Product,
         mnt_filepath: GRLDatasets,
         thl_ledger_manager: ThlLedgerManager,
         client_no_amm: DaskClient,
-        thl_redis_config: RedisConfig,
-        payout_event_manager: PayoutEventManager,
         brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
         business_payout_event_manager: BusinessPayoutEventManager,
         delete_ledger_db: Callable[..., None],
@@ -899,8 +896,6 @@ class TestBusinessPayoutEventManager:
             pop_ledger=pop_ledger_merge,
         )
         business.prebuild_payouts(
-            thl_pg_config=thl_web_rr,
-            thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
         assert isinstance(business.payouts, list)
@@ -930,13 +925,10 @@ class TestBusinessPayoutEventManager:
 
     def test_ach_payment_partial_amount(
         self,
-        product: Product,
         mnt_filepath: GRLDatasets,
         thl_ledger_manager: ThlLedgerManager,
         client_no_amm: DaskClient,
-        thl_redis_config: RedisConfig,
         payout_event_manager: PayoutEventManager,
-        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
         business_payout_event_manager: BusinessPayoutEventManager,
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
@@ -948,8 +940,6 @@ class TestBusinessPayoutEventManager:
         session_with_tx_factory: Callable[..., None],
         pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
-        adj_to_fail_with_tx_factory: Callable[..., None],
         thl_web_rr: PostgresConfig,
         ledger_manager: LedgerManager,
         product_manager: ProductManager,
@@ -1076,7 +1066,6 @@ class TestBusinessPayoutEventManager:
         thl_ledger_manager: ThlLedgerManager,
         client_no_amm: DaskClient,
         payout_event_manager: PayoutEventManager,
-        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
         business_payout_event_manager: BusinessPayoutEventManager,
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],

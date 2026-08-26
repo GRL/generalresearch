@@ -1,9 +1,14 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 
+from generalresearch.managers.thl.product import ProductManager
 from generalresearch.managers.thl.session import SessionManager
+from generalresearch.managers.thl.wall import WallManager
 from generalresearch.models import Source
 from generalresearch.models.thl.definitions import (
     Status,
@@ -14,6 +19,7 @@ from generalresearch.models.thl.product import (
     PayoutConfig,
     PayoutTransformation,
     PayoutTransformationPercentArgs,
+    Product,
     UserWalletConfig,
 )
 from generalresearch.models.thl.session import Session, WallOut
@@ -30,7 +36,7 @@ finish3 = start3 + timedelta(minutes=5)
 
 
 @pytest.fixture(scope="session")
-def bp1(product_manager):
+def bp1(product_manager: ProductManager) -> Product:
     # user wallet disabled, payout xform NULL
     return product_manager.create_dummy(
         user_wallet_config=UserWalletConfig(enabled=False),
@@ -39,7 +45,7 @@ def bp1(product_manager):
 
 
 @pytest.fixture(scope="session")
-def bp2(product_manager):
+def bp2(product_manager: ProductManager) -> Product:
     # user wallet disabled, payout xform 40%
     return product_manager.create_dummy(
         user_wallet_config=UserWalletConfig(enabled=False),
@@ -53,7 +59,7 @@ def bp2(product_manager):
 
 
 @pytest.fixture(scope="session")
-def bp3(product_manager):
+def bp3(product_manager: ProductManager) -> Product:
     # user wallet enabled, payout xform 50%
     return product_manager.create_dummy(
         user_wallet_config=UserWalletConfig(enabled=True),
@@ -70,9 +76,9 @@ class TestTaskStatus:
 
     def test_task_status_complete_1(
         self,
-        bp1,
+        bp1: Product,
         user_factory: Callable[..., User],
-        finished_session_factory,
+        finished_session_factory: Callable[..., Session],
         session_manager: SessionManager,
     ):
         # User Payout xform NULL
@@ -131,10 +137,10 @@ class TestTaskStatus:
 
     def test_task_status_complete_2(
         self,
-        bp2,
+        bp2: Product,
         user_factory: Callable[..., User],
-        finished_session_factory,
-        session_manager,
+        finished_session_factory: Callable[..., Session],
+        session_manager: SessionManager,
     ):
         # User Payout xform 40%
         user2: User = user_factory(product=bp2)
@@ -202,10 +208,10 @@ class TestTaskStatus:
 
     def test_task_status_complete_3(
         self,
-        bp3,
+        bp3: Product,
         user_factory: Callable[..., User],
-        finished_session_factory,
-        session_manager,
+        finished_session_factory: Callable[..., Session],
+        session_manager: SessionManager,
     ):
         # Wallet enabled User Payout xform 50% (the response is identical
         # to the user wallet disabled w same xform)
@@ -235,16 +241,17 @@ class TestTaskStatus:
             }
         )
         tsr = session_manager.get_task_status_response(s3.uuid)
+        assert isinstance(tsr, TaskStatusResponse)
         # Not bothering with wall events ...
         tsr.wall_events = None
         assert tsr == expected_tsr
 
     def test_task_status_fail(
         self,
-        bp1,
+        bp1: Product,
         user_factory: Callable[..., User],
-        finished_session_factory,
-        session_manager,
+        finished_session_factory: Callable[..., Session],
+        session_manager: SessionManager,
     ):
         # User Payout xform NULL: user payout is None always
         user1: User = user_factory(product=bp1)
@@ -275,16 +282,17 @@ class TestTaskStatus:
             }
         )
         tsr = session_manager.get_task_status_response(s1.uuid)
+        assert isinstance(tsr, TaskStatusResponse)
         # Not bothering with wall events ...
         tsr.wall_events = None
         assert tsr == expected_tsr
 
     def test_task_status_fail_xform(
         self,
-        bp2,
+        bp2: Product,
         user_factory: Callable[..., User],
-        finished_session_factory,
-        session_manager,
+        finished_session_factory: Callable[..., Session],
+        session_manager: SessionManager,
     ):
         # User Payout xform 40%: user_payout is 0 (not None)
 
@@ -314,16 +322,17 @@ class TestTaskStatus:
             }
         )
         tsr = session_manager.get_task_status_response(s.uuid)
+        assert isinstance(tsr, TaskStatusResponse)
         # Not bothering with wall events ...
         tsr.wall_events = None
         assert tsr == expected_tsr
 
     def test_task_status_abandon(
         self,
-        bp1,
+        bp1: Product,
         user_factory: Callable[..., User],
-        session_factory,
-        session_manager,
+        session_factory: Callable[..., Session],
+        session_manager: SessionManager,
     ):
         # User Payout xform NULL: all payout fields are None
         user: User = user_factory(product=bp1)
@@ -352,16 +361,17 @@ class TestTaskStatus:
             }
         )
         tsr = session_manager.get_task_status_response(s.uuid)
+        assert isinstance(tsr, TaskStatusResponse)
         # Not bothering with wall events ...
         tsr.wall_events = None
         assert tsr == expected_tsr
 
     def test_task_status_abandon_xform(
         self,
-        bp2,
+        bp2: Product,
         user_factory: Callable[..., User],
-        session_factory,
-        session_manager,
+        session_factory: Callable[..., Session],
+        session_manager: SessionManager,
     ):
         # User Payout xform 40%: all payout fields are None (same as when payout xform is null)
         user: User = user_factory(product=bp2)
@@ -393,17 +403,18 @@ class TestTaskStatus:
             }
         )
         tsr = session_manager.get_task_status_response(s.uuid)
+        assert isinstance(tsr, TaskStatusResponse)
         # Not bothering with wall events ...
         tsr.wall_events = None
         assert tsr == expected_tsr
 
     def test_task_status_adj_fail(
         self,
-        bp1,
+        bp1: Product,
         user_factory: Callable[..., User],
-        finished_session_factory,
-        wall_manager,
-        session_manager,
+        finished_session_factory: Callable[..., Session],
+        wall_manager: WallManager,
+        session_manager: SessionManager,
     ):
         # Complete -> Fail
         # User Payout xform NULL: adjusted_user_* and user_* is still all None
@@ -442,17 +453,18 @@ class TestTaskStatus:
             }
         )
         tsr = session_manager.get_task_status_response(s.uuid)
+        assert isinstance(tsr, TaskStatusResponse)
         # Not bothering with wall events ...
         tsr.wall_events = None
         assert tsr == expected_tsr
 
     def test_task_status_adj_fail_xform(
         self,
-        bp2,
+        bp2: Product,
         user_factory: Callable[..., User],
-        finished_session_factory,
-        wall_manager,
-        session_manager,
+        finished_session_factory: Callable[..., Session],
+        wall_manager: WallManager,
+        session_manager: SessionManager,
     ):
         # Complete -> Fail
         # User Payout xform 40%: adjusted_user_payout is 0 (not null)
@@ -494,17 +506,18 @@ class TestTaskStatus:
             }
         )
         tsr = session_manager.get_task_status_response(s.uuid)
+        assert isinstance(tsr, TaskStatusResponse)
         # Not bothering with wall events ...
         tsr.wall_events = None
         assert tsr == expected_tsr
 
     def test_task_status_adj_complete_from_abandon(
         self,
-        bp1,
+        bp1: Product,
         user_factory: Callable[..., User],
-        session_factory,
-        wall_manager,
-        session_manager,
+        session_factory: Callable[..., Session],
+        wall_manager: WallManager,
+        session_manager: SessionManager,
     ):
         # User Payout xform NULL
         user: User = user_factory(product=bp1)
@@ -548,17 +561,18 @@ class TestTaskStatus:
             }
         )
         tsr = session_manager.get_task_status_response(s.uuid)
+        assert isinstance(tsr, TaskStatusResponse)
         # Not bothering with wall events ...
         tsr.wall_events = None
         assert tsr == expected_tsr
 
     def test_task_status_adj_complete_from_abandon_xform(
         self,
-        bp2,
+        bp2: Product,
         user_factory: Callable[..., User],
-        session_factory,
-        wall_manager,
-        session_manager,
+        session_factory: Callable[..., Session],
+        wall_manager: WallManager,
+        session_manager: SessionManager,
     ):
         # User Payout xform 40%
         user: User = user_factory(product=bp2)
@@ -605,17 +619,18 @@ class TestTaskStatus:
             }
         )
         tsr = session_manager.get_task_status_response(s.uuid)
+        assert isinstance(tsr, TaskStatusResponse)
         # Not bothering with wall events ...
         tsr.wall_events = None
         assert tsr == expected_tsr
 
     def test_task_status_adj_complete_from_fail(
         self,
-        bp1,
+        bp1: Product,
         user_factory: Callable[..., User],
-        finished_session_factory,
-        wall_manager,
-        session_manager,
+        finished_session_factory: Callable[..., Session],
+        wall_manager: WallManager,
+        session_manager: SessionManager,
     ):
         # User Payout xform NULL
         user: User = user_factory(product=bp1)
@@ -659,17 +674,18 @@ class TestTaskStatus:
             }
         )
         tsr = session_manager.get_task_status_response(s.uuid)
+        assert isinstance(tsr, TaskStatusResponse)
         # Not bothering with wall events ...
         tsr.wall_events = None
         assert tsr == expected_tsr
 
     def test_task_status_adj_complete_from_fail_xform(
         self,
-        bp2,
+        bp2: Product,
         user_factory: Callable[..., User],
-        finished_session_factory,
-        wall_manager,
-        session_manager,
+        finished_session_factory: Callable[..., Session],
+        wall_manager: WallManager,
+        session_manager: SessionManager,
     ):
         # User Payout xform 40%
         user: User = user_factory(product=bp2)
@@ -715,6 +731,7 @@ class TestTaskStatus:
             }
         )
         tsr = session_manager.get_task_status_response(s.uuid)
+        assert isinstance(tsr, TaskStatusResponse)
         # Not bothering with wall events ...
         tsr.wall_events = None
         assert tsr == expected_tsr

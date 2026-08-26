@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -5,23 +8,27 @@ import faker
 import pytest
 
 from generalresearch.managers.thl.userhealth import (
+    AuditLogManager,
     IPRecordManager,
     UserIpHistoryManager,
 )
-from generalresearch.models.thl.ipinfo import GeoIPInformation
+from generalresearch.models.thl.ipinfo import GeoIPInformation, IPGeoname, IPInformation
+from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.user import User
 from generalresearch.models.thl.user_iphistory import (
     IPRecord,
+    UserIPHistory,
 )
 from generalresearch.models.thl.userhealth import AuditLog, AuditLogLevel
+from generalresearch.pg_helper import PostgresConfig
+from generalresearch.redis_helper import RedisConfig
 
 fake = faker.Faker()
 
 
 class TestAuditLog:
 
-    def test_init(self, thl_web_rr: PostgresConfig, audit_log_manager):
-        from generalresearch.managers.thl.userhealth import AuditLogManager
-
+    def test_init(self, thl_web_rr: PostgresConfig, audit_log_manager: AuditLogManager):
         alm = AuditLogManager(pg_config=thl_web_rr)
 
         assert isinstance(alm, AuditLogManager)
@@ -33,15 +40,16 @@ class TestAuditLog:
         argnames="level",
         argvalues=list(AuditLogLevel),
     )
-    def test_create(self, audit_log_manager, user, level):
+    def test_create(
+        self, audit_log_manager: AuditLogManager, user: User, level: AuditLogLevel
+    ):
         instance = audit_log_manager.create(
             user_id=user.user_id, level=level, event_type=uuid4().hex
         )
         assert isinstance(instance, AuditLog)
         assert instance.id != 1
 
-    def test_get_by_id(self, audit_log, audit_log_manager):
-        from generalresearch.models.thl.userhealth import AuditLog
+    def test_get_by_id(self, audit_log: AuditLog, audit_log_manager: AuditLogManager):
 
         with pytest.raises(expected_exception=Exception) as cm:
             audit_log_manager.get_by_id(auditlog_id=999_999_999_999)
@@ -57,8 +65,8 @@ class TestAuditLog:
         self,
         user_factory: Callable[..., User],
         product_factory: Callable[..., Product],
-        audit_log_factory,
-        audit_log_manager,
+        audit_log_factory: Callable[..., AuditLog],
+        audit_log_manager: AuditLogManager,
     ):
         p1 = product_factory()
         p2 = product_factory()
@@ -82,7 +90,11 @@ class TestAuditLog:
         assert len(res) == 1
 
     def test_filter_by_user_id(
-        self, user_factory: Callable[..., User], product: Product, audit_log_factory, audit_log_manager
+        self,
+        user_factory: Callable[..., User],
+        product: Product,
+        audit_log_factory: Callable[..., AuditLog],
+        audit_log_manager: AuditLogManager,
     ):
         u1 = user_factory(product=product)
         u2 = user_factory(product=product)
@@ -110,8 +122,8 @@ class TestAuditLog:
         self,
         user_factory: Callable[..., User],
         product_factory: Callable[..., Product],
-        audit_log_factory,
-        audit_log_manager,
+        audit_log_factory: Callable[..., AuditLog],
+        audit_log_manager: AuditLogManager,
     ):
         p1 = product_factory()
         p2 = product_factory()
@@ -144,8 +156,8 @@ class TestAuditLog:
         self,
         user_factory: Callable[..., User],
         product_factory: Callable[..., Product],
-        audit_log_factory,
-        audit_log_manager,
+        audit_log_factory: Callable[..., AuditLog],
+        audit_log_manager: AuditLogManager,
     ):
         p1 = product_factory()
         p2 = product_factory()
@@ -205,18 +217,29 @@ class TestAuditLog:
 
 class TestIPRecordManager:
 
-    def test_init(self, thl_web_rr: PostgresConfig, thl_redis_config: RedisConfig, ip_record_manager):
-        instance = IPRecordManager(pg_config=thl_web_rr: PostgresConfig, redis_config=thl_redis_config)
+    def test_init(
+        self,
+        thl_web_rr: PostgresConfig,
+        thl_redis_config: RedisConfig,
+        ip_record_manager: IPRecordManager,
+    ):
+        instance = IPRecordManager(pg_config=thl_web_rr, redis_config=thl_redis_config)
         assert isinstance(instance, IPRecordManager)
         assert isinstance(ip_record_manager, IPRecordManager)
 
-    def test_create(self, ip_record_manager, user, ip_information):
+    def test_create(
+        self,
+        ip_record_manager: IPRecordManager,
+        user: User,
+        ip_information: IPInformation,
+    ):
         instance = ip_record_manager.create_dummy(
             user_id=user.user_id, ip=ip_information.ip
         )
         assert isinstance(instance, IPRecord)
 
         assert isinstance(instance.forwarded_ips, list)
+        assert isinstance(instance.forwarded_ip_records, list)
         assert isinstance(instance.forwarded_ip_records[0], IPRecord)
         assert isinstance(instance.forwarded_ips[0], str)
 
@@ -228,10 +251,10 @@ class TestIPRecordManager:
 
     def test_prefetch_info(
         self,
-        ip_record_factory,
-        ip_information_factory,
-        ip_geoname,
-        user,
+        ip_record_factory: Callable[..., IPRecord],
+        ip_information_factory: Callable[..., IPInformation],
+        ip_geoname: IPGeoname,
+        user: User,
         thl_web_rr: PostgresConfig,
         thl_redis_config: RedisConfig,
     ):
@@ -239,15 +262,17 @@ class TestIPRecordManager:
         ip = fake.ipv4_public()
         ip_information_factory(ip=ip, geoname=ip_geoname)
         ipr: IPRecord = ip_record_factory(user_id=user.user_id, ip=ip)
+        assert isinstance(ipr, IPRecord)
 
         assert ipr.information is None
         assert len(ipr.forwarded_ip_records) >= 1
+        assert isinstance(ipr.forwarded_ip_records, list)
         fipr = ipr.forwarded_ip_records[0]
         assert fipr.information is None
 
         ipr.prefetch_ipinfo(
-            pg_config=thl_web_rr: PostgresConfig,
-            redis_config=thl_redis_config: RedisConfig,
+            pg_config=thl_web_rr,
+            redis_config=thl_redis_config,
             include_forwarded=True,
         )
         assert isinstance(ipr.information, GeoIPInformation)
@@ -256,8 +281,8 @@ class TestIPRecordManager:
 
         ip_information_factory(ip=fipr.ip, geoname=ip_geoname)
         ipr.prefetch_ipinfo(
-            pg_config=thl_web_rr: PostgresConfig,
-            redis_config=thl_redis_config: RedisConfig,
+            pg_config=thl_web_rr,
+            redis_config=thl_redis_config,
             include_forwarded=True,
         )
         assert fipr.information is not None
@@ -265,28 +290,35 @@ class TestIPRecordManager:
 
 @pytest.mark.usefixtures("user_iphistory_manager_clear_cache")
 class TestUserIpHistoryManager:
-    def test_init(self, thl_web_rr: PostgresConfig, thl_redis_config: RedisConfig, user_iphistory_manager):
+    def test_init(
+        self,
+        thl_web_rr: PostgresConfig,
+        thl_redis_config: RedisConfig,
+        user_iphistory_manager: UserIpHistoryManager,
+    ):
         instance = UserIpHistoryManager(
-            pg_config=thl_web_rr: PostgresConfig, redis_config=thl_redis_config
+            pg_config=thl_web_rr, redis_config=thl_redis_config
         )
         assert isinstance(instance, UserIpHistoryManager)
         assert isinstance(user_iphistory_manager, UserIpHistoryManager)
 
     def test_latest_record(
         self,
-        user_iphistory_manager,
-        user,
-        ip_record_factory,
-        ip_information_factory,
-        ip_geoname,
+        user_iphistory_manager: UserIpHistoryManager,
+        user: User,
+        ip_record_factory: Callable[..., IPRecord],
+        ip_information_factory: Callable[..., IPInformation],
+        ip_geoname: IPGeoname,
     ):
         ip = fake.ipv4_public()
         ip_information_factory(ip=ip, geoname=ip_geoname, is_anonymous=True)
         ipr1: IPRecord = ip_record_factory(user_id=user.user_id, ip=ip)
 
         ipr = user_iphistory_manager.get_user_latest_ip_record(user=user)
+        assert isinstance(ipr, IPRecord)
         assert ipr.ip == ipr1.ip
         assert ipr.is_anonymous
+        assert isinstance(ipr.information, GeoIPInformation)
         assert ipr.information.lookup_prefix == "/32"
 
         ip = fake.ipv6()
@@ -294,7 +326,9 @@ class TestUserIpHistoryManager:
         ipr2: IPRecord = ip_record_factory(user_id=user.user_id, ip=ip)
 
         ipr = user_iphistory_manager.get_user_latest_ip_record(user=user)
+        assert isinstance(ipr, IPRecord)
         assert ipr.ip == ipr2.ip
+        assert isinstance(ipr.information, GeoIPInformation)
         assert ipr.information.lookup_prefix == "/64"
         assert ipr.information is not None
         assert not ipr.is_anonymous
@@ -303,6 +337,8 @@ class TestUserIpHistoryManager:
         assert country_iso == ip_geoname.country_iso
 
         iph = user_iphistory_manager.get_user_ip_history(user_id=user.user_id)
+        assert isinstance(iph, UserIPHistory)
+        assert isinstance(iph.ips, list)
         assert iph.ips[0].information is not None
         assert iph.ips[1].information is not None
         assert iph.ips[0].country_iso == country_iso
@@ -310,7 +346,12 @@ class TestUserIpHistoryManager:
         assert iph.ips[0].ip == ipr1.ip
         assert iph.ips[1].ip == ipr2.ip
 
-    def test_virgin(self, user, user_iphistory_manager, ip_record_factory):
+    def test_virgin(
+        self,
+        user: User,
+        user_iphistory_manager: UserIpHistoryManager,
+        ip_record_factory: Callable[..., IPRecord],
+    ):
         iph = user_iphistory_manager.get_user_ip_history(user_id=user.user_id)
         assert len(iph.ips) == 0
 
@@ -320,16 +361,18 @@ class TestUserIpHistoryManager:
 
     def test_out_of_order(
         self,
-        ip_record_factory,
-        user,
-        user_iphistory_manager,
-        ip_information_factory,
-        ip_geoname,
+        ip_record_factory: Callable[..., IPRecord],
+        user: User,
+        user_iphistory_manager: UserIpHistoryManager,
+        ip_information_factory: Callable[..., IPInformation],
+        ip_geoname: IPGeoname,
     ):
         # Create the user-ip association BEFORE the ip even exists in the ipinfo table
         ip = fake.ipv4_public()
         ip_record_factory(user_id=user.user_id, ip=ip)
         iph = user_iphistory_manager.get_user_ip_history(user_id=user.user_id)
+        assert isinstance(iph, UserIPHistory)
+        assert isinstance(iph.ips, list)
         assert len(iph.ips) == 1
         ipr = iph.ips[0]
         assert ipr.information is None
@@ -337,6 +380,8 @@ class TestUserIpHistoryManager:
 
         ip_information_factory(ip=ip, geoname=ip_geoname, is_anonymous=True)
         iph = user_iphistory_manager.get_user_ip_history(user_id=user.user_id)
+        assert isinstance(iph, UserIPHistory)
+        assert isinstance(iph.ips, list)
         assert len(iph.ips) == 1
         ipr = iph.ips[0]
         assert ipr.information is not None
@@ -344,16 +389,18 @@ class TestUserIpHistoryManager:
 
     def test_out_of_order_ipv6(
         self,
-        ip_record_factory,
-        user,
-        user_iphistory_manager,
-        ip_information_factory,
-        ip_geoname,
+        ip_record_factory: Callable[..., IPRecord],
+        user: User,
+        user_iphistory_manager: UserIpHistoryManager,
+        ip_information_factory: Callable[..., IPInformation],
+        ip_geoname: IPGeoname,
     ):
         # Create the user-ip association BEFORE the ip even exists in the ipinfo table
         ip = fake.ipv6()
         ip_record_factory(user_id=user.user_id, ip=ip)
         iph = user_iphistory_manager.get_user_ip_history(user_id=user.user_id)
+        assert isinstance(iph, UserIPHistory)
+        assert isinstance(iph.ips, list)
         assert len(iph.ips) == 1
         ipr = iph.ips[0]
         assert ipr.information is None
@@ -361,6 +408,8 @@ class TestUserIpHistoryManager:
 
         ip_information_factory(ip=ip, geoname=ip_geoname, is_anonymous=True)
         iph = user_iphistory_manager.get_user_ip_history(user_id=user.user_id)
+        assert isinstance(iph, UserIPHistory)
+        assert isinstance(iph.ips, list)
         assert len(iph.ips) == 1
         ipr = iph.ips[0]
         assert ipr.information is not None

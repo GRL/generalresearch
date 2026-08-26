@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import uuid
 
 import pytest
 
+from generalresearch.managers.thl.survey_penalty import SurveyPenaltyManager
 from generalresearch.models import Source
 from generalresearch.models.thl.survey.penalty import (
     BPSurveyPenalty,
@@ -22,7 +25,9 @@ def team_uuid() -> str:
 
 
 @pytest.fixture
-def penalties(product_uuid, team_uuid):
+def penalties(
+    product_uuid: str, team_uuid: str
+) -> list[BPSurveyPenalty | TeamSurveyPenalty]:
     return [
         BPSurveyPenalty(
             source=Source.TESTING, survey_id="a", penalty=0.1, product_id=product_uuid
@@ -48,7 +53,13 @@ def penalties(product_uuid, team_uuid):
 
 
 class TestSurveyPenalty:
-    def test(self, surveypenalty_manager, penalties, product_uuid, team_uuid):
+    def test(
+        self,
+        surveypenalty_manager: SurveyPenaltyManager,
+        penalties: list[BPSurveyPenalty | TeamSurveyPenalty],
+        product_uuid: str,
+        team_uuid: str,
+    ):
         surveypenalty_manager.set_penalties(penalties)
 
         res = surveypenalty_manager.get_penalties_for(

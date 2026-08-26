@@ -6,7 +6,6 @@ from uuid import uuid4
 
 import pytest
 
-from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.managers.thl.product import ProductManager
 from generalresearch.models.thl.product import (
@@ -55,6 +54,7 @@ class TestGetUserWalletBalance:
         user: User = user_factory(schrute_product)
         balance = thl_ledger_manager.get_user_wallet_balance(user=user)
         assert balance == 0
+        assert isinstance(user.product, Product)
         balance_string = user.product.format_payout_format(Decimal(balance) / 100)
         assert balance_string == "0 Schrute Bucks"
         redeemable_balance = thl_ledger_manager.get_user_redeemable_wallet_balance(

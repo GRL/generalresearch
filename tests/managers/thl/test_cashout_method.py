@@ -1,5 +1,14 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+
 import pytest
 
+from generalresearch.config import GRLBaseSettings
+from generalresearch.managers.thl.cashout_method import (
+    CashoutMethodManager,
+)
+from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
     CashMailCashoutMethodData,
@@ -13,15 +22,26 @@ from test_utils.managers.cashout_methods import (
 
 class TestTangoCashoutMethods:
 
-    def test_create_and_get(self, cashout_method_manager, setup_cashoutmethod_db):
+    def test_create_and_get(
+        self,
+        cashout_method_manager: CashoutMethodManager,
+        setup_cashoutmethod_db: Callable[..., None],
+    ):
+        setup_cashoutmethod_db()
+
         res = cashout_method_manager.filter(payout_types=[PayoutType.TANGO])
         assert len(res) == 2
-        cm = [x for x in res if x.ext_id == "U025035"][0]
+        cm = next(x for x in res if x.ext_id == "U025035")
         assert EXAMPLE_TANGO_CASHOUT_METHODS[0] == cm
 
     def test_user(
-        self, cashout_method_manager, user_with_wallet, setup_cashoutmethod_db
+        self,
+        cashout_method_manager: CashoutMethodManager,
+        user_with_wallet: User,
+        setup_cashoutmethod_db: Callable[..., None],
     ):
+        setup_cashoutmethod_db()
+
         res = cashout_method_manager.get_cashout_methods(user_with_wallet)
         # This user ONLY has the two tango cashout methods, no AMT
         assert len(res) == 2
@@ -29,19 +49,31 @@ class TestTangoCashoutMethods:
 
 class TestAMTCashoutMethods:
 
-    def test_create_and_get(self, cashout_method_manager, setup_cashoutmethod_db):
+    def test_create_and_get(
+        self,
+        settings: GRLBaseSettings,
+        cashout_method_manager: CashoutMethodManager,
+        setup_cashoutmethod_db: Callable[..., None],
+    ):
+        setup_cashoutmethod_db()
+
         res = cashout_method_manager.filter(payout_types=[PayoutType.AMT])
         assert len(res) == 2
 
-        cm = [x for x in res if x.name == "AMT Assignment"][0]
-        assert AMT_ASSIGNMENT_CASHOUT_METHOD == cm
+        cm = next(x for x in res if x.name == "AMT Assignment")
+        assert settings.amt_assignment_cashout_method_id == cm
 
-        cm = [x for x in res if x.name == "AMT Bonus"][0]
-        assert AMT_BONUS_CASHOUT_METHOD == cm
+        cm = next(x for x in res if x.name == "AMT Bonus")
+        assert settings.amt_bonus_cashout_method_id == cm
 
     def test_user(
-        self, cashout_method_manager, user_with_wallet_amt, setup_cashoutmethod_db
+        self,
+        cashout_method_manager: CashoutMethodManager,
+        user_with_wallet_amt: User,
+        setup_cashoutmethod_db: Callable[..., None],
     ):
+        setup_cashoutmethod_db()
+
         res = cashout_method_manager.get_cashout_methods(user_with_wallet_amt)
         # This user has the 2 tango, plus amt bonus & assignment
         assert len(res) == 4
@@ -49,14 +81,22 @@ class TestAMTCashoutMethods:
 
 class TestUserCashoutMethods:
 
-    def test(self, cashout_method_manager, user_with_wallet, delete_cashoutmethod_db):
+    def test(
+        self,
+        cashout_method_manager: CashoutMethodManager,
+        user_with_wallet: User,
+        delete_cashoutmethod_db: Callable[..., None],
+    ):
         delete_cashoutmethod_db()
 
         res = cashout_method_manager.get_cashout_methods(user_with_wallet)
         assert len(res) == 0
 
     def test_cash_in_mail(
-        self, cashout_method_manager, user_with_wallet, delete_cashoutmethod_db
+        self,
+        cashout_method_manager: CashoutMethodManager,
+        user_with_wallet: User,
+        delete_cashoutmethod_db: Callable[..., None],
     ):
         delete_cashoutmethod_db()
 
@@ -95,7 +135,10 @@ class TestUserCashoutMethods:
         assert len(res) == 2
 
     def test_paypal(
-        self, cashout_method_manager, user_with_wallet, delete_cashoutmethod_db
+        self,
+        cashout_method_manager: CashoutMethodManager,
+        user_with_wallet: User,
+        delete_cashoutmethod_db: Callable[..., None],
     ):
         delete_cashoutmethod_db()
 

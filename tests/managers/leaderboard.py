@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import os
 import time
 import zoneinfo
+from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
@@ -19,10 +22,11 @@ from generalresearch.models.thl.product import (
     PayoutConfig,
     PayoutTransformation,
     PayoutTransformationPercentArgs,
-    product: Product,
+    Product,
 )
 from generalresearch.models.thl.session import Session
 from generalresearch.models.thl.user import User
+from generalresearch.redis_helper import RedisConfig
 
 # random uuid for leaderboard tests
 product_id = uuid4().hex
@@ -44,7 +48,9 @@ def session_factory():
 
 
 def _create_session(
-    product_user_id="aaa", country_iso="us", user_payout=Decimal("1.00")
+    product_user_id: str = "aaa",
+    country_iso: str = "us",
+    user_payout: Decimal = Decimal("1.00"),
 ):
     user = User(
         product_id=product_id,
@@ -74,59 +80,67 @@ def _create_session(
 
 
 @pytest.fixture(scope="function")
-def setup_leaderboards(thl_redis):
-    complete_count = {
-        "aaa": 10,
-        "bbb": 6,
-        "ccc": 6,
-        "ddd": 6,
-        "eee": 2,
-        "fff": 1,
-        "ggg": 1,
-    }
-    sum_payout = {"aaa": 345, "bbb": 100, "ccc": 100}
-    max_payout = sum_payout
-    country_iso = "us"
-    for freq in [
-        LeaderboardFrequency.DAILY,
-        LeaderboardFrequency.WEEKLY,
-        LeaderboardFrequency.MONTHLY,
-    ]:
-        m = LeaderboardManager(
-            redis_client=thl_redis,
-            board_code=LeaderboardCode.COMPLETE_COUNT,
-            freq=freq,
-            product_id=product_id,
-            country_iso=country_iso,
-            within_time=datetime(2025, 2, 5, 12, 12, 12),
-        )
-        thl_redis.delete(m.key)
-        thl_redis.zadd(m.key, complete_count)
-        m = LeaderboardManager(
-            redis_client=thl_redis,
-            board_code=LeaderboardCode.SUM_PAYOUTS,
-            freq=freq,
-            product_id=product_id,
-            country_iso=country_iso,
-            within_time=datetime(2025, 2, 5, 12, 12, 12),
-        )
-        thl_redis.delete(m.key)
-        thl_redis.zadd(m.key, sum_payout)
-        m = LeaderboardManager(
-            redis_client=thl_redis,
-            board_code=LeaderboardCode.LARGEST_PAYOUT,
-            freq=freq,
-            product_id=product_id,
-            country_iso=country_iso,
-            within_time=datetime(2025, 2, 5, 12, 12, 12),
-        )
-        thl_redis.delete(m.key)
-        thl_redis.zadd(m.key, max_payout)
+def setup_leaderboards(thl_redis: RedisConfig) -> Callable[..., None]:
+
+    def _inner():
+        complete_count = {
+            "aaa": 10,
+            "bbb": 6,
+            "ccc": 6,
+            "ddd": 6,
+            "eee": 2,
+            "fff": 1,
+            "ggg": 1,
+        }
+        sum_payout = {"aaa": 345, "bbb": 100, "ccc": 100}
+        max_payout = sum_payout
+        country_iso = "us"
+        for freq in [
+            LeaderboardFrequency.DAILY,
+            LeaderboardFrequency.WEEKLY,
+            LeaderboardFrequency.MONTHLY,
+        ]:
+            m = LeaderboardManager(
+                redis_client=thl_redis,
+                board_code=LeaderboardCode.COMPLETE_COUNT,
+                freq=freq,
+                product_id=product_id,
+                country_iso=country_iso,
+                within_time=datetime(2025, 2, 5, 12, 12, 12, tzinfo=UTC),
+            )
+            thl_redis.delete(m.key)
+            thl_redis.zadd(m.key, complete_count)
+            m = LeaderboardManager(
+                redis_client=thl_redis,
+                board_code=LeaderboardCode.SUM_PAYOUTS,
+                freq=freq,
+                product_id=product_id,
+                country_iso=country_iso,
+                within_time=datetime(2025, 2, 5, 12, 12, 12, tzinfo=UTC),
+            )
+            thl_redis.delete(m.key)
+            thl_redis.zadd(m.key, sum_payout)
+            m = LeaderboardManager(
+                redis_client=thl_redis,
+                board_code=LeaderboardCode.LARGEST_PAYOUT,
+                freq=freq,
+                product_id=product_id,
+                country_iso=country_iso,
+                within_time=datetime(2025, 2, 5, 12, 12, 12, tzinfo=UTC),
+            )
+            thl_redis.delete(m.key)
+            thl_redis.zadd(m.key, max_payout)
+
+    return _inner
 
 
 class TestLeaderboards:
 
-    def test_leaderboard_manager(self, setup_leaderboards, thl_redis):
+    def test_leaderboard_manager(
+        self, setup_leaderboards: Callable[..., None], thl_redis: RedisConfig
+    ):
+        setup_leaderboards()
+
         country_iso = "us"
         board_code = LeaderboardCode.COMPLETE_COUNT
         freq = LeaderboardFrequency.DAILY
@@ -136,7 +150,7 @@ class TestLeaderboards:
             freq=freq,
             product_id=product_id,
             country_iso=country_iso,
-            within_time=datetime(2025, 2, 5, 0, 0, 0),
+            within_time=datetime(2025, 2, 5, 0, 0, 0, tzinfo=UTC),
         )
         lb = m.get_leaderboard()
         assert lb.period_start_local == datetime(
@@ -164,7 +178,11 @@ class TestLeaderboards:
             LeaderboardRow(bpuid="ggg", rank=6, value=1),
         ]
 
-    def test_leaderboard_manager_bpuid(self, setup_leaderboards, thl_redis):
+    def test_leaderboard_manager_bpuid(
+        self, setup_leaderboards: Callable[..., None], thl_redis: RedisConfig
+    ):
+        setup_leaderboards()
+
         country_iso = "us"
         board_code = LeaderboardCode.COMPLETE_COUNT
         freq = LeaderboardFrequency.DAILY
@@ -174,7 +192,7 @@ class TestLeaderboards:
             freq=freq,
             product_id=product_id,
             country_iso=country_iso,
-            within_time=datetime(2025, 2, 5, 12, 12, 12),
+            within_time=datetime(2025, 2, 5, 12, 12, 12, tzinfo=UTC),
         )
         lb = m.get_leaderboard(bp_user_id="fff", limit=1)
 
@@ -191,7 +209,14 @@ class TestLeaderboards:
         lb.censor()
         assert lb.rows[0].bpuid == "ee*"
 
-    def test_leaderboard_hit(self, setup_leaderboards, session_factory, thl_redis):
+    def test_leaderboard_hit(
+        self,
+        setup_leaderboards: Callable[..., None],
+        session_factory: Callable[..., Session],
+        thl_redis: RedisConfig,
+    ):
+        setup_leaderboards()
+
         hit_leaderboards(redis_client=thl_redis, session=session_factory())
 
         for freq in [
@@ -205,7 +230,7 @@ class TestLeaderboards:
                 freq=freq,
                 product_id=product_id,
                 country_iso="us",
-                within_time=datetime(2025, 2, 5, 12, 12, 12),
+                within_time=datetime(2025, 2, 5, 12, 12, 12, tzinfo=UTC),
             )
             lb = m.get_leaderboard(limit=1)
             assert lb.row_count == 7
@@ -216,7 +241,7 @@ class TestLeaderboards:
                 freq=freq,
                 product_id=product_id,
                 country_iso="us",
-                within_time=datetime(2025, 2, 5, 12, 12, 12),
+                within_time=datetime(2025, 2, 5, 12, 12, 12, tzinfo=UTC),
             )
             lb = m.get_leaderboard(limit=1)
             assert lb.row_count == 3
@@ -227,15 +252,20 @@ class TestLeaderboards:
                 freq=freq,
                 product_id=product_id,
                 country_iso="us",
-                within_time=datetime(2025, 2, 5, 12, 12, 12),
+                within_time=datetime(2025, 2, 5, 12, 12, 12, tzinfo=UTC),
             )
             lb = m.get_leaderboard(limit=1)
             assert lb.row_count == 3
             assert lb.rows == [LeaderboardRow(bpuid="aaa", rank=1, value=345 + 100)]
 
     def test_leaderboard_hit_new_row(
-        self, setup_leaderboards, session_factory, thl_redis
+        self,
+        setup_leaderboards: Callable[..., None],
+        session_factory: Callable[..., None],
+        thl_redis: RedisConfig,
     ):
+        setup_leaderboards()
+
         session = session_factory(product_user_id="zzz")
         hit_leaderboards(redis_client=thl_redis, session=session)
         m = LeaderboardManager(
@@ -244,24 +274,20 @@ class TestLeaderboards:
             freq=LeaderboardFrequency.DAILY,
             product_id=product_id,
             country_iso="us",
-            within_time=datetime(2025, 2, 5, 12, 12, 12),
+            within_time=datetime(2025, 2, 5, 12, 12, 12, tzinfo=UTC),
         )
         lb = m.get_leaderboard()
         assert lb.row_count == 8
         assert LeaderboardRow(bpuid="zzz", value=1, rank=6) in lb.rows
 
-    def test_leaderboard_country(self, thl_redis):
+    def test_leaderboard_country(self, thl_redis: RedisConfig):
         m = LeaderboardManager(
             redis_client=thl_redis,
             board_code=LeaderboardCode.COMPLETE_COUNT,
             freq=LeaderboardFrequency.DAILY,
             product_id=product_id,
             country_iso="jp",
-            within_time=datetime(
-                2025,
-                2,
-                1,
-            ),
+            within_time=datetime(2025, 2, 1, tzinfo=UTC),
         )
         lb = m.get_leaderboard()
         assert lb.row_count == 0

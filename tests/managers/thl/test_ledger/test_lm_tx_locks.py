@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from logging import LogCaptureFixture
 
 import pytest
 
@@ -41,7 +42,7 @@ class TestLedgerLocks:
         session_factory: Callable[..., Session],
         product_user_wallet_no: Product,
         create_main_accounts: Callable[..., None],
-        caplog,
+        caplog: Generator[LogCaptureFixture],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         utc_hour_ago: datetime,
@@ -126,14 +127,15 @@ class TestLedgerLocks:
         # purposely hold the lock open
         tx = None
         ledger_manager.redis_client.set(lock_name, "1")
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(expected_exception=LedgerTransactionCreateLockError):
-                tx = thl_ledger_manager.create_tx_protected(
-                    lock_key=lock_key,
-                    condition=condition,
-                    create_tx_func=create_tx_func,
-                )
-                assert tx is None
+        with caplog.at_level(logging.ERROR), pytest.raises(
+            expected_exception=LedgerTransactionCreateLockError
+        ):
+            tx = thl_ledger_manager.create_tx_protected(
+                lock_key=lock_key,
+                condition=condition,
+                create_tx_func=create_tx_func,
+            )
+            assert tx is None
         assert "Unable to acquire lock within the time specified" in caplog.text
         ledger_manager.redis_client.delete(lock_name)
 
@@ -143,7 +145,7 @@ class TestLedgerLocks:
         product_user_wallet_no: Product,
         create_main_accounts: Callable[..., None],
         delete_ledger_db: Callable[..., None],
-        caplog,
+        caplog: Generator[LogCaptureFixture],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
     ):
@@ -226,12 +228,13 @@ class TestLedgerLocks:
 
         # Purposely hold the lock open
         ledger_manager.redis_client.set(name=lock_name, value="1")
-        with caplog.at_level(logging.DEBUG):
-            with pytest.raises(expected_exception=LedgerTransactionCreateLockError):
-                tx = thl_ledger_manager.create_tx_task_complete(
-                    wall=wall3, user=user, created=wall3.started
-                )
-                assert isinstance(tx, LedgerTransaction)
+        with caplog.at_level(logging.DEBUG), pytest.raises(
+            expected_exception=LedgerTransactionCreateLockError
+        ):
+            tx = thl_ledger_manager.create_tx_task_complete(
+                wall=wall3, user=user, created=wall3.started
+            )
+            assert isinstance(tx, LedgerTransaction)
         assert "Unable to acquire lock within the time specified" in caplog.text
 
         # Release the lock

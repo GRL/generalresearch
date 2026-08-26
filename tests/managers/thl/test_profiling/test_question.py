@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from uuid import uuid4
 
 from generalresearch.managers.thl.profiling.question import QuestionManager
@@ -6,7 +7,11 @@ from generalresearch.models import Source
 
 class TestQuestionManager:
 
-    def test_get_multi_upk(self, question_manager: QuestionManager, upk_data):
+    def test_get_multi_upk(
+        self, question_manager: QuestionManager, upk_data: Callable[..., None]
+    ):
+        upk_data()
+
         qs = question_manager.get_multi_upk(
             question_ids=[
                 "8a22de34f985476aac85e15547100db8",
@@ -17,13 +22,21 @@ class TestQuestionManager:
         )
         assert len(qs) == 3
 
-    def test_get_questions_ranked(self, question_manager: QuestionManager, upk_data):
+    def test_get_questions_ranked(
+        self, question_manager: QuestionManager, upk_data: Callable[..., None]
+    ):
+        upk_data()
+
         qs = question_manager.get_questions_ranked(country_iso="mx", language_iso="spa")
         assert len(qs) >= 40
         assert qs[0].importance.task_score > qs[40].importance.task_score
         assert all(q.country_iso == "mx" and q.language_iso == "spa" for q in qs)
 
-    def test_lookup_by_property(self, question_manager: QuestionManager, upk_data):
+    def test_lookup_by_property(
+        self, question_manager: QuestionManager, upk_data: Callable[..., None]
+    ):
+        upk_data()
+
         q = question_manager.lookup_by_property(
             property_code="i:industry", country_iso="us", language_iso="eng"
         )
@@ -38,7 +51,11 @@ class TestQuestionManager:
         )
         assert q.explanation_template
 
-    def test_filter_by_property(self, question_manager: QuestionManager, upk_data):
+    def test_filter_by_property(
+        self, question_manager: QuestionManager, upk_data: Callable[..., None]
+    ):
+        upk_data()
+
         lookup = [
             ("i:industry", "us", "eng"),
             ("i:industry", "mx", "eng"),

@@ -15,10 +15,16 @@ from generalresearch.managers.gr.team import (
 )
 from generalresearch.managers.spectrum.survey import SpectrumSurveyManager
 from generalresearch.managers.thl.buyer import BuyerManager
+from generalresearch.managers.thl.cashout_method import (
+    CashoutMethodManager,
+)
 from generalresearch.managers.thl.ipinfo import (
     GeoIpInfoManager,
     IPGeonameManager,
     IPInformationManager,
+)
+from generalresearch.managers.thl.user_streak import (
+    UserStreakManager,
 )
 from generalresearch.managers.thl.userhealth import (
     AuditLogManager,
@@ -114,12 +120,9 @@ def geoipinfo_manager(
 
 
 @pytest.fixture(scope="session")
-def cashout_method_manager(thl_web_rw: PostgresConfig):
+def cashout_method_manager(thl_web_rw: PostgresConfig) -> CashoutMethodManager:
     assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
-    from generalresearch.managers.thl.cashout_method import (
-        CashoutMethodManager,
-    )
 
     return CashoutMethodManager(pg_config=thl_web_rw)
 
@@ -132,12 +135,9 @@ def event_manager(thl_redis_config: RedisConfig):
 
 
 @pytest.fixture(scope="session")
-def user_streak_manager(thl_web_rw: PostgresConfig):
+def user_streak_manager(thl_web_rw: PostgresConfig) -> UserStreakManager:
     assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
-    from generalresearch.managers.thl.user_streak import (
-        UserStreakManager,
-    )
 
     return UserStreakManager(pg_config=thl_web_rw)
 
@@ -169,10 +169,16 @@ def delete_cashoutmethod_db(thl_web_rw: PostgresConfig) -> Callable[..., None]:
 
 
 @pytest.fixture(scope="session")
-def setup_cashoutmethod_db(cashout_method_manager, delete_cashoutmethod_db):
-    delete_cashoutmethod_db()
-    for x in EXAMPLE_TANGO_CASHOUT_METHODS:
-        cashout_method_manager.create(x)
+def setup_cashoutmethod_db(
+    cashout_method_manager: CashoutMethodManager,
+    delete_cashoutmethod_db: Callable[..., None],
+) -> Callable[..., None]:
+
+    def _inner():
+        delete_cashoutmethod_db()
+
+        for x in EXAMPLE_TANGO_CASHOUT_METHODS:
+            cashout_method_manager.create(x)
 
     # TODO: convert these ids into instances to use.
     # settings.amt_bonus_cashout_method_id
@@ -180,7 +186,9 @@ def setup_cashoutmethod_db(cashout_method_manager, delete_cashoutmethod_db):
 
     # cashout_method_manager.create(AMT_ASSIGNMENT_CASHOUT_METHOD)
     # cashout_method_manager.create(AMT_BONUS_CASHOUT_METHOD)
-    raise NotImplementedError("Need to implement setup_cashoutmethod_db")
+    # raise NotImplementedError("Need to implement setup_cashoutmethod_db")
+
+    return _inner
 
 
 # === THL: Marketplaces ===
@@ -259,33 +267,39 @@ def membership_manager(gr_db: PostgresConfig) -> MembershipManager:
 
 
 @pytest.fixture(scope="session")
-def delete_buyers_surveys(thl_web_rw: PostgresConfig, buyer_manager: BuyerManager):
-    # assert "/unittest-" in thl_web_rw.dsn.path
-    thl_web_rw.execute_write(
-        """
-    DELETE FROM marketplace_surveystat
-    WHERE survey_id IN (
-        SELECT id
-        FROM marketplace_survey
-        WHERE source = %(source)s
-    );""",
-        params={"source": Source.TESTING.value},
-    )
-    thl_web_rw.execute_write(
-        """
-    DELETE FROM marketplace_survey
-    WHERE buyer_id IN (
-        SELECT id
-        FROM marketplace_buyer
-        WHERE source = %(source)s
-    );""",
-        params={"source": Source.TESTING.value},
-    )
-    thl_web_rw.execute_write(
-        """
-    DELETE from marketplace_buyer
-    WHERE source=%(source)s;
-    """,
-        params={"source": Source.TESTING.value},
-    )
-    buyer_manager.populate_caches()
+def delete_buyers_surveys(
+    thl_web_rw: PostgresConfig, buyer_manager: BuyerManager
+) -> Callable[..., None]:
+
+    def _inner():
+        # assert "/unittest-" in thl_web_rw.dsn.path
+        thl_web_rw.execute_write(
+            """
+        DELETE FROM marketplace_surveystat
+        WHERE survey_id IN (
+            SELECT id
+            FROM marketplace_survey
+            WHERE source = %(source)s
+        );""",
+            params={"source": Source.TESTING.value},
+        )
+        thl_web_rw.execute_write(
+            """
+        DELETE FROM marketplace_survey
+        WHERE buyer_id IN (
+            SELECT id
+            FROM marketplace_buyer
+            WHERE source = %(source)s
+        );""",
+            params={"source": Source.TESTING.value},
+        )
+        thl_web_rw.execute_write(
+            """
+        DELETE from marketplace_buyer
+        WHERE source=%(source)s;
+        """,
+            params={"source": Source.TESTING.value},
+        )
+        buyer_manager.populate_caches()
+
+    return _inner
