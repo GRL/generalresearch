@@ -1,15 +1,25 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from decimal import Decimal
+
+from generalresearch.models import (
+    LogicalOperator,
+    Source,
+    TaskCalculationType,
+)
+from generalresearch.models.spectrum import SpectrumStatus
+from generalresearch.models.spectrum.survey import (
+    SpectrumCondition,
+    SpectrumQuota,
+    SpectrumSurvey,
+)
+from generalresearch.models.thl.survey.condition import ConditionValueType
 
 
 class TestSpectrumCondition:
 
     def test_condition_create(self):
-        from generalresearch.models import LogicalOperator
-        from generalresearch.models.spectrum.survey import (
-            SpectrumCondition,
-        )
-        from generalresearch.models.thl.survey.condition import ConditionValueType
 
         c = SpectrumCondition.from_api(
             {
@@ -64,10 +74,6 @@ class TestSpectrumCondition:
 class TestSpectrumQuota:
 
     def test_quota_create(self):
-        from generalresearch.models.spectrum.survey import (
-            SpectrumCondition,
-            SpectrumQuota,
-        )
 
         d = {
             "quota_id": "a846b545-4449-4d76-93a2-f8ebdf6e711e",
@@ -84,9 +90,6 @@ class TestSpectrumQuota:
         assert q.is_open
 
     def test_quota_passes(self):
-        from generalresearch.models.spectrum.survey import (
-            SpectrumQuota,
-        )
 
         q = SpectrumQuota(remaining_count=57, condition_hashes=["a"])
         assert q.passes({"a": True})
@@ -103,9 +106,6 @@ class TestSpectrumQuota:
         assert not q.passes({"a": True})
 
     def test_quota_passes_soft(self):
-        from generalresearch.models.spectrum.survey import (
-            SpectrumQuota,
-        )
 
         q = SpectrumQuota(remaining_count=57, condition_hashes=["a", "b", "c"])
         # Pass if we match all
@@ -122,18 +122,6 @@ class TestSpectrumQuota:
 
 class TestSpectrumSurvey:
     def test_survey_create(self):
-        from generalresearch.models import (
-            LogicalOperator,
-            Source,
-            TaskCalculationType,
-        )
-        from generalresearch.models.spectrum import SpectrumStatus
-        from generalresearch.models.spectrum.survey import (
-            SpectrumCondition,
-            SpectrumQuota,
-            SpectrumSurvey,
-        )
-        from generalresearch.models.thl.survey.condition import ConditionValueType
 
         # Note: d is the raw response after calling SpectrumAPI.preprocess_survey() on it!
         d = {
@@ -202,6 +190,8 @@ class TestSpectrumSurvey:
             "exclusion_period": 0,
         }
         s = SpectrumSurvey.from_api(d)
+        assert isinstance(s, SpectrumSurvey)
+
         expected_survey = SpectrumSurvey(
             cpi=Decimal("1.20000"),
             country_isos=["fr"],
@@ -303,6 +293,8 @@ class TestSpectrumSurvey:
             "exclusion_period": 0,
         }
         s = SpectrumSurvey.from_api(d)
+        assert isinstance(s, SpectrumSurvey)
+
         assert {"212", "1202", "214"} == s.used_question_ids
         assert s.is_live
         assert s.is_open
@@ -345,6 +337,8 @@ class TestSpectrumSurvey:
             "exclusion_period": 0,
         }
         s = SpectrumSurvey.from_api(d)
+        assert isinstance(s, SpectrumSurvey)
+
         s.qualifications = ["a", "b", "c"]
         s.quotas = [
             SpectrumQuota(remaining_count=10, condition_hashes=["a", "b"]),

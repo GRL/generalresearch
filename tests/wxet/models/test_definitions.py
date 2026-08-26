@@ -1,12 +1,18 @@
+from __future__ import annotations
+
 import pytest
+
+from generalresearch.wxet.models.definitions import (
+    WXETStatus,
+    WXETStatusCode1,
+    WXETStatusCode2,
+    check_wxet_status_consistent,
+)
 
 
 class TestWXETStatusCode1:
 
     def test_is_pre_task_entry_fail_pre(self):
-        from generalresearch.wxet.models.definitions import (
-            WXETStatusCode1,
-        )
 
         assert WXETStatusCode1.UNKNOWN.is_pre_task_entry_fail
         assert WXETStatusCode1.WXET_FAIL.is_pre_task_entry_fail
@@ -32,12 +38,6 @@ class TestCheckWXETStatusConsistent:
 
     def test_completes(self):
 
-        from generalresearch.wxet.models.definitions import (
-            WXETStatus,
-            WXETStatusCode1,
-            check_wxet_status_consistent,
-        )
-
         with pytest.raises(AssertionError) as cm:
             check_wxet_status_consistent(
                 status=WXETStatus.COMPLETE,
@@ -52,12 +52,6 @@ class TestCheckWXETStatusConsistent:
 
     def test_abandon(self):
 
-        from generalresearch.wxet.models.definitions import (
-            WXETStatus,
-            WXETStatusCode1,
-            check_wxet_status_consistent,
-        )
-
         with pytest.raises(AssertionError) as cm:
             check_wxet_status_consistent(
                 status=WXETStatus.ABANDON,
@@ -70,12 +64,6 @@ class TestCheckWXETStatusConsistent:
         )
 
     def test_fail(self):
-
-        from generalresearch.wxet.models.definitions import (
-            WXETStatus,
-            WXETStatusCode1,
-            check_wxet_status_consistent,
-        )
 
         for sc1 in [
             WXETStatusCode1.COMPLETE,
@@ -94,13 +82,6 @@ class TestCheckWXETStatusConsistent:
         """Any StatusCode2 should fail if the StatusCode1 isn't
         StatusCode1.WXET_FAIL
         """
-
-        from generalresearch.wxet.models.definitions import (
-            WXETStatus,
-            WXETStatusCode1,
-            WXETStatusCode2,
-            check_wxet_status_consistent,
-        )
 
         for sc2 in WXETStatusCode2:
             with pytest.raises(AssertionError) as cm:

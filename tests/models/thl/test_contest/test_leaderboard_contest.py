@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 from datetime import UTC
 from uuid import uuid4
 
 import pytest
+from redis import Redis
 
 from generalresearch.currency import USDCent
 from generalresearch.managers.leaderboard.manager import LeaderboardManager
+from generalresearch.managers.thl.user_manager.user_manager import UserManager
 from generalresearch.models.thl.contest import ContestPrize
 from generalresearch.models.thl.contest.definitions import (
     ContestPrizeKind,
@@ -18,6 +22,7 @@ from generalresearch.models.thl.contest.utils import (
 )
 from generalresearch.models.thl.leaderboard import LeaderboardRow
 from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.user import User
 from tests.models.thl.test_contest.test_contest import TestContest
 
 
@@ -25,7 +30,7 @@ class TestLeaderboardContest(TestContest):
 
     @pytest.fixture
     def leaderboard_contest(
-        self, product: product: Product, thl_redis, user_manager
+        self, product: Product, thl_redis: Redis, user_manager: UserManager
     ) -> LeaderboardContest:
         board_key = f"leaderboard:{product.uuid}:us:weekly:2025-05-26:complete_count"
 
@@ -63,7 +68,13 @@ class TestLeaderboardContest(TestContest):
         c._user_manager = user_manager
         return c
 
-    def test_init(self, leaderboard_contest, thl_redis, user_1, user_2):
+    def test_init(
+        self,
+        leaderboard_contest: LeaderboardContest,
+        thl_redis: Redis,
+        user_1: User,
+        user_2: User,
+    ):
         model = leaderboard_contest.leaderboard_model
         assert leaderboard_contest.end_condition.ends_at is not None
 
@@ -83,7 +94,14 @@ class TestLeaderboardContest(TestContest):
         lb = leaderboard_contest.get_leaderboard()
         print(lb)
 
-    def test_win(self, leaderboard_contest, thl_redis, user_1, user_2, user_3):
+    def test_win(
+        self,
+        leaderboard_contest: LeaderboardContest,
+        thl_redis: Redis,
+        user_1: User,
+        user_2: User,
+        user_3: User,
+    ):
         model = leaderboard_contest.leaderboard_model
         lbm = LeaderboardManager(
             redis_client=thl_redis,
@@ -102,10 +120,13 @@ class TestLeaderboardContest(TestContest):
         lbm.hit_complete_count(product_user_id=user_3.product_user_id)
 
         leaderboard_contest.end_contest()
+        assert isinstance(leaderboard_contest.all_winners, list)
         assert len(leaderboard_contest.all_winners) == 3
 
         # Prizes are $15, $10, $5. user 2 and 3 ties for 2nd place, so they split (10 + 5)
         assert leaderboard_contest.all_winners[0].awarded_cash_amount == USDCent(15_00)
+
+        assert isinstance(leaderboard_contest.all_winners[0].user, User)
         assert (
             leaderboard_contest.all_winners[0].user.product_user_id
             == user_1.product_user_id

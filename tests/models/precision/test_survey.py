@@ -1,10 +1,15 @@
+from __future__ import annotations
+
+from typing import Any
+
+from generalresearch.models.precision import PrecisionStatus
+from generalresearch.models.precision.survey import PrecisionSurvey
+
+
 class TestPrecisionQuota:
 
-    def test_quota_passes(self):
-        from generalresearch.models.precision.survey import PrecisionSurvey
-        from tests.models.precision import survey_json
-
-        s = PrecisionSurvey.model_validate(survey_json)
+    def test_quota_passes(self, precision_survey_json: dict[str, Any]):
+        s = PrecisionSurvey.model_validate(precision_survey_json)
         q = s.quotas[0]
         ce = {k: True for k in ["b41e1a3", "bc89ee8", "4124366", "9f32c61"]}
         assert q.matches(ce)
@@ -16,12 +21,9 @@ class TestPrecisionQuota:
         assert not q.matches(ce)
         assert not q.matches({})
 
-    def test_quota_passes_closed(self):
-        from generalresearch.models.precision import PrecisionStatus
-        from generalresearch.models.precision.survey import PrecisionSurvey
-        from tests.models.precision import survey_json
+    def test_quota_passes_closed(self, precision_survey_json: dict[str, Any]):
 
-        s = PrecisionSurvey.model_validate(survey_json)
+        s = PrecisionSurvey.model_validate(precision_survey_json)
         q = s.quotas[0]
         q.status = PrecisionStatus.CLOSED
         ce = {k: True for k in ["b41e1a3", "bc89ee8", "4124366", "9f32c61"]}
@@ -32,20 +34,15 @@ class TestPrecisionQuota:
 
 class TestPrecisionSurvey:
 
-    def test_passes(self):
-        from generalresearch.models.precision.survey import PrecisionSurvey
-        from tests.models.precision import survey_json
+    def test_passes(self, precision_survey_json: dict[str, Any]):
 
-        s = PrecisionSurvey.model_validate(survey_json)
+        s = PrecisionSurvey.model_validate(precision_survey_json)
         ce = {k: True for k in ["b41e1a3", "bc89ee8", "4124366", "9f32c61"]}
         assert s.determine_eligibility(ce)
 
-    def test_elig_closed_quota(self):
-        from generalresearch.models.precision import PrecisionStatus
-        from generalresearch.models.precision.survey import PrecisionSurvey
-        from tests.models.precision import survey_json
+    def test_elig_closed_quota(self, precision_survey_json: dict[str, Any]):
 
-        s = PrecisionSurvey.model_validate(survey_json)
+        s = PrecisionSurvey.model_validate(precision_survey_json)
         ce = {k: True for k in ["b41e1a3", "bc89ee8", "4124366", "9f32c61"]}
         q = s.quotas[0]
         q.status = PrecisionStatus.CLOSED
@@ -57,12 +54,9 @@ class TestPrecisionSurvey:
         # Now me match an open quota and dont match the closed quota, so we should be eligible
         assert s.determine_eligibility(ce)
 
-    def test_passes_sp(self):
-        from generalresearch.models.precision import PrecisionStatus
-        from generalresearch.models.precision.survey import PrecisionSurvey
-        from tests.models.precision import survey_json
+    def test_passes_sp(self, precision_survey_json: dict[str, Any]):
 
-        s = PrecisionSurvey.model_validate(survey_json)
+        s = PrecisionSurvey.model_validate(precision_survey_json)
         ce = {k: True for k in ["b41e1a3", "bc89ee8", "4124366", "9f32c61"]}
         passes, hashes = s.determine_eligibility_soft(ce)
 

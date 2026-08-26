@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 
+from generalresearch.managers.thl.session import SessionManager
+from generalresearch.managers.thl.wall import WallManager
 from generalresearch.models import Source
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import (
@@ -30,7 +34,7 @@ class TestProductAdjustments:
 
     @pytest.mark.parametrize("payout", [".6", "1", "1.8", "2", "500.0000"])
     def test_determine_bp_payment_no_rounding(
-        self, product_factory: Callable[..., Product], payout
+        self, product_factory: Callable[..., Product], payout: str
     ):
         p1 = product_factory(commission_pct=Decimal("0.05"))
         res = p1.determine_bp_payment(thl_net=Decimal(payout))
@@ -39,7 +43,7 @@ class TestProductAdjustments:
 
     @pytest.mark.parametrize("payout", [".01", ".05", ".5"])
     def test_determine_bp_payment_rounding(
-        self, product_factory: Callable[..., Product], payout
+        self, product_factory: Callable[..., Product], payout: str
     ):
         p1 = product_factory(commission_pct=Decimal("0.05"))
         res = p1.determine_bp_payment(thl_net=Decimal(payout))
@@ -73,7 +77,10 @@ class TestSessionAdjustments:
 class TestAdjustments:
 
     def test_finish_with_status(
-        self, session_factory: Callable[..., Session], user: User, session_manager
+        self,
+        session_factory: Callable[..., Session],
+        user: User,
+        session_manager: SessionManager,
     ):
         # Completed Session with 2 wall events
         s1 = session_factory(
@@ -85,6 +92,7 @@ class TestAdjustments:
         )
 
         status, status_code_1 = s1.determine_session_status()
+        assert isinstance(user.product, Product)
         payout = user.product.determine_bp_payment(Decimal(1))
         session_manager.finish_with_status(
             session=s1,
@@ -97,7 +105,10 @@ class TestAdjustments:
         assert Decimal("0.95") == payout
 
     def test_never_adjusted(
-        self, session_factory: Callable[..., Session], user: User, session_manager
+        self,
+        session_factory: Callable[..., Session],
+        user: User,
+        session_manager: SessionManager,
     ):
         s1 = session_factory(
             user=user,
@@ -130,8 +141,8 @@ class TestAdjustments:
         self,
         session_factory: Callable[..., Session],
         user: User,
-        session_manager,
-        wall_manager,
+        session_manager: SessionManager,
+        wall_manager: WallManager,
     ):
         # Completed Session with 2 wall events
         s1 = session_factory(
@@ -174,13 +185,14 @@ class TestAdjustments:
 
         # Because the Product doesn't have the Wallet mode enabled, the
         #   user_payout fields should always be None
+        assert isinstance(user.product, Product)
         assert not user.product.user_wallet_config.enabled
         assert s1.adjusted_user_payout is None
 
     def test_adjustment_session_values(
         self,
-        wall_manager,
-        session_manager,
+        wall_manager: WallManager,
+        session_manager: SessionManager,
         session_factory: Callable[..., Session],
         user: User,
     ):
@@ -218,13 +230,14 @@ class TestAdjustments:
 
         # Because the Product doesn't have the Wallet mode enabled, the
         #   user_payout fields should always be None
+        assert isinstance(user.product, Product)
         assert not user.product.user_wallet_config.enabled
         assert s1.adjusted_user_payout is None
 
     def test_double_adjustment_session_values(
         self,
-        wall_manager,
-        session_manager,
+        wall_manager: WallManager,
+        session_manager: SessionManager,
         session_factory: Callable[..., Session],
         user: User,
     ):
@@ -276,8 +289,8 @@ class TestAdjustments:
 
     def test_double_adjustment_sm_vs_db_values(
         self,
-        wall_manager,
-        session_manager,
+        wall_manager: WallManager,
+        session_manager: SessionManager,
         session_factory: Callable[..., Session],
         user: User,
     ):
@@ -343,8 +356,8 @@ class TestAdjustments:
 
     def test_double_adjustment_double_completes(
         self,
-        wall_manager,
-        session_manager,
+        wall_manager: WallManager,
+        session_manager: SessionManager,
         session_factory: Callable[..., Session],
         user: User,
     ):
@@ -419,8 +432,8 @@ class TestAdjustments:
         self,
         session_factory: Callable[..., Session],
         user: User,
-        session_manager,
-        wall_manager,
+        session_manager: SessionManager,
+        wall_manager: WallManager,
         utc_hour_ago: datetime,
     ):
         s1 = session_factory(
@@ -435,6 +448,7 @@ class TestAdjustments:
         assert status == Status.COMPLETE
 
         thl_net = Decimal(sum(w.cpi for w in s1.wall_events if w.is_visible_complete()))
+        assert isinstance(user.product, Product)
         payout = user.product.determine_bp_payment(thl_net=thl_net)
 
         session_manager.finish_with_status(
@@ -459,7 +473,7 @@ class TestAdjustments:
         assert Status.FAIL == new_status
         assert Decimal(0) == new_payout
 
-        assert isinstance(user.product: Product, Product)
+        assert isinstance(user.product, Product)
         assert not user.product.user_wallet_config.enabled
         assert new_user_payout is None
 
@@ -560,6 +574,7 @@ class TestAdjustments:
         new_status, new_payout, new_user_payout = s1.determine_new_status_and_payouts()
         assert Status.COMPLETE == new_status
         assert Decimal("0.95") == new_payout
+        assert isinstance(user.product, Product)
         assert not user.product.user_wallet_config.enabled
         # assert Decimal("0.48") == new_user_payout
         assert new_user_payout is None
@@ -588,6 +603,7 @@ class TestAdjustments:
 
         status, status_code_1 = s1.determine_session_status()
         thl_net = Decimal(sum(w.cpi for w in s1.wall_events if w.is_visible_complete()))
+        assert isinstance(user.product, Product)
         payout = user.product.determine_bp_payment(thl_net=thl_net)
         s1.update(
             status=status,
@@ -624,7 +640,10 @@ class TestAdjustments:
         assert s1.adjusted_user_payout is None
 
     def test_complete_to_fail_to_complete_adj1(
-        self, user, session_factory, utc_hour_ago
+        self,
+        user: User,
+        session_factory: Callable[..., Session],
+        utc_hour_ago: datetime,
     ):
         # Same as test_complete_to_fail_to_complete_adj but in opposite order
         s1 = session_factory(
@@ -640,6 +659,7 @@ class TestAdjustments:
 
         status, status_code_1 = s1.determine_session_status()
         thl_net = Decimal(sum(w.cpi for w in s1.wall_events if w.is_visible_complete()))
+        assert isinstance(user.product, Product)
         payout = user.product.determine_bp_payment(thl_net)
         s1.update(
             status=status,
@@ -658,6 +678,7 @@ class TestAdjustments:
         s1.adjust_status()
         assert SessionAdjustedStatus.ADJUSTED_TO_FAIL == s1.adjusted_status
         assert Decimal(0) == s1.adjusted_payout
+        assert isinstance(user.product, Product)
         assert not user.product.user_wallet_config.enabled
         # assert Decimal(0) == s.adjusted_user_payout
         assert s1.adjusted_user_payout is None
@@ -702,6 +723,7 @@ class TestAdjustments:
         s1.adjust_status()
         assert SessionAdjustedStatus.ADJUSTED_TO_COMPLETE == s1.adjusted_status
         assert Decimal("1.90") == s1.adjusted_payout
+        assert isinstance(user.product, Product)
         assert not user.product.user_wallet_config.enabled
         # assert Decimal("0.95") == s1.adjusted_user_payout
         assert s1.adjusted_user_payout is None

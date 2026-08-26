@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 from generalresearch.models import Source
+from generalresearch.models.dynata.survey import (
+    ConditionValueType,
+    DynataCondition,
+)
 from generalresearch.models.thl.soft_pair import SoftPairResult, SoftPairResultType
 
 
 def test_model():
-    from generalresearch.models.dynata.survey import (
-        ConditionValueType,
-        DynataCondition,
-    )
 
     c1 = DynataCondition(
         question_id="1", value_type=ConditionValueType.LIST, values=["a", "b"]

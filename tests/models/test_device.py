@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 iphone_ua_string = (
     "Mozilla/5.0 (iPhone; CPU iPhone OS 5_1 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) "
     "Version/5.1 Mobile/9B179 Safari/7534.48.3"
@@ -13,10 +15,12 @@ chromebook_ua_string = (
 )
 
 
+from generalresearch.models import DeviceType
+from generalresearch.models.device import parse_device_from_useragent
+
+
 class TestDeviceUA:
     def test_device_ua(self):
-        from generalresearch.models import DeviceType
-        from generalresearch.models.device import parse_device_from_useragent
 
         assert parse_device_from_useragent(iphone_ua_string) == DeviceType.MOBILE
         assert parse_device_from_useragent(ipad_ua_string) == DeviceType.TABLET

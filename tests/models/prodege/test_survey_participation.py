@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime, timedelta
+
+from generalresearch.models.prodege import ProdegePastParticipationType
+from generalresearch.models.prodege.survey import (
+    ProdegePastParticipation,
+    ProdegeUserPastParticipation,
+)
 
 
 class TestProdegeParticipation:
 
     def test_exclude(self):
-        from generalresearch.models.prodege import ProdegePastParticipationType
-        from generalresearch.models.prodege.survey import (
-            ProdegePastParticipation,
-            ProdegeUserPastParticipation,
-        )
 
         now = datetime.now(tz=UTC)
         pp = ProdegePastParticipation.from_api(
@@ -84,10 +87,6 @@ class TestProdegeParticipation:
         assert not pp.is_eligible(upps)
 
     def test_include(self):
-        from generalresearch.models.prodege.survey import (
-            ProdegePastParticipation,
-            ProdegeUserPastParticipation,
-        )
 
         now = datetime.now(tz=UTC)
         pp = ProdegePastParticipation.from_api(

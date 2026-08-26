@@ -195,7 +195,7 @@ def setup_cashoutmethod_db(
 
 
 @pytest.fixture(scope="session")
-def spectrum_manager(spectrum_rw: SqlHelper) -> SpectrumSurveyManager:
+def spectrum_survey_manager(spectrum_rw: SqlHelper) -> SpectrumSurveyManager:
     from generalresearch.managers.spectrum.survey import (
         SpectrumSurveyManager,
     )

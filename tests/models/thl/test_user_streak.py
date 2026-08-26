@@ -71,6 +71,7 @@ def test_user_streak_remaining():
     )
     print(f"{now.isoformat()=}, {end_of_today.isoformat()=}")
     expected = (end_of_today - now).total_seconds()
+    assert isinstance(us.time_remaining_in_period, timedelta)
     assert us.time_remaining_in_period.total_seconds() == pytest.approx(expected, abs=1)
 
 
@@ -92,5 +93,6 @@ def test_user_streak_remaining_month():
     ).replace(day=1)
     print(f"{now.isoformat()=}, {end_of_month.isoformat()=}")
     expected = (end_of_month - now).total_seconds()
+    assert isinstance(us.time_remaining_in_period, timedelta)
     assert us.time_remaining_in_period.total_seconds() == pytest.approx(expected, abs=1)
     print(us.time_remaining_in_period)

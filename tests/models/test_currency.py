@@ -3,6 +3,8 @@ functionality is the same, but pasting here so the tests are in the
 correct spot...
 """
 
+from __future__ import annotations
+
 from decimal import Decimal
 from random import randint
 

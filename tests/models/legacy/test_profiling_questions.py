@@ -1,7 +1,11 @@
+from __future__ import annotations
+
+from generalresearch.models.legacy.questions import UpkQuestionResponse
+
+
 class TestUpkQuestionResponse:
 
     def test_init(self):
-        from generalresearch.models.legacy.questions import UpkQuestionResponse
 
         s = (
             '{"status": "success", "count": 7, "questions": [{"selector": "SL", "validation": {"patterns": [{'

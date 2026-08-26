@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from itertools import product as iter_product
@@ -25,14 +27,13 @@ from generalresearch.models.thl.finance import (
     POPFinancial,
     ProductBalances,
 )
+from generalresearch.models.thl.ledger import LedgerAccount
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import Session
 from generalresearch.models.thl.user import User
+from generalresearch.pg_helper import PostgresConfig
 from test_utils.incite.collections.conftest import ledger_collection
 from test_utils.incite.mergers.conftest import pop_ledger_merge
-from test_utils.managers.ledger.conftest import (
-    session_with_tx_factory: Callable[..., None],
-)
 
 fake = Faker()
 
@@ -210,6 +211,8 @@ class TestProductBalanceInitialize:
         # Confirm the @property computed fields show up in openapi. I don't
         #   know how to do that yet... so this is check to confirm they're
         #   known computed fields for now
+
+        assert isinstance(instance, ProductBalances)
         computed_fields = list(instance.model_computed_fields.keys())
         assert "payout" in computed_fields
         assert "adjustment" in computed_fields
@@ -665,17 +668,18 @@ class TestProductFinanceData:
 
     def test_base(
         self,
-        product: product: Product,
+        product: Product,
         user_factory: Callable[..., User],
         start: datetime,
         duration: timedelta,
-        thl_lm: ThlLedgerManager,
+        thl_ledger_manager: ThlLedgerManager,
+        session_with_tx_factory: Callable[..., None],
     ):
 
         # -- Build & Setup
         # assert ledger_collection.start is None
         # assert ledger_collection.offset is None
-        u: User = user_factory(product=product: Product, created=ledger_collection.start)
+        u: User = user_factory(product=product, created=ledger_collection.start)
 
         for item in ledger_collection.items:
 
@@ -699,7 +703,7 @@ class TestProductFinanceData:
         item_finishes.sort(reverse=True)
 
         # --
-        account = thl_lm.get_account_or_create_bp_wallet(product=u.product)
+        account = thl_ledger_manager.get_account_or_create_bp_wallet(product=u.product)
 
         ddf = pop_ledger_merge.ddf(
             force_rr_latest=False,
@@ -748,7 +752,7 @@ class TestPOPFinancialData:
         ledger_collection: LedgerDFCollection,
         pop_ledger_merge: PopLedgerMerge,
         user_factory: Callable[..., User],
-        product: product: Product,
+        product: Product,
         start: datetime,
         duration: timedelta,
         create_main_accounts: Callable[..., None],
@@ -791,7 +795,7 @@ class TestPOPFinancialData:
         last_item_finish = item_finishes[0]
 
         accounts = []
-        for user in users:
+        for _ in users:
             account = thl_lm.get_account_or_create_bp_wallet(product=u.product)
             accounts.append(account)
         account_ids = [a.uuid for a in accounts]
@@ -808,6 +812,7 @@ class TestPOPFinancialData:
                 ("time_idx", "<", last_item_finish),
             ],
         )
+
         df: pd.DataFrame = client_no_amm.compute(collections=ddf, sync=True)
 
         df = df.groupby([pd.Grouper(key="time_idx", freq="D"), "account_id"]).sum()
@@ -846,16 +851,15 @@ class TestBusinessBalanceData:
         ledger_collection: LedgerDFCollection,
         pop_ledger_merge: PopLedgerMerge,
         user_factory: Callable[..., User],
-        product: product: Product,
+        product: Product,
         create_main_accounts: Callable[..., None],
         thl_lm: ThlLedgerManager,
         thl_web_rr: PostgresConfig,
         delete_df_collection: Callable[..., None],
         delete_ledger_db: Callable[..., None],
         session_with_tx_factory: Callable[..., Session],
-        rm_ledger_collection,
+        rm_ledger_collection: Callable[..., None],
     ):
-        from generalresearch.models.thl.ledger import LedgerAccount
 
         delete_ledger_db()
         create_main_accounts()
@@ -863,7 +867,7 @@ class TestBusinessBalanceData:
         rm_ledger_collection()
 
         for _ in range(5):
-            u: User = user_factory(product=product: Product, created=ledger_collection.start)
+            u: User = user_factory(product=product, created=ledger_collection.start)
 
             for item in ledger_collection.items:
                 item_time = fake.date_time_between(

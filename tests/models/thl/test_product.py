@@ -13,22 +13,26 @@ from pydantic import ValidationError
 
 from generalresearch.currency import USDCent
 from generalresearch.incite.base import GRLDatasets
+from generalresearch.incite.collections.thl_web import LedgerDFCollection
 from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 from generalresearch.managers.thl.ledger_manager.thl_ledger import (
     ThlLedgerManager,
 )
+from generalresearch.managers.thl.payout import PayoutEventManager
 from generalresearch.managers.thl.product import ProductManager
 from generalresearch.models import Source
 from generalresearch.models.gr.business import Business
 from generalresearch.models.thl.finance import ProductBalances
-from generalresearch.models.thl.product import (
+from generalresearch.models.thl.payout import (
     BrokerageProductPayoutEvent,
+)
+from generalresearch.models.thl.product import (
     BrokerageProductPayoutEventManager,
     IntegrationMode,
     PayoutConfig,
     PayoutTransformation,
     PayoutTransformationPercentArgs,
-    product: Product,
+    Product,
     ProfilingConfig,
     SourceConfig,
     SourcesConfig,
@@ -37,6 +41,7 @@ from generalresearch.models.thl.product import (
 )
 from generalresearch.models.thl.session import Session
 from generalresearch.models.thl.user import User
+from generalresearch.redis_helper import RedisConfig
 
 
 class TestProduct:
@@ -155,6 +160,11 @@ class TestProduct:
 
         assert (
             "payout_transformation_percent" == p.payout_config.payout_transformation.f
+        )
+
+        assert isinstance(
+            p.payout_config.payout_transformation.kwargs,
+            PayoutTransformationPercentArgs,
         )
         assert 0.5 == p.payout_config.payout_transformation.kwargs.pct
         assert (
@@ -287,10 +297,10 @@ class TestProduct:
         p.profiling_config = ProfilingConfig(max_questions=1)
         assert p.profiling_config.max_questions == 1
 
-    def test_bp_account(self, product: Product, thl_lm):
+    def test_bp_account(self, product: Product, thl_ledger_manager: ThlLedgerManager):
         assert product.bp_account is None
 
-        product.prefetch_bp_account(thl_lm=thl_lm)
+        product.prefetch_bp_account(thl_lm=thl_ledger_manager)
 
         from generalresearch.models.thl.ledger import LedgerAccount
 
@@ -391,7 +401,7 @@ class TestGlobalProduct:
         random_product = uuid4().hex
         random_team = uuid4().hex
         res = instance.sources_config.get_policies_for(
-            product_id=random_product: Product, team_id=random_team
+            product_id=random_product, team_id=random_team
         )
         assert res == s.global_scoped_policies_dict
 
@@ -598,7 +608,7 @@ class TestProductFinancials:
 
     def test_balance(
         self,
-        business: business: Business,
+        business: Business,
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
         mnt_filepath: GRLDatasets,
@@ -610,7 +620,7 @@ class TestProductFinancials:
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
         client_no_amm: DaskClient,
-        ledger_collection,
+        ledger_collection: LedgerDFCollection,
         pop_ledger_merge: PopLedgerMerge,
         delete_df_collection: Callable[..., None],
     ):
@@ -781,20 +791,20 @@ class TestProductBalance:
 
     def test_inconsistent(
         self,
-        product: product: Product,
+        product: Product,
         mnt_filepath: GRLDatasets,
         thl_lm: ThlLedgerManager,
         client_no_amm: DaskClient,
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
         delete_df_collection: Callable[..., None],
-        ledger_collection,
+        ledger_collection: LedgerDFCollection,
         user_factory: Callable[..., User],
         session_with_tx_factory: Callable[..., Session],
-        pop_ledger_merge,
+        pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory,
-        payout_event_manager,
+        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        payout_event_manager: PayoutEventManager,
     ):
         # Now let's load it up and actually test some things
         delete_ledger_db()
@@ -815,7 +825,7 @@ class TestProductBalance:
         # 2. Payout and build Parquets 2nd time
         payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
         bp_payout_factory(
-            product=product: Product,
+            product=product,
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
             created=start + timedelta(days=1, minutes=1),
@@ -833,20 +843,20 @@ class TestProductBalance:
 
     def test_not_inconsistent(
         self,
-        product: product: Product,
+        product: Product,
         mnt_filepath: GRLDatasets,
         thl_lm: ThlLedgerManager,
         client_no_amm: DaskClient,
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
         delete_df_collection: Callable[..., None],
-        ledger_collection,
+        ledger_collection: LedgerDFCollection,
         user_factory: Callable[..., User],
         session_with_tx_factory: Callable[..., None],
         pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory,
-        payout_event_manager,
+        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        payout_event_manager: PayoutEventManager,
     ):
         # This is very similar to the test_complete_payout_pq_inconsistent
         #   test, however this time we're only going to assign the payout
@@ -874,7 +884,7 @@ class TestProductBalance:
         #    so it hasn't already been archived
         payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
         bp_payout_factory(
-            product=product: Product,
+            product=product,
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
             created=datetime.now(tz=UTC),
@@ -904,14 +914,14 @@ class TestProductPOPFinancial:
 
     def test_base(
         self,
-        product: product: Product,
+        product: Product,
         mnt_filepath: GRLDatasets,
         thl_lm: ThlLedgerManager,
         client_no_amm: DaskClient,
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
         delete_df_collection: Callable[..., None],
-        ledger_collection,
+        ledger_collection: LedgerDFCollection,
         user_factory: Callable[..., User],
         session_with_tx_factory: Callable[..., None],
         pop_ledger_merge: PopLedgerMerge,
@@ -977,16 +987,16 @@ class TestProductCache:
 
     def test_basic(
         self,
-        product: product: Product,
-        mnt_filepath,
-        thl_lm,
+        product: Product,
+        mnt_filepath: GRLDatasets,
+        thl_ledger_manager: ThlLedgerManager,
         client_no_amm: DaskClient,
         thl_redis_config: RedisConfig,
-        brokerage_product_payout_event_manager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
         delete_df_collection: Callable[..., None],
-        ledger_collection,
+        ledger_collection: LedgerDFCollection,
         user_factory: Callable[..., User],
         session_with_tx_factory: Callable[..., None],
         pop_ledger_merge: PopLedgerMerge,
@@ -1007,7 +1017,7 @@ class TestProductCache:
                 ds=mnt_filepath,
                 client=client_no_amm,
                 bp_pem=brokerage_product_payout_event_manager,
-                redis_config=thl_redis_config: RedisConfig,
+                redis_config=thl_redis_config,
             )
 
         from generalresearch.models.thl.product import Product
@@ -1029,7 +1039,7 @@ class TestProductCache:
             ds=mnt_filepath,
             client=client_no_amm,
             bp_pem=brokerage_product_payout_event_manager,
-            redis_config=thl_redis_config: RedisConfig,
+            redis_config=thl_redis_config,
         )
 
         # Fetch from cache and assert the instance loaded from redis
@@ -1048,23 +1058,23 @@ class TestProductCache:
 
     def test_neg_balance_cache(
         self,
-        product: product: Product,
+        product: Product,
         mnt_filepath: GRLDatasets,
-        thl_lm,
+        thl_ledger_manager: ThlLedgerManager,
         client_no_amm: DaskClient,
         thl_redis_config: RedisConfig,
-        brokerage_product_payout_event_manager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
         delete_df_collection: Callable[..., None],
-        ledger_collection,
+        ledger_collection: LedgerDFCollection,
         user_factory: Callable[..., User],
         session_with_tx_factory: Callable[..., None],
         pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory,
-        payout_event_manager,
-        adj_to_fail_with_tx_factory,
+        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        payout_event_manager: PayoutEventManager,
+        adj_to_fail_with_tx_factory: Callable[..., None],
     ):
         # Now let's load it up and actually test some things
         delete_ledger_db()
@@ -1083,9 +1093,9 @@ class TestProductCache:
         )
 
         # 2. Payout
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
+        payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
         bp_payout_factory(
-            product=product: Product,
+            product=product,
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
             created=start + timedelta(days=1, minutes=1),
@@ -1104,11 +1114,11 @@ class TestProductCache:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         product.set_cache(
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             bp_pem=brokerage_product_payout_event_manager,
-            redis_config=thl_redis_config: RedisConfig,
+            redis_config=thl_redis_config,
         )
 
         # Fetch from cache and assert the instance loaded from redis

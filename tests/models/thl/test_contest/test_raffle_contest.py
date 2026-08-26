@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from collections import Counter
+from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -19,6 +22,7 @@ from generalresearch.models.thl.contest.definitions import (
 )
 from generalresearch.models.thl.contest.raffle import RaffleContest
 from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.user import User
 from tests.models.thl.test_contest.test_contest import TestContest
 
 
@@ -42,7 +46,9 @@ class TestRaffleContest(TestContest):
         )
 
     @pytest.fixture(scope="function")
-    def ended_raffle_contest(self, raffle_contest, utc_now) -> RaffleContest:
+    def ended_raffle_contest(
+        self, raffle_contest: RaffleContest, utc_now: datetime
+    ) -> RaffleContest:
         # Fake ending the contest
         raffle_contest = raffle_contest.model_copy()
         raffle_contest.update(
@@ -55,7 +61,7 @@ class TestRaffleContest(TestContest):
 
 class TestRaffleContestUserView(TestRaffleContest):
 
-    def test_user_view(self, raffle_contest, user):
+    def test_user_view(self, raffle_contest: RaffleContest, user: User):
         from generalresearch.models.thl.contest.raffle import RaffleUserView
 
         data = {
@@ -78,7 +84,7 @@ class TestRaffleContestUserView(TestRaffleContest):
         assert res["current_win_probability"] == approx(0.0099, rel=0.001)
         assert res["projected_win_probability"] == approx(0.0099, rel=0.001)
 
-    def test_win_pct(self, raffle_contest, user):
+    def test_win_pct(self, raffle_contest: RaffleContest, user: User):
         from generalresearch.models.thl.contest.raffle import RaffleUserView
 
         data = {
@@ -124,7 +130,9 @@ class TestRaffleContestUserView(TestRaffleContest):
 
 class TestRaffleContestWinners(TestRaffleContest):
 
-    def test_winners_1_prize(self, ended_raffle_contest, user_1, user_2, user_3):
+    def test_winners_1_prize(
+        self, ended_raffle_contest, user_1: User, user_2: User, user_3: User
+    ):
         ended_raffle_contest.entries = [
             ContestEntry(
                 user=user_1,
@@ -160,7 +168,13 @@ class TestRaffleContestWinners(TestRaffleContest):
         assert c[user_2.user_id] == approx(10000 * 2 / 6, rel=0.1)
         assert c[user_3.user_id] == approx(10000 * 3 / 6, rel=0.1)
 
-    def test_winners_2_prizes(self, ended_raffle_contest, user_1, user_2, user_3):
+    def test_winners_2_prizes(
+        self,
+        ended_raffle_contest: RaffleContest,
+        user_1: User,
+        user_2: User,
+        user_3: User,
+    ):
         ended_raffle_contest.prizes.append(
             ContestPrize(
                 name="iPod 64GB Black",
@@ -193,7 +207,9 @@ class TestRaffleContestWinners(TestRaffleContest):
         # Same user
         assert all(w.user.user_id == user_1.user_id for w in winners)
 
-    def test_winners_2_prizes_1_entry(self, ended_raffle_contest, user_3):
+    def test_winners_2_prizes_1_entry(
+        self, ended_raffle_contest: RaffleContest, user_3: User
+    ):
         ended_raffle_contest.prizes = [
             ContestPrize(
                 name="iPod 64GB White",
@@ -218,7 +234,9 @@ class TestRaffleContestWinners(TestRaffleContest):
         winners = ended_raffle_contest.select_winners()
         assert len(winners) == 1
 
-    def test_winners_2_prizes_1_entry_2_pennies(self, ended_raffle_contest, user_3):
+    def test_winners_2_prizes_1_entry_2_pennies(
+        self, ended_raffle_contest: RaffleContest, user_3: User
+    ):
         ended_raffle_contest.prizes = [
             ContestPrize(
                 name="iPod 64GB White",
@@ -243,7 +261,12 @@ class TestRaffleContestWinners(TestRaffleContest):
         assert len(winners) == 2
 
     def test_winners_3_prizes_3_entries(
-        self, ended_raffle_contest, product: Product, user_1, user_2, user_3
+        self,
+        ended_raffle_contest: RaffleContest,
+        product: Product,
+        user_1: User,
+        user_2: User,
+        user_3: User,
     ):
         ended_raffle_contest.prizes = [
             ContestPrize(

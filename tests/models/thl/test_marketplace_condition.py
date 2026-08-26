@@ -1,15 +1,18 @@
+from __future__ import annotations
+
 import pytest
 from pydantic import ValidationError
+
+from generalresearch.models import LogicalOperator
+from generalresearch.models.thl.survey.condition import (
+    ConditionValueType,
+    MarketplaceCondition,
+)
 
 
 class TestMarketplaceCondition:
 
     def test_list_or(self):
-        from generalresearch.models import LogicalOperator
-        from generalresearch.models.thl.survey.condition import (
-            ConditionValueType,
-            MarketplaceCondition,
-        )
 
         user_qas = {"q1": {"a2"}}
         c = MarketplaceCondition(
@@ -46,11 +49,6 @@ class TestMarketplaceCondition:
         assert c.evaluate_criterion(user_qas) is None
 
     def test_list_or_negate(self):
-        from generalresearch.models import LogicalOperator
-        from generalresearch.models.thl.survey.condition import (
-            ConditionValueType,
-            MarketplaceCondition,
-        )
 
         user_qas = {"q1": {"a2"}}
         c = MarketplaceCondition(
@@ -87,11 +85,6 @@ class TestMarketplaceCondition:
         assert c.evaluate_criterion(user_qas) is None
 
     def test_list_and(self):
-        from generalresearch.models import LogicalOperator
-        from generalresearch.models.thl.survey.condition import (
-            ConditionValueType,
-            MarketplaceCondition,
-        )
 
         user_qas = {"q1": {"a1", "a2"}}
         c = MarketplaceCondition(
@@ -178,11 +171,6 @@ class TestMarketplaceCondition:
         assert c.evaluate_criterion(user_qas) is None
 
     def test_ranges(self):
-        from generalresearch.models import LogicalOperator
-        from generalresearch.models.thl.survey.condition import (
-            ConditionValueType,
-            MarketplaceCondition,
-        )
 
         user_qas = {"q1": {"2", "50"}}
         c = MarketplaceCondition(
@@ -245,12 +233,6 @@ class TestMarketplaceCondition:
             )
 
     def test_ranges_to_list(self):
-        from generalresearch.models import LogicalOperator
-        from generalresearch.models.thl.survey.condition import (
-            ConditionValueType,
-            MarketplaceCondition,
-        )
-
         user_qas = {"q1": {"2", "50"}}
         MarketplaceCondition._CONVERT_LIST_TO_RANGE = ["q1"]
         c = MarketplaceCondition(
@@ -309,10 +291,6 @@ class TestMarketplaceCondition:
         assert not c.evaluate_criterion({"q1": {"50"}})
 
     def test_answered(self):
-        from generalresearch.models.thl.survey.condition import (
-            ConditionValueType,
-            MarketplaceCondition,
-        )
 
         user_qas = {"q1": {"a2"}}
         c = MarketplaceCondition(

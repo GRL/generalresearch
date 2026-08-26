@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import logging
 import time
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from decimal import Decimal
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -83,3 +86,56 @@ def setup_spectrum_surveys(
     conn.commit()
     # Wait a second to make sure the spectrum-grpc pulls these from the db into global-vars
     time.sleep(1)
+
+
+@pytest.fixture(scope="session")
+def spectrum_api_survey_json() -> dict[str, Any]:
+    return {
+        "survey_id": 29333264,
+        "survey_name": "#29333264",
+        "survey_status": 22,
+        "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=UTC),
+        "category": "Exciting New",
+        "category_code": 232,
+        "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=UTC),
+        "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=UTC),
+        "soft_launch": False,
+        "click_balancing": 0,
+        "price_type": 1,
+        "pii": False,
+        "buyer_message": "",
+        "buyer_id": 4726,
+        "incl_excl": 0,
+        "cpi": Decimal("1.20"),
+        "last_complete_date": None,
+        "project_last_complete_date": None,
+        "quotas": [
+            {
+                "quota_id": "c2bc961e-4f26-4223-b409-ebe9165cfdf5",
+                "quantities": {"currently_open": 491, "remaining": 495, "achieved": 0},
+                "criteria": [
+                    {
+                        "qualification_code": 214,
+                        "range_sets": [{"units": 311, "to": 64, "from": 18}],
+                    }
+                ],
+            }
+        ],
+        "qualifications": [
+            {
+                "range_sets": [{"units": 311, "to": 64, "from": 18}],
+                "qualification_code": 212,
+            },
+            {"condition_codes": ["111", "117", "112"], "qualification_code": 1202},
+        ],
+        "country_iso": "fr",
+        "language_iso": "fre",
+        "bid_ir": 0.4,
+        "bid_loi": 600,
+        "overall_ir": None,
+        "overall_loi": None,
+        "last_block_ir": None,
+        "last_block_loi": None,
+        "survey_exclusions": set(),
+        "exclusion_period": 0,
+    }

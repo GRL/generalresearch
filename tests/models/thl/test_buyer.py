@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from generalresearch.models import Source
 from generalresearch.models.thl.survey.buyer import BuyerCountryStat
 

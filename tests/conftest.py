@@ -23,4 +23,7 @@ pytest_plugins = [
     "test_utils.models.network.conftest",
     "test_utils.models.thl.conftest",
     "test_utils.models.upk.conftest",
+    # -- Marketplaces
+    "test_utils.precision.conftest",
+    "test_utils.spectrum.conftest",
 ]

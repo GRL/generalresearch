@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import faker
 
 from generalresearch.managers.network.tool_run import ToolRunManager

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from itertools import groupby
 from random import shuffle as rshuffle
 
@@ -7,7 +9,7 @@ from generalresearch.models.thl.product import (
 from generalresearch.models.thl.wallet import PayoutType
 
 
-def all_equal(iterable):
+def all_equal(iterable: list[str]) -> bool:
     g = groupby(iterable)
     return next(g, True) and not next(g, False)
 
@@ -35,13 +37,13 @@ class TestProductUserWalletConfig:
         #   in the same order because they're the same
         assert isinstance(instance.model_dump_json(), str)
         res = []
-        for idx in range(100):
+        for _ in range(100):
             res.append(instance.model_dump_json())
         assert all_equal(res)
 
     def test_model_dump_payout_types(self):
         res = []
-        for idx in range(100):
+        for _ in range(100):
 
             # Generate a random order of PayoutTypes each time
             payout_types = [e for e in PayoutType]

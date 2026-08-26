@@ -19,7 +19,7 @@ def execute_nmap(
     enable_advanced: bool = True,
     timing: int = 4,
     scan_group_id: UUIDStr | None = None,
-):
+) -> NmapRun:
     config = NmapRunCommand(
         options=NmapRunCommandOptions(
             top_ports=top_ports,

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from generalresearch.models import Source
+from generalresearch.models.dynata.survey import DynataCondition
 from generalresearch.models.thl.survey.condition import (
     MarketplaceCondition,
 )
@@ -34,7 +35,7 @@ class SoftPairResult:
     pair_type: SoftPairResultType
     source: Source
     survey_id: str
-    conditions: set[MarketplaceCondition] | None = None
+    conditions: set[MarketplaceCondition | DynataCondition] | None = None
 
     @property
     def survey_sid(self) -> str:

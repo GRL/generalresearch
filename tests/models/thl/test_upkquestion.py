@@ -1,13 +1,30 @@
+from __future__ import annotations
+
 import pytest
 from pydantic import ValidationError
+
+from generalresearch.models.morning.question import (
+    MorningQuestion,
+    MorningQuestionType,
+)
+from generalresearch.models.thl.profiling.upk_question import (
+    PatternValidation,
+    UPKImportance,
+    UpkQuestion,
+    UpkQuestionChoice,
+    UpkQuestionConfigurationMC,
+    UpkQuestionConfigurationTE,
+    UpkQuestionSelectorMC,
+    UpkQuestionSelectorTE,
+    UpkQuestionType,
+    UpkQuestionValidation,
+    order_exclusive_options,
+)
 
 
 class TestUpkQuestion:
 
     def test_importance(self):
-        from generalresearch.models.thl.profiling.upk_question import (
-            UPKImportance,
-        )
 
         res = UPKImportance(task_score=1, task_count=None)
         assert isinstance(res, UPKImportance)
@@ -20,9 +37,6 @@ class TestUpkQuestion:
         assert "Input should be greater than or equal to 0" in str(e.value)
 
     def test_pattern(self):
-        from generalresearch.models.thl.profiling.upk_question import (
-            PatternValidation,
-        )
 
         s = PatternValidation(message="hi", pattern="x")
         with pytest.raises(ValidationError) as e:
@@ -30,13 +44,6 @@ class TestUpkQuestion:
         assert "Instance is frozen" in str(e.value)
 
     def test_mc(self):
-        from generalresearch.models.thl.profiling.upk_question import (
-            UpkQuestion,
-            UpkQuestionChoice,
-            UpkQuestionConfigurationMC,
-            UpkQuestionSelectorMC,
-            UpkQuestionType,
-        )
 
         q = UpkQuestion(
             id="601377a0d4c74529afc6293a8e5c3b5e",
@@ -126,14 +133,6 @@ class TestUpkQuestion:
         assert "Extra inputs are not permitted" in str(e.value)
 
     def test_te(self):
-        from generalresearch.models.thl.profiling.upk_question import (
-            PatternValidation,
-            UpkQuestion,
-            UpkQuestionConfigurationTE,
-            UpkQuestionSelectorTE,
-            UpkQuestionType,
-            UpkQuestionValidation,
-        )
 
         q = UpkQuestion(
             id="601377a0d4c74529afc6293a8e5c3b5e",
@@ -152,9 +151,6 @@ class TestUpkQuestion:
         assert q.choices is None
 
     def test_deserialization(self):
-        from generalresearch.models.thl.profiling.upk_question import (
-            UpkQuestion,
-        )
 
         q = UpkQuestion.model_validate(
             {
@@ -195,16 +191,18 @@ class TestUpkQuestion:
         assert q == UpkQuestion.model_validate(q.model_dump(mode="json"))
 
     def test_from_morning(self):
-        from generalresearch.models.morning.question import (
-            MorningQuestion,
-            MorningQuestionType,
-        )
 
         q = MorningQuestion(
-            id="gender", country_iso="us", language_iso="eng", name="Gender", text="What is your gender?", type="s", options=[
-                    {"id": "1", "text": "yes", "order": 1},
-                    {"id": "2", "text": "no", "order": 2},
-                ]
+            id="gender",
+            country_iso="us",
+            language_iso="eng",
+            name="Gender",
+            text="What is your gender?",
+            type="s",
+            options=[
+                {"id": "1", "text": "yes", "order": 1},
+                {"id": "2", "text": "no", "order": 2},
+            ],
         )
         q.to_upk_question()
         q = MorningQuestion(
@@ -218,13 +216,6 @@ class TestUpkQuestion:
         q.to_upk_question()
 
     def test_order(self):
-        from generalresearch.models.thl.profiling.upk_question import (
-            UpkQuestion,
-            UpkQuestionChoice,
-            UpkQuestionSelectorMC,
-            UpkQuestionType,
-            order_exclusive_options,
-        )
 
         q = UpkQuestion(
             country_iso="us",
@@ -258,9 +249,6 @@ class TestUpkQuestion:
 
 class TestUpkQuestionValidateAnswer:
     def test_validate_answer_SA(self):
-        from generalresearch.models.thl.profiling.upk_question import (
-            UpkQuestion,
-        )
 
         question = UpkQuestion.model_validate(
             {
@@ -296,9 +284,6 @@ class TestUpkQuestionValidateAnswer:
         )
 
     def test_validate_answer_MA(self):
-        from generalresearch.models.thl.profiling.upk_question import (
-            UpkQuestion,
-        )
 
         question = UpkQuestion.model_validate(
             {
@@ -368,9 +353,6 @@ class TestUpkQuestionValidateAnswer:
         )
 
     def test_validate_answer_TE(self):
-        from generalresearch.models.thl.profiling.upk_question import (
-            UpkQuestion,
-        )
 
         question = UpkQuestion.model_validate(
             {

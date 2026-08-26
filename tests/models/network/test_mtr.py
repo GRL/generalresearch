@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import faker
 
+from generalresearch.managers.network.tool_run import ToolRunManager
 from generalresearch.models.network.mtr.execute import execute_mtr
 from generalresearch.models.network.tool_run import ToolClass, ToolName
 
 fake = faker.Faker()
 
 
-def test_execute_mtr(toolrun_manager):
+def test_execute_mtr(toolrun_manager: ToolRunManager):
     ip = "65.19.129.53"
 
     run = execute_mtr(ip=ip, report_cycles=3)

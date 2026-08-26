@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime
 
 from generalresearch.models import Source
@@ -32,6 +34,7 @@ class TestSpectrumQuestion:
             "mod_on": 1706557247467,
         }
         q = SpectrumQuestion.from_api(example_1, "us", "eng")
+        assert isinstance(q, SpectrumQuestion)
 
         expected_q = SpectrumQuestion(
             question_id="213",
@@ -72,6 +75,8 @@ class TestSpectrumQuestion:
             "mod_on": 1706557249817,
         }
         q = SpectrumQuestion.from_api(example_2, "us", "eng")
+        assert isinstance(q, SpectrumQuestion)
+
         expected_q = SpectrumQuestion(
             question_id="211",
             country_iso="us",
