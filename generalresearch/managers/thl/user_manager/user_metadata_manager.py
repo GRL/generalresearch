@@ -22,9 +22,9 @@ class UserMetadataManager(PostgresManager):
             email_sha1s,
             email_md5s,
         ]:
-            assert arg is None or isinstance(
-                arg, (set, list)
-            ), "must pass a collection of objects"
+            assert arg is None or isinstance(arg, (set, list)), (
+                "must pass a collection of objects"
+            )
 
         filters = []
         params = {}
@@ -48,7 +48,7 @@ class UserMetadataManager(PostgresManager):
         filter_str = "WHERE " + " AND ".join(filters) if filters else ""
         res = self.pg_config.execute_sql_query(
             f"""
-        SELECT user_id, email_address, email_sha256, email_sha1, email_md5
+        SELECT user_id, email_address, email_sha256, email_sha1, email_md5, display_name
         FROM thl_usermetadata
         {filter_str}
         """,
@@ -126,8 +126,12 @@ class UserMetadataManager(PostgresManager):
                 c.execute(
                     """
                 UPDATE thl_usermetadata
-                SET email_address = %(email_address)s, email_sha256 = %(email_sha256)s,
-                email_sha1 = %(email_sha1)s, email_md5 = %(email_md5)s
+                SET 
+                    email_address = %(email_address)s,
+                    email_sha256 = %(email_sha256)s,
+                    email_sha1 = %(email_sha1)s,
+                    email_md5 = %(email_md5)s,
+                    display_name = %(display_name)s
                 WHERE user_id = %(user_id)s;
                 """,
                     params=user_metadata.to_db(),
@@ -139,10 +143,14 @@ class UserMetadataManager(PostgresManager):
     def _create(self, user_metadata: UserMetadata) -> int:
         return self.pg_config.execute_write(
             query="""
-            INSERT INTO thl_usermetadata
-            (user_id, email_address, email_sha256, email_sha1, email_md5)
-            VALUES (%(user_id)s, %(email_address)s, %(email_sha256)s, 
-                    %(email_sha1)s, %(email_md5)s);
+            INSERT INTO thl_usermetadata (
+                user_id, email_address, email_sha256,
+                email_sha1, email_md5, display_name
+            )
+            VALUES (
+                %(user_id)s, %(email_address)s, %(email_sha256)s, 
+                %(email_sha1)s, %(email_md5)s, %(display_name)s
+            );
         """,
             params=user_metadata.to_db(),
         )
