@@ -58,7 +58,7 @@ status_code_map: dict[StatusCode1, list[str]] = {
     StatusCode1.PS_OVERQUOTA: ["5001", "6001", "6002", "6003"],
 }
 
-status_class = dict()
+status_class = {}
 for k, v in status_code_map.items():
     k: StatusCode1
     v: list[str]

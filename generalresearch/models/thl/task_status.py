@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -251,7 +251,7 @@ class TaskStatusResponse(BaseModel):
         return self.product_user_id
 
     @classmethod
-    def from_session(cls, session: Session, product: Product) -> Self:
+    def from_session(cls, session: Session, product: Product) -> TaskStatusResponse:
 
         user_payout_string = None
         if session.user_payout is not None:
@@ -274,7 +274,7 @@ class TaskStatusResponse(BaseModel):
             user_payout_string=user_payout_string,
             product_id=session.user.product_id,
             product_user_id=session.user.product_user_id,
-            kwargs=session.url_metadata or dict(),
+            kwargs=session.url_metadata or {},
             status_code_1=session.status_code_1,
             status_code_2=session.status_code_2,
             adjusted_status=session.adjusted_status,

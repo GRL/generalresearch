@@ -167,7 +167,7 @@ status_codes_ext_map: dict[StatusCode1, list[str]] = {
     StatusCode1.PS_FAIL: ["7", "29", "36", "47", "56", "58", "64"],
     StatusCode1.PS_OVERQUOTA: ["29", "46", "33", "31"],
 }
-ext_status_code_map: dict[str, StatusCode1] = dict()
+ext_status_code_map: dict[str, StatusCode1] = {}
 for k, v in status_codes_ext_map.items():
     k: StatusCode1
     v: list[str]

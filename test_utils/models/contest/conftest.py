@@ -11,7 +11,15 @@ from pytest import FixtureRequest as Request
 from generalresearch.currency import USDCent
 from generalresearch.managers.thl.contest_manager import ContestManager
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+from generalresearch.models.thl.contest import (
+    ContestEndCondition,
+    ContestPrize,
+)
 from generalresearch.models.thl.contest.contest import Contest
+from generalresearch.models.thl.contest.definitions import (
+    ContestPrizeKind,
+    ContestType,
+)
 from generalresearch.models.thl.contest.leaderboard import (
     LeaderboardContestCreate,
 )
@@ -19,6 +27,8 @@ from generalresearch.models.thl.contest.milestone import (
     MilestoneContestCreate,
 )
 from generalresearch.models.thl.contest.raffle import (
+    ContestEntryType,
+    RaffleContest,
     RaffleContestCreate,
 )
 from generalresearch.models.thl.product import Product
@@ -33,18 +43,6 @@ from generalresearch.models.thl.user import User
 
 @pytest.fixture
 def raffle_contest_create() -> RaffleContestCreate:
-    from generalresearch.models.thl.contest import (
-        ContestEndCondition,
-        ContestPrize,
-    )
-    from generalresearch.models.thl.contest.definitions import (
-        ContestPrizeKind,
-        ContestType,
-    )
-    from generalresearch.models.thl.contest.raffle import (
-        ContestEntryType,
-        RaffleContestCreate,
-    )
 
     # This is what we'll get from the fastapi endpoint
     return RaffleContestCreate(
@@ -89,7 +87,7 @@ def raffle_contest_factory(
     product_user_wallet_yes: Product,
     raffle_contest_create: RaffleContestCreate,
     contest_manager: ContestManager,
-) -> Callable[..., Contest]:
+) -> Callable[..., RaffleContest]:
 
     def _inner(**kwargs):
         raffle_contest_create.update(**kwargs)

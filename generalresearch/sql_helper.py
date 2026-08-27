@@ -166,7 +166,7 @@ class SqlHelper(SqlConnector):
         :param cursor: If cursor is passed, the insert is NOT committed!
         :param ignore_existing: adds 'ON CONFLICT DO NOTHING' to SQL statement.
         """
-        assert len(set([len(x) for x in values_to_insert])) == 1
+        assert len({len(x) for x in values_to_insert}) == 1
         if cursor is None:
             connection = self.make_connection()
             c = connection.cursor()
@@ -192,7 +192,6 @@ class SqlHelper(SqlConnector):
         if cursor is None:
             c.connection.commit()
 
-
     def bulk_update(
         self,
         table_name: str,
@@ -203,7 +202,7 @@ class SqlHelper(SqlConnector):
         if len(values_to_insert) == 0:
             return
 
-        assert len(set([len(x) for x in values_to_insert])) == 1
+        assert len({len(x) for x in values_to_insert}) == 1
         if cursor is None:
             connection = self.make_connection()
             c = connection.cursor()
@@ -343,4 +342,3 @@ class SqlHelper(SqlConnector):
         c.execute(query)
         if cursor is None:
             c.connection.commit()
-

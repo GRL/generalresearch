@@ -361,16 +361,15 @@ def delete_df_collection(
                 create_main_accounts()
 
             case DFCollectionType.WALL | DFCollectionType.SESSION:
-                with thl_web_rw.make_connection() as conn:
-                    with conn.cursor() as c:
-                        c.execute("SET CONSTRAINTS ALL DEFERRED")
-                        for table in [
-                            "thl_wall",
-                            "thl_session",
-                        ]:
-                            c.execute(
-                                query=f"DELETE FROM {table};",
-                            )
+                with thl_web_rw.make_connection() as conn, conn.cursor() as c:
+                    c.execute("SET CONSTRAINTS ALL DEFERRED")
+                    for table in [
+                        "thl_wall",
+                        "thl_session",
+                    ]:
+                        c.execute(
+                            query=f"DELETE FROM {table};",
+                        )
 
             case DFCollectionType.USER:
                 for table in ["thl_usermetadata", "thl_user"]:

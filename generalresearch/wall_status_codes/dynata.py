@@ -88,7 +88,7 @@ status_codes_ext_map: dict[StatusCode1, list[str]] = {
         "5.10",
     ],
 }
-ext_status_code_map: dict[str, StatusCode1] = dict()
+ext_status_code_map: dict[str, StatusCode1] = {}
 for k, v in status_codes_ext_map.items():
     k: StatusCode1
     v: list[str]
@@ -117,16 +117,15 @@ def annotate_status_code(
     return status, status_code, None
 
 
-def stop_marketplace_session(status_code_1: StatusCode1, ext_status_code_1) -> bool:
+def stop_marketplace_session(
+    status_code_1: StatusCode1, ext_status_code_1: str
+) -> bool:
     if ext_status_code_1.startswith("5"):
         # '5.10' is the user hit a Daily Limit, so they should not be sent in again today
         return True
 
-    if status_code_1 in {
+    return status_code_1 in {
         StatusCode1.PS_QUALITY,
         StatusCode1.BUYER_QUALITY_FAIL,
         StatusCode1.PS_BLOCKED,
-    }:
-        return True
-
-    return False
+    }

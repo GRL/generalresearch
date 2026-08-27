@@ -29,7 +29,7 @@ status_codes_ext_map: dict[StatusCode1, list[WXETStatusCode1]] = {
     StatusCode1.UNKNOWN: [],
     StatusCode1.MARKETPLACE_FAIL: [WXETStatusCode1.BUYER_POSTBACK_NOT_RECEIVED],
 }
-ext_status_code_map = dict()
+ext_status_code_map = {}
 for k, v in status_codes_ext_map.items():
     k: StatusCode1
     v: list[WXETStatusCode1]
@@ -58,7 +58,7 @@ status_code2_map: dict[StatusCode1, list[WXETStatusCode2]] = {
         WXETStatusCode2.TASK_VERSION_MISMATCH,
     ],
 }
-ext_status_code2_map = dict()
+ext_status_code2_map = {}
 for k, v in status_code2_map.items():
     for vv in v:
         ext_status_code2_map[vv] = k

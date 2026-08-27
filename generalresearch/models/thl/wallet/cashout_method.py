@@ -130,9 +130,8 @@ class CashoutMethodBase(BaseModel):
                 f"Invalid amount requested: ${amount / 100:.2f}. Must be between"
                 f" ${int(self.min_value) / 100:.2f} and ${int(self.max_value) / 100:.2f}"
             )
-        if self.type == PayoutType.CASH_IN_MAIL:
-            if amount % 500 != 0:
-                raise ValueError("Amount must be in increments of $5.00")
+        if self.type == PayoutType.CASH_IN_MAIL and amount % 500 != 0:
+            raise ValueError("Amount must be in increments of $5.00")
         return True
 
 
