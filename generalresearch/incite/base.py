@@ -104,9 +104,9 @@ class GRLDatasets(BaseModel):
 
         # Create the base folders and confirm we have read access
         self.data_src.mkdir(parents=True, exist_ok=True)
-        assert access(
-            path=self.data_src, mode=R_OK
-        ), f"can't access data_src: {self.data_src}"
+        assert access(path=self.data_src, mode=R_OK), (
+            f"can't access data_src: {self.data_src}"
+        )
 
         for enum_type in [MergeType, DFCollectionType]:
             for et in enum_type:
@@ -447,26 +447,6 @@ class CollectionBase(BaseModel):
         return ddf
 
     # --- Methods: Cleanup ---
-    def schedule_cleanup(
-        self, client: DaskClient | None = None, sync: bool = True, client_resources=None
-    ) -> pd.DataFrame | Future:
-        LOG.info(f"cleanup(archive_path={self.archive_path})")
-
-        fs = []
-        for item in self.items:
-            fs.append(dask.delayed(item.cleanup_partials)())
-            fs.append(dask.delayed(item.clear_corrupt_archive)())
-        fs.append(dask.delayed(self.clear_tmp_archives)())
-
-        assert isinstance(client, DaskClient)
-        res = client.compute(
-            collections=fs,
-            sync=sync,
-            priority=2,
-            client_resources=client_resources,
-        )
-        return res
-
     def cleanup(self) -> None:
         # Same as schedule_cleanup but runs locally
         self.cleanup_partials()
@@ -482,7 +462,7 @@ class CollectionBase(BaseModel):
             item.cleanup_partials()
 
     def clear_tmp_archives(self) -> None:
-        regex = re.compile(r"\.parquet\.[0-9a-f]{32}", re.I)
+        regex = re.compile(r"\.parquet\.[0-9a-f]{32}", re.IGNORECASE)
 
         for fn in os.listdir(self.archive_path):
             if regex.search(fn):
@@ -524,7 +504,6 @@ class CollectionBase(BaseModel):
 
             # --- Regular Path ---
             if os.path.exists(reg_path):
-
                 if os.path.isfile(reg_path):
                     # These should never be a file, clean up
                     os.remove(reg_path)
@@ -549,13 +528,13 @@ class CollectionBase(BaseModel):
 
             # Make sure these are in the same dir. b/c the symlink has to be
             # relative, not an absolute path
-            assert (
-                item.path.parent == highest_version.parent
-            ), "Can't have numbered_path in a different directory"
+            assert item.path.parent == highest_version.parent, (
+                "Can't have numbered_path in a different directory"
+            )
 
             try:
                 pq.ParquetDataset(highest_version).read().to_pandas()
-            except (Exception,):
+            except Exception:
                 # If the most recent version isn't valid, we don't want to
                 # create a symlink to it.
                 # TODO: We could try to be smart and iterate down the most recent
@@ -607,7 +586,6 @@ class CollectionBase(BaseModel):
             # TODO: This appears to be a bug. It should be using the
             #   IntervalRange overlaps approach  - Max 2024-06-07
             if item.start >= since:
-
                 # We want to retrieve the item that falls before the
                 # first item, so we aren't missing any partial time ranges
                 if first_match and idx != 0:
@@ -672,9 +650,9 @@ class CollectionItemBase(BaseModel):
         """We don't want to support CollectionItems that start on a
         fractional second.
         """
-        assert (
-            self.start.microsecond == 0
-        ), "CollectionItem.start must not have microsecond precision"
+        assert self.start.microsecond == 0, (
+            "CollectionItem.start must not have microsecond precision"
+        )
         return self
 
     # --- Properties ---
@@ -711,27 +689,24 @@ class CollectionItemBase(BaseModel):
         return f"{self.filename}.empty"
 
     @property
-    def path(self) -> FilePath:
-        return _filepath_adapter.validate_python(
-            os.path.join(self._collection.archive_path, self.filename)
-        )
+    def path(self) -> Path:
+        # Do not use _filepath_adapter.validate_python here as that validates
+        # that the file exists on disk, which is doesn't until we get the path
+        # we want to write it to...
+        return Path(self._collection.archive_path, self.filename)
 
     @property
-    def partial_path(self) -> FilePath:
-        return FilePath(
-            os.path.join(self._collection.archive_path, self.partial_filename)
-        )
+    def partial_path(self) -> Path:
+        return Path(self._collection.archive_path, self.partial_filename)
 
     @property
-    def empty_path(self) -> FilePath:
-        return FilePath(
-            os.path.join(self._collection.archive_path, self.empty_filename)
-        )
+    def empty_path(self) -> Path:
+        return Path(self._collection.archive_path, self.empty_filename)
 
     # --- Methods ---
 
     @staticmethod
-    def path_exists(generic_path: FilePath) -> bool:
+    def path_exists(generic_path: Path) -> bool:
         return os.path.exists(generic_path)
 
     @staticmethod
@@ -766,7 +741,6 @@ class CollectionItemBase(BaseModel):
         builds = []
         for fn in os.listdir(coll.archive_path):
             if fn.startswith(self.filename):
-
                 # Don't include the "broken link" or mmfsymlink text file
                 if fn != self.filename and fn != self.partial_filename:
                     builds.append(fn)
@@ -788,10 +762,8 @@ class CollectionItemBase(BaseModel):
         # up as always returning the same tmp filename
         return f"{self.filename}.{uuid4().hex}"
 
-    def tmp_path(self) -> FilePath:
-        return FilePath(
-            os.path.join(self._collection.archive_path, self.tmp_filename())
-        )
+    def tmp_path(self) -> Path:
+        return Path(self._collection.archive_path, self.tmp_filename())
 
     # --- --- --- ---
     # If it has a partial, it isn't always going to be a partial. However,
@@ -820,7 +792,6 @@ class CollectionItemBase(BaseModel):
     def delete_archive(generic_path: Path) -> None:
         # If a partial directory or file exists, delete it.
         if os.path.exists(generic_path):
-
             if os.path.isfile(generic_path):
                 os.remove(generic_path)
 
@@ -842,9 +813,9 @@ class CollectionItemBase(BaseModel):
         return datetime.now(tz=timezone.utc) > self.finish + archive_after
 
     def set_empty(self):
-        assert (
-            self.should_archive()
-        ), "Can not set_empty on an item that is not archive-able"
+        assert self.should_archive(), (
+            "Can not set_empty on an item that is not archive-able"
+        )
         assert not self.is_empty(), "set_empty is already set; why are you doing this?"
         self.empty_path.touch()
         assert self.is_empty(), "set_empty(): something is wrong"
@@ -979,6 +950,7 @@ class CollectionItemBase(BaseModel):
         # with a symlink. It does not matter if the item is archiveable or not.
         if target_path is None:
             target_path = self.partial_path
+        target_path = Path(target_path)
 
         fps = glob.glob(target_path.as_posix() + ".*")
         fps = {x for x in fps if x.split(".")[-1].isnumeric()}
