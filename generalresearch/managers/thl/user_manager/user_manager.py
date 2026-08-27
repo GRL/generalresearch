@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
+import operator
 from collections.abc import Collection
 from datetime import datetime
-from functools import lru_cache
+from threading import Lock
 
+from cachetools import TTLCache, cachedmethod
 from pydantic import RedisDsn
 
 from generalresearch.managers.base import Permission
@@ -78,6 +80,8 @@ class UserManager:
         self.product_manager = ProductManager(
             pg_config=pg_config, permissions=[Permission.READ]
         )
+        self.get_user_cache = TTLCache(maxsize=10000, ttl=30)
+        self.get_user_cache_lock = Lock()
 
     def set_last_seen(self, user: User) -> None:
         assert Permission.UPDATE in self.sql_permissions, "permission error"
@@ -105,14 +109,17 @@ class UserManager:
 
         return None
 
-    def cache_clear(self):
-        # Generally this is used in testing. This clears the .get_user's lru_cache.
-        # There is no way of clearing only a specific key from the cache.
+    def cache_clear(self) -> None:
+        # Generally this is used in testing. This clears get_user's TTL cache.
         # It does not clear any redis caches; that has to be done separately.
-        self.get_user.__wrapped__.cache_clear()
+        with self.get_user_cache_lock:
+            self.get_user_cache.clear()
 
     @deepcopy_return
-    @lru_cache(maxsize=10000)
+    @cachedmethod(
+        operator.attrgetter("get_user_cache"),
+        lock=operator.attrgetter("get_user_cache_lock"),
+    )
     def get_user(
         self,
         *,
@@ -123,7 +130,7 @@ class UserManager:
     ) -> User:
         """
         Retrieve User from (product_id & product_user_id) or (user_id), or (uuid).
-        Looks up in lru_cache, then (redis, memcached), then mysql.
+        Looks up in the 30-second TTL cache, then (redis, memcached), then mysql.
         Raises UserDoesntExistError if user is not found.
         (the * makes all arguments keyword-only arguments)
         """
@@ -316,8 +323,7 @@ class UserManager:
 
         # If we change something about a user, we should update the in-memory caches
         self.set_user_inmemory_cache(user)
-        # There is no way to clear a single key from the lru_cache...
-        # https://bugs.python.org/issue28178
+        # Clear local cached copies so the blocked state is returned immediately.
         self.cache_clear()
         return True
 

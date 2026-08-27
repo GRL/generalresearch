@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import logging
+import operator
 from collections.abc import Collection
 from datetime import datetime, timezone
-from functools import lru_cache
+from threading import Lock
 from uuid import uuid4
 
+from cachetools import LRUCache, cachedmethod
 import psycopg
 from psycopg import sql
 
@@ -22,6 +24,8 @@ class MysqlUserManager:
     def __init__(self, pg_config: PostgresConfig, is_read_replica: bool):
         self.pg_config = pg_config
         self.is_read_replica = is_read_replica
+        self.product_id_exists_cache = LRUCache(maxsize=5000)
+        self.product_id_exists_cache_lock = Lock()
 
     def _set_last_seen(self, user: User) -> None:
         # Don't call this directly. Use UserManager.set_last_seen()
@@ -143,7 +147,7 @@ class MysqlUserManager:
                 with conn.cursor() as c:
                     c.execute(query=query, params=params)
                     user_id = c.fetchone()["id"]
-        except psycopg.IntegrityError as e:
+        except psycopg.IntegrityError:
             # Two machines/processes are trying to create this same (product_id, product_user_id)
             #   at the same time. There's a unique index, so mysql will not let two be created.
             # The 2nd should get an IntegrityError, meaning this already exists, and we can just query it.
@@ -160,7 +164,7 @@ class MysqlUserManager:
             else:
                 # We specifically queried the NON read-replica, and we got an IntegrityError, so
                 #   something else must be wrong...
-                raise e
+                raise
         else:
             user = User(
                 user_id=user_id,
@@ -173,8 +177,11 @@ class MysqlUserManager:
 
         return user
 
-    @lru_cache(maxsize=5000)
-    def product_id_exists(self, product_id: str):
+    @cachedmethod(
+        operator.attrgetter("product_id_exists_cache"),
+        lock=operator.attrgetter("product_id_exists_cache_lock"),
+    )
+    def product_id_exists(self, product_id: str) -> bool:
         # 'id' is the primary key, there can only be 0 or 1
         query = """
         SELECT id 
@@ -254,10 +261,10 @@ class MysqlUserManager:
             user_ids and user_uuids
         ), "Must pass ONE of user_ids, user_uuids"
         if user_ids:
-            assert len(user_ids) <= 500, "limit 500 user_ids"
             assert isinstance(
                 user_ids, (list, set)
             ), "must pass a collection of user_ids"
+            assert len(user_ids) <= 500, "limit 500 user_ids"
 
             res = self.pg_config.execute_sql_query(
                 query="""
@@ -270,10 +277,10 @@ class MysqlUserManager:
                 params={"user_ids": user_ids},
             )
         else:
-            assert len(user_uuids) <= 500, "limit 500 user_uuids"
             assert isinstance(
                 user_uuids, (list, set)
             ), "must pass a collection of user_uuids"
+            assert len(user_uuids) <= 500, "limit 500 user_uuids"
             res = self.pg_config.execute_sql_query(
                 query="""
                 SELECT id AS user_id, product_id, product_user_id, 
