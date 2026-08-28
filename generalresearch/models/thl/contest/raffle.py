@@ -127,7 +127,7 @@ class RaffleContest(RaffleContestCreate, Contest):
         # If there is more than 1 prize, the winning entry is subtracted
         #   from the user's entry count
         user_amount = defaultdict(int)
-        user_id_user = dict()
+        user_id_user = {}
         for entry in self.entries:
             user_amount[entry.user.user_id] += entry.amount
             user_id_user[entry.user.user_id] = entry.user
@@ -149,10 +149,12 @@ class RaffleContest(RaffleContestCreate, Contest):
         res, msg = super().should_end()
         if res:
             return res, msg
-        if self.status == ContestStatus.ACTIVE:
-            if self.end_condition.target_entry_amount:
-                if self.current_amount >= self.end_condition.target_entry_amount:
-                    return True, ContestEndReason.TARGET_ENTRY_AMOUNT
+        if (
+            self.status == ContestStatus.ACTIVE
+            and self.end_condition.target_entry_amount
+            and self.current_amount >= self.end_condition.target_entry_amount
+        ):
+            return True, ContestEndReason.TARGET_ENTRY_AMOUNT
         return False, None
 
     @staticmethod
@@ -278,17 +280,19 @@ class RaffleUserView(RaffleContest, ContestUserView):
         return probs
 
     def is_entry_eligible(self, entry: ContestEntry) -> tuple[bool, str]:
-        if self.entry_rule.max_entry_amount_per_user:
-            if (
-                self.user_amount + entry.amount
-            ) > self.entry_rule.max_entry_amount_per_user:
-                return False, "Entry would exceed max amount per user."
+        if (
+            self.entry_rule.max_entry_amount_per_user
+            and (self.user_amount + entry.amount)
+            > self.entry_rule.max_entry_amount_per_user
+        ):
+            return False, "Entry would exceed max amount per user."
 
-        if self.entry_rule.max_daily_entries_per_user:
-            if (
-                self.user_amount_today + entry.amount
-            ) > self.entry_rule.max_daily_entries_per_user:
-                return False, "Entry would exceed max amount per user per day."
+        if (
+            self.entry_rule.max_daily_entries_per_user
+            and (self.user_amount_today + entry.amount)
+            > self.entry_rule.max_daily_entries_per_user
+        ):
+            return False, "Entry would exceed max amount per user per day."
         return True, ""
 
     def is_user_eligible(self, country_iso: str) -> tuple[bool, str]:
@@ -296,16 +300,18 @@ class RaffleUserView(RaffleContest, ContestUserView):
         if not passes:
             return False, msg
 
-        if self.entry_rule.max_entry_amount_per_user:
+        if self.entry_rule.max_entry_amount_per_user:  # noqa: SIM102
             # Greater or equal b/c we're asking if the user is eligible to
             # enter MORE, now! If it equals, nothing is wrong, just that they
             # are not eligible anymore.
             if self.user_amount >= self.entry_rule.max_entry_amount_per_user:
                 return False, "Reached max amount per user."
 
-        if self.entry_rule.max_daily_entries_per_user:
-            if self.user_amount_today >= self.entry_rule.max_daily_entries_per_user:
-                return False, "Reached max amount today."
+        if (
+            self.entry_rule.max_daily_entries_per_user
+            and self.user_amount_today >= self.entry_rule.max_daily_entries_per_user
+        ):
+            return False, "Reached max amount today."
 
         # This would indicate something is wrong, as something else should have done this
         e, _ = self.should_end()

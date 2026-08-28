@@ -23,7 +23,6 @@ from generalresearch.models.thl.definitions import (
     WALL_ALLOWED_STATUS_STATUS_CODE,
 )
 from generalresearch.models.thl.ledger import (
-    AccountType,
     Direction,
     LedgerAccount,
     TransactionType,
@@ -287,17 +286,18 @@ class TestThlLedgerTxManager:
         assert balance == int(rand_amount) * -1
 
         # Test some basic assertions
-        with caplog.at_level(logging.INFO):
-            with pytest.raises(expected_exception=Exception):
-                thl_ledger_manager.create_tx_bp_payout(
-                    product=product,
-                    amount=rand_amount,
-                    payoutevent_uuid=uuid4().hex,
-                    created=datetime.now(tz=UTC),
-                    skip_wallet_balance_check=False,
-                    skip_one_per_day_check=False,
-                    skip_flag_check=False,
-                )
+        with caplog.at_level(logging.INFO), pytest.raises(
+            expected_exception=ValueError
+        ):
+            thl_ledger_manager.create_tx_bp_payout(
+                product=product,
+                amount=rand_amount,
+                payoutevent_uuid=uuid4().hex,
+                created=datetime.now(tz=UTC),
+                skip_wallet_balance_check=False,
+                skip_one_per_day_check=False,
+                skip_flag_check=False,
+            )
         assert "failed condition check >1 tx per day" in caplog.text
 
     def test_create_tx_bp_payout_(
@@ -1794,7 +1794,7 @@ class TestThlLedgerManagerAdj:
         )
         thl_ledger_manager.create_tx_bp_payment(session, created=wall1.started)
 
-        revenue = ththl_ledger_managerl_lm.get_account_task_complete_revenue()
+        revenue = thl_ledger_manager.get_account_task_complete_revenue()
         bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
             user.product
         )

@@ -5,7 +5,6 @@ from zoneinfo import ZoneInfo
 
 from generalresearch.currency import USDCent
 from generalresearch.managers.thl.contest_manager import ContestManager
-from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.managers.thl.user_manager.user_manager import UserManager
 from generalresearch.models.thl.contest.definitions import (
@@ -116,7 +115,9 @@ class TestLeaderboardContestCRUD:
         assert decision
         assert reason == ContestEndReason.ENDS_AT
 
-        contest_manager.end_contest_if_over(contest=contest, ledger_manager=thl_lm)
+        contest_manager.end_contest_if_over(
+            contest=contest, ledger_manager=thl_ledger_manager
+        )
 
         c: LeaderboardContest = contest_manager.get(contest_uuid=contest.uuid)
         assert c.status == ContestStatus.COMPLETED

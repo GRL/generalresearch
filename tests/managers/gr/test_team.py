@@ -1,18 +1,29 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from uuid import uuid4
+
+from generalresearch.managers.gr.authentication import GRUserManager
+from generalresearch.managers.gr.team import MembershipManager, TeamManager
+from generalresearch.models.gr.authentication import GRUser
+from generalresearch.models.gr.team import Membership, Team
+from generalresearch.models.thl.product import Product
+from generalresearch.pg_helper import PostgresConfig
+from generalresearch.redis_helper import RedisConfig
 
 
 class TestMembershipManager:
 
-    def test_init(self, membership_manager, gr_db):
+    def test_init(self, membership_manager: MembershipManager, gr_db: PostgresConfig):
         assert membership_manager.pg_config == gr_db
 
 
 class TestTeamManager:
 
-    def test_init(self, team_manager, gr_db):
+    def test_init(self, team_manager: TeamManager, gr_db: PostgresConfig):
         assert team_manager.pg_config == gr_db
 
-    def test_get_or_create(self, team_manager):
+    def test_get_or_create(self, team_manager: TeamManager):
         from generalresearch.models.gr.team import Team
 
         new_uuid = uuid4().hex
@@ -24,7 +35,7 @@ class TestTeamManager:
         assert team.uuid == new_uuid
         assert team.name == "< Unknown >"
 
-    def test_get_all(self, team_manager):
+    def test_get_all(self, team_manager: TeamManager):
         res1 = team_manager.get_all()
         assert isinstance(res1, list)
 
@@ -32,16 +43,20 @@ class TestTeamManager:
         res2 = team_manager.get_all()
         assert len(res1) == len(res2) - 1
 
-    def test_create(self, team_manager):
-        from generalresearch.models.gr.team import Team
+    def test_create(self, team_manager: TeamManager):
 
         team: Team = team_manager.create_dummy()
         assert isinstance(team, Team)
         assert isinstance(team.id, int)
 
-    def test_add_user(self, team, team_manager, gr_um, gr_db, gr_redis_config):
-        from generalresearch.models.gr.authentication import GRUser
-        from generalresearch.models.gr.team import Membership
+    def test_add_user(
+        self,
+        team: Team,
+        team_manager: TeamManager,
+        gr_um: GRUserManager,
+        gr_db: PostgresConfig,
+        gr_redis_config: RedisConfig,
+    ):
 
         user: GRUser = gr_um.create_dummy()
 
@@ -54,25 +69,23 @@ class TestTeamManager:
         assert len(team.gr_users)
         assert team.gr_users == [user]
 
-    def test_get_by_uuid(self, team_manager):
-        from generalresearch.models.gr.team import Team
+    def test_get_by_uuid(self, team_manager: TeamManager):
 
         team: Team = team_manager.create_dummy()
 
         instance = team_manager.get_by_uuid(team_uuid=team.uuid)
         assert team.id == instance.id
 
-    def test_get_by_id(self, team_manager):
-        from generalresearch.models.gr.team import Team
+    def test_get_by_id(self, team_manager: TeamManager):
 
         team: Team = team_manager.create_dummy()
 
         instance = team_manager.get_by_id(team_id=team.id)
         assert team.uuid == instance.uuid
 
-    def test_get_by_user(self, team, team_manager, gr_um):
-        from generalresearch.models.gr.authentication import GRUser
-        from generalresearch.models.gr.team import Team
+    def test_get_by_user(
+        self, team: Team, team_manager: TeamManager, gr_um: GRUserManager
+    ):
 
         user: GRUser = gr_um.create_dummy()
         team_manager.add_user(team=team, gr_user=user)
@@ -86,15 +99,12 @@ class TestTeamManager:
 
     def test_get_by_user_duplicates(
         self,
-        gr_user_token,
-        gr_user,
-        membership,
+        gr_user: GRUser,
         product_factory: Callable[..., Product],
-        membership_factory,
-        team,
-        thl_web_rr: PostgresConfig,
-        gr_redis_config,
-        gr_db,
+        membership_factory: Callable[..., Membership],
+        team: Team,
+        gr_redis_config: RedisConfig,
+        gr_db: PostgresConfig,
     ):
         product_factory(team=team)
         membership_factory(team=team, gr_user=gr_user)

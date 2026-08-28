@@ -136,10 +136,12 @@ class Contest(ContestBase):
     #     return False
 
     def should_end(self) -> tuple[bool, ContestEndReason | None]:
-        if self.status == ContestStatus.ACTIVE:
-            if self.end_condition.ends_at:
-                if datetime.now(tz=UTC) >= self.end_condition.ends_at:
-                    return True, ContestEndReason.ENDS_AT
+        if (
+            self.status == ContestStatus.ACTIVE
+            and self.end_condition.ends_at
+            and datetime.now(tz=UTC) >= self.end_condition.ends_at
+        ):
+            return True, ContestEndReason.ENDS_AT
 
         return False, None
 

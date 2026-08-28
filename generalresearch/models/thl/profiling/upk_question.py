@@ -475,10 +475,9 @@ class UpkQuestion(BaseModel):
         # Almost nothing has >1k options, besides location stuff (cities,
         # etc.) which should get harmonized. When presenting them, we'll
         # filter down options to at most 50.
-        if self.choices and (len(self.choices) <= 1 or len(self.choices) > 1000):
-            return False
-
-        return True
+        return not (
+            self.choices and (len(self.choices) <= 1 or len(self.choices) > 1000)
+        )
 
     @property
     def md5sum(self):
@@ -534,7 +533,7 @@ class UpkQuestion(BaseModel):
         ), "Multiple of the same answer submitted"
         if self.type == UpkQuestionType.MULTIPLE_CHOICE:
             assert len(answer) >= 1, "MC question with no selected answers"
-            choice_codes = set(x.id for x in self.choices)
+            choice_codes = {x.id for x in self.choices}
             if self.selector == UpkQuestionSelectorMC.SINGLE_ANSWER:
                 assert (
                     len(answer) == 1
@@ -563,9 +562,7 @@ class UpkQuestion(BaseModel):
             assert len(answer) == 1, "Only one answer allowed"
             answer = answer[0]
             assert len(answer) > 0, "Must provide answer"
-            max_length = (
-                self.configuration.max_length if self.configuration else 0 or 100000
-            )
+            max_length = self.configuration.max_length if self.configuration else 100000
             assert len(answer) <= max_length, "Answer longer than allowed"
             if self.validation and self.validation.patterns:
                 for pattern in self.validation.patterns:

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pandas as pd
 
@@ -6,8 +6,8 @@ import pandas as pd
 class TestIntervalIndex:
 
     def test_init(self):
-        start = datetime(year=2000, month=1, day=1)
-        end = datetime(year=2000, month=1, day=10)
+        start = datetime(year=2000, month=1, day=1, tzinfo=UTC)
+        end = datetime(year=2000, month=1, day=10, tzinfo=UTC)
 
         iv_r: pd.IntervalIndex = pd.interval_range(
             start=start, end=end, freq="1d", closed="left"

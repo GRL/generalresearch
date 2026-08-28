@@ -63,7 +63,7 @@ class TestLedgerAccountManagerNoResults:
         acct_id: UUIDStr,
         lm: LedgerManager,
     ):
-        qn = ":".join([currency, kind, acct_id])
+        qn = f"{currency}:{kind}:{acct_id}"
 
         # (1) .get_many_
         assert lm.get_account_many_(qualified_names=[qn], raise_on_error=False) == []

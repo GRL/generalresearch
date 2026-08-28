@@ -16,7 +16,7 @@ class TestWallSchema:
 
         df = pd.DataFrame(columns=THLWallSchema.columns.keys())
 
-        with pytest.raises(SchemaError) as cm:
+        with pytest.raises(SchemaError):
             THLWallSchema.validate(df)
 
     def test_no_rows(self):
@@ -24,7 +24,7 @@ class TestWallSchema:
 
         df = pd.DataFrame(index=["uuid"], columns=THLWallSchema.columns.keys())
 
-        with pytest.raises(SchemaError) as cm:
+        with pytest.raises(SchemaError):
             THLWallSchema.validate(df)
 
     def test_new_empty_df(self):
@@ -50,7 +50,7 @@ class TestSessionSchema:
         df = pd.DataFrame(columns=THLSessionSchema.columns.keys())
         df.set_index("uuid", inplace=True)
 
-        with pytest.raises(SchemaError) as cm:
+        with pytest.raises(SchemaError):
             THLSessionSchema.validate(df)
 
     def test_no_rows(self):
@@ -58,7 +58,7 @@ class TestSessionSchema:
 
         df = pd.DataFrame(index=["id"], columns=THLSessionSchema.columns.keys())
 
-        with pytest.raises(SchemaError) as cm:
+        with pytest.raises(SchemaError):
             THLSessionSchema.validate(df)
 
     def test_new_empty_df(self):

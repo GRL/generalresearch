@@ -430,8 +430,8 @@ class UserWalletConfig(BaseModel):
     @field_serializer("supported_payout_types", when_used="json")
     def serialize_supported_payout_types_in_order(
         self, supported_payout_types: set[PayoutType]
-    ) -> set[PayoutType]:
-        return set(sorted(supported_payout_types))
+    ) -> list[PayoutType]:
+        return sorted(supported_payout_types)
 
     @field_validator("min_cashout", mode="after")
     @classmethod
@@ -552,14 +552,14 @@ class PayoutTransformation(BaseModel):
             min_payout = Decimal(0)
         pct = Decimal(pct)
 
-        payout = Decimal(payout)
+        _payout = Decimal(payout)
         min_payout = Decimal(min_payout)
         max_payout = Decimal(max_payout) if max_payout else None
 
-        payout: Decimal = payout * pct
-        payout: Decimal = max([payout, min_payout])
-        payout: Decimal = min([payout, max_payout]) if max_payout else payout
-        return payout
+        _payout: Decimal = _payout * pct
+        _payout: Decimal = max([_payout, min_payout])
+        _payout: Decimal = min([_payout, max_payout]) if max_payout else payout
+        return _payout
 
     def payout_transformation_amt(
         self, payout: Decimal, user_wallet_balance: Decimal | None = None
@@ -569,22 +569,22 @@ class PayoutTransformation(BaseModel):
         # (display, adjustment) so ignore the 7-cent rounding.
         if user_wallet_balance is None:
             return self.payout_transformation_percent(payout=payout, pct=Decimal(".95"))
-        payout = Decimal(payout)
+        _payout = Decimal(payout)
 
-        payout: Decimal = payout * Decimal("0.95")
-        new_balance = payout + user_wallet_balance
+        _payout: Decimal = _payout * Decimal("0.95")
+        new_balance = _payout + user_wallet_balance
         # If the new_balance is <0, we aren't paying anything, so use the
         # full amount
         if new_balance < 0:
-            return payout
+            return _payout
 
         amt = (5 * math.floor((int(new_balance * 100) - 2) / 5)) + 2
         rounded_new_balance = Decimal(amt / 100).quantize(Decimal("0.00"))
-        payout = rounded_new_balance - user_wallet_balance
-        if payout < Decimal(0):
+        _payout = rounded_new_balance - user_wallet_balance
+        if _payout < Decimal(0):
             return Decimal(0)
 
-        return payout
+        return _payout
 
 
 class SourceConfig(BaseModel):
@@ -731,8 +731,8 @@ class SupplyConfig(BaseModel):
             Use global config.
         """
         d = self.global_scoped_policies_dict.copy()
-        d.update(self.team_scoped_policies_dict.get(team_id, dict()))
-        d.update(self.product_scoped_policies_dict.get(product_id, dict()))
+        d.update(self.team_scoped_policies_dict.get(team_id, {}))
+        d.update(self.product_scoped_policies_dict.get(product_id, {}))
         return d
 
     def get_config_for_product(self, product: Product) -> MergedSupplyConfig:
@@ -751,7 +751,7 @@ class SupplyConfig(BaseModel):
                     supply_policy=policy_dict[source],
                     source_config=sources_dict[source],
                 )
-                for source in policy_dict.keys()
+                for source in policy_dict
             ]
         )
 
@@ -1000,10 +1000,12 @@ class Product(BaseModel, validate_assignment=True):
 
     @property
     def business_uuid(self) -> UUIDStr:
+        assert self.business_id
         return self.business_id
 
     @property
     def team_uuid(self) -> UUIDStr:
+        assert self.team_id
         return self.team_id
 
     @property

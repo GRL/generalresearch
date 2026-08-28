@@ -132,10 +132,12 @@ class MilestoneContest(MilestoneContestCreate, Contest):
         if res:
             return res, msg
 
-        if self.status == ContestStatus.ACTIVE:
-            if self.end_condition.max_winners:
-                if self.win_count >= self.end_condition.max_winners:
-                    return True, ContestEndReason.MAX_WINNERS
+        if (
+            self.status == ContestStatus.ACTIVE
+            and self.end_condition.max_winners
+            and self.win_count >= self.end_condition.max_winners
+        ):
+            return True, ContestEndReason.MAX_WINNERS
 
         return False, None
 
@@ -189,16 +191,10 @@ class MilestoneUserView(MilestoneContest, ContestUserView):
     )
 
     def should_award(self):
-        if self.status == ContestStatus.ACTIVE:
-            if self.should_have_awarded():
-                return True
-        return False
+        return bool(self.status == ContestStatus.ACTIVE and self.should_have_awarded())
 
     def should_have_awarded(self):
-        if self.target_amount:
-            if self.user_amount >= self.target_amount:
-                return True
-        return False
+        return bool(self.target_amount and self.user_amount >= self.target_amount)
 
     def is_user_eligible(self, country_iso: str) -> tuple[bool, str]:
         passes, msg = super().is_user_eligible(country_iso=country_iso)

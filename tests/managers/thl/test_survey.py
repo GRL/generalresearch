@@ -11,9 +11,6 @@ from generalresearch.managers.thl.buyer import BuyerManager
 from generalresearch.managers.thl.profiling.question import (
     QuestionManager,
 )
-from generalresearch.managers.thl.profiling.schema import (
-    UpkSchemaManager,
-)
 from generalresearch.managers.thl.profiling.uqa import UQAManager
 from generalresearch.managers.thl.survey import SurveyManager, SurveyStatManager
 from generalresearch.models import Source
@@ -183,7 +180,8 @@ class TestSurvey:
         ]
         uqad = {}
         for uqa in uqas:
-            for k, _ in uqa.calc_answers.items():
+            assert uqa.calc_answers
+            for k in uqa.calc_answers:
                 if k in qualifying_questions:
                     uqad[k] = uqa
                     uqad[uqa.property_code] = uqa

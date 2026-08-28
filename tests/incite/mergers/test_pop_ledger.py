@@ -1,12 +1,25 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from itertools import product as iter_product
 
 import pandas as pd
 import pytest
+from dask.distributed import Client as DaskClient
 
+from generalresearch.incite.base import GRLDatasets
+from generalresearch.incite.collections.thl_web import (
+    LedgerDFCollection,
+    SessionDFCollection,
+)
+from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 from generalresearch.incite.schemas.mergers.pop_ledger import (
     numerical_col_names,
 )
+from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.user import User
 
 
 @pytest.mark.parametrize(
@@ -30,20 +43,20 @@ class TestMergePOPLedger:
 
     def test_base(
         self,
-        client_no_amm,
-        ledger_collection,
-        pop_ledger_merge,
+        client_no_amm: DaskClient,
+        ledger_collection: LedgerDFCollection,
+        pop_ledger_merge: PopLedgerMerge,
         product: Product,
         user_factory: Callable[..., User],
         create_main_accounts: Callable[..., None],
-        thl_lm,
+        thl_ledger_manager: ThlLedgerManager,
         delete_df_collection: Callable[..., None],
-        incite_item_factory,
+        incite_item_factory: Callable[..., None],
         delete_ledger_db: Callable[..., None],
     ):
         from generalresearch.models.thl.ledger import LedgerAccount
 
-        u = user_factory(product=product: Product, created=ledger_collection.start)
+        u = user_factory(product=product, created=ledger_collection.start)
 
         # -- Build & Setup
         delete_ledger_db()
@@ -73,19 +86,21 @@ class TestMergePOPLedger:
 
         # --
 
-        user_wallet_account: LedgerAccount = thl_lm.get_account_or_create_user_wallet(
-            user=u
+        user_wallet_account: LedgerAccount = (
+            thl_ledger_manager.get_account_or_create_user_wallet(user=u)
         )
-        cash_account: LedgerAccount = thl_lm.get_account_cash()
-        rev_account: LedgerAccount = thl_lm.get_account_task_complete_revenue()
+        cash_account: LedgerAccount = thl_ledger_manager.get_account_cash()
+        rev_account: LedgerAccount = (
+            thl_ledger_manager.get_account_task_complete_revenue()
+        )
 
         item_finishes = [i.finish for i in ledger_collection.items]
         item_finishes.sort(reverse=True)
         last_item_finish = item_finishes[0]
 
         # Pure SQL based lookups
-        cash_balance: int = thl_lm.get_account_balance(account=cash_account)
-        rev_balance: int = thl_lm.get_account_balance(account=rev_account)
+        cash_balance: int = thl_ledger_manager.get_account_balance(account=cash_account)
+        rev_balance: int = thl_ledger_manager.get_account_balance(account=rev_account)
         assert cash_balance > rev_balance
 
         # (1) Test Cash Account
@@ -123,39 +138,42 @@ class TestMergePOPLedger:
 
     def test_pydantic_init(
         self,
-        client_no_amm,
-        ledger_collection,
-        pop_ledger_merge,
-        mnt_filepath,
+        client_no_amm: DaskClient,
+        ledger_collection: LedgerDFCollection,
+        pop_ledger_merge: PopLedgerMerge,
+        mnt_filepath: GRLDatasets,
         product: Product,
         user_factory: Callable[..., User],
         create_main_accounts: Callable[..., None],
-        offset,
-        duration,
-        start,
-        thl_lm,
-        incite_item_factory,
+        offset: str,
+        duration: timedelta,
+        start: datetime,
+        thl_ledger_manager: ThlLedgerManager,
+        incite_item_factory: Callable[..., None],
         delete_df_collection: Callable[..., None],
         delete_ledger_db: Callable[..., None],
-        session_collection,
+        session_collection: SessionDFCollection,
     ):
         from generalresearch.models.thl.finance import ProductBalances
         from generalresearch.models.thl.ledger import LedgerAccount
         from generalresearch.models.thl.product import Product
 
-        u = user_factory(product=product: Product, created=session_collection.start)
+        u = user_factory(product=product, created=session_collection.start)
 
         assert ledger_collection.finished is not None
-        assert isinstance(u.product: Product, Product)
+        assert isinstance(u.product, Product)
         delete_ledger_db()
-        create_main_accounts(),
+        create_main_accounts()
+
         delete_df_collection(coll=ledger_collection)
 
-        bp_account: LedgerAccount = thl_lm.get_account_or_create_bp_wallet(
+        bp_account: LedgerAccount = thl_ledger_manager.get_account_or_create_bp_wallet(
             product=u.product
         )
-        cash_account: LedgerAccount = thl_lm.get_account_cash()
-        rev_account: LedgerAccount = thl_lm.get_account_task_complete_revenue()
+        cash_account: LedgerAccount = thl_ledger_manager.get_account_cash()
+        rev_account: LedgerAccount = (
+            thl_ledger_manager.get_account_task_complete_revenue()
+        )
 
         for item in ledger_collection.items:
             incite_item_factory(item=item, user=u)
@@ -185,8 +203,10 @@ class TestMergePOPLedger:
         assert instance.payout == instance.net == instance.bp_payment_credit
         assert instance.available_balance < instance.net
         assert instance.available_balance + instance.retainer == instance.net
-        assert instance.balance == thl_lm.get_account_balance(bp_account)
-        assert df["bp_payment.CREDIT"].sum() == thl_lm.get_account_balance(bp_account)
+        assert instance.balance == thl_ledger_manager.get_account_balance(bp_account)
+        assert df["bp_payment.CREDIT"].sum() == thl_ledger_manager.get_account_balance(
+            bp_account
+        )
 
         # (2) Filter by the Cash Account
         ddf = pop_ledger_merge.ddf(
@@ -199,7 +219,7 @@ class TestMergePOPLedger:
         )
         df: pd.DataFrame = client_no_amm.compute(collections=ddf, sync=True)
 
-        cash_balance: int = thl_lm.get_account_balance(account=cash_account)
+        cash_balance: int = thl_ledger_manager.get_account_balance(account=cash_account)
         assert df["bp_payment.CREDIT"].sum() == 0
         assert cash_balance > 0
         assert df["mp_payment.CREDIT"].sum() == 0
@@ -216,7 +236,7 @@ class TestMergePOPLedger:
         )
         df: pd.DataFrame = client_no_amm.compute(collections=ddf, sync=True)
 
-        rev_balance: int = thl_lm.get_account_balance(account=rev_account)
+        rev_balance: int = thl_ledger_manager.get_account_balance(account=rev_account)
         assert rev_balance == 0
         assert df["bp_payment.CREDIT"].sum() == 0
         assert df["mp_payment.DEBIT"].sum() == 0
@@ -224,27 +244,28 @@ class TestMergePOPLedger:
 
     def test_resample(
         self,
-        client_no_amm,
-        ledger_collection,
-        pop_ledger_merge,
-        mnt_filepath,
+        client_no_amm: DaskClient,
+        ledger_collection: LedgerDFCollection,
+        pop_ledger_merge: PopLedgerMerge,
+        mnt_filepath: GRLDatasets,
         user_factory: Callable[..., User],
         product: Product,
         create_main_accounts: Callable[..., None],
-        offset,
-        duration,
-        start,
-        thl_lm,
+        offset: str,
+        duration: timedelta,
+        start: datetime,
+        thl_ledger_manager: ThlLedgerManager,
         delete_df_collection: Callable[..., None],
-        incite_item_factory,
+        incite_item_factory: Callable[..., None],
     ):
-        from generalresearch.models.thl.user import User
 
         assert ledger_collection.finished is not None
         delete_df_collection(coll=ledger_collection)
         u1: User = user_factory(product=product)
 
-        bp_account = thl_lm.get_account_or_create_bp_wallet(product=u1.product)
+        bp_account = thl_ledger_manager.get_account_or_create_bp_wallet(
+            product=u1.product
+        )
 
         for item in ledger_collection.items:
             incite_item_factory(user=u1, item=item)
@@ -274,7 +295,7 @@ class TestMergePOPLedger:
         assert isinstance(df.index, pd.Index)
         assert isinstance(df.index, pd.DatetimeIndex)
 
-        bp_account_balance = thl_lm.get_account_balance(account=bp_account)
+        bp_account_balance = thl_ledger_manager.get_account_balance(account=bp_account)
 
         # Initial sum
         initial_sum = df.sum().sum()

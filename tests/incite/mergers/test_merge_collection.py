@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime, timedelta
 from itertools import product
 
@@ -5,12 +7,13 @@ import pandas as pd
 import pytest
 from pandera.pandas import DataFrameSchema
 
+from generalresearch.incite.base import GRLDatasets
 from generalresearch.incite.mergers import (
     MergeCollection,
     MergeType,
 )
 
-merge_types = list(e for e in MergeType if e != MergeType.TEST)
+merge_types = [e for e in MergeType if e != MergeType.TEST]
 
 
 @pytest.mark.parametrize(
@@ -26,7 +29,11 @@ merge_types = list(e for e in MergeType if e != MergeType.TEST)
 )
 class TestMergeCollection:
 
-    def test_init(self, mnt_filepath, merge_type, offset, duration, start):
+    def test_init(
+        self,
+        mnt_filepath: GRLDatasets,
+        merge_type: MergeType,
+    ):
         with pytest.raises(expected_exception=ValueError) as cm:
             MergeCollection(archive_path=mnt_filepath.data_src)
         assert "Must explicitly provide a merge_type" in str(cm.value)
@@ -37,7 +44,14 @@ class TestMergeCollection:
         )
         assert instance.merge_type == merge_type
 
-    def test_items(self, mnt_filepath, merge_type, offset, duration, start):
+    def test_items(
+        self,
+        mnt_filepath: GRLDatasets,
+        merge_type: MergeType,
+        offset: str,
+        duration: timedelta,
+        start: datetime,
+    ):
         instance = MergeCollection(
             merge_type=merge_type,
             offset=offset,
@@ -48,7 +62,14 @@ class TestMergeCollection:
 
         assert len(instance.interval_range) == len(instance.items)
 
-    def test_progress(self, mnt_filepath, merge_type, offset, duration, start):
+    def test_progress(
+        self,
+        mnt_filepath: GRLDatasets,
+        merge_type: MergeType,
+        offset: str,
+        duration: timedelta,
+        start: datetime,
+    ):
         instance = MergeCollection(
             merge_type=merge_type,
             offset=offset,
@@ -62,7 +83,11 @@ class TestMergeCollection:
         assert instance.progress.shape[1] == 7
         assert instance.progress["group_by"].isnull().all()
 
-    def test_schema(self, mnt_filepath, merge_type, offset, duration, start):
+    def test_schema(
+        self,
+        mnt_filepath: GRLDatasets,
+        merge_type: MergeType,
+    ):
         instance = MergeCollection(
             merge_type=merge_type,
             archive_path=mnt_filepath.archive_path(enum_type=merge_type),
@@ -70,7 +95,14 @@ class TestMergeCollection:
 
         assert isinstance(instance._schema, DataFrameSchema)
 
-    def test_load(self, mnt_filepath, merge_type, offset, duration, start):
+    def test_load(
+        self,
+        mnt_filepath: GRLDatasets,
+        merge_type: MergeType,
+        offset: str,
+        duration: timedelta,
+        start: datetime,
+    ):
         instance = MergeCollection(
             merge_type=merge_type,
             start=start,
@@ -82,7 +114,14 @@ class TestMergeCollection:
         # Confirm that there are no archives available yet
         assert instance.progress.has_archive.eq(False).all()
 
-    def test_get_items(self, mnt_filepath, merge_type, offset, duration, start):
+    def test_get_items(
+        self,
+        mnt_filepath: GRLDatasets,
+        merge_type: MergeType,
+        offset: str,
+        duration: timedelta,
+        start: datetime,
+    ):
         instance = MergeCollection(
             start=start,
             finished=start + duration,

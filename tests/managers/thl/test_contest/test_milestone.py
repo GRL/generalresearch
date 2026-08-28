@@ -292,7 +292,10 @@ class TestMilestoneContestUserViews:
         assert len(cs) == 1
 
         contest_manager.enter_milestone_contest(
-            contest_uuid=c.uuid, user=user, country_iso="us", ledger_manager=thl_lm
+            contest_uuid=c.uuid,
+            user=user,
+            country_iso="us",
+            ledger_manager=thl_ledger_manager,
         )
 
         # User isn't eligible anymore

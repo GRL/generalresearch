@@ -13,6 +13,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    ValidationError,
     computed_field,
     field_validator,
     model_validator,
@@ -513,7 +514,7 @@ class ProdegeSurvey(MarketplaceTask):
     def from_api(cls, d: dict[str, Any]) -> ProdegeSurvey | None:
         try:
             return cls._from_api(d)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse survey: {d}. {e}")
             return None
 

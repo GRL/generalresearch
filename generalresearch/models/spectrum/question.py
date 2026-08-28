@@ -13,6 +13,7 @@ from pydantic import (
     BaseModel,
     Field,
     PositiveInt,
+    ValidationError,
     field_validator,
     model_validator,
 )
@@ -132,7 +133,7 @@ class SpectrumQuestionType(StrEnum):
     @classmethod
     def from_api(cls, a: int):
         api_type_map = cls.get_api_map()
-        return api_type_map[a] if a in api_type_map else None
+        return api_type_map.get(a, None)
 
 
 class SpectrumQuestionClass(IntEnum):
@@ -260,7 +261,7 @@ class SpectrumQuestion(MarketplaceQuestion):
             return None
         try:
             return cls._from_api(d, country_iso, language_iso)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse question: {d}. {e}")
             return None
 
@@ -280,7 +281,9 @@ class SpectrumQuestion(MarketplaceQuestion):
             ]
 
         created = (
-            datetime.utcfromtimestamp(d["crtd_on"] / 1000).replace(tzinfo=UTC)
+            datetime.fromtimestamp(timestamp=d["crtd_on"] / 1000, tz=UTC).replace(
+                tzinfo=UTC
+            )
             if d.get("crtd_on")
             else None
         )

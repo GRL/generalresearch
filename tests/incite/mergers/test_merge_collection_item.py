@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 from datetime import timedelta
 from itertools import product
 from pathlib import PurePath
 
 import pytest
 
-from generalresearch.incite.mergers import MergeCollectionItem, MergeType
+from generalresearch.incite.mergers import (
+    MergeCollection,
+    MergeCollectionItem,
+    MergeType,
+)
 
 
 @pytest.mark.parametrize(
@@ -19,7 +25,10 @@ from generalresearch.incite.mergers import MergeCollectionItem, MergeType
 )
 class TestMergeCollectionItem:
 
-    def test_file_naming(self, merge_collection, offset, duration, start):
+    def test_file_naming(
+        self,
+        merge_collection: MergeCollection,
+    ):
         assert len(merge_collection.items) == 25
 
         items: list[MergeCollectionItem] = merge_collection.items
@@ -34,7 +43,10 @@ class TestMergeCollectionItem:
             assert i._collection.offset in i.filename
             assert i.start.strftime("%Y-%m-%d-%H-%M-%S") in i.filename
 
-    def test_archives(self, merge_collection, offset, duration, start):
+    def test_archives(
+        self,
+        merge_collection: MergeCollection,
+    ):
         assert len(merge_collection.items) == 25
 
         for i in merge_collection.items:
@@ -44,10 +56,13 @@ class TestMergeCollectionItem:
             assert not i.has_partial_archive()
             assert i.has_archive() == i.path_exists(generic_path=i.path)
 
-        res = set([i.should_archive() for i in merge_collection.items])
+        res = {i.should_archive() for i in merge_collection.items}
         assert len(res) == 1
 
-    def test_item_to_archive(self, merge_collection, offset, duration, start):
+    def test_item_to_archive(
+        self,
+        merge_collection: MergeCollection,
+    ):
         for item in merge_collection.items:
             item: MergeCollectionItem
             assert not item.has_archive()

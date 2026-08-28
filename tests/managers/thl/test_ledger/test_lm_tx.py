@@ -24,8 +24,6 @@ class TestLedgerManagerCreateTx:
         """Confirm that the Permission values that are set on the Ledger Manger
         allow the Creation action to occur.
         """
-        acct_uuid = uuid4().hex
-
         # (1) With no Permissions defined
         test_lm = LedgerManager(
             pg_config=ledger_manager.pg_config,
@@ -44,8 +42,6 @@ class TestLedgerManagerCreateTx:
 
     def test_create_assertions(
         self,
-        ledger_account_debit: LedgerAccount,
-        ledger_account_credit: LedgerAccount,
         ledger_manager: LedgerManager,
     ):
         with pytest.raises(expected_exception=ValueError) as excinfo:

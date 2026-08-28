@@ -99,11 +99,11 @@ class PrecisionQuota(BaseModel):
         self, criteria_evaluation: dict[str, bool | None]
     ) -> tuple[bool | None, list[str]]:
         # Passes back "matches" (T/F/none) and a list of unknown criterion hashes
-        unknowns = list()
+        unknowns = []
         for c in self.condition_hashes:
             eval_value = criteria_evaluation.get(c)
             if eval_value is False:
-                return False, list()
+                return False, []
             if eval_value is None:
                 unknowns.append(c)
         if unknowns:
@@ -245,11 +245,10 @@ class PrecisionSurvey(MarketplaceTask):
         # Fancy repr that abbreviates exclude_pids and excluded_surveys
         repr_args = list(self.__repr_args__())
         for n, (k, v) in enumerate(repr_args):
-            if k in {"excluded_surveys"}:
-                if v and len(v) > 6:
-                    v = sorted(v)
-                    v = v[:3] + ["…"] + v[-3:]
-                    repr_args[n] = (k, v)
+            if k in {"excluded_surveys"} and v and len(v) > 6:
+                v = sorted(v)
+                v = v[:3] + ["…"] + v[-3:]
+                repr_args[n] = (k, v)
         join_str = ", "
         repr_str = join_str.join(
             repr(v) if a is None else f"{a}={v!r}" for a, v in repr_args
@@ -369,6 +368,4 @@ class PrecisionSurvey(MarketplaceTask):
             return False
         if self.group_id in att_group_ids:
             return False
-        if self.excluded_surveys & att_survey_ids:
-            return False
-        return True
+        return not self.excluded_surveys & att_survey_ids

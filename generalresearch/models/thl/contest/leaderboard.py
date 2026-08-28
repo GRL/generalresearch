@@ -151,7 +151,8 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
                 len(self.country_isos) == 1
             ), "Can only set 1 country_iso in a leaderboard contest"
             assert (
-                list(self.country_isos)[0] == self.leaderboard_key_parts["country_iso"]
+                next(iter(self.country_isos))
+                == self.leaderboard_key_parts["country_iso"]
             ), "leaderboard_key country_iso must match the country_isos"
         else:
             self.country_isos = {self.leaderboard_key_parts["country_iso"]}
@@ -192,10 +193,12 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
         return lbm
 
     def should_end(self) -> tuple[bool, ContestEndReason | None]:
-        if self.status == ContestStatus.ACTIVE:
-            if self.end_condition.ends_at:
-                if datetime.now(tz=UTC) >= self.end_condition.ends_at:
-                    return True, ContestEndReason.ENDS_AT
+        if (
+            self.status == ContestStatus.ACTIVE
+            and self.end_condition.ends_at
+            and datetime.now(tz=UTC) >= self.end_condition.ends_at
+        ):
+            return True, ContestEndReason.ENDS_AT
 
         return False, None
 

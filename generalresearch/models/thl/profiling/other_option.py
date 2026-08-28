@@ -51,6 +51,4 @@ def option_is_catch_all(c: UpkQuestionChoice) -> bool:
         return True
     if c.text.lower() in texts_exact:
         return True
-    if any(t in c.text.lower() for t in texts_in):
-        return True
-    return False
+    return bool(any(t in c.text.lower() for t in texts_in))

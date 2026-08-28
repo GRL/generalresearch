@@ -48,7 +48,7 @@ class NmapXmlParser:
 
         try:
             root = ET.fromstring(nmap_data)
-        except Exception as e:
+        except ET.ParseError as e:
             emsg = f"Wrong XML structure: cannot parse data: {e}"
             raise NmapParserException(emsg)
 
@@ -103,7 +103,7 @@ class NmapXmlParser:
 
     @classmethod
     def _parse_scaninfo(cls, scaninfo_el: ET.Element) -> NmapScanInfo:
-        data = dict()
+        data = {}
         data["type"] = NmapScanType(scaninfo_el.attrib["type"])
         data["protocol"] = IPProtocol(scaninfo_el.attrib["protocol"])
         data["num_services"] = scaninfo_el.attrib["numservices"]
@@ -132,7 +132,7 @@ class NmapXmlParser:
 
     @classmethod
     def _parse_nmaprun(cls, nmaprun_el: ET.Element) -> dict:
-        nmap_data = dict()
+        nmap_data = {}
         nmaprun = dict(nmaprun_el.attrib)
         nmap_data["command_line"] = nmaprun["args"]
         nmap_data["started_at"] = datetime.fromtimestamp(
@@ -148,7 +148,7 @@ class NmapXmlParser:
         Receives a <host> XML tag representing a scanned host with
         its services.
         """
-        data = dict()
+        data = {}
 
         # <status state="up" reason="user-set" reason_ttl="0"/>
         status_el = host_el.find("status")

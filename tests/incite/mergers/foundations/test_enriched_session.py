@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from itertools import product
@@ -5,10 +8,24 @@ from itertools import product
 import dask.dataframe as dd
 import pandas as pd
 import pytest
+from dask.distributed import Client as DaskClient
 
+from generalresearch.incite.collections.thl_web import (
+    SessionDFCollection,
+    WallDFCollection,
+)
+from generalresearch.incite.mergers.foundations.enriched_session import (
+    EnrichedSessionMerge,
+)
 from generalresearch.incite.schemas.admin_responses import (
     AdminPOPSessionSchema,
 )
+from generalresearch.models.admin.request import (
+    ReportRequest,
+)
+from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.session import Session
+from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 
 
@@ -25,21 +42,20 @@ class TestEnrichedSession:
 
     def test_base(
         self,
-        client_no_amm,
+        client_no_amm: DaskClient,
         product: Product,
         user_factory: Callable[..., User],
-        wall_collection,
-        session_collection,
-        enriched_session_merge,
+        wall_collection: WallDFCollection,
+        session_collection: SessionDFCollection,
+        enriched_session_merge: EnrichedSessionMerge,
         thl_web_rr: PostgresConfig,
         delete_df_collection: Callable[..., None],
-        incite_item_factory,
+        incite_item_factory: Callable[..., None],
     ):
-        from generalresearch.models.thl.user import User
 
         delete_df_collection(coll=session_collection)
 
-        u1: User = user_factory(product=product: Product, created=session_collection.start)
+        u1: User = user_factory(product=product, created=session_collection.start)
 
         for item in session_collection.items:
             incite_item_factory(item=item, user=u1)
@@ -52,7 +68,7 @@ class TestEnrichedSession:
             client=client_no_amm,
             wall_coll=wall_collection,
             session_coll=session_collection,
-            pg_config=thl_web_rr: PostgresConfig,
+            pg_config=thl_web_rr,
         )
 
         # --
@@ -85,16 +101,16 @@ class TestEnrichedSessionAdmin:
 
     def test_to_admin_response(
         self,
-        event_report_request,
-        enriched_session_merge,
-        client_no_amm,
-        wall_collection,
-        session_collection,
+        event_report_request: ReportRequest,
+        enriched_session_merge: EnrichedSessionMerge,
+        client_no_amm: DaskClient,
+        wall_collection: WallDFCollection,
+        session_collection: SessionDFCollection,
         thl_web_rr: PostgresConfig,
-        session_report_request,
+        session_report_request: ReportRequest,
         user_factory: Callable[..., User],
-        start,
-        session_factory,
+        start: datetime,
+        session_factory: Callable[..., Session],
         product_factory: Callable[..., Product],
         delete_df_collection: Callable[..., None],
     ):
@@ -107,7 +123,7 @@ class TestEnrichedSessionAdmin:
         for p in [p1, p2]:
             u = user_factory(product=p)
             for i in range(50):
-                s = session_factory(
+                _ = session_factory(
                     user=u,
                     wall_count=1,
                     wall_req_cpi=Decimal("1.00"),
@@ -120,7 +136,7 @@ class TestEnrichedSessionAdmin:
             client=client_no_amm,
             session_coll=session_collection,
             wall_coll=wall_collection,
-            pg_config=thl_web_rr: PostgresConfig,
+            pg_config=thl_web_rr,
         )
 
         df = enriched_session_merge.to_admin_response(

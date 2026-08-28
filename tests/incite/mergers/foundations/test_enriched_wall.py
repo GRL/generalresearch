@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from itertools import product as iter_product
@@ -5,11 +6,23 @@ from itertools import product as iter_product
 import dask.dataframe as dd
 import pandas as pd
 import pytest
+from dask.distributed import Client as DaskClient
+
+from generalresearch.incite.collections.thl_web import (
+    SessionDFCollection,
+    WallDFCollection,
+)
 
 # noinspection PyUnresolvedReferences
 from generalresearch.incite.mergers.foundations.enriched_wall import (
+    EnrichedWallMerge,
     EnrichedWallMergeItem,
 )
+from generalresearch.models.admin.request import ReportRequest
+from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.session import Session
+from generalresearch.models.thl.user import User
+from generalresearch.pg_helper import PostgresConfig
 
 
 @pytest.mark.parametrize(
@@ -20,22 +33,21 @@ class TestEnrichedWall:
 
     def test_base(
         self,
-        client_no_amm,
+        client_no_amm: DaskClient,
         product: Product,
         user_factory: Callable[..., User],
-        wall_collection,
+        wall_collection: WallDFCollection,
         thl_web_rr: PostgresConfig,
-        session_collection,
-        enriched_wall_merge,
+        session_collection: SessionDFCollection,
+        enriched_wall_merge: EnrichedWallMerge,
         delete_df_collection: Callable[..., None],
-        incite_item_factory,
+        incite_item_factory: Callable[..., None],
     ):
-        from generalresearch.models.thl.user import User
 
         # -- Build & Setup
         delete_df_collection(coll=session_collection)
         delete_df_collection(coll=wall_collection)
-        u1: User = user_factory(product=product: Product, created=session_collection.start)
+        u1: User = user_factory(product=product, created=session_collection.start)
 
         for item in session_collection.items:
             incite_item_factory(item=item, user=u1)
@@ -48,7 +60,7 @@ class TestEnrichedWall:
             client=client_no_amm,
             wall_coll=wall_collection,
             session_coll=session_collection,
-            pg_config=thl_web_rr: PostgresConfig,
+            pg_config=thl_web_rr,
         )
 
         # --
@@ -63,19 +75,19 @@ class TestEnrichedWall:
 
     def test_base_item(
         self,
-        client_no_amm,
+        client_no_amm: DaskClient,
         product: Product,
         user_factory: Callable[..., User],
-        wall_collection,
-        session_collection,
-        enriched_wall_merge,
+        wall_collection: WallDFCollection,
+        session_collection: SessionDFCollection,
+        enriched_wall_merge: EnrichedWallMerge,
         delete_df_collection: Callable[..., None],
         thl_web_rr: PostgresConfig,
-        incite_item_factory,
+        incite_item_factory: Callable[..., None],
     ):
         # -- Build & Setup
         delete_df_collection(coll=session_collection)
-        u = user_factory(product=product: Product, created=session_collection.start)
+        u = user_factory(product=product, created=session_collection.start)
 
         for item in session_collection.items:
             incite_item_factory(item=item, user=u)
@@ -87,7 +99,7 @@ class TestEnrichedWall:
             client=client_no_amm,
             wall_coll=wall_collection,
             session_coll=session_collection,
-            pg_config=thl_web_rr: PostgresConfig,
+            pg_config=thl_web_rr,
         )
 
         # --
@@ -99,14 +111,14 @@ class TestEnrichedWall:
 
             try:
                 modified_time1 = path.stat().st_mtime
-            except Exception:
+            except OSError:
                 modified_time1 = 0
 
             item.build(
                 client=client_no_amm,
                 wall_coll=wall_collection,
                 session_coll=session_collection,
-                pg_config=thl_web_rr: PostgresConfig,
+                pg_config=thl_web_rr,
             )
             modified_time2 = path.stat().st_mtime
 
@@ -150,7 +162,12 @@ class TestEnrichedWallToAdmin:
     def duration(self) -> timedelta | None:
         return timedelta(days=5)
 
-    def test_empty(self, enriched_wall_merge, client_no_amm, start):
+    def test_empty(
+        self,
+        enriched_wall_merge: EnrichedWallMerge,
+        client_no_amm: DaskClient,
+        start: datetime,
+    ):
         from generalresearch.models.admin.request import ReportRequest
 
         rr = ReportRequest.model_validate({"interval": "5min", "start": start})
@@ -167,18 +184,18 @@ class TestEnrichedWallToAdmin:
 
     def test_to_admin_response(
         self,
-        event_report_request,
-        enriched_wall_merge,
-        client_no_amm,
-        wall_collection,
-        session_collection,
+        event_report_request: ReportRequest,
+        enriched_wall_merge: EnrichedWallMerge,
+        client_no_amm: DaskClient,
+        wall_collection: WallDFCollection,
+        session_collection: SessionDFCollection,
         thl_web_rr: PostgresConfig,
-        user,
-        session_factory,
+        user: User,
+        session_factory: Callable[..., Session],
         delete_df_collection: Callable[..., None],
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
-        start,
+        start: datetime,
     ):
         delete_df_collection(coll=wall_collection)
         delete_df_collection(coll=session_collection)
@@ -189,7 +206,7 @@ class TestEnrichedWallToAdmin:
         for p in [p1, p2]:
             u = user_factory(product=p)
             for i in range(50):
-                s = session_factory(
+                _ = session_factory(
                     user=u,
                     wall_count=2,
                     wall_req_cpi=Decimal("1.00"),
@@ -203,7 +220,7 @@ class TestEnrichedWallToAdmin:
             client=client_no_amm,
             wall_coll=wall_collection,
             session_coll=session_collection,
-            pg_config=thl_web_rr: PostgresConfig,
+            pg_config=thl_web_rr,
         )
 
         df = enriched_wall_merge.to_admin_response(

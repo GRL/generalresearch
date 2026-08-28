@@ -727,8 +727,6 @@ class TestBusinessPayoutEventManager:
         #     {"uuid": bp_pe.uuid, "status": PayoutStatus.FAILED},
         # )
 
-        assert 1 == 0
-
     def test_ach_payment(
         self,
         mnt_filepath: GRLDatasets,

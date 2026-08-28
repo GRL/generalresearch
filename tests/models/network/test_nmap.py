@@ -8,7 +8,7 @@ from generalresearch.managers.network.tool_run import ToolRunManager
 from generalresearch.models.network.definitions import IPProtocol
 from generalresearch.models.network.nmap.execute import execute_nmap
 from generalresearch.models.network.nmap.result import NmapResult, PortState
-from generalresearch.models.network.tool_run import NmapRun, Status, ToolClass, ToolName
+from generalresearch.models.network.tool_run import NmapRun, ToolClass, ToolName
 
 fake = faker.Faker()
 

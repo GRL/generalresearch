@@ -1013,7 +1013,7 @@ class TestProductCache:
         assert res is None
         with pytest.raises(expected_exception=AssertionError):
             product.set_cache(
-                thl_lm=thl_lm,
+                thl_lm=thl_ledger_manager,
                 ds=mnt_filepath,
                 client=client_no_amm,
                 bp_pem=brokerage_product_payout_event_manager,
@@ -1035,7 +1035,7 @@ class TestProductCache:
 
         # Now try again with everything in place
         product.set_cache(
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             bp_pem=brokerage_product_payout_event_manager,

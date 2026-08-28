@@ -33,7 +33,6 @@ if TYPE_CHECKING:
         ProfilingConfig,
         SessionConfig,
         SourcesConfig,
-        SupplyConfigs,
         UserCreateConfig,
         UserHealthConfig,
         UserWalletConfig,

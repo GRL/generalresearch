@@ -6,7 +6,7 @@ import logging
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from generalresearch.models import Source, string_utils
 from generalresearch.models.precision import PrecisionQuestionID
@@ -112,7 +112,7 @@ class PrecisionQuestion(MarketplaceQuestion):
         """
         try:
             return cls._from_api(d)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse question: {d}. {e}")
             return None
 

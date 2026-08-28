@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from os.path import join as pjoin
 from pathlib import Path
@@ -8,7 +10,7 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from generalresearch.incite.base import CollectionItemBase
+from generalresearch.incite.base import CollectionItemBase, GRLDatasets
 
 
 class TestCollectionItemBase:
@@ -40,20 +42,20 @@ class TestCollectionItemBaseProperties:
     def test_finish(self):
         instance = CollectionItemBase()
 
-        with pytest.raises(expected_exception=AttributeError) as cm:
-            res = instance.finish
+        with pytest.raises(expected_exception=AttributeError):
+            _ = instance.finish
 
     def test_interval(self):
         instance = CollectionItemBase()
 
-        with pytest.raises(expected_exception=AttributeError) as cm:
-            res = instance.interval
+        with pytest.raises(expected_exception=AttributeError):
+            _ = instance.interval
 
     def test_filename(self):
         instance = CollectionItemBase()
 
         with pytest.raises(expected_exception=NotImplementedError) as cm:
-            res = instance.filename
+            _ = instance.filename
 
         assert "Do not use CollectionItemBase directly" in str(cm.value)
 
@@ -61,7 +63,7 @@ class TestCollectionItemBaseProperties:
         instance = CollectionItemBase()
 
         with pytest.raises(expected_exception=NotImplementedError) as cm:
-            res = instance.filename
+            _ = instance.filename
 
         assert "Do not use CollectionItemBase directly" in str(cm.value)
 
@@ -69,27 +71,27 @@ class TestCollectionItemBaseProperties:
         instance = CollectionItemBase()
 
         with pytest.raises(expected_exception=NotImplementedError) as cm:
-            res = instance.filename
+            _ = instance.filename
 
         assert "Do not use CollectionItemBase directly" in str(cm.value)
 
     def test_path(self):
         instance = CollectionItemBase()
 
-        with pytest.raises(expected_exception=AttributeError) as cm:
-            res = instance.path
+        with pytest.raises(expected_exception=AttributeError):
+            _ = instance.path
 
     def test_partial_path(self):
         instance = CollectionItemBase()
 
-        with pytest.raises(expected_exception=AttributeError) as cm:
-            res = instance.partial_path
+        with pytest.raises(expected_exception=AttributeError):
+            _ = instance.partial_path
 
     def test_empty_path(self):
         instance = CollectionItemBase()
 
-        with pytest.raises(expected_exception=AttributeError) as cm:
-            res = instance.empty_path
+        with pytest.raises(expected_exception=AttributeError):
+            _ = instance.empty_path
 
 
 class TestCollectionItemBaseMethods:
@@ -106,41 +108,41 @@ class TestCollectionItemBaseMethods:
         instance = CollectionItemBase()
 
         with pytest.raises(expected_exception=NotImplementedError) as cm:
-            res = instance.tmp_filename()
+            _ = instance.tmp_filename()
         assert "Do not use CollectionItemBase directly" in str(cm.value)
 
     def test_tmp_path(self):
         instance = CollectionItemBase()
 
-        with pytest.raises(expected_exception=AttributeError) as cm:
-            res = instance.tmp_path()
+        with pytest.raises(expected_exception=AttributeError):
+            instance.tmp_path()
 
     def test_is_empty(self):
         instance = CollectionItemBase()
 
-        with pytest.raises(expected_exception=AttributeError) as cm:
-            res = instance.is_empty()
+        with pytest.raises(expected_exception=AttributeError):
+            instance.is_empty()
 
     def test_has_empty(self):
         instance = CollectionItemBase()
 
-        with pytest.raises(expected_exception=AttributeError) as cm:
-            res = instance.has_empty()
+        with pytest.raises(expected_exception=AttributeError):
+            instance.has_empty()
 
     def test_has_partial_archive(self):
         instance = CollectionItemBase()
 
-        with pytest.raises(expected_exception=AttributeError) as cm:
-            res = instance.has_partial_archive()
+        with pytest.raises(expected_exception=AttributeError):
+            instance.has_partial_archive()
 
     @pytest.mark.parametrize("include_empty", [True, False])
-    def test_has_archive(self, include_empty):
+    def test_has_archive(self, include_empty: bool):
         instance = CollectionItemBase()
 
-        with pytest.raises(expected_exception=AttributeError) as cm:
-            res = instance.has_archive(include_empty=include_empty)
+        with pytest.raises(expected_exception=AttributeError):
+            instance.has_archive(include_empty=include_empty)
 
-    def test_delete_archive_file(self, mnt_filepath):
+    def test_delete_archive_file(self, mnt_filepath: GRLDatasets):
         path1 = Path(pjoin(mnt_filepath.data_src, f"{uuid4().hex}.zip"))
 
         # Confirm it doesn't exist, and that delete_archive() doesn't throw
@@ -155,7 +157,7 @@ class TestCollectionItemBaseMethods:
         CollectionItemBase.delete_archive(generic_path=path1)
         assert not path1.exists()
 
-    def test_delete_archive_dir(self, mnt_filepath):
+    def test_delete_archive_dir(self, mnt_filepath: GRLDatasets):
         path1 = Path(pjoin(mnt_filepath.data_src, f"{uuid4().hex}"))
 
         # Confirm it doesn't exist, and that delete_archive() doesn't throw
@@ -174,20 +176,20 @@ class TestCollectionItemBaseMethods:
     def test_should_archive(self):
         instance = CollectionItemBase()
 
-        with pytest.raises(expected_exception=AttributeError) as cm:
-            res = instance.should_archive()
+        with pytest.raises(expected_exception=AttributeError):
+            _ = instance.should_archive()
 
     def test_set_empty(self):
         instance = CollectionItemBase()
 
-        with pytest.raises(expected_exception=AttributeError) as cm:
-            res = instance.set_empty()
+        with pytest.raises(expected_exception=AttributeError):
+            _ = instance.set_empty()
 
     def test_valid_archive(self):
         instance = CollectionItemBase()
 
-        with pytest.raises(expected_exception=AttributeError) as cm:
-            res = instance.valid_archive(generic_path=None, sample=None)
+        with pytest.raises(expected_exception=AttributeError):
+            _ = instance.valid_archive(generic_path=None, sample=None)
 
 
 class TestCollectionItemBaseMethodsORM:
@@ -197,11 +199,11 @@ class TestCollectionItemBaseMethodsORM:
         pass
 
     @pytest.mark.parametrize("is_partial", [True, False])
-    def test_to_archive(self, is_partial):
+    def test_to_archive(self, is_partial: bool):
         instance = CollectionItemBase()
 
         with pytest.raises(expected_exception=NotImplementedError) as cm:
-            res = instance.to_archive(
+            _ = instance.to_archive(
                 ddf=dd.from_pandas(data=pd.DataFrame()), is_partial=is_partial
             )
         assert "Must override" in str(cm.value)

@@ -2,17 +2,36 @@ from uuid import uuid4
 
 import pytest
 
+from generalresearch.managers.gr.business import (
+    BusinessAddressManager,
+    BusinessBankAccountManager,
+    BusinessManager,
+)
+from generalresearch.managers.gr.team import MembershipManager, TeamManager
+from generalresearch.models.gr.authentication import GRUser
+from generalresearch.models.gr.business import (
+    Business,
+    BusinessAddress,
+    BusinessBankAccount,
+    TransferMethod,
+)
+from generalresearch.pg_helper import PostgresConfig
+
 
 class TestBusinessBankAccountManager:
 
-    def test_init(self, business_bank_account_manager, gr_db):
+    def test_init(
+        self,
+        business_bank_account_manager: BusinessBankAccountManager,
+        gr_db: PostgresConfig,
+    ):
         assert business_bank_account_manager.pg_config == gr_db
 
-    def test_create(self, business: Business, business_bank_account_manager):
-        from generalresearch.models.gr.business import (
-            BusinessBankAccount,
-            TransferMethod,
-        )
+    def test_create(
+        self,
+        business: Business,
+        business_bank_account_manager: BusinessBankAccountManager,
+    ):
 
         instance = business_bank_account_manager.create(
             business_id=business.id,
@@ -33,8 +52,9 @@ class TestBusinessBankAccountManager:
 
 class TestBusinessAddressManager:
 
-    def test_create(self, business: Business, business_address_manager):
-        from generalresearch.models.gr.business import BusinessAddress
+    def test_create(
+        self, business: Business, business_address_manager: BusinessAddressManager
+    ):
 
         res = business_address_manager.create(uuid=uuid4().hex, business_id=business.id)
         assert isinstance(res, BusinessAddress)
@@ -43,14 +63,13 @@ class TestBusinessAddressManager:
 
 class TestBusinessManager:
 
-    def test_create(self, business_manager):
-        from generalresearch.models.gr.business import Business
+    def test_create(self, business_manager: BusinessManager):
 
         instance = business_manager.create_dummy()
         assert isinstance(instance, Business)
         assert isinstance(instance.id, int)
 
-    def test_get_or_create(self, business_manager):
+    def test_get_or_create(self, business_manager: BusinessManager):
         uuid_key = uuid4().hex
 
         assert business_manager.get_by_uuid(business_uuid=uuid_key) is None
@@ -61,9 +80,10 @@ class TestBusinessManager:
         )
 
         res = business_manager.get_by_uuid(business_uuid=uuid_key)
+        assert isinstance(res, Business)
         assert res.id == instance.id
 
-    def test_get_all(self, business_manager):
+    def test_get_all(self, business_manager: BusinessManager):
         res1 = business_manager.get_all()
         assert isinstance(res1, list)
 
@@ -76,7 +96,11 @@ class TestBusinessManager:
         pass
 
     def test_get_by_user_id(
-        self, business_manager, gr_user, team_manager, membership_manager
+        self,
+        business_manager: BusinessManager,
+        gr_user: GRUser,
+        team_manager: TeamManager,
+        membership_manager: MembershipManager,
     ):
         res = business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 0
@@ -93,7 +117,7 @@ class TestBusinessManager:
 
         # Create a Membership for the gr_user to the Team... but it doesn't
         #   matter because the Team doesn't have any Business yet
-        m1 = membership_manager.create(team=t1, gr_user=gr_user)
+        _ = membership_manager.create(team=t1, gr_user=gr_user)
         res = business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 0
 
@@ -113,15 +137,17 @@ class TestBusinessManager:
     def test_get_uuids_by_user_id(self):
         pass
 
-    def test_get_by_uuid(self, business: Business, business_manager):
+    def test_get_by_uuid(self, business: Business, business_manager: BusinessManager):
         instance = business_manager.get_by_uuid(business_uuid=business.uuid)
+        assert isinstance(instance, Business)
         assert business.id == instance.id
 
-    def test_get_by_id(self, business: Business, business_manager):
+    def test_get_by_id(self, business: Business, business_manager: BusinessManager):
         instance = business_manager.get_by_id(business_id=business.id)
+        assert isinstance(instance, Business)
         assert business.uuid == instance.uuid
 
-    def test_cache_key(self, business):
+    def test_cache_key(self, business: Business):
         assert "business:" in business.cache_key
 
     # def test_create_raise_on_duplicate(self):

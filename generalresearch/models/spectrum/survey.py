@@ -75,8 +75,7 @@ class SpectrumCondition(MarketplaceCondition):
                     rs["from"] = round(rs["from"] / 12)
                     rs["to"] = round(rs["to"] / 12)
             d["values"] = [
-                f"{rs["from"] or "inf"}-{rs["to"] or "inf"}"
-                for rs in d["range_sets"]
+                f"{rs["from"] or "inf"}-{rs["to"] or "inf"}" for rs in d["range_sets"]
             ]
             d["value_type"] = ConditionValueType.RANGE
             return cls.model_validate(d)
@@ -103,7 +102,7 @@ class SpectrumQuota(BaseModel):
     # There is no explicit status. The quota is closed if the count is 0
 
     def __hash__(self) -> int:
-        return hash(tuple((tuple(self.condition_hashes), self.remaining_count)))
+        return hash((tuple(self.condition_hashes), self.remaining_count))
 
     @property
     def is_open(self) -> bool:
@@ -113,7 +112,7 @@ class SpectrumQuota(BaseModel):
         return self.remaining_count >= min_open_spots
 
     @classmethod
-    def from_api(cls, d: dict) -> Self:
+    def from_api(cls, d: dict[str, Any]) -> Self:
         d["remaining_count"] = d["quantities"]["currently_open"]
         return cls.model_validate(d)
 
@@ -323,7 +322,7 @@ class SpectrumSurvey(MarketplaceTask):
     def from_api(cls, d: dict[str, Any]) -> SpectrumSurvey | None:
         try:
             return cls._from_api(d)
-        except Exception as e:
+        except (AssertionError, ValueError) as e:
             logger.warning(f"Unable to parse survey: {d}. {e}")
             return None
 
@@ -336,7 +335,7 @@ class SpectrumSurvey(MarketplaceTask):
             else TaskCalculationType.COMPLETES
         )
 
-        d["conditions"] = dict()
+        d["conditions"] = {}
 
         # If we haven't hit the "detail" endpoint, we won't get this
         d.setdefault("qualifications", [])
@@ -454,7 +453,7 @@ class SpectrumSurvey(MarketplaceTask):
         quota_eval = {
             quota: quota.matches_soft(criteria_evaluation) for quota in self.quotas
         }
-        evals = set(g[0] for g in quota_eval.values())
+        evals = {g[0] for g in quota_eval.values()}
         if any(m[0] is True and not q.is_open for q, m in quota_eval.items()):
             # matched a full quota
             return False, set()

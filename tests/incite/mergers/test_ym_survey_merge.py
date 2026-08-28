@@ -1,8 +1,24 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from itertools import product
 
 import pandas as pd
 import pytest
+from dask.distributed import Client as DaskClient
+
+from generalresearch.incite.collections.thl_web import (
+    SessionDFCollection,
+    WallDFCollection,
+)
+from generalresearch.incite.mergers.foundations.enriched_session import (
+    EnrichedSessionMerge,
+)
+from generalresearch.incite.mergers.ym_survey_wall import YMSurveyWallMerge
+from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.user import User
+from generalresearch.pg_helper import PostgresConfig
 
 # noinspection PyUnresolvedReferences
 
@@ -27,21 +43,20 @@ class TestYMSurveyMerge:
 
     def test_base(
         self,
-        client_no_amm,
+        client_no_amm: DaskClient,
         user_factory: Callable[..., User],
         product: Product,
-        ym_survey_wall_merge,
-        wall_collection,
-        session_collection,
-        enriched_session_merge,
+        ym_survey_wall_merge: YMSurveyWallMerge,
+        wall_collection: WallDFCollection,
+        session_collection: SessionDFCollection,
+        enriched_session_merge: EnrichedSessionMerge,
         delete_df_collection: Callable[..., None],
-        incite_item_factory,
+        incite_item_factory: Callable[..., None],
         thl_web_rr: PostgresConfig,
     ):
-        from generalresearch.models.thl.user import User
 
         delete_df_collection(coll=session_collection)
-        user: User = user_factory(product=product: Product, created=session_collection.start)
+        user: User = user_factory(product=product, created=session_collection.start)
 
         # -- Build & Setup
         assert ym_survey_wall_merge.start is None
@@ -61,15 +76,15 @@ class TestYMSurveyMerge:
             client=client_no_amm,
             session_coll=session_collection,
             wall_coll=wall_collection,
-            pg_config=thl_web_rr: PostgresConfig,
+            pg_config=thl_web_rr,
         )
         assert enriched_session_merge.progress.has_archive.eq(True).all()
 
         ddf = enriched_session_merge.ddf()
-        df: pd.DataFrame = client_no_amm.compute(collections=ddf, sync=True)
+        df1: pd.DataFrame | None = client_no_amm.compute(collections=ddf, sync=True)
 
-        assert isinstance(df, pd.DataFrame)
-        assert not df.empty
+        assert isinstance(df1, pd.DataFrame)
+        assert not df1.empty
 
         # --
 
@@ -83,18 +98,18 @@ class TestYMSurveyMerge:
         # --
 
         ddf = ym_survey_wall_merge.ddf()
-        df: pd.DataFrame = client_no_amm.compute(collections=ddf, sync=True)
+        df2: pd.DataFrame | None = client_no_amm.compute(collections=ddf, sync=True)
 
-        assert isinstance(df, pd.DataFrame)
-        assert not df.empty
+        assert isinstance(df2, pd.DataFrame)
+        assert not df2.empty
 
         # --
-        assert df.product_id.nunique() == 1
-        assert df.team_id.nunique() == 1
-        assert df.source.nunique() > 1
+        assert df2.product_id.nunique() == 1
+        assert df2.team_id.nunique() == 1
+        assert df2.source.nunique() > 1
 
-        started_min_ts = df.started.min()
-        started_max_ts = df.started.max()
+        started_min_ts = df2.started.min()
+        started_max_ts = df2.started.max()
 
         assert type(started_min_ts) is pd.Timestamp
         assert type(started_max_ts) is pd.Timestamp

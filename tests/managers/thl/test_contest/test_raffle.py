@@ -14,6 +14,7 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
 )
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.models.thl.contest import (
+    Contest,
     ContestEndCondition,
     ContestEntryRule,
     ContestPrize,
@@ -40,8 +41,6 @@ class TestRaffleContest:
     def test_should_end(
         self,
         contest: RaffleContest,
-        thl_ledger_manager: ThlLedgerManager,
-        contest_manager: ContestManager,
     ):
         # contest is active and has no entries
         should, msg = contest.should_end()
@@ -67,7 +66,6 @@ class TestRaffleContestCRUD:
         self,
         contest_create: RaffleContestCreate,
         product_user_wallet_yes: Product,
-        thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
         c = contest_manager.create(
@@ -329,7 +327,7 @@ class TestRaffleContestCRUD:
                 contest_uuid=c.uuid,
                 entry=entry,
                 country_iso="us",
-                ledger_manager=thl_lm,
+                ledger_manager=thl_ledger_manager,
             )
         assert "Entry would exceed max amount per user." in str(e.value)
 
@@ -342,7 +340,7 @@ class TestRaffleContestCRUD:
                 contest_uuid=c.uuid,
                 entry=entry,
                 country_iso="us",
-                ledger_manager=thl_lm,
+                ledger_manager=thl_ledger_manager,
             )
         assert "Entry would exceed max amount per user per day." in str(e.value)
 
@@ -354,7 +352,7 @@ class TestRaffleContestCRUD:
             contest_uuid=c.uuid,
             entry=entry,
             country_iso="us",
-            ledger_manager=thl_lm,
+            ledger_manager=thl_ledger_manager,
         )
 
         # Then can't anymore
@@ -366,7 +364,7 @@ class TestRaffleContestCRUD:
                 contest_uuid=c.uuid,
                 entry=entry,
                 country_iso="us",
-                ledger_manager=thl_lm,
+                ledger_manager=thl_ledger_manager,
             )
         assert "Entry would exceed max amount per user per day." in str(e.value)
 

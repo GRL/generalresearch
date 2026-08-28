@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal, Self
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -14,7 +14,6 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.grpc import timestamp_to_datetime
 from generalresearch.models import MAX_INT32, Source
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.locales import CountryISO, LanguageISO
@@ -39,19 +38,23 @@ class UserQuestionAnswer(BaseModel):
     calc_answers: dict[str, tuple[str, ...]] | None = Field(default=None)
 
     @field_validator("calc_answers")
-    def sorted_calc_answers(cls, calc_answers) -> dict[str, tuple[str, ...]] | None:
+    def sorted_calc_answers(
+        cls, calc_answers: dict[str, tuple[str, ...]] | None
+    ) -> dict[str, tuple[str, ...]] | None:
         if calc_answers is None:
             return None
 
         return {k: tuple(sorted(v)) for k, v in calc_answers.items()}
 
     @field_validator("calc_answers")
-    def validate_keys(cls, calc_answers) -> dict[str, tuple[str, ...]] | None:
+    def validate_keys(
+        cls, calc_answers: dict[str, tuple[str, ...]] | None
+    ) -> dict[str, tuple[str, ...]] | None:
         if calc_answers is None:
             return None
 
         assert all(
-            ":" in k for k in calc_answers.keys()
+            ":" in k for k in calc_answers
         ), "calc_answers expects the keys to be in format source:question_code"
         return calc_answers
 
@@ -66,6 +69,7 @@ class UserQuestionAnswer(BaseModel):
         return d
 
     def get_mrpqs(self) -> Iterator[MarketplaceResearchProfileQuestion]:
+        assert self.calc_answers
         for k, v in self.calc_answers.items():
             source, question_code = k.split(":", 1)
             yield MarketplaceResearchProfileQuestion(
@@ -105,21 +109,6 @@ class UserQuestionAnswer(BaseModel):
     def is_stale(self) -> bool:
         return self.timestamp < datetime.now(tz=UTC) - timedelta(days=30)
 
-    @classmethod
-    def from_grpc(cls, msg, default_timestamp: datetime) -> Self:
-        """
-        Handles correctly issues with grpc timestamps
-        :param msg: "thl.protos.generalresearch_pb2.ProfilingQuestionAnswer"
-        """
-        assert default_timestamp.tzinfo is not None, "must use tz-aware timestamps"
-        timestamp = timestamp_to_datetime(msg.timestamp)
-        timestamp = default_timestamp if timestamp < datetime(2000, 1, 1) else timestamp
-        return cls(
-            question_id=msg.question_id,
-            answer=tuple(msg.answer),
-            timestamp=timestamp,
-        )
-
 
 # We can't set a redis list to [] vs None. We'll push this dummy answer into
 # the cache to signify the user has no answered questions. It'll get removed
@@ -131,7 +120,7 @@ DUMMY_UQA = UserQuestionAnswer(
     country_iso="xx",
     language_iso="xxx",
     property_code="dummy",
-    calc_answers=dict(),
+    calc_answers={},
 )
 
 

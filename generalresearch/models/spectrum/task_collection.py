@@ -91,7 +91,7 @@ class SpectrumTaskCollection(TaskCollection):
             "survey_id",
         ]
         rows = []
-        d = dict()
+        d = {}
         for k in fields:
             d[k] = getattr(s, k) if hasattr(s, k) else None
         d["used_question_ids"] = list(s.used_question_ids)

@@ -229,6 +229,7 @@ class TestThlLedgerManagerAccounts:
 
         # (1) known account and confirm it comes back
         res = ledger_manager.get_account(qualified_name=account1.qualified_name)
+        assert isinstance(res, LedgerAccount)
         assert account1.model_dump_json() == res.model_dump_json()
 
         # (2) known accounts and confirm they both come back
@@ -291,6 +292,7 @@ class TestThlLedgerManagerAccounts:
         assert len(res) == 2
 
         # Confirm an empty array comes back for all unknown qualified names
+        assert isinstance(ledger_manager.currency, LedgerCurrency)
         res = ledger_manager.get_accounts_if_exists(
             qualified_names=[
                 f"{ledger_manager.currency.value}:bp_wall:{uuid4().hex}"
@@ -328,7 +330,7 @@ class TestThlLedgerManagerAccounts:
             product_uuids=product_uuids
         )
         assert len(res) == len(product_uuids)
-        assert all([isinstance(i, LedgerAccount) for i in res])
+        assert all(isinstance(i, LedgerAccount) for i in res)
 
 
 class TestLedgerAccountManager:
@@ -351,10 +353,10 @@ class TestLedgerAccountManager:
         # First we want to validate that using the get_account method raises
         # an error for a random LedgerAccount which we know does not exist.
         with pytest.raises(LedgerAccountDoesntExistError):
-            lam.get_account(qualified_name=account.qualified_name)
+            ledger_account_manager.get_account(qualified_name=account.qualified_name)
 
         # Now that we know it doesn't exist, get_or_create for it
-        instance = lam.get_account_or_create(account=account)
+        instance = ledger_account_manager.get_account_or_create(account=account)
 
         # It should always return
         assert isinstance(instance, LedgerAccount)
@@ -364,9 +366,10 @@ class TestLedgerAccountManager:
         self,
         user: User,
         thl_ledger_manager: ThlLedgerManager,
-        ledger_manager: LedgerManager,
         ledger_account_manager: LedgerAccountManager,
     ):
+
+        assert isinstance(user.product, Product)
 
         with pytest.raises(LedgerAccountDoesntExistError):
             ledger_account_manager.get_account(

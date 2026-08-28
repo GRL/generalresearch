@@ -27,7 +27,7 @@ def ip_label(utc_now) -> IPLabel:
         provider="GeoNodE",
         created_at=utc_now,
         ip=ip,
-        metadata=IPLabelMetadata(services=["RDP"])
+        metadata=IPLabelMetadata(services=["RDP"]),
     )
 
 
@@ -181,7 +181,7 @@ def test_label_cidr_and_ipinfo(
     ip = fake.ipv6()
     ip_information_factory(ip=ip, geoname=ip_geoname)
     # We normalize for storage into ipinfo table
-    ip_norm, prefix = normalize_ip(ip)
+    ip_norm, _ = normalize_ip(ip)
 
     # Test with a larger network
     ip_48 = ipaddress.IPv6Network((ip, 48), strict=False)

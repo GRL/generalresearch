@@ -124,10 +124,10 @@ class POPFinancial(BaseModel):
             Direction,
         )
 
-        assert all([a.account_type == AccountType.BP_WALLET for a in accounts])
-        assert all([a.normal_balance == Direction.CREDIT for a in accounts])
+        assert all(a.account_type == AccountType.BP_WALLET for a in accounts)
+        assert all(a.normal_balance == Direction.CREDIT for a in accounts)
         if not is_debug():
-            assert all([a.currency == "USD" for a in accounts])
+            assert all(a.currency == "USD" for a in accounts)
 
         if input_data.empty:
             return []
@@ -850,11 +850,11 @@ class BusinessBalances(BaseModel):
 
         # Validate the input accounts
         assert len(accounts) > 0, "Must provide accounts"
-        assert all([a.account_type == AccountType.BP_WALLET for a in accounts])
-        assert all([a.normal_balance == Direction.CREDIT for a in accounts])
+        assert all(a.account_type == AccountType.BP_WALLET for a in accounts)
+        assert all(a.normal_balance == Direction.CREDIT for a in accounts)
 
         if not is_debug():
-            assert all([a.currency == "USD" for a in accounts])
+            assert all(a.currency == "USD" for a in accounts)
 
         # Validate the input dataframe
         assert input_data.index.name == "account_id"

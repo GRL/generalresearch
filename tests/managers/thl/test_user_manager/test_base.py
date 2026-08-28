@@ -21,7 +21,7 @@ from generalresearch.managers.thl.user_manager.user_manager import (
     UserManager,
 )
 from generalresearch.managers.thl.userhealth import AuditLogManager
-from generalresearch.models.thl.product import Product, UserCreateConfig, product
+from generalresearch.models.thl.product import Product, UserCreateConfig
 from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 
