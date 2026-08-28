@@ -122,7 +122,7 @@ class TangoClient:
             return self.get_order(reference_order_id)
         except TangoError as e:
             if "The order you requested cannot be found" not in e.args[0]:
-                raise e
+                raise
             return None
 
     def create_order(self, order: TangoOrderRequest) -> dict[str, Any]:

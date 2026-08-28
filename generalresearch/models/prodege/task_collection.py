@@ -76,7 +76,7 @@ class ProdegeTaskCollection(TaskCollection):
             "used_question_ids",
             "all_hashes",
         ]
-        d = dict()
+        d = {}
         for k in fields:
             d[k] = getattr(s, k)
         d["cpi"] = float(d["cpi"])

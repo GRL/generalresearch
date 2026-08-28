@@ -267,7 +267,7 @@ class OfferWallRequest(BaseModel):
         # We need this so thl-core can refresh an offerwall in order to continue
         #   a session
         d = self.model_dump(mode="json")
-        kwargs = dict()
+        kwargs = {}
         keys = [
             "n_bins",
             "min_bin_size",

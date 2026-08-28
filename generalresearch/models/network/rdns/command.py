@@ -20,7 +20,7 @@ def run_rdns(config: RDNSRunCommand) -> RDNSResult:
 
 def build_rdns_command(ip: str) -> str:
     # e.g. dig +noall +answer -x 1.2.3.4
-    return " ".join(["dig", "+noall", "+answer", "-x", ip])
+    return f"dig +noall +answer -x {ip}"
 
 
 def get_dig_version() -> str:

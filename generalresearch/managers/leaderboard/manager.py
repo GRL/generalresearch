@@ -45,9 +45,7 @@ class LeaderboardManager:
         self.country_iso = country_iso
         self.within_time_aware = None
         if within_time is None:
-            self.within_time_aware = datetime.now(tz=UTC).astimezone(
-                self.timezone
-            )
+            self.within_time_aware = datetime.now(tz=UTC).astimezone(self.timezone)
         elif within_time.tzinfo is not None:
             self.within_time_aware = within_time.astimezone(self.timezone)
         else:
@@ -123,7 +121,9 @@ class LeaderboardManager:
         user_idx = user_indices[0][0]
         user_row = user_indices[0][1]
         if user_row.rank == max([row.rank for row in rows]):
-            user_idx = [i for i, row in enumerate(rows) if row.rank == user_row.rank][0]
+            user_idx = next(
+                i for i, row in enumerate(rows) if row.rank == user_row.rank
+            )
         start: int = max(user_idx - limit, 0)
         end: int = min(user_idx + limit + 1, len(rows))
 

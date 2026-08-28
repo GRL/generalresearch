@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from generalresearch.managers.base import Permission
@@ -10,8 +12,6 @@ def contest_manager(thl_web_rw: PostgresConfig) -> ContestManager:
     assert thl_web_rw.dsn
     assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
-
-    from generalresearch.managers.thl.contest_manager import ContestManager
 
     return ContestManager(
         pg_config=thl_web_rw,

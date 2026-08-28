@@ -4,7 +4,7 @@ import binascii
 import json
 import os
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any
 
 from pydantic import (
     AnyHttpUrl,
@@ -283,16 +283,15 @@ class GRUser(BaseModel):
             ex=ex_secs,
         )
 
-
     # --- ORM ---
 
     @classmethod
-    def from_postgresql(cls, d: dict) -> Self:
+    def from_postgresql(cls, d: dict[str, Any]) -> GRUser:
         d["date_joined"] = d["date_joined"].replace(tzinfo=UTC)
         return GRUser.model_validate(d)
 
     @classmethod
-    def from_redis(cls, d: str | dict[str, Any]) -> Self:
+    def from_redis(cls, d: str | dict[str, Any]) -> GRUser:
         if isinstance(d, str):
             d = json.loads(d)
         assert isinstance(d, dict)
@@ -357,13 +356,13 @@ class GRToken(BaseModel):
     # --- Properties ---
 
     @property
-    def auth_header(self, key_name: str = "Authorization") -> dict[str, str]:
-        return {key_name: self.key}
+    def auth_header(self) -> dict[str, str]:
+        return {"Authorization": self.key}
 
     # --- ORM ---
 
     @classmethod
-    def from_redis(cls, d: str | dict[str, Any]) -> Self:
+    def from_redis(cls, d: str | dict[str, Any]) -> GRToken:
         if isinstance(d, str):
             d = json.loads(d)
         assert isinstance(d, dict)

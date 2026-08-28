@@ -32,11 +32,3 @@ def example():
     for m in zip(c.metadata["field"], c.metadata["ext_type_or_format"]):
         # here we can just check if the field's ext_field_flag == 'UUID' (2)
         print(m[0], ext_field_flags_rev[m[1]])
-
-
-def get_column_types():
-    # How does django do this?
-    res = """
-    SELECT column_name, data_type
-    FROM information_schema.columns
-    WHERE table_name = 'morning_userpid' AND table_schema = DATABASE()"""

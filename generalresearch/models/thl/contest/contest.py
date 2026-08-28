@@ -186,7 +186,7 @@ class Contest(ContestBase):
 
     @classmethod
     def model_validate_mysql(cls, data: dict[str, Any]) -> Self:
-        data = {k: v for k, v in data.items() if k in cls.model_fields.keys()}
+        data = {k: v for k, v in data.items() if k in cls.model_fields}
         if isinstance(data["end_condition"], dict):
             data["end_condition"] = ContestEndCondition.model_validate(
                 data["end_condition"]

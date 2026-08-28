@@ -33,9 +33,11 @@ try:
                     response = handler_func(request, context)
                     code = context.code() or grpc.StatusCode.OK
                     return response
-                except Exception as e:
+
+                except Exception:
                     code = context.code() or grpc.StatusCode.INTERNAL
-                    raise e
+                    raise
+
                 finally:
                     duration_ms = int((time.time() - start_time) * 1000)
                     peer = context.peer() or "unknown"

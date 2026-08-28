@@ -224,11 +224,12 @@ class TaskStatusResponse(BaseModel):
         return v or 0
 
     @field_validator("kwargs", mode="after")
-    def sanitize_kwargs(cls, v: dict | None) -> dict | None:
+    def sanitize_kwargs(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
         if v and "clicked_timestamp" in v:
             try:
-                clicked_timestamp = datetime.strptime(
-                    v["clicked_timestamp"], "%Y-%m-%d %H:%M:%S.%f"
+                clicked_timestamp = datetime.strptime(  # noqa
+                    date_string=v["clicked_timestamp"],
+                    format="%Y-%m-%d %H:%M:%S.%f",
                 )
                 v["clicked_timestamp"] = (
                     clicked_timestamp.isoformat(timespec="microseconds") + "Z"
@@ -238,7 +239,7 @@ class TaskStatusResponse(BaseModel):
         return v
 
     @model_validator(mode="before")
-    def transform_user_payout(cls, d):
+    def transform_user_payout(cls, d: dict[str, Any]):
         # If the user_payout is None and there is a payout_format, make the user_payout 0
         if d.get("user_payout") is None and d.get("payout_format"):
             d["user_payout"] = 0

@@ -38,6 +38,26 @@ from generalresearch.models.thl.user import User
 
 # === Managers ===
 
+# --- Factories ---
+
+
+@pytest.fixture(scope="function")
+def raffle_contest_factory(
+    product_user_wallet_yes: Product,
+    raffle_contest_create: RaffleContestCreate,
+    contest_manager: ContestManager,
+) -> Callable[..., RaffleContest]:
+
+    def _inner(**kwargs):
+        raffle_contest_create.update(**kwargs)
+        return contest_manager.create(
+            product_id=product_user_wallet_yes.uuid,
+            contest_create=raffle_contest_create,
+        )
+
+    return _inner
+
+
 # === Models ===
 
 
@@ -80,23 +100,6 @@ def raffle_contest(
     return contest_create_to_contest(
         product_id=product_user_wallet_yes.uuid, contest_create=raffle_contest_create
     )
-
-
-@pytest.fixture(scope="function")
-def raffle_contest_factory(
-    product_user_wallet_yes: Product,
-    raffle_contest_create: RaffleContestCreate,
-    contest_manager: ContestManager,
-) -> Callable[..., RaffleContest]:
-
-    def _inner(**kwargs):
-        raffle_contest_create.update(**kwargs)
-        return contest_manager.create(
-            product_id=product_user_wallet_yes.uuid,
-            contest_create=raffle_contest_create,
-        )
-
-    return _inner
 
 
 @pytest.fixture

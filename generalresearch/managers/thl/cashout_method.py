@@ -160,7 +160,7 @@ class CashoutMethodManager(PostgresManager):
         is_live: bool | None = True,
     ):
         filters = []
-        params = dict()
+        params = {}
         if uuid is not None:
             params["uuid"] = uuid
             filters.append("id = %(uuid)s")
@@ -292,7 +292,7 @@ class CashoutMethodManager(PostgresManager):
 
         x["type"] = PayoutType(x["provider"].upper())
         if "data" not in x:
-            x["data"] = dict()
+            x["data"] = {}
         x["data"].update(x.pop("_data_"))
         x["data"]["type"] = x["type"]
         if user and x["type"] in {PayoutType.PAYPAL, PayoutType.CASH_IN_MAIL}:

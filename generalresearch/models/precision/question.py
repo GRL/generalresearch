@@ -54,15 +54,15 @@ class PrecisionQuestionType(StrEnum):
     TEXT_ENTRY = "t"
 
     @classmethod
-    def from_api(cls, a: int):
-        API_TYPE_MAP = {
+    def from_api(cls, a: int) -> PrecisionQuestionType | None:
+        api_type_map: dict[str, PrecisionQuestionType] = {
             "Drop Down": PrecisionQuestionType.SINGLE_SELECT,
             "Multi Select": PrecisionQuestionType.MULTI_SELECT,
             "Single Select": PrecisionQuestionType.SINGLE_SELECT,
             "Single Select Matrix": PrecisionQuestionType.SINGLE_SELECT,
             "Vertical Question": PrecisionQuestionType.SINGLE_SELECT,
         }
-        return API_TYPE_MAP[a] if a in API_TYPE_MAP else None
+        return api_type_map.get(a, None)
 
 
 class PrecisionUserQuestionAnswer(MarketplaceUserQuestionAnswer):

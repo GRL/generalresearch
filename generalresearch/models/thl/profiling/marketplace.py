@@ -82,10 +82,9 @@ class MarketplaceQuestion(BaseModel, ABC):
         #   question has more than 6.
         repr_args = list(self.__repr_args__())
         for n, (k, v) in enumerate(repr_args):
-            if k == "options":
-                if v and len(v) > 6:
-                    v = v[:3] + ["..."] + v[-3:]
-                    repr_args[n] = ("options", v)
+            if k == "options" and v and len(v) > 6:
+                v = v[:3] + ["..."] + v[-3:]
+                repr_args[n] = ("options", v)
         join_str = ", "
         repr_str = join_str.join(
             repr(v) if a is None else f"{a}={v!r}" for a, v in repr_args

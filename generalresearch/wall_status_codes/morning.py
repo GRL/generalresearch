@@ -97,7 +97,7 @@ status_codes_ext_map: dict[StatusCode1, list[str]] = {
         "quota_invalid_for_bid",
     ],
 }
-ext_status_code_map: dict[str, StatusCode1] = dict()
+ext_status_code_map: dict[str, StatusCode1] = {}
 for k, v in status_codes_ext_map.items():
     k: StatusCode1
     v: list[str]

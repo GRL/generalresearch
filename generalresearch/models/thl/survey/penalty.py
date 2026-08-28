@@ -56,7 +56,7 @@ class TeamSurveyPenalty(SurveyPenalty):
 
 
 Penalty = Annotated[
-    Union[BPSurveyPenalty, TeamSurveyPenalty],
+    BPSurveyPenalty | TeamSurveyPenalty,
     Field(discriminator="kind"),
 ]
 PenaltyListAdapter = TypeAdapter(list[Penalty])

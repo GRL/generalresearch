@@ -63,7 +63,7 @@ def parse_bp_trust_df(fp: str | Path) -> dict[str, Any]:
         "entrance_limit_value": convert_int,
         "median_daily_completes_7d": convert_int,
     }
-    bptrust = dict()
+    bptrust = {}
 
     with open(fp, newline="") as csvfile:
         reader = csv.reader(csvfile)

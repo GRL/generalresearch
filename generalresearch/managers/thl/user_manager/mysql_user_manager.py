@@ -139,11 +139,10 @@ class MysqlUserManager:
         """)
 
         try:
-            with self.pg_config.make_connection() as conn:
-                with conn.cursor() as c:
-                    c.execute(query=query, params=params)
-                    user_id = c.fetchone()["id"]
-        except psycopg.IntegrityError as e:
+            with self.pg_config.make_connection() as conn, conn.cursor() as c:
+                c.execute(query=query, params=params)
+                user_id = c.fetchone()["id"]
+        except psycopg.IntegrityError:
             # Two machines/processes are trying to create this same (product_id, product_user_id)
             #   at the same time. There's a unique index, so mysql will not let two be created.
             # The 2nd should get an IntegrityError, meaning this already exists, and we can just query it.
@@ -160,7 +159,7 @@ class MysqlUserManager:
             else:
                 # We specifically queried the NON read-replica, and we got an IntegrityError, so
                 #   something else must be wrong...
-                raise e
+                raise
         else:
             user = User(
                 user_id=user_id,

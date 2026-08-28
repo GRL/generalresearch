@@ -423,7 +423,9 @@ class IPInformationManager(PostgresManager):
         FROM thl_ipinformation
         WHERE updated >= NOW() - INTERVAL '12 hours'
         """
-        denominator = list(pg_config.execute_sql_query(query=query))[0]["denominator"]
+        denominator = next(iter(pg_config.execute_sql_query(query=query)))[
+            "denominator"
+        ]
         if denominator == 0:
             pass
 
@@ -509,7 +511,7 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
         res = [GeoIPInformation.model_validate_json(raw) for raw in res if raw]
         gs = {x.ip: x for x in res}
 
-        res2 = dict()
+        res2 = {}
         for ip, (normalized_ip, lookup_prefix) in ip_norm_lookup.items():
             if normalized_ip not in gs:
                 # try the non-normalized (remove me also 28 days from 2025-11-15)
@@ -719,7 +721,7 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
 
         gs = [GeoIPInformation.from_mysql(i) for i in res]
         gs = {g.ip: g for g in gs}
-        res2 = dict()
+        res2 = {}
 
         for ip, (normalized_ip, lookup_prefix) in ip_norm_lookup.items():
             if normalized_ip not in gs:

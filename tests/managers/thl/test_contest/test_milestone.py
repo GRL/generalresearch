@@ -15,6 +15,7 @@ from generalresearch.models.thl.contest.milestone import (
     MilestoneContestCreate,
     MilestoneUserView,
 )
+from generalresearch.models.thl.contest.raffle import RaffleContest
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
 
@@ -241,7 +242,7 @@ class TestMilestoneContestUserViews:
     def test_list_user_eligible_country(
         self,
         user_with_wallet: User,
-        contest_factory: Callable[..., Contest],
+        raffle_contest_factory: Callable[..., Contest],
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
@@ -252,7 +253,7 @@ class TestMilestoneContestUserViews:
         assert len(cs) == 0
 
         # Create a contest. It'll be in the US/CA
-        contest_factory(country_isos={"us", "ca"})
+        raffle_contest_factory(country_isos={"us", "ca"})
 
         # Not eligible in mexico
         cs = contest_manager.get_many_by_user_eligible(
@@ -265,7 +266,7 @@ class TestMilestoneContestUserViews:
         assert len(cs) == 1
 
         # Create another, any country
-        contest_factory(country_isos=None)
+        raffle_contest_factory(country_isos=None)
         cs = contest_manager.get_many_by_user_eligible(
             user=user_with_wallet, country_iso="mx"
         )
@@ -278,12 +279,12 @@ class TestMilestoneContestUserViews:
     def test_list_user_eligible(
         self,
         user_with_money: User,
-        contest_factory: Callable[..., Contest],
+        raffle_contest_factory: Callable[..., RaffleContest],
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
         # User reaches milestone after 1 complete
-        c = contest_factory(target_amount=1)
+        c = raffle_contest_factory(target_amount=1)
         user = user_with_money
 
         cs = contest_manager.get_many_by_user_eligible(

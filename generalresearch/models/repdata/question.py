@@ -12,6 +12,7 @@ from pydantic import (
     ConfigDict,
     Field,
     PositiveInt,
+    ValidationError,
     field_validator,
     model_validator,
 )
@@ -142,6 +143,7 @@ class RepDataQuestion(MarketplaceQuestion):
 
     @property
     def internal_id(self) -> str:
+        assert self.lucid_id
         return self.lucid_id
 
     @field_validator("question_id", mode="before")
@@ -167,7 +169,7 @@ class RepDataQuestion(MarketplaceQuestion):
         """
         try:
             return cls._from_api(d, country_iso, language_iso)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse question: {d}. {e}")
             return None
 

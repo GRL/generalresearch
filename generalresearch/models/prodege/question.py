@@ -8,7 +8,14 @@ from enum import StrEnum
 from functools import cached_property
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PositiveInt,
+    ValidationError,
+    model_validator,
+)
 
 from generalresearch.locales import Localelator
 from generalresearch.models import MAX_INT32, Source
@@ -143,7 +150,7 @@ class ProdegeQuestion(MarketplaceQuestion):
         """
         try:
             return cls._from_api(d, country_iso)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse question: {d}. {e}")
             return None
 

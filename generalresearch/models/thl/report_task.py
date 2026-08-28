@@ -28,7 +28,7 @@ def prioritize_report_values(
         return None
     report_values = list(set(report_values))
     random.shuffle(report_values)
-    return sorted(report_values, key=lambda x: REPORT_PRIORITY[x])[-1]
+    return max(report_values, key=lambda x: REPORT_PRIORITY[x])
 
 
 class ReportTask(BaseModel):

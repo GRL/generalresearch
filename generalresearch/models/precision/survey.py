@@ -312,7 +312,7 @@ class PrecisionSurvey(MarketplaceTask):
         quota_eval = {
             quota: quota.matches_soft(criteria_evaluation) for quota in self.quotas
         }
-        evals = set(g[0] for g in quota_eval.values())
+        evals = {g[0] for g in quota_eval.values()}
         if any(m[0] is True and not q.is_open for q, m in quota_eval.items()):
             # matched a full quota
             return False, set()

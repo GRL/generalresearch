@@ -61,7 +61,6 @@ class SurveyPenaltyManager(RedisManager):
         return f"{self.redis_prefix}:{uuid_id}"
 
     def set_penalties(self, penalties: list[Penalty]):
-        """ """
         if len(penalties) > 1000:
             LOG.warning("SurveyPenaltyManager.set_penalties batch me!")
         assert len(penalties) < 10_000, "something is surely wrong"

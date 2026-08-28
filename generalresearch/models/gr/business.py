@@ -6,14 +6,15 @@ import os
 from datetime import UTC, datetime
 from enum import Enum, StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pandas as pd
+import pyarrow as pa
 from dask.distributed import Client
 from psycopg.cursor import Cursor
 from psycopg.rows import dict_row
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, ValidationError
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_extra_types.phone_numbers import PhoneNumber
 
@@ -210,9 +211,11 @@ class Business(BaseModel):
     payouts: list[BusinessPayoutEvent] | None = Field(
         default=None,
         name="Business Payouts",
-        description="These are the ACH or Wire payments that were sent to the"
-        "Business as a single amount, summed for all the Business"
-        "child Products",
+        description=(
+            "These are the ACH or Wire payments that were sent to the"
+            "Business as a single amount, summed for all the Business"
+            "child Products"
+        ),
     )
 
     pop_financial: list[POPFinancial] | None = Field(default=None)
@@ -237,18 +240,19 @@ class Business(BaseModel):
         # --- Prefetch ---
 
     def prefetch_addresses(self, pg_config: PostgresConfig) -> None:
-        with pg_config.make_connection() as conn:
-            with conn.cursor(row_factory=dict_row) as c:
-                c.execute(
-                    query="""
+        with pg_config.make_connection() as conn, conn.cursor(
+            row_factory=dict_row
+        ) as c:
+            c.execute(
+                query="""
                         SELECT *
                         FROM common_businessaddress AS ba
                         WHERE ba.business_id = %s
                         LIMIT 1
                     """,
-                    params=[self.id],
-                )
-                res = c.fetchall()
+                params=[self.id],
+            )
+            res = c.fetchall()
 
         if len(res) == 0:
             self.addresses = []
@@ -258,22 +262,23 @@ class Business(BaseModel):
     def prefetch_teams(self, pg_config: PostgresConfig) -> None:
         from generalresearch.models.gr.team import Team
 
-        with pg_config.make_connection() as conn:
-            with conn.cursor(row_factory=dict_row) as c:
-                c: Cursor
+        with pg_config.make_connection() as conn, conn.cursor(
+            row_factory=dict_row
+        ) as c:
+            c: Cursor
 
-                c.execute(
-                    query="""
+            c.execute(
+                query="""
                     SELECT t.* 
                     FROM common_team AS t
                     INNER JOIN common_team_businesses AS tb
                         ON tb.team_id = t.id
                     WHERE tb.business_id = %s
                 """,
-                    params=(self.id,),
-                )
+                params=(self.id,),
+            )
 
-                res = c.fetchall()
+            res = c.fetchall()
 
         if len(res) == 0:
             self.teams = []
@@ -542,10 +547,9 @@ class Business(BaseModel):
         )
 
         try:
-            test = pd.read_parquet(path, engine="pyarrow")
-        except Exception as e:
+            _ = pd.read_parquet(path, engine="pyarrow")
+        except (pa.ArrowException, OSError, ValueError) as e:
             raise OSError(f"Parquet verification failed: {e}")
-
 
     def prebuild_enriched_wall_parquet(
         self,
@@ -586,10 +590,9 @@ class Business(BaseModel):
         )
 
         try:
-            test = pd.read_parquet(path, engine="pyarrow")
-        except Exception as e:
+            _ = pd.read_parquet(path, engine="pyarrow")
+        except (pa.ArrowException, OSError, ValueError) as e:
             raise OSError(f"Parquet verification failed: {e}")
-
 
     @classmethod
     def required_fields(cls) -> list[str]:
@@ -651,7 +654,7 @@ class Business(BaseModel):
             client=client,
             pop_ledger=pop_ledger,
         )
-        self.prebuild_payouts(thl_pg_config=thl_web_rr, thl_lm=thl_lm, bpem=bpem)
+        self.prebuild_payouts(bpem=bpem)
         self.prebuild_pop_financial(
             thl_pg_config=thl_web_rr,
             thl_lm=thl_lm,
@@ -713,7 +716,7 @@ class Business(BaseModel):
         uuid: UUIDStr,
         fields: list[str],
         gr_redis_config: RedisConfig,
-    ) -> Self | None:
+    ) -> Business | None:
         keys: list[str] = Business.required_fields() + fields
 
         if "pop_financial" in keys:
@@ -724,7 +727,7 @@ class Business(BaseModel):
         rc = gr_redis_config.create_redis_client()
 
         try:
-            res: list = rc.hmget(name=f"business:{uuid}", keys=keys)
+            res: list[str | bytes | None] = rc.hmget(name=f"business:{uuid}", keys=keys)
             d = {
                 val: json.loads(res[idx]) if res[idx] is not None else None
                 for idx, val in enumerate(keys)
@@ -742,6 +745,5 @@ class Business(BaseModel):
             result["pop_financial"] = pop_financial
 
             return Business.model_validate(result)
-        except Exception as e:
-            logging.exception(e)
+        except ValidationError:
             return None

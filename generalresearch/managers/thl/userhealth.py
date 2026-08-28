@@ -221,7 +221,7 @@ class IPRecordManager(PostgresManagerWithRedis):
             "forwarded_ip5",
             "forwarded_ip6",
         ]
-        for col, ip in zip_longest(
+        for col, fwd_ip in zip_longest(
             fips_cols,
             [
                 forwarded_ip1,
@@ -233,7 +233,7 @@ class IPRecordManager(PostgresManagerWithRedis):
             ],
             fillvalue=None,
         ):
-            data[col] = ipaddress.ip_address(ip).exploded if ip else ip
+            data[col] = ipaddress.ip_address(fwd_ip).exploded if fwd_ip else fwd_ip
 
         self.pg_config.execute_write(
             query="""
@@ -490,9 +490,7 @@ class AuditLogManager(PostgresManager):
         created_after: datetime | None = None,
     ) -> tuple[str, dict[str, Any]]:
         assert user_ids, "must pass at least 1 user_id"
-        assert all(
-            [isinstance(uid, int) for uid in user_ids]
-        ), "must pass user_id as int"
+        assert all(isinstance(uid, int) for uid in user_ids), "must pass user_id as int"
 
         if created_after is None:
             created_after = datetime.now(tz=UTC) - timedelta(days=7)

@@ -277,11 +277,12 @@ class TestLedgerManagerAMT:
         thl_ledger_manager.create_tx_user_payout_cancelled(
             user, payout_event=pe, skip_flag_check=True
         )
-        with pytest.raises(expected_exception=LedgerTransactionConditionFailedError):
-            with caplog.at_level(logging.WARNING):
-                thl_ledger_manager.create_tx_user_payout_complete(
-                    user, payout_event=pe, skip_flag_check=True
-                )
+        with pytest.raises(
+            expected_exception=LedgerTransactionConditionFailedError
+        ), caplog.at_level(logging.WARNING):
+            thl_ledger_manager.create_tx_user_payout_complete(
+                user, payout_event=pe, skip_flag_check=True
+            )
         assert "trying to complete payout that was already cancelled" in caplog.text
 
         cash = thl_ledger_manager.get_account_cash()
@@ -319,11 +320,12 @@ class TestLedgerManagerAMT:
         thl_ledger_manager.create_tx_user_payout_complete(
             user, payout_event=pe2, skip_flag_check=True
         )
-        with pytest.raises(expected_exception=LedgerTransactionConditionFailedError):
-            with caplog.at_level(logging.WARNING):
-                thl_ledger_manager.create_tx_user_payout_cancelled(
-                    user, payout_event=pe2, skip_flag_check=True
-                )
+        with pytest.raises(
+            expected_exception=LedgerTransactionConditionFailedError
+        ), caplog.at_level(logging.WARNING):
+            thl_ledger_manager.create_tx_user_payout_cancelled(
+                user, payout_event=pe2, skip_flag_check=True
+            )
         assert "trying to cancel payout that was already completed" in caplog.text
 
 

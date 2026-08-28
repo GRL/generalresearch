@@ -17,6 +17,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    ValidationError,
     computed_field,
     model_validator,
 )
@@ -69,7 +70,7 @@ class InnovateCondition(MarketplaceCondition):
         d["logical_operator"] = LogicalOperator.OR
         d["value_type"] = ConditionValueType.LIST
         d["negate"] = False
-        d["values"] = list(set(x.strip().lower() for x in d["values"]))
+        d["values"] = list({x.strip().lower() for x in d["values"]})
         return cls.model_validate(d)
 
 
@@ -88,7 +89,7 @@ class InnovateQuota(BaseModel):
     condition_hashes: list[str] = Field(min_length=0, default_factory=list)
 
     def __hash__(self):
-        return hash(tuple((tuple(self.condition_hashes), self.remaining_count)))
+        return hash((tuple(self.condition_hashes), self.remaining_count))
 
     @property
     def is_open(self) -> bool:
@@ -99,7 +100,7 @@ class InnovateQuota(BaseModel):
         )
 
     @classmethod
-    def from_api(cls, d: dict):
+    def from_api(cls, d: dict[str, Any]):
         return cls.model_validate(d)
 
     def passes(self, criteria_evaluation: dict[str, bool | None]) -> bool:
@@ -263,13 +264,13 @@ class InnovateSurvey(MarketplaceTask):
     def from_api(cls, d: dict[str, Any]) -> InnovateSurvey | None:
         try:
             return cls._from_api(d)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse survey: {d}. {e}")
             return None
 
     @classmethod
     def _from_api(cls, d: dict[str, Any]) -> InnovateSurvey:
-        d["conditions"] = dict()
+        d["conditions"] = {}
 
         # If we haven't hit the "detail" endpoint, we won't get this
         d.setdefault("qualifications", [])
@@ -317,11 +318,14 @@ class InnovateSurvey(MarketplaceTask):
         # Fancy repr that abbreviates exclude_pids and excluded_surveys
         repr_args = list(self.__repr_args__())
         for n, (k, v) in enumerate(repr_args):
-            if k in {"exclude_pids", "include_pids", "excluded_surveys"}:
-                if v and len(v) > 6:
-                    v = sorted(v)
-                    v = v[:3] + ["…"] + v[-3:]
-                    repr_args[n] = (k, v)
+            if (
+                k in {"exclude_pids", "include_pids", "excluded_surveys"}
+                and v
+                and len(v) > 6
+            ):
+                v = sorted(v)
+                v = v[:3] + ["…"] + v[-3:]
+                repr_args[n] = (k, v)
         join_str = ", "
         repr_str = join_str.join(
             repr(v) if a is None else f"{a}={v!r}" for a, v in repr_args
@@ -380,14 +384,21 @@ class InnovateSurvey(MarketplaceTask):
         """
         assert isinstance(att_survey_ids, set), "must pass a set"
         assert isinstance(att_job_ids, set), "must pass a set"
+
         if self.survey_id in att_survey_ids:
             return False
-        if self.duplicate_check_level == InnovateDuplicateCheckLevel.JOB:
-            if self.job_id in att_job_ids:
-                return False
+
+        if (
+            self.duplicate_check_level == InnovateDuplicateCheckLevel.JOB
+            and self.job_id in att_job_ids
+        ):
+            return False
+
         if self.duplicate_check_level == InnovateDuplicateCheckLevel.EXCLUDED_SURVEYS:
+            assert self.excluded_surveys is not None
             if self.excluded_surveys.intersection(att_survey_ids):
                 return False
+
         return True
 
     def passes_qualifications(
@@ -431,7 +442,7 @@ class InnovateSurvey(MarketplaceTask):
         quota_eval = {
             quota: quota.matches_soft(criteria_evaluation) for quota in self.quotas
         }
-        evals = set(g[0] for g in quota_eval.values())
+        evals = {g[0] for g in quota_eval.values()}
         if any(m[0] is True and not q.is_open for q, m in quota_eval.items()):
             # matched a full quota
             return False, set()

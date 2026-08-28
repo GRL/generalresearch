@@ -108,7 +108,7 @@ class MorningTaskCollection(TaskCollection):
         ]
         quota_fields = list(quota_columns.keys())
         rows = []
-        bid_dict = dict()
+        bid_dict = {}
         for k in bid_fields:
             bid_dict[k] = getattr(bid, k)
             bid_dict["bid.id"] = bid.id

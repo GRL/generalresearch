@@ -30,7 +30,7 @@ class IPLabelManager(PostgresManager):
         params = ip_label.model_dump_postgres()
         with self.pg_config.make_connection() as conn, conn.cursor() as c:
             c.execute(query, params)
-            pk = c.fetchone()["id"]
+            _pk = c.fetchone()["id"]
         return ip_label
 
     def make_filter_str(

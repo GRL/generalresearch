@@ -86,9 +86,7 @@ class TestMergePOPLedger:
 
         # --
 
-        user_wallet_account: LedgerAccount = (
-            thl_ledger_manager.get_account_or_create_user_wallet(user=u)
-        )
+        thl_ledger_manager.get_account_or_create_user_wallet(user=u)
         cash_account: LedgerAccount = thl_ledger_manager.get_account_cash()
         rev_account: LedgerAccount = (
             thl_ledger_manager.get_account_task_complete_revenue()
@@ -295,7 +293,7 @@ class TestMergePOPLedger:
         assert isinstance(df.index, pd.Index)
         assert isinstance(df.index, pd.DatetimeIndex)
 
-        bp_account_balance = thl_ledger_manager.get_account_balance(account=bp_account)
+        thl_ledger_manager.get_account_balance(account=bp_account)
 
         # Initial sum
         initial_sum = df.sum().sum()

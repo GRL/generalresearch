@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Self
+from typing import Any, Self
 from uuid import uuid4
 
 from pydantic import (

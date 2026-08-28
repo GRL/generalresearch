@@ -4,6 +4,7 @@ from itertools import product
 import pytest
 from pandera.pandas import Column, DataFrameSchema, Index
 
+from generalresearch.incite.base import GRLDatasets
 from generalresearch.incite.collections import DFCollection, DFCollectionType
 from generalresearch.incite.collections.thl_marketplaces import (
     InnovateSurveyHistoryCollection,
@@ -11,6 +12,7 @@ from generalresearch.incite.collections.thl_marketplaces import (
     SagoSurveyHistoryCollection,
     SpectrumSurveyTimeseriesCollection,
 )
+from generalresearch.pg_helper import PostgresConfig
 
 
 def combo_object():
@@ -29,7 +31,13 @@ def combo_object():
 @pytest.mark.parametrize("df_coll, offset", combo_object())
 class TestDFCollection_thl_marketplaces:
 
-    def test_init(self, mnt_filepath, df_coll, offset, spectrum_rw):
+    def test_init(
+        self,
+        mnt_filepath: GRLDatasets,
+        df_coll: DFCollection,
+        offset: str,
+        spectrum_rw: PostgresConfig,
+    ):
         assert issubclass(df_coll, DFCollection)
 
         # This is stupid, but we need to pull the default from the
@@ -38,7 +46,7 @@ class TestDFCollection_thl_marketplaces:
         assert isinstance(data_type, DFCollectionType)
 
         # (1) Can't be totally empty, needs a path...
-        with pytest.raises(expected_exception=Exception) as cm:
+        with pytest.raises(expected_exception=Exception):
             instance = df_coll()
 
         # (2) Confirm it only needs the archive_path
@@ -61,7 +69,7 @@ class TestDFCollection_thl_marketplaces:
         assert isinstance(instance._schema, DataFrameSchema)
         assert isinstance(instance._schema.index, Index)
 
-        for c in instance._schema.columns.keys():
+        for c in instance._schema.columns:
             assert isinstance(c, str)
             col = instance._schema.columns[c]
             assert isinstance(col, Column)

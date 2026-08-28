@@ -6,7 +6,7 @@ import logging
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from generalresearch.models import Source
 from generalresearch.models.innovate import InnovateQuestionID
@@ -71,7 +71,7 @@ class InnovateQuestionType(StrEnum):
     @classmethod
     def from_api(cls, a: int):
         API_TYPE_MAP = cls.get_api_map()
-        return API_TYPE_MAP[a] if a in API_TYPE_MAP else None
+        return API_TYPE_MAP.get(a)
 
 
 class InnovateQuestion(MarketplaceQuestion):
@@ -141,7 +141,7 @@ class InnovateQuestion(MarketplaceQuestion):
 
     @classmethod
     def from_api(
-        cls, d: dict, country_iso: str, language_iso: str
+        cls, d: dict[str, Any], country_iso: str, language_iso: str
     ) -> InnovateQuestion | None:
         """
         :param d: Raw response from API
@@ -151,13 +151,13 @@ class InnovateQuestion(MarketplaceQuestion):
         """
         try:
             return cls._from_api(d, country_iso, language_iso)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse question: {d}. {e}")
             return None
 
     @classmethod
     def _from_api(
-        cls, d: dict, country_iso: str, language_iso: str
+        cls, d: dict[str, Any], country_iso: str, language_iso: str
     ) -> InnovateQuestion:
         # Question AGE returns options even though its marked as a text entry (but only in some locales)
         d["QuestionKey"] = d["QuestionKey"].lower()

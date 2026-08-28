@@ -168,7 +168,7 @@ class DynataQuota(BaseModel):
     status: DynataStatus = Field()
 
     def __hash__(self):
-        return hash(tuple((tuple(self.condition_hashes), self.count, self.status)))
+        return hash((tuple(self.condition_hashes), self.count, self.status))
 
     @property
     def is_open(self) -> bool:
@@ -244,7 +244,7 @@ class DynataQuotaGroup(RootModel):
     ) -> tuple[bool | None, set[str]]:
         # Qualify for ANY quota object within a quota group
         obj_evals = {obj: obj.passes_soft(criteria_evaluation) for obj in self.root}
-        evals = set(v[0] for v in obj_evals.values())
+        evals = {v[0] for v in obj_evals.values()}
         # If we match 1 obj, then the others don't matter
         if any(evals):
             return True, set()
@@ -319,7 +319,7 @@ class DynataFilterGroup(RootModel):
     ) -> tuple[bool | None, set[str]]:
         # Passes back "passes" (T/F/none) and a list of unknown criterion hashes
         obj_evals = {obj: obj.passes_soft(criteria_evaluation) for obj in self.root}
-        evals = set(v[0] for v in obj_evals.values())
+        evals = {v[0] for v in obj_evals.values()}
         # If we match 1 obj, then the others don't matter
         if any(evals):
             return True, set()
@@ -548,7 +548,7 @@ class DynataSurvey(MarketplaceTask):
         return d
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> Self:
+    def from_db(cls, d: dict[str, Any]) -> Self:
         d["created"] = d["created"].replace(tzinfo=UTC)
         d["last_updated"] = d["last_updated"].replace(tzinfo=UTC)
         d["filters"] = json.loads(d["filters"])
@@ -578,7 +578,7 @@ class DynataSurvey(MarketplaceTask):
         group_eval = {
             group: group.passes_soft(criteria_evaluation) for group in self.filters
         }
-        evals = set(g[0] for g in group_eval.values())
+        evals = {g[0] for g in group_eval.values()}
         if False in evals:
             return False, set()
         elif None in evals:
@@ -614,7 +614,7 @@ class DynataSurvey(MarketplaceTask):
         group_eval = {
             quota: quota.passes_soft(criteria_evaluation) for quota in self.quotas
         }
-        evals = set(g[0] for g in group_eval.values())
+        evals = {g[0] for g in group_eval.values()}
         if False in evals:
             return False, set()
         elif None in evals:

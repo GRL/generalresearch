@@ -150,7 +150,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         ), "LedgerTransactionManager has insufficient Permissions"
 
         if metadata is None:
-            metadata = dict()
+            metadata = {}
         if created is None:
             created = datetime.now(tz=UTC)
 
@@ -429,7 +429,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
                     )
                 }
             else:
-                metadata = dict()
+                metadata = {}
 
             entries = [
                 LedgerEntry(
@@ -750,7 +750,7 @@ class LedgerMetadataManager(LedgerManagerBasePostgres):
 
         """
 
-        tx_ids = set([tx.id for tx in transactions])
+        tx_ids = {tx.id for tx in transactions}
         res = self.pg_config.execute_sql_query(
             query="""
                 SELECT 
@@ -782,7 +782,7 @@ class LedgerMetadataManager(LedgerManagerBasePostgres):
         from the database.
         """
 
-        tx_ids = set([tx.id for tx in transactions])
+        tx_ids = {tx.id for tx in transactions}
         res = self.pg_config.execute_sql_query(
             query="""
                 SELECT tx_meta.id 
@@ -792,7 +792,7 @@ class LedgerMetadataManager(LedgerManagerBasePostgres):
             params=[list(tx_ids)],
         )
 
-        return set([i["id"] for i in res])
+        return {i["id"] for i in res}
 
 
 class LedgerEntryManager(LedgerManagerBasePostgres):
@@ -803,7 +803,7 @@ class LedgerEntryManager(LedgerManagerBasePostgres):
     def get_tx_entries_by_txs(
         self, transactions: list[LedgerTransaction]
     ) -> list[LedgerEntry]:
-        tx_ids = set([tx.id for tx in transactions])
+        tx_ids = {tx.id for tx in transactions}
         tx_entries = self.pg_config.execute_sql_query(
             query="""
                 SELECT 
@@ -1141,4 +1141,5 @@ class LedgerManager(
         }
         for k, v in d.items():
             v["total"] = (v["debit"] - v["credit"]) * k.normal_balance.value
+
         return d

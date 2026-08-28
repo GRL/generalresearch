@@ -134,7 +134,7 @@ class SurveyManager(PostgresManager):
         if len(survey_keys) == 0:
             return []
 
-        params = dict()
+        params = {}
         survey_source_ids = defaultdict(set)
 
         for sk in survey_keys:
@@ -354,59 +354,6 @@ class SurveyManager(PostgresManager):
 
 
 class SurveyStatManager(PostgresManager):
-    KEYS = [
-        "survey_id",
-        "quota_id",
-        "country_iso",
-        "version",
-        "cpi",
-        "complete_too_fast_cutoff",
-        "prescreen_conv_alpha",
-        "prescreen_conv_beta",
-        "conv_alpha",
-        "conv_beta",
-        "dropoff_alpha",
-        "dropoff_beta",
-        "completion_time_mu",
-        "completion_time_sigma",
-        "mobile_eligible_alpha",
-        "mobile_eligible_beta",
-        "desktop_eligible_alpha",
-        "desktop_eligible_beta",
-        "tablet_eligible_alpha",
-        "tablet_eligible_beta",
-        "long_fail_rate",
-        "user_report_coeff",
-        "recon_likelihood",
-        "score_x0",
-        "score_x1",
-        "score",
-        "updated_at",
-        "survey_is_live",
-        "survey_survey_id",
-        "survey_source",
-    ]
-
-    SURVEY_STATS_COL_MAP = {
-        "PRESCREEN_CONVERSION.alpha": "prescreen_conv_alpha",
-        "PRESCREEN_CONVERSION.beta": "prescreen_conv_beta",
-        "CONVERSION.alpha": "conv_alpha",
-        "CONVERSION.beta": "conv_beta",
-        "COMPLETION_TIME.mu": "completion_time_mu",
-        "COMPLETION_TIME.sigma": "completion_time_sigma",
-        "LONG_FAIL.value": "long_fail_rate",
-        "USER_REPORT_COEFF.value": "user_report_coeff",
-        "RECON_LIKELIHOOD.value": "recon_likelihood",
-        "DROPOFF_RATE.alpha": "dropoff_alpha",
-        "DROPOFF_RATE.beta": "dropoff_beta",
-        "IS_MOBILE_ELIGIBLE.alpha": "mobile_eligible_alpha",
-        "IS_MOBILE_ELIGIBLE.beta": "mobile_eligible_beta",
-        "IS_DESKTOP_ELIGIBLE.alpha": "desktop_eligible_alpha",
-        "IS_DESKTOP_ELIGIBLE.beta": "desktop_eligible_beta",
-        "IS_TABLET_ELIGIBLE.alpha": "tablet_eligible_alpha",
-        "IS_TABLET_ELIGIBLE.beta": "tablet_eligible_beta",
-        "cpi": "cpi",
-    }
 
     def __init__(
         self,
@@ -418,6 +365,60 @@ class SurveyStatManager(PostgresManager):
             pg_config=pg_config, permissions=permissions
         )
         # self.ensure_surveystat_key_type()
+
+        self.KEYS = [
+            "survey_id",
+            "quota_id",
+            "country_iso",
+            "version",
+            "cpi",
+            "complete_too_fast_cutoff",
+            "prescreen_conv_alpha",
+            "prescreen_conv_beta",
+            "conv_alpha",
+            "conv_beta",
+            "dropoff_alpha",
+            "dropoff_beta",
+            "completion_time_mu",
+            "completion_time_sigma",
+            "mobile_eligible_alpha",
+            "mobile_eligible_beta",
+            "desktop_eligible_alpha",
+            "desktop_eligible_beta",
+            "tablet_eligible_alpha",
+            "tablet_eligible_beta",
+            "long_fail_rate",
+            "user_report_coeff",
+            "recon_likelihood",
+            "score_x0",
+            "score_x1",
+            "score",
+            "updated_at",
+            "survey_is_live",
+            "survey_survey_id",
+            "survey_source",
+        ]
+
+        self.SURVEY_STATS_COL_MAP = {
+            "PRESCREEN_CONVERSION.alpha": "prescreen_conv_alpha",
+            "PRESCREEN_CONVERSION.beta": "prescreen_conv_beta",
+            "CONVERSION.alpha": "conv_alpha",
+            "CONVERSION.beta": "conv_beta",
+            "COMPLETION_TIME.mu": "completion_time_mu",
+            "COMPLETION_TIME.sigma": "completion_time_sigma",
+            "LONG_FAIL.value": "long_fail_rate",
+            "USER_REPORT_COEFF.value": "user_report_coeff",
+            "RECON_LIKELIHOOD.value": "recon_likelihood",
+            "DROPOFF_RATE.alpha": "dropoff_alpha",
+            "DROPOFF_RATE.beta": "dropoff_beta",
+            "IS_MOBILE_ELIGIBLE.alpha": "mobile_eligible_alpha",
+            "IS_MOBILE_ELIGIBLE.beta": "mobile_eligible_beta",
+            "IS_DESKTOP_ELIGIBLE.alpha": "desktop_eligible_alpha",
+            "IS_DESKTOP_ELIGIBLE.beta": "desktop_eligible_beta",
+            "IS_TABLET_ELIGIBLE.alpha": "tablet_eligible_alpha",
+            "IS_TABLET_ELIGIBLE.beta": "tablet_eligible_beta",
+            "cpi": "cpi",
+        }
 
     #
     # def ensure_surveystat_key_type(self):
@@ -570,12 +571,10 @@ class SurveyStatManager(PostgresManager):
            = (v.survey_id, v.quota_id, v.country_iso, v.version);
         """
         params = [item for row in keys for item in row]
-        with self.pg_config.make_connection() as conn:
-            # self.register_surveystat_key(conn)
-            with conn.cursor() as c:
-                c.execute(query, params=params)
-                res = c.fetchall()
-                # print('\n'.join([x['QUERY PLAN'] for x in res]))
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, params=params)
+            res = c.fetchall()
+            # print('\n'.join([x['QUERY PLAN'] for x in res]))
         return [SurveyStat.model_validate(x) for x in res]
 
     def update_surveystats_for_source(
@@ -633,7 +632,7 @@ class SurveyStatManager(PostgresManager):
         country_iso: str | None = None,
     ) -> tuple[str, dict[str, Any]]:
         filters = []
-        params = dict()
+        params = {}
         if updated_after is not None:
             params["updated_after"] = updated_after
             filters.append("ss.updated_at >= %(updated_after)s")

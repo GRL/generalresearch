@@ -44,7 +44,7 @@ def complete_tango_order(
             tango_client=tango_client,
         )
 
-    except Exception:
+    except AssertionError:
         # todo: its possible the order went through, but something else was wrong
         # we should try to retrieve the order by its ref_id and confirm it really
         # failed...
@@ -70,8 +70,8 @@ def create_tango_order(
     """
     Create a tango gift card order.
     Throws exception if anything is not right.
-    # https://integration-www.tangocard.com/raas_api_console/v2/
-    # https://www.apimatic.io/apidocs/tangocard/v/2_3_4#/python
+    - https://integration-www.tangocard.com/raas_api_console/v2/
+    - https://www.apimatic.io/apidocs/tangocard/v/2_3_4#/python
 
     :param utid: Card identifier
     :param amount: requested card value in USD

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 from enum import StrEnum
+from ipaddress import IPv4Network, IPv6Network
 
 from pydantic import (
     BaseModel,
@@ -84,12 +85,13 @@ class IPLabel(BaseModel):
 
     @field_validator("ip", mode="before")
     @classmethod
-    def normalize_and_validate_network(cls, v):
-        net = ipaddress.ip_network(v, strict=False)
+    def normalize_and_validate_network(
+        cls, v: IPvAnyNetwork
+    ) -> IPv4Network | IPv6Network | None:
+        net = ipaddress.ip_network(address=v, strict=False)
 
-        if isinstance(net, ipaddress.IPv6Network):
-            if net.prefixlen > 64:
-                raise ValueError("IPv6 network must be /64 or larger")
+        if isinstance(net, ipaddress.IPv6Network) and net.prefixlen > 64:
+            raise ValueError("IPv6 network must be /64 or larger")
 
         return net
 

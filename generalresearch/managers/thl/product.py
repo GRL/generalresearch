@@ -33,6 +33,7 @@ if TYPE_CHECKING:
         ProfilingConfig,
         SessionConfig,
         SourcesConfig,
+        SupplyConfig,
         UserCreateConfig,
         UserHealthConfig,
         UserWalletConfig,
@@ -167,15 +168,14 @@ class ProductManager(PostgresManager):
         if filter_uuids is None or len(filter_uuids) == 0:
             return []
 
-        with self.pg_config.make_connection() as sql_connection:
-            with sql_connection.cursor() as c:
-                res = []
-                for chunk in chunked(filter_uuids, 500):
-                    res.extend(
-                        self.fetch_uuids_(
-                            c=c, filter_uuids=chunk, filter_column=filter_column
-                        )
+        with self.pg_config.make_connection() as sql_connection, sql_connection.cursor() as c:
+            res = []
+            for chunk in chunked(filter_uuids, 500):
+                res.extend(
+                    self.fetch_uuids_(
+                        c=c, filter_uuids=chunk, filter_column=filter_column
                     )
+                )
         return res
 
     def fetch_uuids_(
@@ -258,9 +258,10 @@ class ProductManager(PostgresManager):
         for k, v in res1.items():
             try:
                 r.append(Product.model_validate(v))
-            except ValidationError as e:
+            except ValidationError:
                 logger.info(f"failed to parse product: {k}")
-                raise e
+                raise
+
         return r
 
     def create(
@@ -272,7 +273,7 @@ class ProductManager(PostgresManager):
         business_id: UUIDStr | None = None,
         harmonizer_domain: str | None = None,
         commission_pct: Decimal = Decimal("0.05"),
-        sources_config: SourcesConfig | SupplyConfigs | None = None,
+        sources_config: SourcesConfig | SupplyConfig | None = None,
         payout_config: PayoutConfig | None = None,
         session_config: SessionConfig | None = None,
         profiling_config: ProfilingConfig | None = None,
@@ -360,10 +361,10 @@ class ProductManager(PostgresManager):
         insert_data["payments_enabled"] = instance.payments_enabled
 
         try:
-            insert_data["id_int"] = list(self.pg_config.execute_sql_query(query="""
+            insert_data["id_int"] = next(iter(self.pg_config.execute_sql_query(query="""
             SELECT COALESCE(MAX(id_int), 0) + 1 as id_int
             FROM userprofile_brokerageproduct
-            """))[0]["id_int"]
+            """)))["id_int"]
             instance.id_int = insert_data["id_int"]
 
             query = """
@@ -400,14 +401,14 @@ class ProductManager(PostgresManager):
 
             try:
                 return self.get_by_uuid(product_uuid=instance.id)
-            except Exception:
+            except AssertionError:
                 pass
             finally:
                 self.cache_clear(instance.id)
 
             # If we couldn't find the Product, then go ahead and raise.
             capture_exception(e)
-            raise e
+            raise
 
         bpconfig = instance.model_dump(
             include={"sources_config", "user_wallet"}, mode="json"
@@ -477,7 +478,7 @@ class ProductManager(PostgresManager):
             data["grs_domain"] = data.pop("harmonizer_domain")
             data = {k: v for k, v in data.items() if k in in_bp_keys}
             data["id"] = product_uuid
-            update_str = ", ".join(f"{k}=%({k})s" for k in data.keys())
+            update_str = ", ".join(f"{k}=%({k})s" for k in data)
             self.pg_config.execute_write(
                 f"""
                 UPDATE userprofile_brokerageproduct

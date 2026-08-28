@@ -957,7 +957,7 @@ class Product(BaseModel, validate_assignment=True):
     @field_validator("harmonizer_domain", mode="before")
     def harmonizer_domain_https(cls, s: str | None):
         # in the db, this has no scheme. accept both with a default of https://
-        if s is not None and not (s.startswith("https://") or s.startswith("http://")):
+        if s is not None and not (s.startswith(("https://", "http://"))):
             s = f"https://{s}"
         return s
 
@@ -1371,7 +1371,7 @@ class Product(BaseModel, validate_assignment=True):
         if self.payout_config.payout_transformation is None:
             return None
         payout_xform_func = self.get_payout_transformation_func()
-        kwargs = dict()
+        kwargs = {}
         if "user_wallet_balance" in inspect.signature(payout_xform_func).parameters:
             kwargs["user_wallet_balance"] = user_wallet_balance
         user_payout: Decimal = payout_xform_func(bp_payout, **kwargs)

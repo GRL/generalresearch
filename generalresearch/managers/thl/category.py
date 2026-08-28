@@ -9,8 +9,6 @@ from generalresearch.pg_helper import PostgresConfig
 
 
 class CategoryManager(PostgresManager):
-    categories = dict()
-    category_label_map = dict()
 
     def __init__(
         self,
@@ -18,8 +16,9 @@ class CategoryManager(PostgresManager):
         permissions: Collection[Permission] | None = None,
     ):
         super().__init__(pg_config=pg_config, permissions=permissions)
-        self.categories: dict[UUIDStr, Category] = dict()
-        self.category_label_map: dict[str, Category] = dict()
+        self.categories: dict[UUIDStr, Category] = {}
+        self.category_label_map: dict[str, Category] = {}
+
         self.populate_caches()
 
     def populate_caches(self):

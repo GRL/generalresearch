@@ -18,8 +18,8 @@ class BuyerManager(PostgresManager):
     ):
         super().__init__(pg_config=pg_config, permissions=permissions)
         # self.buyer_pk: Dict[Buyer, int] = dict()
-        self.source_code_buyer: dict[str, Buyer] = dict()
-        self.source_code_pk: dict[str, int] = dict()
+        self.source_code_buyer: dict[str, Buyer] = {}
+        self.source_code_pk: dict[str, int] = {}
         self.populate_caches()
 
     def populate_caches(self):

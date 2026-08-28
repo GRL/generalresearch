@@ -270,7 +270,6 @@ class GRTokenManager(PostgresManager):
                 )
             conn.commit()
 
-
     def get_by_user_id(self, user_id: PositiveInt) -> GRToken | None:
         # django authtoken_token table has (user_id) UNIQUE constraint
         # therefore, this will only return 0 or 1 GRTokens
@@ -295,7 +294,7 @@ class GRTokenManager(PostgresManager):
 
         res = result[0]
 
-        for k, _ in res.items():
+        for k in res:
             if isinstance(res[k], datetime):
                 res[k] = res[k].replace(tzinfo=UTC)
 

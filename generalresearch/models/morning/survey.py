@@ -200,7 +200,7 @@ class MorningQuota(MorningStatistics, MarketplaceTask):
         data["country_isos"] = [data["country_iso"]]
         if isinstance(data["language_isos"], str):
             data["language_isos"] = set(data["language_isos"].split(","))
-        data["language_iso"] = sorted(data["language_isos"])[0]
+        data["language_iso"] = min(data["language_isos"])
         return data
 
     @property
@@ -276,11 +276,11 @@ class MorningQuota(MorningStatistics, MarketplaceTask):
         self, criteria_evaluation: dict[str, bool | None]
     ) -> tuple[bool | None, list[str]]:
         # Passes back "matches" (T/F/none) and a list of unknown criterion hashes
-        unknowns = list()
+        unknowns = []
         for c in self.condition_hashes:
             eval_value = criteria_evaluation.get(c)
             if eval_value is False:
-                return False, list()
+                return False, []
             if eval_value is None:
                 unknowns.append(c)
         if unknowns:
@@ -359,7 +359,7 @@ class MorningBid(MorningTaskStatistics):
 
     @property
     def language_iso_any(self):
-        return sorted(self.language_isos)[0]
+        return min(self.language_isos)
 
     @property
     def locale(self):
@@ -417,7 +417,7 @@ class MorningBid(MorningTaskStatistics):
         if "conditions" in data:
             return data
 
-        data["conditions"] = dict()
+        data["conditions"] = {}
         for quota in data["quotas"]:
             if "qualifications" in quota:
                 quota_conditions = [

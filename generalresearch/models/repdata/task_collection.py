@@ -110,7 +110,7 @@ class RepDataTaskCollection(TaskCollection):
             "remaining_count",
         ]
         rows = []
-        d = dict()
+        d = {}
         for k in survey_fields:
             d[k] = getattr(s, k)
         d["allowed_devices"] = s.allowed_devices_str

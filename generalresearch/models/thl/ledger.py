@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 from typing import Annotated, Any, Literal, Self
 from uuid import uuid4
 
@@ -36,7 +36,7 @@ from generalresearch.models.thl.payout_format import (
 from generalresearch.utils.enum import ReprEnumMeta
 
 
-class Direction(int, Enum, metaclass=ReprEnumMeta):
+class Direction(IntEnum, metaclass=ReprEnumMeta):
     """Entries on the debit side will increase debit normal accounts, while
     entries on the credit side will decrease them. Conversely, entries on
     the credit side will increase credit normal accounts, while entries on

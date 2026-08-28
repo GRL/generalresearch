@@ -9,6 +9,7 @@ from generalresearch.incite.collections import (
     DFCollection,
     DFCollectionType,
 )
+from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
@@ -45,7 +46,9 @@ class TestDFCollectionBase:
 class TestDFCollectionBaseProperties:
 
     @pytest.mark.skip
-    def test_df_collection_items(self, mnt_filepath: GRLDatasets, df_coll_type):
+    def test_df_collection_items(
+        self, mnt_filepath: GRLDatasets, df_coll_type: DFCollectionType
+    ):
         instance = DFCollection(
             data_type=df_coll_type,
             start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
@@ -57,7 +60,9 @@ class TestDFCollectionBaseProperties:
         assert len(instance.interval_range) == len(instance.items)
         assert len(instance.items) == 366
 
-    def test_df_collection_progress(self, mnt_filepath: GRLDatasets, df_coll_type):
+    def test_df_collection_progress(
+        self, mnt_filepath: GRLDatasets, df_coll_type: DFCollectionType
+    ):
         instance = DFCollection(
             data_type=df_coll_type,
             start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
@@ -70,7 +75,9 @@ class TestDFCollectionBaseProperties:
         assert isinstance(instance.progress, pd.DataFrame)
         assert instance.progress.shape == (366, 6)
 
-    def test_df_collection_schema(self, mnt_filepath: GRLDatasets, df_coll_type):
+    def test_df_collection_schema(
+        self, mnt_filepath: GRLDatasets, df_coll_type: DFCollectionType
+    ):
         instance1 = DFCollection(
             data_type=DFCollectionType.WALL, archive_path=mnt_filepath.data_src
         )
@@ -87,9 +94,9 @@ class TestDFCollectionBaseProperties:
 class TestDFCollectionBaseMethods:
 
     @pytest.mark.skip
-    def test_initial_load(self, mnt_filepath: GRLDatasets, thl_web_rr):
+    def test_initial_load(self, mnt_filepath: GRLDatasets, thl_web_rr: PostgresConfig):
         instance = DFCollection(
-            pg_config=thl_web_rr: PostgresConfig,
+            pg_config=thl_web_rr,
             data_type=DFCollectionType.USER,
             start=datetime(year=2022, month=1, day=1, minute=0, tzinfo=UTC),
             finished=datetime(year=2022, month=1, day=1, minute=5, tzinfo=UTC),

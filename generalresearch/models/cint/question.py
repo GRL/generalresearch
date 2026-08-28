@@ -44,7 +44,7 @@ class CintQuestionType(StrEnum):
             # This seems to be invalid as there are no options???
             "Grid": None,
         }
-        return API_TYPE_MAP[a] if a in API_TYPE_MAP else None
+        return API_TYPE_MAP.get(a)
 
 
 class CintUserQuestionAnswer(MarketplaceUserQuestionAnswer):

@@ -203,9 +203,7 @@ class RaffleContest(RaffleContestCreate, Contest):
         c = self.end_condition
         if c.target_entry_amount and self.current_amount >= c.target_entry_amount:
             return True
-        if c.ends_at and datetime.now(tz=UTC) >= c.ends_at:
-            return True
-        return False
+        return bool(c.ends_at and datetime.now(tz=UTC) >= c.ends_at)
 
     def model_dump_mysql(self) -> dict[str, Any]:
         d = super().model_dump_mysql()
@@ -213,7 +211,7 @@ class RaffleContest(RaffleContestCreate, Contest):
         return d
 
     @classmethod
-    def model_validate_mysql(cls, data: dict) -> Self:
+    def model_validate_mysql(cls, data: dict[str, Any]) -> Self:
         data["entry_rule"] = ContestEntryRule.model_validate(data["entry_rule"])
         return super().model_validate_mysql(data)
 

@@ -173,7 +173,7 @@ class ContestBaseManager(PostgresManager):
         except ValueError as e:
             if e.args[0] == "Contest not found":
                 return None
-            raise e
+            raise
 
     @staticmethod
     def make_filter_str(
@@ -187,7 +187,7 @@ class ContestBaseManager(PostgresManager):
         has_participants: bool | None = None,
     ) -> tuple[str, dict[str, Any]]:
         filters = []
-        params = dict()
+        params = {}
 
         if product_id:
             params["product_id"] = product_id
@@ -681,7 +681,7 @@ class RaffleContestManager(ContestBaseManager):
             raise ContestError(msg)
 
         if contest.entry_type == ContestEntryType.CASH:
-            tx = ledger_manager.create_tx_user_enter_contest(
+            ledger_manager.create_tx_user_enter_contest(
                 contest_uuid=contest.uuid, contest_entry=entry
             )
 
@@ -826,7 +826,6 @@ class MilestoneContestManager(ContestBaseManager):
                 end_reason=reason,
             )
             self.end_milestone_contest(contest)
-
 
     def enter_contest_db_work_milestone(
         self, contest: MilestoneUserView, user: User, incr: PositiveInt
@@ -1052,7 +1051,7 @@ class ContestManager(
     ) -> NonNegativeInt:
         contests_closed = 0
         for contest in contests:
-            should_end, reason = contest.should_end()
+            should_end, _ = contest.should_end()
             if should_end:
                 if hasattr(contest, "redis_client"):
                     contest.redis_client = redis_client

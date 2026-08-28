@@ -241,7 +241,7 @@ class TestCollectionBaseMethodsCleanup:
         assert "Must override" in str(cm.value)
 
 
-class TestCollectionBaseMethodsCleanup:
+class TestCollectionBaseMethodsCleanup2:
 
     @pytest.mark.skip
     def test_cleanup_partials(self, mnt_filepath: GRLDatasets):

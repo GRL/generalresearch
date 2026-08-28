@@ -70,7 +70,7 @@ def format_payout_format(payout_format: str, payout_int: int) -> str:
     except TypeError:
         # "{payout()*1:}" - TypeError: 'int' object is not callable
         raise ValueError("Invalid type reference.")
-    except Exception:
+    except Exception:  # noqa
         raise ValueError("Invalid payout transformation")
 
     formatstr = f"{{:{formatstr}}}"

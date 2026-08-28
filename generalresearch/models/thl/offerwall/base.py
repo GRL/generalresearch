@@ -398,8 +398,10 @@ class OfferwallBucket(BaseModel):
     )
     uri: HttpsUrl | None = Field(
         examples=[
-            "https://task.generalresearch.com/api/v1/52d3f63b2709/797df4136c604a6c8599818296aae6d1/?i"
-            "=5ba2fe5010cc4d078fc3cc0b0cc264c3&b=test&66482fb=e7baf5e"
+            (
+                "https://task.generalresearch.com/api/v1/52d3f63b2709/797df4136c604a6c8599818296aae6d1/?i"
+                "=5ba2fe5010cc4d078fc3cc0b0cc264c3&b=test&66482fb=e7baf5e"
+            )
         ],
         description="The URL to send a respondent into. Must not edit this URL in any way",
         default=None,

@@ -411,7 +411,7 @@ class NmapResult(BaseModel):
 
     def model_dump_postgres(self):
         # Writes for the network_portscan table
-        d = dict()
+        d = {}
         data = self.model_dump(
             mode="json",
             include={

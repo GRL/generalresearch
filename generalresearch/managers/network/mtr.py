@@ -42,8 +42,7 @@ class MTRRunManager(PostgresManager):
             if params_hops:
                 c.executemany(query_hops, params_hops)
         else:
-            with self.pg_config.make_connection() as conn:
-                with conn.cursor() as c:
-                    c.execute(query, params)
-                    if params_hops:
-                        c.executemany(query_hops, params_hops)
+            with self.pg_config.make_connection() as conn, conn.cursor() as c:
+                c.execute(query, params)
+                if params_hops:
+                    c.executemany(query_hops, params_hops)

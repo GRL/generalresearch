@@ -76,7 +76,7 @@ class AgeGroup(Enum):
         return self.label
 
 
-def calculate_demographic_metrics(opps: list[MarketplaceTask]) -> list:
+def calculate_demographic_metrics(opps: list[MarketplaceTask]) -> list[dict[str, Any]]:
     """
     Measurement: marketplace_survey_demographics
     tags: source (marketplace)
@@ -86,7 +86,7 @@ def calculate_demographic_metrics(opps: list[MarketplaceTask]) -> list:
     """
     source = {opp.source for opp in opps}
     assert len(source) == 1
-    source = list(source)[0]
+    source = next(iter(source))
     survey_cpi = defaultdict(list)
     target_open = defaultdict(int)
     for opp in opps:
@@ -100,7 +100,7 @@ def calculate_demographic_metrics(opps: list[MarketplaceTask]) -> list:
     survey_counter = {k: len(v) for k, v in survey_cpi.items()}
     survey_counter = {k: {"count": v} for k, v in survey_counter.items() if v}
 
-    grp_stats = dict()
+    grp_stats = {}
     for grp, costs in survey_cpi.items():
         stats = {
             "cost_min": np.min(costs),
@@ -155,7 +155,7 @@ def calculate_used_question_metrics(
     """
     source = {opp.source for opp in opps}
     assert len(source) == 1
-    source = list(source)[0]
+    source = next(iter(source))
     country_q_counter = defaultdict(Counter)
     for opp in opps:
         for q in opp.used_question_ids:

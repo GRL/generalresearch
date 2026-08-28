@@ -557,7 +557,7 @@ class BusinessBalances(BaseModel):
         they all explicitly are set
         """
 
-        if any([pb.product_id is None for pb in v]):
+        if any(pb.product_id is None for pb in v):
             raise ValueError("'product_id' must be set for BusinessBalance children.")
 
         return v

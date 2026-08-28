@@ -98,7 +98,7 @@ LanguageISOLike = Annotated[
 def check_valid_uuid(v: str) -> str:
     try:
         assert UUID(v).hex == v
-    except Exception:
+    except (ValueError, AssertionError):
         raise ValueError("Invalid UUID")
     return v
 
@@ -106,7 +106,7 @@ def check_valid_uuid(v: str) -> str:
 def is_valid_uuid(v: str) -> bool:
     try:
         assert UUID(v).hex == v
-    except Exception:
+    except (ValueError, AssertionError):
         return False
     return True
 
@@ -165,7 +165,7 @@ CoercedStr = Annotated[str, BeforeValidator(coerce_int_to_str)]
 
 # Serializers that can transform a collection of str into a comma separated
 # str bidirectionally
-to_comma_sep_str = PlainSerializer(lambda x: ",".join(sorted(list(x))), return_type=str)
+to_comma_sep_str = PlainSerializer(lambda x: ",".join(sorted(x)), return_type=str)
 enum_to_comma_sep_str = PlainSerializer(
     lambda x: ",".join(sorted([str(y.value) for y in x])), return_type=str
 )

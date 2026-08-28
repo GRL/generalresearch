@@ -407,44 +407,12 @@ class TestSpectrumSurvey:
         )
 
 
-def test_spectrum_something(spectrum_api_surveys_json: list[str]):
-    # make sure hashes for 111111 are in db
-    c1 = SpectrumCondition(
-        question_id="1001",
-        value_type=ConditionValueType.LIST,
-        values=["a", "b", "c"],
-        negate=False,
-        logical_operator=LogicalOperator.OR,
-    )
-    c2 = SpectrumCondition(
-        question_id="1001",
-        value_type=ConditionValueType.LIST,
-        values=["a"],
-        negate=False,
-        logical_operator=LogicalOperator.OR,
-    )
-    c3 = SpectrumCondition(
-        question_id="1002",
-        value_type=ConditionValueType.RANGE,
-        values=["18-24", "30-32"],
-        negate=False,
-        logical_operator=LogicalOperator.OR,
-    )
-    c4 = SpectrumCondition(
-        question_id="212",
-        value_type=ConditionValueType.LIST,
-        values=["23", "24"],
-        negate=False,
-        logical_operator=LogicalOperator.OR,
-    )
-    c5 = SpectrumCondition(
-        question_id="1031",
-        value_type=ConditionValueType.LIST,
-        values=["113", "114", "121"],
-        negate=False,
-        logical_operator=LogicalOperator.OR,
-    )
-    _conditions = [c1, c2, c3, c4, c5]
+def test_spectrum_something(
+    spectrum_conditions: list[SpectrumCondition], spectrum_api_surveys_json: list[str]
+):
+
+    c1 = spectrum_conditions[0]
+    c3 = spectrum_conditions[2]
 
     survey = SpectrumSurvey.model_validate_json(spectrum_api_surveys_json[0])
     assert c1.criterion_hash in survey.qualifications

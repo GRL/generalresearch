@@ -484,7 +484,7 @@ class WallManager(PostgresManager):
         ORDER BY rs.source, rs.survey_id;
         """
 
-        params = dict()
+        params = {}
         filters = []
 
         # Instead of doing a big IN with a big set of tuples, since we know

@@ -234,10 +234,7 @@ class WallBase(BaseModel):
         return self.is_visible() and self.status == Status.COMPLETE
 
     def allow_session(self) -> bool:
-        if self.status == Status.COMPLETE:
-            return False
-
-        return True
+        return self.status != Status.COMPLETE
 
     def update(self, **kwargs) -> None:
         """
@@ -969,10 +966,7 @@ class Session(BaseModel):
             return True
 
         # Hard limit of 40 wall events per session
-        if len(self.wall_events) >= 40:
-            return True
-
-        return False
+        return len(self.wall_events) >= 40
 
     def determine_payments(
         self,
@@ -985,6 +979,7 @@ class Session(BaseModel):
         )
 
         product = self.user.product
+        assert product
         # Handle brokerage product payouts
         bp_pay: Decimal = product.determine_bp_payment(thl_net)
         commission_amount: Decimal = thl_net - bp_pay

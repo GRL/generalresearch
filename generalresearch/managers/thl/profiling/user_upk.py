@@ -158,7 +158,7 @@ class UserUpkManager(PostgresManagerWithRedis):
 
         country_isos = {x["country_iso"] for x in upk_ans_dict}
         assert len(country_isos) == 1
-        country_iso = list(country_isos)[0]
+        country_iso = next(iter(country_isos))
         for x in upk_ans_dict:
             x["pred"] = x["pred"].replace("gr:", "")
             x["obj"] = x["obj"].replace("gr:", "")
@@ -304,15 +304,15 @@ class UserUpkManager(PostgresManagerWithRedis):
     def set_user_upk(self, upk_ans: list[UpkQuestionAnswer]) -> None:
         user_id = {x.user_id for x in upk_ans}
         assert len(user_id) == 1, "only run for 1 user at a time"
-        user_id = list(user_id)[0]
+        user_id = next(iter(user_id))
 
         curr_upk = self.get_user_upk(user_id=user_id)
         curr_upk_simple = self.get_user_upk_simple(user_id=user_id)
 
         new_upk_simple = defaultdict(set)
         delete_items = set()
-        upk_multi = list()
-        delete_upk_multi = list()
+        upk_multi = []
+        delete_upk_multi = []
         for x in upk_ans:
             # For zero or more (multiple values) We want all values to equal these.
             #   Might involve deleting values if they exist and are not in upk_ans

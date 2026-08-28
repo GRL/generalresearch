@@ -50,7 +50,7 @@ class SoftPairResult:
             return (
                 self.survey_id
                 + ":"
-                + ";".join(sorted(set([c.question_id for c in self.conditions])))
+                + ";".join(sorted({c.question_id for c in self.conditions}))
             )
         else:
             return None

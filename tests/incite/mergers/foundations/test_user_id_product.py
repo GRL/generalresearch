@@ -1,11 +1,15 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime, timedelta
 from itertools import product
 
 import pandas as pd
 import pytest
+from dask.distributed import Client as DaskClient
 
 # noinspection PyUnresolvedReferences
 from generalresearch.incite.mergers.foundations.user_id_product import (
+    UserIdProductMerge,
     UserIdProductMergeItem,
 )
 
@@ -23,14 +27,21 @@ from generalresearch.incite.mergers.foundations.user_id_product import (
 class TestUserIDProduct:
 
     @pytest.mark.skip
-    def test_base(self, client_no_amm, user_id_product_merge):
+    def test_base(
+        self, client_no_amm: DaskClient, user_id_product_merge: UserIdProductMerge
+    ):
         ddf = user_id_product_merge.ddf()
         df = client_no_amm.compute(collections=ddf, sync=True)
         assert isinstance(df, pd.DataFrame)
         assert not df.empty
 
     @pytest.mark.skip
-    def test_base_item(self, client_no_amm, user_id_product_merge, user_collection):
+    def test_base_item(
+        self,
+        client_no_amm: DaskClient,
+        user_id_product_merge: UserIdProductMerge,
+        user_collection,
+    ):
         assert len(user_id_product_merge.items) == 1
 
         for item in user_id_product_merge.items:
@@ -40,7 +51,7 @@ class TestUserIDProduct:
 
             try:
                 modified_time1 = path.stat().st_mtime
-            except Exception:
+            except OSError:
                 modified_time1 = 0
 
             user_id_product_merge.build(client=client_no_amm, user_coll=user_collection)
@@ -49,7 +60,9 @@ class TestUserIDProduct:
             assert modified_time2 > modified_time1
 
     @pytest.mark.skip
-    def test_read(self, client_no_amm, user_id_product_merge):
+    def test_read(
+        self, client_no_amm: DaskClient, user_id_product_merge: UserIdProductMerge
+    ):
         users_ddf = user_id_product_merge.ddf()
         df = client_no_amm.compute(collections=users_ddf, sync=True)
 

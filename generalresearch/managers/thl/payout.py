@@ -95,9 +95,9 @@ class PayoutEventManager(PostgresManagerWithRedis):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 c.execute(query=query, params=d)
-                assert c.rowcount == 1, (
-                    "Nothing was updated! Are you sure this payout_event exists?"
-                )
+                assert (
+                    c.rowcount == 1
+                ), "Nothing was updated! Are you sure this payout_event exists?"
             conn.commit()
 
 
@@ -140,7 +140,7 @@ class UserPayoutEventManager(PayoutEventManager):
         #   the purposes of returning to the user.
         pe = self.get_by_uuid(pe_uuid=pe_uuid)
 
-        transaction_info = dict()
+        transaction_info = {}
         order: dict[str, Any] = pe.order_data
         if pe.payout_type == PayoutType.TANGO and pe.status == PayoutStatus.COMPLETE:
             reward = order["reward"]
@@ -411,7 +411,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
 
         *** IT IS ONLY FOR Brokerage Product PAYOUTS ***
         """
-        params = dict()
+        params = {}
         filters = []
         if ext_ref_id:
             # This is transaction id for tracking ACH/Wires with a banking institution
@@ -630,9 +630,9 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
         for bp_payout in d["bp_payouts"]:
             bp_payout["created"] = datetime.fromisoformat(bp_payout["created"])
         bpe = BusinessPayoutEvent.model_validate(d)
-        assert bpe.bp_payouts is not None and len(bpe.bp_payouts) > 0, (
-            "No BP payouts found for this Business Payout Event. This shouldn't happen!"
-        )
+        assert (
+            bpe.bp_payouts is not None and len(bpe.bp_payouts) > 0
+        ), "No BP payouts found for this Business Payout Event. This shouldn't happen!"
         return bpe
 
     def filter_by(
@@ -677,9 +677,9 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
             for bp_payout in row["bp_payouts"]:
                 bp_payout["created"] = datetime.fromisoformat(bp_payout["created"])
             bpe = BusinessPayoutEvent.model_validate(row)
-            assert bpe.bp_payouts is not None and len(bpe.bp_payouts) > 0, (
-                "No BP payouts found for this Business Payout Event. This shouldn't happen!"
-            )
+            assert (
+                bpe.bp_payouts is not None and len(bpe.bp_payouts) > 0
+            ), "No BP payouts found for this Business Payout Event. This shouldn't happen!"
             bpes.append(bpe)
         return bpes
 
@@ -696,9 +696,9 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
             for bp_pe in bpe.bp_payouts
         ]
         txs = thl_lm.get_tx_ids_by_tags(tags=tags)
-        assert len(txs) == len(bpe.bp_payouts), (
-            f"Expected {len(bpe.bp_payouts)} BP payouts but found {len(txs)}!"
-        )
+        assert len(txs) == len(
+            bpe.bp_payouts
+        ), f"Expected {len(bpe.bp_payouts)} BP payouts but found {len(txs)}!"
         return True
 
     def resume_failed_business_payout(
@@ -824,9 +824,9 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
             shortfall: int = int(target_amount) - w_df["deduction"].sum()
             w_df["remaining_balance"] = w_df["available_balance"] - w_df["deduction"]
 
-        assert w_df[w_df["deduction"] > w_df["available_balance"]].empty, (
-            "Trying to deduct more from an Product than what is available"
-        )
+        assert w_df[
+            w_df["deduction"] > w_df["available_balance"]
+        ].empty, "Trying to deduct more from an Product than what is available"
 
         return w_df
 
@@ -898,9 +898,9 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
     ) -> BusinessPayoutEvent:
         assert isinstance(bpe, BusinessPayoutEventCreate)
         assert bpe.bp_payouts, "Must provide at least one BP Payout"
-        assert {bp_pe.status for bp_pe in bpe.bp_payouts} == {PayoutStatus.PENDING}, (
-            "All BP Payouts must be PENDING"
-        )
+        assert {bp_pe.status for bp_pe in bpe.bp_payouts} == {
+            PayoutStatus.PENDING
+        }, "All BP Payouts must be PENDING"
         INSERT_SUPPLIER_PAYOUT = """
         INSERT INTO supplier_payout (
             business_id, created, amount,
@@ -993,9 +993,9 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
         # Can't pay any Products that don't have a remaining balance
         df = df[df["remaining_balance"] > 0].copy()
 
-        assert df.deduction.sum() == business.balance.recoup, (
-            "recoup_proportional failure"
-        )
+        assert (
+            df.deduction.sum() == business.balance.recoup
+        ), "recoup_proportional failure"
 
         df["issue_amount"] = BusinessPayoutEventManager.distribute_amount(
             df=df, amount=amount

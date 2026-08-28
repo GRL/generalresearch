@@ -13,6 +13,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    ValidationError,
     computed_field,
     field_validator,
     model_validator,
@@ -459,7 +460,7 @@ class RepDataSurvey(BaseModel):
 
     @property
     def all_conditions(self) -> list[RepDataCondition]:
-        cs = list()
+        cs = []
         for stream in self.streams:
             cs.extend(stream.all_conditions)
         # dedupe by criterion_hash
@@ -477,7 +478,7 @@ class RepDataSurvey(BaseModel):
         """
         try:
             return cls._from_api(survey_response)
-        except Exception as e:
+        except ValidationError as e:
             survey_id = survey_response.get("survey_id") or survey_response.get(
                 "SurveyNumber"
             )
@@ -485,7 +486,7 @@ class RepDataSurvey(BaseModel):
             return None
 
     @classmethod
-    def _from_api(cls, survey_response) -> RepDataSurvey:
+    def _from_api(cls, survey_response: dict[str, Any]) -> RepDataSurvey:
         d = survey_response.copy()
         d["country_iso"] = locale_helper.get_country_iso(d["SurveyCountry"].lower())
         d["language_iso"] = locale_helper.get_language_iso(d["SurveyLanguage"].lower())

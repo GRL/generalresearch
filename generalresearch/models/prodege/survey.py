@@ -539,7 +539,7 @@ class ProdegeSurvey(MarketplaceTask):
             d["country_isos"] = [
                 locale_helper.get_country_iso(d.pop("country_code").lower())
             ]
-            d["country_iso"] = sorted(d["country_isos"])[0]
+            d["country_iso"] = min(d["country_isos"])
             # No languages are returned anywhere for anything
             d["language_isos"] = [
                 locale_helper.get_default_lang_from_country(d["country_isos"][0])
@@ -552,7 +552,7 @@ class ProdegeSurvey(MarketplaceTask):
             d["past_participation"] = ProdegePastParticipation.from_api(
                 d["past_participation"]
             )
-        d["conditions"] = dict()
+        d["conditions"] = {}
         for quota in d["quotas"]:
             quota["condition_hashes"] = []
             for c in quota["targeting_criteria"]:
@@ -563,7 +563,7 @@ class ProdegeSurvey(MarketplaceTask):
         d["quotas"] = [ProdegeQuota.from_api(q) for q in d["quotas"]]
         countries = {q.country_iso for q in d["quotas"] if q.country_iso}
         if countries:
-            d["country_iso"] = sorted(countries)[0]
+            d["country_iso"] = min(countries)
             d["country_isos"] = countries
             d["language_iso"] = locale_helper.get_default_lang_from_country(
                 d["country_iso"]

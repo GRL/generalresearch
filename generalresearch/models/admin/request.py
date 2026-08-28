@@ -119,7 +119,7 @@ class ReportRequest(BaseModel):
 
     @property
     def end_naive(self) -> datetime:
-        return datetime.now(tz=None)
+        return datetime.now(tz=None)  # noqa
 
     @property
     def ts_start(self) -> pd.Timestamp:

@@ -108,10 +108,8 @@ class PostgresConfig:
 
     def execute_write(self, query, params=None) -> int:
         cmd = query.lstrip().upper()
-        assert (
-            cmd.startswith("INSERT")
-            or cmd.startswith("UPDATE")
-            or cmd.startswith("DELETE")
+        assert cmd.startswith(
+            ("INSERT", "UPDATE", "DELETE")
         ), "Supports INSERT/UPDATE only"
 
         with self.make_connection() as conn:

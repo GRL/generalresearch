@@ -13,6 +13,7 @@ from pydantic import (
     ConfigDict,
     Field,
     PositiveInt,
+    ValidationError,
     field_validator,
     model_validator,
 )
@@ -86,7 +87,7 @@ class SagoQuestionType(StrEnum):
             6: SagoQuestionType.TEXT_ENTRY,
             7: SagoQuestionType.TEXT_ENTRY,
         }
-        return API_TYPE_MAP[a] if a in API_TYPE_MAP else None
+        return API_TYPE_MAP.get(a, None)
 
 
 class SagoUserQuestionAnswer(BaseModel):
@@ -182,7 +183,7 @@ class SagoQuestion(MarketplaceQuestion):
         """
         try:
             return cls._from_api(d, country_iso, language_iso)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse question: {d}. {e}")
             return None
 

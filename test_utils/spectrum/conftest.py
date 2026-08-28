@@ -1,32 +1,32 @@
 from __future__ import annotations
 
-import logging
 import time
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytest
 
+from generalresearch.config import GRLBaseSettings
 from generalresearch.managers.spectrum.survey import (
     SpectrumCriteriaManager,
     SpectrumSurveyManager,
 )
-from generalresearch.models.spectrum.survey import SpectrumSurvey
+from generalresearch.models import (
+    LogicalOperator,
+)
+from generalresearch.models.spectrum.survey import (
+    SpectrumCondition,
+    SpectrumSurvey,
+)
+from generalresearch.models.thl.survey.condition import ConditionValueType
 from generalresearch.sql_helper import SqlHelper
-
-from .surveys_json import CONDITIONS, SURVEYS_JSON
-
-if TYPE_CHECKING:
-    from generalresearch.config import GRLBaseSettings
 
 
 @pytest.fixture(scope="session")
 def spectrum_rw(settings: GRLBaseSettings) -> SqlHelper:
-    logging.info(f"{settings.spectrum_rw_db=}")
-
     assert settings.spectrum_rw_db is not None
-    assert "/unittest-" in settings.spectrum_rw_db.path
+    assert "/unittest-" in str(settings.spectrum_rw_db.path)
 
     return SqlHelper(
         dsn=settings.spectrum_rw_db,
@@ -38,27 +38,36 @@ def spectrum_rw(settings: GRLBaseSettings) -> SqlHelper:
 
 @pytest.fixture(scope="session")
 def spectrum_criteria_manager(spectrum_rw: SqlHelper) -> SpectrumCriteriaManager:
+    assert spectrum_rw.dsn
+    assert spectrum_rw.dsn.path
     assert "/unittest-" in spectrum_rw.dsn.path
     return SpectrumCriteriaManager(spectrum_rw)
 
 
 @pytest.fixture(scope="session")
 def spectrum_survey_manager(spectrum_rw: SqlHelper) -> SpectrumSurveyManager:
+    assert spectrum_rw.dsn
+    assert spectrum_rw.dsn.path
     assert "/unittest-" in spectrum_rw.dsn.path
     return SpectrumSurveyManager(spectrum_rw)
 
 
 @pytest.fixture(scope="session")
 def setup_spectrum_surveys(
-    spectrum_rw: SqlHelper, spectrum_survey_manager, spectrum_criteria_manager
+    spectrum_rw: SqlHelper,
+    spectrum_survey_manager: SpectrumSurveyManager,
+    spectrum_criteria_manager: SpectrumCriteriaManager,
+    spectrum_conditions: list[SpectrumCondition],
+    spectrum_api_surveys_json: list[str],
 ) -> None:
     now = datetime.now(UTC)
     # make sure these example surveys exist in db
-    surveys = [SpectrumSurvey.model_validate_json(x) for x in SURVEYS_JSON]
+    surveys = [SpectrumSurvey.model_validate_json(x) for x in spectrum_api_surveys_json]
     for s in surveys:
         s.modified_api = datetime.now(tz=UTC)
+
     spectrum_survey_manager.create_or_update(surveys)
-    spectrum_criteria_manager.update(CONDITIONS)
+    spectrum_criteria_manager.update(spectrum_conditions)
 
     # and make sure they have allocation for 687
     spectrum_rw.execute_sql_query(
@@ -196,6 +205,46 @@ def spectrum_api_surveys_json() -> list[str]:
             "}"
         ),
     ]
+
+
+def spectrum_conditions() -> list[SpectrumCondition]:
+    # make sure hashes for 111111 are in db
+    c1 = SpectrumCondition(
+        question_id="1001",
+        value_type=ConditionValueType.LIST,
+        values=["a", "b", "c"],
+        negate=False,
+        logical_operator=LogicalOperator.OR,
+    )
+    c2 = SpectrumCondition(
+        question_id="1001",
+        value_type=ConditionValueType.LIST,
+        values=["a"],
+        negate=False,
+        logical_operator=LogicalOperator.OR,
+    )
+    c3 = SpectrumCondition(
+        question_id="1002",
+        value_type=ConditionValueType.RANGE,
+        values=["18-24", "30-32"],
+        negate=False,
+        logical_operator=LogicalOperator.OR,
+    )
+    c4 = SpectrumCondition(
+        question_id="212",
+        value_type=ConditionValueType.LIST,
+        values=["23", "24"],
+        negate=False,
+        logical_operator=LogicalOperator.OR,
+    )
+    c5 = SpectrumCondition(
+        question_id="1031",
+        value_type=ConditionValueType.LIST,
+        values=["113", "114", "121"],
+        negate=False,
+        logical_operator=LogicalOperator.OR,
+    )
+    return [c1, c2, c3, c4, c5]
 
 
 @pytest.fixture(scope="session")

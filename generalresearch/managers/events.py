@@ -343,8 +343,8 @@ class TaskStatsManager(RedisManager):
             by_source=live_tasks_max_payout_by_source,
         )
 
-        task_created_count_last_1h = dict()
-        task_created_count_last_24h = dict()
+        task_created_count_last_1h = {}
+        task_created_count_last_24h = {}
         for source in sources:
             task_created_count_last_1h[source] = pipe_res.pop(0)
             task_created_count_last_24h[source] = pipe_res.pop(0)
@@ -381,25 +381,25 @@ class SessionStatsManager(RedisManager):
     older than 1 hr (in the 1 hr bucket) will expire.
     """
 
-    # Must be ordered. Don't change this
-    global_keys = [
-        "session_enters_last_1h",
-        "session_enters_last_24h",
-        "session_fails_last_1h",
-        "session_fails_last_24h",
-        "session_completes_last_1h",
-        "session_completes_last_24h",
-        "sum_payouts_last_1h",
-        "sum_payouts_last_24h",
-        "sum_user_payouts_last_1h",
-        "sum_user_payouts_last_24h",
-        # "session_fail_loi_sum_last_1h",
-        "session_fail_loi_sum_last_24h",
-        # "session_complete_loi_sum_last_1h",
-        "session_complete_loi_sum_last_24h",
-    ]
-
     def __init__(self, *args, **kwargs):
+        # Must be ordered. Don't change this
+        self.global_keys = [
+            "session_enters_last_1h",
+            "session_enters_last_24h",
+            "session_fails_last_1h",
+            "session_fails_last_24h",
+            "session_completes_last_1h",
+            "session_completes_last_24h",
+            "sum_payouts_last_1h",
+            "sum_payouts_last_24h",
+            "sum_user_payouts_last_1h",
+            "sum_user_payouts_last_24h",
+            # "session_fail_loi_sum_last_1h",
+            "session_fail_loi_sum_last_24h",
+            # "session_complete_loi_sum_last_1h",
+            "session_complete_loi_sum_last_24h",
+        ]
+
         super().__init__(*args, **kwargs)
         self.SUM_HASH_LUA = self.redis_client.register_script(SUM_HASH_LUA_SCRIPT)
 

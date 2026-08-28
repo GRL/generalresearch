@@ -315,7 +315,7 @@ class SqlHelper(SqlConnector):
         field_names = ["`" + x + "`" for x in field_names]
         field_name_str = ",".join(field_names)
         if filter_d:
-            lookup_vals = " AND ".join([f"`{fn}`=%({fn})s" for fn in filter_d.keys()])
+            lookup_vals = " AND ".join([f"`{fn}`=%({fn})s" for fn in filter_d])
             lookup_str = f" WHERE {lookup_vals}"
         else:
             lookup_str = ""
