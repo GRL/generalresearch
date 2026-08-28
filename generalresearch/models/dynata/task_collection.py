@@ -54,7 +54,7 @@ DynataTaskCollectionSchema = DataFrameSchema(
 
 
 class DynataTaskCollection(TaskCollection):
-    items: List[DynataSurvey]
+    items: list[DynataSurvey]
     _schema = DynataTaskCollectionSchema
 
     def to_row(self, s: DynataSurvey) -> dict[str, Any]:

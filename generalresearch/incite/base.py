@@ -7,7 +7,7 @@ import re
 import shutil
 import subprocess
 import warnings
-from concurrent.futures import Future
+from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta, timezone
 from os import R_OK, access, listdir
 from os.path import isdir
@@ -17,12 +17,9 @@ from sys import platform
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Sequence,
 )
 from uuid import uuid4
 
-import dask
 import dask.dataframe as dd
 import pandas as pd
 import pyarrow.parquet as pq

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Any
 from uuid import uuid4
 
 from pydantic import (
@@ -86,9 +87,9 @@ class ContestPrize(BaseModel):
     @model_validator(mode="after")
     def validate_cash_value(self) -> Self:
         if self.kind == ContestPrizeKind.CASH:
-            assert (
-                self.estimated_cash_value == self.cash_amount
-            ), "if kind is CASH, cash_amount must equal estimated_cash_value"
+            assert self.estimated_cash_value == self.cash_amount, (
+                "if kind is CASH, cash_amount must equal estimated_cash_value"
+            )
         return self
 
 
