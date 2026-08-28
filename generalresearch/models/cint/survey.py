@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Literal, Type
+from typing import Annotated, Any, Literal
 
 from more_itertools import flatten
 from pydantic import (
@@ -15,7 +15,7 @@ from pydantic import (
     computed_field,
     model_validator,
 )
-from typing_extensions import Annotated, Self
+from typing_extensions import Self
 
 from generalresearch.locales import Localelator
 from generalresearch.models import Source, TaskCalculationType
@@ -73,9 +73,9 @@ class CintQuota(BaseModel):
     @model_validator(mode="after")
     def validate_condition_len(self) -> Self:
         if self.quota_type == "total":
-            assert (
-                self.condition_hashes is None
-            ), "total quota should not have conditions"
+            assert self.condition_hashes is None, (
+                "total quota should not have conditions"
+            )
         elif self.quota_type == "client":
             assert len(self.condition_hashes) > 0, "quota must have conditions"
         return self
@@ -291,7 +291,7 @@ class CintSurvey(MarketplaceTask):
         return data
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return CintCondition
 
     @property
@@ -417,7 +417,7 @@ class CintSurvey(MarketplaceTask):
         return d
 
     @classmethod
-    def from_mysql(cls, d: Dict[str, Any]) -> Self:
+    def from_mysql(cls, d: dict[str, Any]) -> Self:
         d["created_at"] = d["created_at"].replace(tzinfo=timezone.utc)
         d["last_updated"] = d["last_updated"].replace(tzinfo=timezone.utc)
         d["qualifications"] = json.loads(d["qualifications"])

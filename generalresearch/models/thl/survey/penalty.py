@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import abc
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
-from typing_extensions import Annotated
 
 from generalresearch.models import Source
 from generalresearch.models.custom_types import (
@@ -59,7 +58,7 @@ class TeamSurveyPenalty(SurveyPenalty):
 
 
 Penalty = Annotated[
-    Union[BPSurveyPenalty, TeamSurveyPenalty],
+    BPSurveyPenalty | TeamSurveyPenalty,
     Field(discriminator="kind"),
 ]
 PenaltyListAdapter = TypeAdapter(list[Penalty])

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 
 import pandas as pd
 from pandera.pandas import Check, Column, DataFrameSchema, Index
@@ -30,8 +30,8 @@ ProdegeTaskCollectionSchema = DataFrameSchema(
         "conversion_rate": Column(float, Check.between(0, 1), nullable=True),
         "created": Column(dtype=pd.DatetimeTZDtype(tz="UTC")),
         "updated": Column(dtype=pd.DatetimeTZDtype(tz="UTC")),
-        "used_question_ids": Column(List[str]),
-        "all_hashes": Column(List[str]),  # set >> list for column support
+        "used_question_ids": Column(list[str]),
+        "all_hashes": Column(list[str]),  # set >> list for column support
         "is_recontact": Column(bool),
         # Not including here: entrance_url, max_clicks_settings, past_participation, include_psids, exclude_psids,
         #   quotas, source, conditions

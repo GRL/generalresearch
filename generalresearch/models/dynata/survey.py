@@ -5,7 +5,7 @@ import logging
 from datetime import timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import Any, Literal, Type
+from typing import Any, Literal
 
 from more_itertools import flatten
 from pydantic import (
@@ -500,7 +500,7 @@ class DynataSurvey(MarketplaceTask):
         return res
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return DynataCondition
 
     @property
@@ -551,7 +551,7 @@ class DynataSurvey(MarketplaceTask):
         return d
 
     @classmethod
-    def from_db(cls, d: Dict[str, Any]) -> Self:
+    def from_db(cls, d: dict[str, Any]) -> Self:
         d["created"] = d["created"].replace(tzinfo=timezone.utc)
         d["last_updated"] = d["last_updated"].replace(tzinfo=timezone.utc)
         d["filters"] = json.loads(d["filters"])
