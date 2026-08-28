@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from functools import cached_property
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pandas as pd
 from pandas import Period
@@ -11,6 +11,9 @@ from pydantic import AwareDatetime, NaiveDatetime
 from redis import Redis
 
 from generalresearch.managers.leaderboard import country_timezone
+from generalresearch.managers.thl.user_manager.user_metadata_manager import (
+    UserMetadataManager,
+)
 from generalresearch.models.thl.leaderboard import (
     Leaderboard,
     LeaderboardCode,
@@ -43,7 +46,6 @@ class LeaderboardManager:
         self.freq = freq
         self.product_id = product_id
         self.country_iso = country_iso
-        self.within_time_aware = None
         if within_time is None:
             self.within_time_aware = datetime.now(tz=timezone.utc).astimezone(
                 self.timezone
@@ -85,28 +87,37 @@ class LeaderboardManager:
 
     def get_row_count(self) -> int:
         # How many rows (unique users) does this leaderboard have?
-        return self.redis_client.zcard(self.key) or 0
+        # redis-py types command responses broadly, but ZCARD returns an integer.
+        return cast(int, self.redis_client.zcard(self.key))
 
     def get_leaderboard_rows(
-        self,
-        limit: int | None = None,
+        self, user_metadata_manager: UserMetadataManager, limit: int | None = None
     ) -> list[LeaderboardRow]:
-        limit = limit if limit else 0
+        limit = limit or 0
         res = self.redis_client.zrange(
             self.key, start=0, end=limit - 1, withscores=True, desc=True
         )
         # We re-rank using pandas min value for ties. Redis does not consider ties in ranking.
-        s = pd.DataFrame(res, columns=["bpuid", "value"]).sort_values(
+        s = pd.DataFrame(res, columns=pd.Index(["bpuid", "value"])).sort_values(
             by="value", ascending=False
         )
         s["rank"] = s["value"].rank(method="min", ascending=False)
-        return [
-            LeaderboardRow(bpuid=r.bpuid, value=r.value, rank=r.rank)
-            for r in s.itertuples()
+        rows = [
+            LeaderboardRow(bpuid=bpuid, value=value, rank=rank)
+            for bpuid, value, rank in s.itertuples(index=False, name=None)
         ]
+        um = user_metadata_manager.filter_by_bpuids(
+            product_id=self.product_id, product_user_ids={r.bpuid for r in rows}
+        )
+        for row in rows:
+            row.display_name = um[row.bpuid].display_name
+        return rows
 
     def get_personal_leaderboard_rows(
-        self, bp_user_id: str, limit: int | None = 5
+        self,
+        user_metadata_manager: UserMetadataManager,
+        bp_user_id: str,
+        limit: int | None = 5,
     ) -> list[LeaderboardRow]:
         # We can't just grab this user's rank and nearby rows b/c redis does
         #   not handle ties the same way we do (in redis, each value is a
@@ -123,7 +134,9 @@ class LeaderboardManager:
         user_idx = user_indices[0][0]
         user_row = user_indices[0][1]
         if user_row.rank == max([row.rank for row in rows]):
-            user_idx = [i for i, row in enumerate(rows) if row.rank == user_row.rank][0]
+            user_idx = next(
+                i for i, row in enumerate(rows) if row.rank == user_row.rank
+            )
         start: int = max(user_idx - limit, 0)
         end: int = min(user_idx + limit + 1, len(rows))
 
@@ -131,17 +144,20 @@ class LeaderboardManager:
 
     def get_leaderboard(
         self,
+        user_metadata_manager: UserMetadataManager,
         limit: int | None = None,
         bp_user_id: str | None = None,
     ) -> Leaderboard:
 
         if bp_user_id:
             rows = self.get_personal_leaderboard_rows(
-                bp_user_id=bp_user_id, limit=limit
+                bp_user_id=bp_user_id,
+                limit=limit,
+                user_metadata_manager=user_metadata_manager,
             )
         else:
             rows = self.get_leaderboard_rows(
-                limit=limit,
+                limit=limit, user_metadata_manager=user_metadata_manager
             )
         total = self.get_row_count()
 
@@ -164,25 +180,25 @@ class LeaderboardManager:
         )
 
     def hit_complete_count(self, product_user_id: str) -> None:
-        assert (
-            self.board_code == LeaderboardCode.COMPLETE_COUNT
-        ), "wrong kind of leaderboard"
+        assert self.board_code == LeaderboardCode.COMPLETE_COUNT, (
+            "wrong kind of leaderboard"
+        )
         self.redis_client.zincrby(self.key, amount=1, value=product_user_id)
         self.redis_client.expire(self.key, time=self.expiration)
 
     def hit_sum_payouts(self, product_user_id: str, user_payout: Decimal) -> None:
-        assert (
-            self.board_code == LeaderboardCode.SUM_PAYOUTS
-        ), "wrong kind of leaderboard"
+        assert self.board_code == LeaderboardCode.SUM_PAYOUTS, (
+            "wrong kind of leaderboard"
+        )
         self.redis_client.zincrby(
             self.key, amount=round(user_payout * 100), value=product_user_id
         )
         self.redis_client.expire(self.key, time=self.expiration)
 
     def hit_largest_payout(self, product_user_id: str, user_payout: Decimal) -> None:
-        assert (
-            self.board_code == LeaderboardCode.LARGEST_PAYOUT
-        ), "wrong kind of leaderboard"
+        assert self.board_code == LeaderboardCode.LARGEST_PAYOUT, (
+            "wrong kind of leaderboard"
+        )
         # Only sets the value if the new value is greater than the existing
         self.redis_client.zadd(
             self.key, {product_user_id: round(user_payout * 100)}, gt=True
@@ -191,18 +207,19 @@ class LeaderboardManager:
 
     def hit(self, session: Session) -> None:
         user = session.user
+        assert user.product_user_id is not None
         match self.board_code:
             case LeaderboardCode.COMPLETE_COUNT:
-                return self.hit_complete_count(product_user_id=user.product_user_id)
+                self.hit_complete_count(product_user_id=user.product_user_id)
             case LeaderboardCode.SUM_PAYOUTS:
-                return self.hit_sum_payouts(
+                assert session.user_payout is not None
+                self.hit_sum_payouts(
                     product_user_id=user.product_user_id,
                     user_payout=session.user_payout,
                 )
             case LeaderboardCode.LARGEST_PAYOUT:
-                return self.hit_largest_payout(
+                assert session.user_payout is not None
+                self.hit_largest_payout(
                     product_user_id=user.product_user_id,
                     user_payout=session.user_payout,
                 )
-
-        return None

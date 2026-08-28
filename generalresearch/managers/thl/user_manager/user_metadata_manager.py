@@ -7,6 +7,24 @@ from generalresearch.models.thl.user_profile import UserMetadata
 
 
 class UserMetadataManager(PostgresManager):
+    def filter_by_bpuids(
+        self, product_id: str, product_user_ids: Collection[str]
+    ) -> dict[str, UserMetadata]:
+        query = """
+        SELECT email_address, email_sha256, email_sha1, email_md5, display_name,
+            product_user_id, thl_user.id as user_id
+        FROM thl_usermetadata
+            RIGHT OUTER JOIN thl_user on thl_usermetadata.user_id = thl_user.id
+        WHERE product_id = %(product_id)s
+            AND product_user_id = ANY(%(product_user_ids)s);
+        """
+        res = self.pg_config.execute_sql_query(
+            query,
+            {"product_id": product_id, "product_user_ids": list(product_user_ids)},
+        )
+
+        return {x["product_user_id"]: UserMetadata.from_db(**x) for x in res}
+
     def filter(
         self,
         user_ids: Collection[int] | None = None,

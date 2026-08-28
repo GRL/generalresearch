@@ -4,7 +4,7 @@ import json
 import logging
 import re
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 from uuid import UUID, uuid4
 
 from pydantic import (
@@ -19,7 +19,7 @@ from pydantic import (
     model_validator,
 )
 from sentry_sdk import set_tag, set_user
-from typing_extensions import Annotated, Self
+from typing_extensions import Self
 
 from generalresearch.models import MAX_INT32
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
@@ -34,8 +34,6 @@ if TYPE_CHECKING:
         ThlLedgerManager,
     )
     from generalresearch.managers.thl.userhealth import AuditLogManager
-
-    # from generalresearch.managers.thl.userhealth import UserIpHistoryManager
 
 logger = logging.getLogger()
 

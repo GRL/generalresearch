@@ -27,7 +27,11 @@ class UserMetadata(BaseModel):
 
     email_address: EmailStr | None = Field(default=None, examples=["contact@mail.com"])
 
-    display_name: str | None = Field(default=None, max_length=255)
+    display_name: str | None = Field(
+        default=None,
+        max_length=255,
+        description="A public name chosen by the user. Can be used in leaderboards or event stream.",
+    )
 
     @computed_field
     def email_md5(
