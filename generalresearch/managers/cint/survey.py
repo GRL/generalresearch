@@ -141,5 +141,5 @@ class CintSurveyManager(SurveyManager):
                 if e.args[0] == 1062:
                     existing_sns.add(sn)
                 else:
-                    raise e
+                    raise
         self.update([surveys[sn] for sn in existing_sns])

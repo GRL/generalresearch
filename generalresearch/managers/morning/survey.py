@@ -14,6 +14,50 @@ from generalresearch.models.morning.survey import MorningBid, MorningCondition
 
 logger = logging.getLogger()
 
+STAT_FIELDS = [
+    "obs_median_loi",
+    "qualified_conversion",
+    "num_available",
+    "num_completes",
+    "num_failures",
+    "num_in_progress",
+    "num_over_quotas",
+    "num_qualified",
+    "num_quality_terminations",
+    "num_timeouts",
+]
+STAT_EXTENDED_FIELDS = ["system_conversion", "num_entrants", "num_screenouts"]
+BID_FIELDS = (
+    [
+        "id",
+        "status",
+        "country_iso",
+        "language_isos",
+        "buyer_account_id",
+        "buyer_id",
+        "name",
+        "supplier_exclusive",
+        "survey_type",
+        "timeout",
+        "topic_id",
+        "bid_loi",
+        "exclusions",
+        "used_question_ids",
+        "expected_end",
+        "created_api",
+        "is_live",
+    ]
+    + STAT_FIELDS
+    + STAT_EXTENDED_FIELDS
+)
+QUOTA_FIELDS = [
+    "id",
+    "cpi",
+    "condition_hashes",
+] + STAT_FIELDS
+BID_DB_SOURCE = "`thl-morning`.`morning_surveybid`"
+QUOTA_DB_SOURCE = "`thl-morning`.`morning_surveyquota`"
+
 
 class MorningCriteriaManager(CriteriaManager):
     CONDITION_MODEL = MorningCondition
@@ -21,49 +65,6 @@ class MorningCriteriaManager(CriteriaManager):
 
 
 class MorningSurveyManager(SurveyManager):
-    STAT_FIELDS = [
-        "obs_median_loi",
-        "qualified_conversion",
-        "num_available",
-        "num_completes",
-        "num_failures",
-        "num_in_progress",
-        "num_over_quotas",
-        "num_qualified",
-        "num_quality_terminations",
-        "num_timeouts",
-    ]
-    STAT_EXTENDED_FIELDS = ["system_conversion", "num_entrants", "num_screenouts"]
-    BID_FIELDS = (
-        [
-            "id",
-            "status",
-            "country_iso",
-            "language_isos",
-            "buyer_account_id",
-            "buyer_id",
-            "name",
-            "supplier_exclusive",
-            "survey_type",
-            "timeout",
-            "topic_id",
-            "bid_loi",
-            "exclusions",
-            "used_question_ids",
-            "expected_end",
-            "created_api",
-            "is_live",
-        ]
-        + STAT_FIELDS
-        + STAT_EXTENDED_FIELDS
-    )
-    QUOTA_FIELDS = [
-        "id",
-        "cpi",
-        "condition_hashes",
-    ] + STAT_FIELDS
-    BID_DB_SOURCE = "`thl-morning`.`morning_surveybid`"
-    QUOTA_DB_SOURCE = "`thl-morning`.`morning_surveyquota`"
 
     def get_survey_library(
         self,

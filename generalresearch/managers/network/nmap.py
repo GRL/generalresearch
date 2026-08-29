@@ -50,7 +50,7 @@ class NmapRunManager(PostgresManager):
             if nmap_run.ports:
                 c.executemany(query_ports, params_ports)
         else:
-            with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            with self.pg_config.make_connection() as conn, conn.cursor():
                 c.execute(query, params)
                 if nmap_run.ports:
                     c.executemany(query_ports, params_ports)

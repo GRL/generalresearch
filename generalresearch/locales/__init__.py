@@ -19,10 +19,6 @@ class Localelator:
     EVERYTHING IS LOWERCASE!!! (except this comment)
     """
 
-    lang_alpha2_to_alpha3b = dict()
-    lang_alpha3_to_alpha3b = dict()
-    languages = set()
-
     def __init__(self):
         d = json.loads(pkgutil.get_data(__name__, "iso639-3.json"))
         self.lang_alpha2_to_alpha3b = {x["alpha_2"]: x["alpha_3b"] for x in d}

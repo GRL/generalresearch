@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC
 
 import psycopg
+from psycopg.abc import Query
 from psycopg.rows import RowFactory, dict_row
 from psycopg.types.datetime import TimestampLoader
 from psycopg.types.net import InetLoader
@@ -74,7 +75,9 @@ class PostgresConfig:
         self.row_factory = row_factory
 
     @property
-    def db(self):
+    def db(self) -> str:
+        assert self.dsn
+        assert self.dsn.path
         return self.dsn.path[1:]
 
     def make_connection(self) -> psycopg.Connection:
@@ -98,15 +101,15 @@ class PostgresConfig:
         conn.adapters.register_loader("inet", InetHostLoader)
         return conn
 
-    def execute_sql_query(self, query, params=None):
+    def execute_sql_query(self, query: Query, params=None):
         # This is only intended for SELECT queries
-        assert "SELECT" in query.upper(), "Supports SELECTs only"
+        assert "SELECT" in str(query).upper(), "Supports SELECTs only"
 
         with self.make_connection() as conn, conn.cursor() as c:
             c.execute(query=query, params=params)
             return c.fetchall()
 
-    def execute_write(self, query, params=None) -> int:
+    def execute_write(self, query: Query, params=None) -> int:
         cmd = query.lstrip().upper()
         assert cmd.startswith(
             ("INSERT", "UPDATE", "DELETE")

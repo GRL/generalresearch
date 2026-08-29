@@ -16,6 +16,44 @@ from generalresearch.models.innovate.survey import (
 
 logger = logging.getLogger()
 
+SURVEY_FIELDS = [
+    "survey_id",
+    "status",
+    "country_iso",
+    "language_iso",
+    "cpi",
+    "buyer_id",
+    "job_id",
+    "survey_name",
+    "desired_count",
+    "remaining_count",
+    "supplier_completes_achieved",
+    "global_completes",
+    "global_starts",
+    "global_median_loi",
+    "global_conversion",
+    "bid_loi",
+    "bid_ir",
+    "allowed_devices",
+    "entry_link",
+    "category",
+    "requires_pii",
+    "excluded_surveys",
+    "duplicate_check_level",
+    "exclude_pids",
+    "include_pids",
+    "is_revenue_sharing",
+    "group_type",
+    "off_hour_traffic",
+    "qualifications",
+    "quotas",
+    "used_question_ids",
+    "is_live",
+    "modified_api",
+    "created_api",
+    "expected_end_date",
+]
+
 
 class InnovateCriteriaManager(CriteriaManager):
     CONDITION_MODEL = InnovateCondition
@@ -23,43 +61,6 @@ class InnovateCriteriaManager(CriteriaManager):
 
 
 class InnovateSurveyManager(SurveyManager):
-    SURVEY_FIELDS = [
-        "survey_id",
-        "status",
-        "country_iso",
-        "language_iso",
-        "cpi",
-        "buyer_id",
-        "job_id",
-        "survey_name",
-        "desired_count",
-        "remaining_count",
-        "supplier_completes_achieved",
-        "global_completes",
-        "global_starts",
-        "global_median_loi",
-        "global_conversion",
-        "bid_loi",
-        "bid_ir",
-        "allowed_devices",
-        "entry_link",
-        "category",
-        "requires_pii",
-        "excluded_surveys",
-        "duplicate_check_level",
-        "exclude_pids",
-        "include_pids",
-        "is_revenue_sharing",
-        "group_type",
-        "off_hour_traffic",
-        "qualifications",
-        "quotas",
-        "used_question_ids",
-        "is_live",
-        "modified_api",
-        "created_api",
-        "expected_end_date",
-    ]
 
     def get_survey_library(
         self,
@@ -104,7 +105,7 @@ class InnovateSurveyManager(SurveyManager):
         assert filters, "Must set at least 1 filter"
         filter_str = " AND ".join(filters)
         filter_str = "WHERE " + filter_str if filter_str else ""
-        fields = set(self.SURVEY_FIELDS) | {"created", "updated"}
+        fields = set(SURVEY_FIELDS) | {"created", "updated"}
 
         if exclude_fields:
             fields -= exclude_fields
@@ -126,7 +127,7 @@ class InnovateSurveyManager(SurveyManager):
         conn: pymysql.Connection = self.sql_helper.make_connection()
         conn.autocommit(True)
         c = conn.cursor()
-        create_fields = self.SURVEY_FIELDS + ["created", "updated"]
+        create_fields = SURVEY_FIELDS + ["created", "updated"]
 
         fields_str = ", ".join([f"`{x}`" for x in create_fields])
         values_str = ", ".join([f"%({x})s" for x in create_fields])
@@ -143,10 +144,10 @@ class InnovateSurveyManager(SurveyManager):
 
     def update(self, surveys: list[InnovateSurvey]) -> bool:
         now = datetime.now(tz=UTC)
-        update_fields = self.SURVEY_FIELDS + ["updated"]
+        update_fields = SURVEY_FIELDS + ["updated"]
 
         data = [survey.to_mysql() for survey in surveys]
-        survey_data = [[d[k] for k in self.SURVEY_FIELDS] + [now] for d in data]
+        survey_data = [[d[k] for k in SURVEY_FIELDS] + [now] for d in data]
         self.sql_helper.bulk_update(
             table_name="innovate_survey",
             field_names=update_fields,

@@ -11,6 +11,7 @@ from sentry_sdk import capture_exception
 from generalresearch.incite.collections.thl_web import (
     TaskAdjustmentDFCollection,
 )
+from generalresearch.incite.exceptions import BuildError, BuildItemsError
 from generalresearch.incite.mergers import (
     MergeCollection,
     MergeCollectionItem,
@@ -61,7 +62,7 @@ class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
         ]
 
         if len(task_adj_coll_items) == 0:
-            raise Exception("TaskAdjColl item collection failed")
+            raise BuildItemsError("TaskAdjColl item collection failed")
 
         ddf: dd.DataFrame | None = task_adj_coll.ddf(
             items=task_adj_coll_items,
@@ -83,6 +84,8 @@ class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
                 ("started", "<", end),
             ],
         )
+
+        assert isinstance(ddf, pd.DataFrame)
         # Naked compute... don't log
         # LOG.info(f"TaskAdjustmentDetailMergeCollectionItem.rows: {len(ddf.index)}")
 
@@ -91,7 +94,7 @@ class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
         ew_items = [ew for ew in enriched_wall.items if ew.interval.overlaps(ir)]
 
         if len(ew_items) == 0:
-            raise Exception(
+            raise BuildItemsError(
                 "EnrichedWall item collection failed for EnrichedTaskAdjColl"
             )
 
@@ -209,5 +212,5 @@ class EnrichedTaskAdjustMerge(MergeCollection):
                 enriched_wall=enriched_wall,
                 pg_config=pg_config,
             )
-        except Exception as e:
+        except BuildError as e:
             capture_exception(error=e)

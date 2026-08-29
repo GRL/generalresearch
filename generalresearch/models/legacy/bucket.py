@@ -441,6 +441,12 @@ class DurationSummary(StatisticalSummary):
 
     @classmethod
     def from_bucket(cls, bucket: Bucket) -> DurationSummary:
+        assert bucket.loi_min
+        assert bucket.loi_max
+        assert bucket.loi_q1
+        assert bucket.loi_q2
+        assert bucket.loi_q3
+
         return cls(
             min=bucket.loi_min.total_seconds(),
             max=bucket.loi_max.total_seconds(),

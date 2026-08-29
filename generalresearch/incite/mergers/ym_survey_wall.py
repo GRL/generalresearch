@@ -10,6 +10,7 @@ from distributed import Client
 from sentry_sdk import capture_exception
 
 from generalresearch.incite.collections.thl_web import WallDFCollection
+from generalresearch.incite.exceptions import BuildError
 from generalresearch.incite.mergers import (
     MergeCollection,
     MergeCollectionItem,
@@ -109,7 +110,6 @@ class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
             LOG.warning("YMSurveyWallMerge failed validation")
 
 
-
 class YMSurveyWallMerge(MergeCollection):
     merge_type: Literal[MergeType.YM_SURVEY_WALL] = MergeType.YM_SURVEY_WALL
     collection_item_class: Literal[YMSurveyWallMergeCollectionItem] = (
@@ -143,7 +143,7 @@ class YMSurveyWallMerge(MergeCollection):
                 wall_coll=wall_coll,
                 enriched_session=enriched_session,
             )
-        except Exception as e:
+        except BuildError as e:
             capture_exception(error=e)
 
         item.delete_dangling_partials(keep_latest=2, target_path=item.path)

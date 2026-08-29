@@ -103,14 +103,13 @@ class GrlIqDataManager:
           is_attempt_allowed = %(is_attempt_allowed)s
           WHERE uuid = %(uuid)s
           """)
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query, data)
-                if c.rowcount != 1:
-                    raise ValueError(
-                        f"Expected 1 row to be updated, but {c.rowcount} rows were affected."
-                    )
-                conn.commit()
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, data)
+            if c.rowcount != 1:
+                raise ValueError(
+                    f"Expected 1 row to be updated, but {c.rowcount} rows were affected."
+                )
+            conn.commit()
 
     def update_fingerprint(self, iq_data: GrlIqData) -> None:
         # We should only run this if we modified the fingerprint algorithm
@@ -123,14 +122,13 @@ class GrlIqDataManager:
          SET fingerprint = %(fingerprint)s
          WHERE uuid = %(uuid)s
          """)
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query, data)
-                if c.rowcount != 1:
-                    raise ValueError(
-                        f"Expected 1 row to be updated, but {c.rowcount} rows were affected."
-                    )
-                conn.commit()
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, data)
+            if c.rowcount != 1:
+                raise ValueError(
+                    f"Expected 1 row to be updated, but {c.rowcount} rows were affected."
+                )
+            conn.commit()
 
     def update_data(self, iq_data: GrlIqData) -> None:
         # We should only run this if we structured new fields and want to
@@ -141,14 +139,13 @@ class GrlIqDataManager:
          SET data = %(data)s
          WHERE id = %(id)s
          """)
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query, data)
-                if c.rowcount != 1:
-                    raise ValueError(
-                        f"Expected 1 row to be updated, but {c.rowcount} rows were affected."
-                    )
-                conn.commit()
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, data)
+            if c.rowcount != 1:
+                raise ValueError(
+                    f"Expected 1 row to be updated, but {c.rowcount} rows were affected."
+                )
+            conn.commit()
 
     def get_data_if_exists(
         self, forensic_uuid: UUIDStr, load_events: bool = False
@@ -472,7 +469,7 @@ class GrlIqDataManager:
             filters.append("d.fingerprint = ANY(%(fingerprints)s)")
 
         if product_ids and len(product_ids) == 1:
-            product_id = list(product_ids)[0]
+            product_id = next(iter(product_ids))
             product_ids = None
 
         if product_ids:
@@ -536,9 +533,9 @@ class GrlIqDataManager:
                 [f"(%(bp_{i})s, %(bpuid_{i})s)" for i in range(len(users))]
             )
             filters.append(f"(d.product_id, d.product_user_id) IN ({user_args})")
-            for i, user in enumerate(users):
-                params[f"bp_{i}"] = user.product_id
-                params[f"bpuid_{i}"] = user.product_user_id
+            for i, _user in enumerate(users):
+                params[f"bp_{i}"] = _user.product_id
+                params[f"bpuid_{i}"] = _user.product_user_id
 
         if phase:
             params["phase"] = phase.value
@@ -595,24 +592,19 @@ class GrlIqDataManager:
         )
 
         if only_product_id:
-            try:
-                with self.postgres_config.make_connection() as conn:
-                    with conn.cursor() as c:
-                        c.execute(
-                            query="""
-                                SELECT count AS c
-                                FROM grliq_forensicdata_product_counts
-                                WHERE product_id = %s
-                                LIMIT 1
-                            """,
-                            params=(product_id,),
-                        )
-                        res = c.fetchone()
-                        if res and res["c"] >= 0:
-                            return int(res["c"])
-
-            except Exception:
-                pass
+            with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+                c.execute(
+                    query="""
+                            SELECT count AS c
+                            FROM grliq_forensicdata_product_counts
+                            WHERE product_id = %s
+                            LIMIT 1
+                        """,
+                    params=(product_id,),
+                )
+                res = c.fetchone()
+                if res and res["c"] >= 0:
+                    return int(res["c"])
 
         query = f"""
         SELECT COUNT(1) AS c

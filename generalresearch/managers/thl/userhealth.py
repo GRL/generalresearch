@@ -374,10 +374,10 @@ class AuditLogManager(PostgresManager):
         )
 
         if len(res) == 0:
-            raise Exception(f"No AuditLog with id of '{auditlog_id}'")
+            raise ValueError(f"No AuditLog with id of '{auditlog_id}'")
 
         if len(res) > 1:
-            raise Exception(f"Too many AuditLog found with id of '{auditlog_id}'")
+            raise ValueError(f"Too many AuditLog found with id of '{auditlog_id}'")
 
         return AuditLog.from_mysql(res[0])
 

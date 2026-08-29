@@ -16,9 +16,9 @@ def is_debug() -> bool:
     import os
 
     is_developer: bool = os.getenv("USER") in {"nanis", "gstupp"}
-    is_pytest1: bool = bool(os.getenv("PYTEST_TEST", False))
-    is_pytest2: bool = bool(os.getenv("PYTEST_CURRENT_TEST", False))
-    is_pytest3: bool = bool(os.getenv("PYTEST_VERSION", False))
+    is_pytest1: bool = bool(os.getenv("PYTEST_TEST"))
+    is_pytest2: bool = bool(os.getenv("PYTEST_CURRENT_TEST"))
+    is_pytest3: bool = bool(os.getenv("PYTEST_VERSION"))
     is_debugging1: bool = os.getenv("DEBUG", "").lower() in ("1", "true", "yes")
     is_debugging2: bool = os.getenv("PYTHON_DEBUG", "").lower() in ("1", "true", "yes")
     is_jenkins: bool = bool(os.getenv("JENKINS_HOME")) or bool(os.getenv("JENKINS_URL"))

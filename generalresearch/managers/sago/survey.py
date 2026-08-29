@@ -13,6 +13,31 @@ from generalresearch.models.sago.survey import SagoCondition, SagoSurvey
 
 logger = logging.getLogger()
 
+SURVEY_FIELDS = [
+    "survey_id",
+    "is_live",
+    "status",
+    "country_iso",
+    "language_iso",
+    "cpi",
+    "buyer_id",
+    "account_id",
+    "study_type_id",
+    "industry_id",
+    "allowed_devices",
+    "collects_pii",
+    "bid_loi",
+    "bid_ir",
+    "live_link",
+    "survey_exclusions",
+    "ip_exclusions",
+    "remaining_count",
+    "qualifications",
+    "quotas",
+    "used_question_ids",
+    "modified_api",
+]
+
 
 class SagoCriteriaManager(CriteriaManager):
     CONDITION_MODEL = SagoCondition
@@ -20,30 +45,6 @@ class SagoCriteriaManager(CriteriaManager):
 
 
 class SagoSurveyManager(SurveyManager):
-    SURVEY_FIELDS = [
-        "survey_id",
-        "is_live",
-        "status",
-        "country_iso",
-        "language_iso",
-        "cpi",
-        "buyer_id",
-        "account_id",
-        "study_type_id",
-        "industry_id",
-        "allowed_devices",
-        "collects_pii",
-        "bid_loi",
-        "bid_ir",
-        "live_link",
-        "survey_exclusions",
-        "ip_exclusions",
-        "remaining_count",
-        "qualifications",
-        "quotas",
-        "used_question_ids",
-        "modified_api",
-    ]
 
     def get_survey_library(
         self,
@@ -85,7 +86,7 @@ class SagoSurveyManager(SurveyManager):
         assert filters, "Must set at least 1 filter"
         filter_str = " AND ".join(filters)
         filter_str = "WHERE " + filter_str if filter_str else ""
-        fields = set(self.SURVEY_FIELDS) | {"created", "updated"}
+        fields = set(SURVEY_FIELDS) | {"created", "updated"}
         if exclude_fields:
             fields -= exclude_fields
         fields_str = ", ".join([f"`{v}`" for v in fields])
@@ -106,7 +107,7 @@ class SagoSurveyManager(SurveyManager):
         conn: pymysql.Connection = self.sql_helper.make_connection()
         conn.autocommit(True)
         c = conn.cursor()
-        create_fields = self.SURVEY_FIELDS + ["created", "updated"]
+        create_fields = SURVEY_FIELDS + ["created", "updated"]
 
         fields_str = ", ".join([f"`{x}`" for x in create_fields])
         values_str = ", ".join([f"%({x})s" for x in create_fields])
@@ -123,10 +124,10 @@ class SagoSurveyManager(SurveyManager):
 
     def update(self, surveys: list[SagoSurvey]) -> bool:
         now = datetime.now(tz=UTC)
-        update_fields = self.SURVEY_FIELDS + ["updated"]
+        update_fields = SURVEY_FIELDS + ["updated"]
 
         data = [survey.to_mysql() for survey in surveys]
-        survey_data = [[d[k] for k in self.SURVEY_FIELDS] + [now] for d in data]
+        survey_data = [[d[k] for k in SURVEY_FIELDS] + [now] for d in data]
         self.sql_helper.bulk_update("sago_survey", update_fields, survey_data)
         return True
 
@@ -156,8 +157,8 @@ class SagoSurveyManager(SurveyManager):
         return True
 
     def create_or_update(self, surveys: list[SagoSurvey]) -> None:
-        surveys = {s.survey_id: s for s in surveys}
-        sns = set(surveys.keys())
+        _surveys = {s.survey_id: s for s in surveys}
+        sns = set(_surveys.keys())
         existing_sns = {
             x["survey_id"]
             for x in self.sql_helper.execute_sql_query(
@@ -171,7 +172,7 @@ class SagoSurveyManager(SurveyManager):
         }
         create_sns = sns - existing_sns
         for sn in create_sns:
-            survey = surveys[sn]
+            survey = _surveys[sn]
             try:
                 self.create(survey)
             except IntegrityError as e:
@@ -181,4 +182,4 @@ class SagoSurveyManager(SurveyManager):
                 else:
                     raise
 
-        self.update([surveys[sn] for sn in existing_sns])
+        self.update([_surveys[sn] for sn in existing_sns])

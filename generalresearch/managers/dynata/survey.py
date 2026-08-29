@@ -13,6 +13,34 @@ from generalresearch.models.dynata.survey import DynataCondition, DynataSurvey
 
 logger = logging.getLogger()
 
+SURVEY_FIELDS = [
+    "survey_id",
+    "status",
+    "is_live",
+    "client_id",
+    "bid_loi",
+    "bid_ir",
+    "country_iso",
+    "language_iso",
+    "cpi",
+    "expected_count",
+    "project_id",
+    "group_id",
+    "calculation_type",
+    "days_in_field",
+    "order_number",
+    "requirements",
+    "allowed_devices",
+    "category_exclusions",
+    "project_exclusions",
+    "live_link",
+    "category_ids",
+    "filters",
+    "quotas",
+    "used_question_ids",
+    "created",
+]
+
 
 class DynataCriteriaManager(CriteriaManager):
     CONDITION_MODEL = DynataCondition
@@ -20,33 +48,6 @@ class DynataCriteriaManager(CriteriaManager):
 
 
 class DynataSurveyManager(SurveyManager):
-    SURVEY_FIELDS = [
-        "survey_id",
-        "status",
-        "is_live",
-        "client_id",
-        "bid_loi",
-        "bid_ir",
-        "country_iso",
-        "language_iso",
-        "cpi",
-        "expected_count",
-        "project_id",
-        "group_id",
-        "calculation_type",
-        "days_in_field",
-        "order_number",
-        "requirements",
-        "allowed_devices",
-        "category_exclusions",
-        "project_exclusions",
-        "live_link",
-        "category_ids",
-        "filters",
-        "quotas",
-        "used_question_ids",
-        "created",
-    ]
 
     def get_survey_library(
         self,
@@ -107,7 +108,7 @@ class DynataSurveyManager(SurveyManager):
         conn: pymysql.Connection = self.sql_helper.make_connection()
         conn.autocommit(True)
         c = conn.cursor()
-        create_fields = ["id"] + self.SURVEY_FIELDS + ["last_updated"]
+        create_fields = ["id"] + SURVEY_FIELDS + ["last_updated"]
 
         fields_str = ", ".join([f"`{x}`" for x in create_fields])
         values_str = ", ".join([f"%({x})s" for x in create_fields])
@@ -124,10 +125,10 @@ class DynataSurveyManager(SurveyManager):
 
     def update(self, surveys: list[DynataSurvey]) -> bool:
         now = datetime.now(tz=UTC)
-        update_fields = self.SURVEY_FIELDS + ["last_updated"]
+        update_fields = SURVEY_FIELDS + ["last_updated"]
 
         data = [survey.to_mysql() for survey in surveys]
-        survey_data = [[d[k] for k in self.SURVEY_FIELDS] + [now] for d in data]
+        survey_data = [[d[k] for k in SURVEY_FIELDS] + [now] for d in data]
         self.sql_helper.bulk_update("dynata_survey", update_fields, survey_data)
         return True
 
@@ -154,5 +155,6 @@ class DynataSurveyManager(SurveyManager):
                 if e.args[0] == 1062:
                     existing_sns.add(sn)
                 else:
-                    raise e
+                    raise
+
         self.update([surveys[sn] for sn in existing_sns])

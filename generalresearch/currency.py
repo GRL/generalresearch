@@ -25,7 +25,7 @@ def format_usd_cent(usd_cent: int) -> str:
 
 
 class USDCent(int):
-    def __new__(cls, value, *args, **kwargs):
+    def __new__(cls, value: int, *args, **kwargs):
 
         if isinstance(value, float):
             warnings.warn(
@@ -42,17 +42,17 @@ class USDCent(int):
 
         return super(cls, cls).__new__(cls, value)
 
-    def __add__(self, other):
+    def __add__(self, other: Any):
         assert isinstance(other, USDCent)
         res = super().__add__(other)
         return self.__class__(res)
 
-    def __sub__(self, other):
+    def __sub__(self, other: Any):
         assert isinstance(other, USDCent)
         res = super().__sub__(other)
         return self.__class__(res)
 
-    def __mul__(self, other):
+    def __mul__(self, other: Any):
         assert isinstance(other, USDCent)
         res = super().__mul__(other)
         return self.__class__(res)
@@ -61,14 +61,14 @@ class USDCent(int):
         res = super().__abs__()
         return self.__class__(res)
 
-    def __truediv__(self, other):
+    def __truediv__(self):
         raise ValueError("Division not allowed for USDCent")
 
     def __str__(self):
-        return "%d" % int(self)
+        return f"{int(self):d}"
 
     def __repr__(self):
-        return "USDCent(%d)" % int(self)
+        return f"USDCent({int(self)})"
 
     @classmethod
     def __get_pydantic_core_schema__(
@@ -110,17 +110,17 @@ class USDMill(int):
 
         return super(cls, cls).__new__(cls, value)
 
-    def __add__(self, other):
+    def __add__(self, other: Any):
         assert isinstance(other, USDMill)
         res = super().__add__(other)
         return self.__class__(res)
 
-    def __sub__(self, other):
+    def __sub__(self, other: Any):
         assert isinstance(other, USDMill)
         res = super().__sub__(other)
         return self.__class__(res)
 
-    def __mul__(self, other):
+    def __mul__(self, other: Any):
         assert isinstance(other, USDMill)
         res = super().__mul__(other)
         return self.__class__(res)
@@ -129,14 +129,14 @@ class USDMill(int):
         res = super().__abs__()
         return self.__class__(res)
 
-    def __truediv__(self, other):
+    def __truediv__(self):
         raise ValueError("Division not allowed for USDMill")
 
     def __str__(self):
-        return "%d" % int(self)
+        return f"{int(self):d}"
 
     def __repr__(self):
-        return "USDMill(%d)" % int(self)
+        return f"USDMill({int(self)})"
 
     @classmethod
     def __get_pydantic_core_schema__(

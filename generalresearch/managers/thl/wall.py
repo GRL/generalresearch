@@ -579,7 +579,7 @@ class WallCacheManager(PostgresManagerWithRedis):
         # b as second element and a as third element"
         attempts = sorted(attempts, key=lambda x: x.started)
         json_res = [attempt.model_dump_json() for attempt in attempts]
-        res = self.redis_client.lpush(redis_key, *json_res)
+        _ = self.redis_client.lpush(redis_key, *json_res)
         self.redis_client.expire(redis_key, time=60 * 60 * 24)
 
         # So this doesn't grow forever, keep only the most recent 5k

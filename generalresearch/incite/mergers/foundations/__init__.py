@@ -68,11 +68,9 @@ def lookup_product_and_team_id(
     assert len(user_ids) <= 1000, "you should chunk this bro"
 
     res: list[dict[str, Any]] = []
-    with pg_config.make_connection() as conn:
-        try:
-            with conn.cursor() as c:
-                c.execute(
-                    query="""
+    with pg_config.make_connection() as conn, conn.cursor() as c:
+        c.execute(
+            query="""
                         SELECT  u.id AS user_id,
                                 u.product_id, 
                                 bp.team_id
@@ -81,13 +79,9 @@ def lookup_product_and_team_id(
                             ON bp.id = u.product_id
                         WHERE u.id = ANY(%s);
                     """,
-                    params=[list(user_ids)],
-                )
-                res.extend(c.fetchall())
-
-        except Exception as e:
-            LOG.exception(f"lookup_product_and_team_id: {e}")
-            raise
+            params=[list(user_ids)],
+        )
+        res.extend(c.fetchall())
 
     return res
 

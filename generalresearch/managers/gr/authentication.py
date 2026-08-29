@@ -160,7 +160,7 @@ class GRUserManager(PostgresManagerWithRedis):
 
         res = thl_pg_config.execute_sql_query(
             query="""
-                SELECT bp.id
+                SELECT bp.id::uuid as uuid
                 FROM userprofile_brokerageproduct AS bp
                 WHERE bp.business_id = ANY(%s)
             """,
@@ -234,10 +234,10 @@ class GRTokenManager(PostgresManager):
             res = c.fetchall()
 
         if len(res) == 0:
-            raise Exception(f"No GRUser with token of '{api_key}'")
+            raise ValueError(f"No GRUser with token of '{api_key}'")
 
         if len(res) > 1:
-            raise Exception(f"Too many GRUsers found with token of '{api_key}'")
+            raise ValueError(f"Too many GRUsers found with token of '{api_key}'")
 
         item = res[0]
 

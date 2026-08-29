@@ -177,12 +177,7 @@ class TimingData(BaseModel):
 
     @property
     def server_location(self) -> str:
-        # TODO: when we have more locations ...
-        return (
-            "fremont_ca"
-            if self.server_hostname in {"grliq-web-0", "grliq-web-1"}
-            else "fremont_ca"
-        )
+        return "fremont_ca"
 
     @property
     def has_data(self):

@@ -27,6 +27,7 @@ class RDNSRunManager(PostgresManager):
         params = run.model_dump_postgres()
         if c:
             c.execute(query, params)
+
         else:
-            with self.pg_config.make_connection() as conn, conn.cursor() as c:
-                c.execute(query, params)
+            with self.pg_config.make_connection() as conn, conn.cursor() as _c:
+                _c.execute(query, params)

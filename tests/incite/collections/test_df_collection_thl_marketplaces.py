@@ -46,7 +46,7 @@ class TestDFCollection_thl_marketplaces:
         assert isinstance(data_type, DFCollectionType)
 
         # (1) Can't be totally empty, needs a path...
-        with pytest.raises(expected_exception=Exception):
+        with pytest.raises(expected_exception=ValueError):
             instance = df_coll()
 
         # (2) Confirm it only needs the archive_path

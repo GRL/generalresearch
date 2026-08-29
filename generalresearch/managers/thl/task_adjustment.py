@@ -24,6 +24,9 @@ from generalresearch.models.thl.session import (
 )
 from generalresearch.models.thl.task_adjustment import TaskAdjustmentEvent
 
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+
 
 class TaskAdjustmentManager(PostgresManager):
 
@@ -129,8 +132,9 @@ class TaskAdjustmentManager(PostgresManager):
         user.prefetch_product(self.pg_config)
 
         if adjusted_status == WallAdjustedStatus.ADJUSTED_TO_FAIL:
+            assert wall.cpi
             amount_usd = wall.cpi * -1
-            adjusted_cpi = 0
+            adjusted_cpi = Decimal(0)
         elif adjusted_status == WallAdjustedStatus.ADJUSTED_TO_COMPLETE:
             amount_usd = wall.cpi
             adjusted_cpi = wall.cpi
@@ -169,7 +173,7 @@ class TaskAdjustmentManager(PostgresManager):
                 new_adjusted_cpi=new_adjusted_cpi,
             )
         except AssertionError as e:
-            logging.warning(e)
+            logger.warning(e)
             return
 
         event = TaskAdjustmentEvent(

@@ -251,10 +251,9 @@ class CountryRTTDistribution(BaseModel):
         Render a boxplot from the RTT percentiles.
         """
         try:
-            # annoying pycharm error
             import matplotlib.pyplot as plt
-        except ImportError as e:
-            raise e
+        except ImportError:
+            return
 
         p = self.rtt_percentiles
         data = {
@@ -266,7 +265,7 @@ class CountryRTTDistribution(BaseModel):
             "fliers": [p[0]] + ([p[100]] if p[100] > p[95] else []),
         }
 
-        fig, ax = plt.subplots(figsize=(4, 1.5))
+        _, ax = plt.subplots(figsize=(4, 1.5))
         ax.bxp([data], showfliers=True, vert=False)
         ax.set_title(f"RTT Boxplot for {self.country_iso}")
         ax.set_xlabel("RTT (ms)")

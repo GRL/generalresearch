@@ -38,6 +38,9 @@ from generalresearch.redis_helper import RedisConfig
 from generalresearch.utils.aggregation import group_by_year
 from generalresearch.utils.enum import ReprEnumMeta
 
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
     from generalresearch.incite.mergers.foundations.enriched_session import (
@@ -324,7 +327,7 @@ class Business(BaseModel):
         for product_uuid in self.product_uuids:
             if product_uuid not in bp_account:
                 refresh = True
-                logging.exception(
+                logger.exception(
                     f"Business {self.uuid} does not have a BP Wallet Account for Product {product_uuid}. Creating..."
                 )
                 product = product_lookup[product_uuid]

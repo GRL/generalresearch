@@ -25,6 +25,7 @@ from uuid import uuid4
 import dask
 import dask.dataframe as dd
 import pandas as pd
+import pandera as pa
 import pyarrow.parquet as pq
 from distributed import Client as DaskClient
 from pandera.pandas import DataFrameSchema
@@ -45,6 +46,7 @@ from pydantic.json_schema import SkipJsonSchema
 from sentry_sdk import capture_exception
 
 from generalresearch.config import is_debug
+from generalresearch.incite.collections import DFCollectionItem
 from generalresearch.incite.schemas import (
     ARCHIVE_AFTER,
     empty_dataframe_from_schema,
@@ -61,7 +63,7 @@ if TYPE_CHECKING:
     Collection = DFCollection | MergeCollection
 
 logging.basicConfig()
-LOG = logging.getLogger()
+LOG = logging.getLogger(f"{__name__}.incite")
 
 # Item = Union["DFCollectionItem", "MergeCollectionItem"]
 Item = Any
@@ -133,6 +135,7 @@ class GRLDatasets(BaseModel):
         from generalresearch.incite.mergers import MergeType
 
         folder = "mergers" if isinstance(enum_type, MergeType) else "raw/df-collections"
+        assert self.incite is not None
         return Path(
             pjoin(self.data_src, self.incite.point, folder, str(enum_type.value))
         )
@@ -203,9 +206,6 @@ class CollectionBase(BaseModel):
 
     @model_validator(mode="after")
     def check_model_after(self) -> Self:
-        if self.offset is None or self.start is None:
-            return self
-
         offset_total_sec = pd.Timedelta(self.offset).total_seconds()
         start_total_sec = (datetime.now(tz=UTC) - self.start).total_seconds()
 
@@ -230,7 +230,7 @@ class CollectionBase(BaseModel):
             return v
         try:
             pd.Timedelta(v)
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             capture_exception(error=e)
             raise ValueError(
                 "Invalid offset alias provided. Please review: "
@@ -554,7 +554,7 @@ class CollectionBase(BaseModel):
 
             try:
                 pq.ParquetDataset(highest_version).read().to_pandas()
-            except Exception:
+            except (pa.ArrowInvalid, pa.ArrowIOError, FileNotFoundError):
                 # If the most recent version isn't valid, we don't want to
                 # create a symlink to it.
                 # TODO: We could try to be smart and iterate down the most recent
@@ -764,11 +764,12 @@ class CollectionItemBase(BaseModel):
         # regex = re.compile(r'\.parquet\.[0-9a-f]{32}', re.I)
         builds = []
         for fn in os.listdir(coll.archive_path):
-            if fn.startswith(self.filename):
-
-                # Don't include the "broken link" or mmfsymlink text file
-                if fn != self.filename and fn != self.partial_filename:
-                    builds.append(fn)
+            if (
+                fn.startswith(self.filename)
+                and fn != self.filename
+                and fn != self.partial_filename
+            ):
+                builds.append(fn)
 
         if len(builds) == 0:
             return None
@@ -872,7 +873,7 @@ class CollectionItemBase(BaseModel):
                 raise ValueError("Unknown path type.")
 
             df = parquet.read().to_pandas()
-        except Exception:
+        except (pa.ArrowInvalid, pa.ArrowIOError, OSError):
             LOG.warning(f"Invalid archive {path=}")
             df = None
 
@@ -891,8 +892,7 @@ class CollectionItemBase(BaseModel):
         try:
             schema: DataFrameSchema = self._collection._schema
             return schema.validate(check_obj=df, lazy=True, sample=sample)
-        except Exception as e:
-            LOG.exception(e)
+        except pa.errors.SchemaErrors as e:
             capture_exception(error=e)
             return None
 

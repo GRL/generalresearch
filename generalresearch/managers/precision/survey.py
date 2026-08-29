@@ -16,6 +16,30 @@ from generalresearch.models.precision.survey import (
 
 logger = logging.getLogger()
 
+SURVEY_FIELDS = [
+    # 'country_iso', 'language_iso',  # these come from join table
+    "survey_id",
+    "is_live",
+    "status",
+    "cpi",
+    "group_id",
+    "name",
+    "survey_guid",
+    "buyer_id",
+    "category_id",
+    "bid_loi",
+    "bid_ir",
+    "global_conversion",
+    "desired_count",
+    "achieved_count",
+    "allowed_devices",
+    "entry_link",
+    "excluded_surveys",
+    "quotas",
+    "used_question_ids",
+    "expected_end_date",
+]
+
 
 class PrecisionCriteriaManager(CriteriaManager):
     CONDITION_MODEL = PrecisionCondition
@@ -23,29 +47,6 @@ class PrecisionCriteriaManager(CriteriaManager):
 
 
 class PrecisionSurveyManager(SurveyManager):
-    SURVEY_FIELDS = [
-        # 'country_iso', 'language_iso',  # these come from join table
-        "survey_id",
-        "is_live",
-        "status",
-        "cpi",
-        "group_id",
-        "name",
-        "survey_guid",
-        "buyer_id",
-        "category_id",
-        "bid_loi",
-        "bid_ir",
-        "global_conversion",
-        "desired_count",
-        "achieved_count",
-        "allowed_devices",
-        "entry_link",
-        "excluded_surveys",
-        "quotas",
-        "used_question_ids",
-        "expected_end_date",
-    ]
 
     def get_survey_library(
         self,
@@ -109,7 +110,7 @@ class PrecisionSurveyManager(SurveyManager):
         conn: pymysql.Connection = self.sql_helper.make_connection()
         conn.autocommit(False)
         c = conn.cursor()
-        create_fields = self.SURVEY_FIELDS + ["created", "updated"]
+        create_fields = SURVEY_FIELDS + ["created", "updated"]
 
         fields_str = ", ".join([f"`{x}`" for x in create_fields])
         values_str = ", ".join([f"%({x})s" for x in create_fields])
@@ -241,5 +242,5 @@ class PrecisionSurveyManager(SurveyManager):
                 if e.args[0] == 1062:
                     existing_sns.add(sn)
                 else:
-                    raise e
+                    raise
         self.update([surveys[sn] for sn in existing_sns])

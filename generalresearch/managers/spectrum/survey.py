@@ -16,6 +16,37 @@ from generalresearch.models.spectrum.survey import (
 
 logger = logging.getLogger()
 
+SURVEY_FIELDS = [
+    "survey_id",
+    "survey_name",
+    "status",
+    "country_iso",
+    "language_iso",
+    "cpi",
+    "field_end_date",
+    "category_code",
+    "calculation_type",
+    "requires_pii",
+    "buyer_id",
+    "survey_exclusions",
+    "exclusion_period",
+    "bid_loi",
+    "bid_ir",
+    "last_block_loi",
+    "last_block_ir",
+    "overall_ir",
+    "overall_loi",
+    "project_last_complete_date",
+    "include_psids",
+    "exclude_psids",
+    "qualifications",
+    "quotas",
+    "used_question_ids",
+    "is_live",
+    "modified_api",
+    "created_api",
+]
+
 
 class SpectrumCriteriaManager(CriteriaManager):
     CONDITION_MODEL = SpectrumCondition
@@ -23,36 +54,6 @@ class SpectrumCriteriaManager(CriteriaManager):
 
 
 class SpectrumSurveyManager(SurveyManager):
-    SURVEY_FIELDS = [
-        "survey_id",
-        "survey_name",
-        "status",
-        "country_iso",
-        "language_iso",
-        "cpi",
-        "field_end_date",
-        "category_code",
-        "calculation_type",
-        "requires_pii",
-        "buyer_id",
-        "survey_exclusions",
-        "exclusion_period",
-        "bid_loi",
-        "bid_ir",
-        "last_block_loi",
-        "last_block_ir",
-        "overall_ir",
-        "overall_loi",
-        "project_last_complete_date",
-        "include_psids",
-        "exclude_psids",
-        "qualifications",
-        "quotas",
-        "used_question_ids",
-        "is_live",
-        "modified_api",
-        "created_api",
-    ]
 
     def get_survey_library(
         self,
@@ -115,7 +116,7 @@ class SpectrumSurveyManager(SurveyManager):
         conn: pymysql.Connection = self.sql_helper.make_connection()
         conn.autocommit(True)
         c = conn.cursor()
-        create_fields = self.SURVEY_FIELDS + ["updated"]
+        create_fields = SURVEY_FIELDS + ["updated"]
 
         fields_str = ", ".join([f"`{x}`" for x in create_fields])
         values_str = ", ".join([f"%({x})s" for x in create_fields])

@@ -12,6 +12,7 @@ from generalresearch.incite.collections.thl_web import (
     SessionDFCollection,
     WallDFCollection,
 )
+from generalresearch.incite.exceptions import FetchError
 from generalresearch.incite.mergers import (
     MergeCollection,
     MergeCollectionItem,
@@ -41,6 +42,8 @@ class YMWallSummaryMergeItem(MergeCollectionItem):
         ddf = wall_collection.ddf(
             items=wall_items, force_rr_latest=False, include_partial=True
         )
+        assert isinstance(ddf, pd.DataFrame)
+
         ddf = ddf[ddf["started"].between(start, end)]
 
         # Then we need the sessions for these wall events. They'll have started
@@ -88,12 +91,14 @@ class YMWallSummaryMerge(MergeCollection):
     @field_validator("offset")
     def check_offset_ym_wall_summary(cls, v: str | None):
         # the offset MUST be on a whole day, no hourly
+        assert v
         assert v.endswith("D"), "offset must be in days"
         return v
 
     @field_validator("start")
     def check_start_ym_wall_summary(cls, v: datetime | None):
         # the start MUST be start on midnight exactly
+        assert v
         assert v.time() == time(0, 0, 0, 0), "start must no have a time component"
         return v
 
@@ -117,7 +122,7 @@ class YMWallSummaryMerge(MergeCollection):
                 #   item every time build is run even if it isn't closed
                 # if item.should_archive():
                 item.fetch(wall_collection, session_collection, user_id_product)
-            except Exception as e:
+            except FetchError as e:
                 capture_exception(e)
 
     @staticmethod
@@ -176,10 +181,10 @@ class YMWallSummaryMerge(MergeCollection):
         # df.to_parquet(str(self.archive_path) + ".all.parquet")
         pass
 
-    def get_counts(self, product_id):
+    def get_counts(self, product_id: str):
         # examples...
         product_id = ""
-        df = dd.read_parquet(
+        _ = dd.read_parquet(
             str(self.archive_path) + ".all.parquet",
             filters=[
                 ("product_id", "=", product_id),
@@ -187,7 +192,7 @@ class YMWallSummaryMerge(MergeCollection):
             ],
         ).compute()
         country_iso = "de"
-        df = dd.read_parquet(
+        _ = dd.read_parquet(
             str(self.archive_path) + ".all.parquet",
             filters=[
                 ("product_id", "=", product_id),

@@ -148,7 +148,7 @@ class EnrichedWallMergeItem(MergeCollectionItem):
         is_missing = False
         df = df.dropna(subset=["product_id", "session_id"], how="any")
 
-        wall_is_partial = any([w.should_archive() is False for w in wall_items])
+        wall_is_partial = any(w.should_archive() is False for w in wall_items)
         is_partial = is_missing or wall_is_partial
 
         # Lots of downstream issues with this...

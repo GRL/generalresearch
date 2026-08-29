@@ -108,13 +108,12 @@ class MergeCollectionItem(CollectionItemBase):
         client: Client,
         ddf: dd.DataFrame,
         is_partial: bool = False,
-        client_resources=None,
     ) -> bool:
         assert is_partial is False, "use to_archive_symlink"
         return self._to_archive(client=client, ddf=ddf, client_resources=None)
 
     def _to_archive(
-        self, client: Client, ddf: dd.DataFrame, client_resources=None
+        self, client: Client, ddf: dd.DataFrame | None, client_resources=None
     ) -> bool:
         """
         For archiving an item. Will write an empty file if ddf is empty.
@@ -125,12 +124,15 @@ class MergeCollectionItem(CollectionItemBase):
         if ddf is None:
             return False
 
-        row_len = client.compute(collections=ddf.shape[0], sync=True)
+        row_len: int = client.compute(collections=ddf.shape[0], sync=True)
+        assert row_len
         assert row_len > 0, "empty ddf"
 
         tmp_path = self.tmp_path()
         schema = self._collection._schema
-        partition = schema.metadata.get(PARTITION_ON, None)
+        assert schema.metadata
+
+        partition = schema.metadata.get(PARTITION_ON)
         f = ddf.to_parquet(
             compute=False,
             path=tmp_path,
@@ -178,8 +180,7 @@ class MergeCollectionItem(CollectionItemBase):
         collection = self._collection
         LOG.warning(f"{collection.merge_type.value}.to_archive_symlink()")
 
-        if not isinstance(ddf, dd.DataFrame):
-            raise ValueError("must pass a dask df")
+        assert isinstance(ddf, dd.DataFrame), "must pass a dask df"
 
         # We should validate before or after!!!
         # _validate_df(self.compute(ddf), coll._schema)
@@ -212,13 +213,10 @@ class MergeCollectionItem(CollectionItemBase):
         else:
             subprocess.call(["ln", "-sfnT", target, path.as_posix()])
 
-        if validate_after:
-            if not self.valid_archive(self.path):
-                LOG.error(
-                    f"{collection.merge_type.value} failed validation: {self.path}"
-                )
-                self.delete_archive(self.path)
-                return False
+        if validate_after and not self.valid_archive(self.path):
+            LOG.error(f"{collection.merge_type.value} failed validation: {self.path}")
+            self.delete_archive(self.path)
+            return False
         return True
 
     # todo: unclear what the common interface should be here ... ?
@@ -256,7 +254,7 @@ class MergeCollection(CollectionBase):
         return self
 
     @field_validator("merge_type")
-    def check_merge_type(cls, merge_type, info: ValidationInfo):
+    def check_merge_type(cls, merge_type: MergeType | None, info: ValidationInfo):
         if merge_type is None:
             raise ValueError("Must explicitly provide a merge_type")
 

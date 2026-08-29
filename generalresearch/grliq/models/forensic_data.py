@@ -474,9 +474,11 @@ class GrlIqData(BaseModel):
         description="Bit-packed string for font support. Each element is 32 bits, with each bit representing T/F for "
         "font support.",
         examples=[
-            "72|768|262144|1073741824|0|0|540672|73728|7340032|1342177280|117446656|256|16|0|543|4290797636"
-            "|1677723648|4168998400|0|1048576|262144|268500994|1342177280|262144|125829376|37888000|0|435363842|0"
-            "|2147483648|109543424|1880099872|268435471"
+            (
+                "72|768|262144|1073741824|0|0|540672|73728|7340032|1342177280|117446656|256|16|0|543|4290797636"
+                "|1677723648|4168998400|0|1048576|262144|268500994|1342177280|262144|125829376|37888000|0|435363842|0"
+                "|2147483648|109543424|1880099872|268435471"
+            )
         ],
     )
 
@@ -558,19 +560,21 @@ class GrlIqData(BaseModel):
 
     @cached_property
     def audio_codecs_named(self) -> dict[str, bool]:
+        assert self.audio_codecs
         return dict(
             zip(
                 AUDIO_CODEC_NAMES,
-                [True if x == "3" else False for x in self.audio_codecs.split(",")],
+                [x == "3" for x in self.audio_codecs.split(",")],
             )
         )
 
     @cached_property
     def video_codecs_named(self) -> dict[str, bool]:
+        assert self.video_codecs
         return dict(
             zip(
                 VIDEO_CODEC_NAMES,
-                [True if x == "3" else False for x in self.video_codecs.split(",")],
+                [x == "3" for x in self.video_codecs.split(",")],
             )
         )
 
@@ -779,9 +783,8 @@ class GrlIqData(BaseModel):
             minutes=90
         ), "expired session"
 
-
     def model_dump_sql(self, **kwargs) -> dict[str, Any]:
-        d = dict()
+        d = {}
         d["uuid"] = self.uuid
         d["session_uuid"] = self.mid
         d["created_at"] = self.created_at
@@ -801,7 +804,7 @@ class GrlIqData(BaseModel):
         return d
 
     @classmethod
-    def from_db(cls, d: dict[str, Any]) -> Self:
+    def from_db(cls, d: dict[str, Any]) -> GrlIqData:
         res = GrlIqData.model_validate(d["data"])
 
         if d.get("category_result"):

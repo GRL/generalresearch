@@ -15,6 +15,40 @@ from generalresearch.models.repdata.survey import (
     RepDataSurveyHashed,
 )
 
+SURVEY_FIELDS = [
+    "survey_id",
+    "survey_uuid",
+    "survey_name",
+    "project_uuid",
+    "survey_status",
+    "country_iso",
+    "language_iso",
+    "estimated_loi",
+    "estimated_ir",
+    "collects_pii",
+    "allowed_devices",
+]
+STREAM_FIELDS = [
+    "stream_id",
+    "stream_uuid",
+    "stream_name",
+    "stream_status",
+    "calculation_type",
+    "qualification_hashes",
+    "hashed_quotas",
+    "expected_count",
+    "cpi",
+    "days_in_field",
+    "actual_ir",
+    "actual_loi",
+    "actual_conversion",
+    "actual_complete_count",
+    "actual_count",
+    "used_question_ids",
+    "survey_id",
+    "remaining_count",
+]
+
 
 class RepDataCriteriaManager(CriteriaManager):
     CONDITION_MODEL = RepDataCondition
@@ -22,39 +56,6 @@ class RepDataCriteriaManager(CriteriaManager):
 
 
 class RepDataSurveyManager(SurveyManager):
-    SURVEY_FIELDS = [
-        "survey_id",
-        "survey_uuid",
-        "survey_name",
-        "project_uuid",
-        "survey_status",
-        "country_iso",
-        "language_iso",
-        "estimated_loi",
-        "estimated_ir",
-        "collects_pii",
-        "allowed_devices",
-    ]
-    STREAM_FIELDS = [
-        "stream_id",
-        "stream_uuid",
-        "stream_name",
-        "stream_status",
-        "calculation_type",
-        "qualification_hashes",
-        "hashed_quotas",
-        "expected_count",
-        "cpi",
-        "days_in_field",
-        "actual_ir",
-        "actual_loi",
-        "actual_conversion",
-        "actual_complete_count",
-        "actual_count",
-        "used_question_ids",
-        "survey_id",
-        "remaining_count",
-    ]
 
     def get_survey_library(
         self,
@@ -127,7 +128,7 @@ class RepDataSurveyManager(SurveyManager):
         conn: pymysql.Connection = self.sql_helper.make_connection()
         conn.autocommit(True)
         c = conn.cursor()
-        create_fields = self.SURVEY_FIELDS + ["created", "last_updated"]
+        create_fields = SURVEY_FIELDS + ["created", "last_updated"]
 
         fields_str = ", ".join([f"`{x}`" for x in create_fields])
         values_str = ", ".join([f"%({x})s" for x in create_fields])
@@ -141,10 +142,10 @@ class RepDataSurveyManager(SurveyManager):
             args=survey_data,
         )
 
-        fields_str = ", ".join([f"`{x}`" for x in self.STREAM_FIELDS])
-        values_str = ", ".join([f"%({x})s" for x in self.STREAM_FIELDS])
+        fields_str = ", ".join([f"`{x}`" for x in STREAM_FIELDS])
+        values_str = ", ".join([f"%({x})s" for x in STREAM_FIELDS])
         stream_data = [
-            {k: v for k, v in stream.items() if k in self.STREAM_FIELDS}
+            {k: v for k, v in stream.items() if k in STREAM_FIELDS}
             for stream in d["streams"]
         ]
         for sd in stream_data:
@@ -161,10 +162,10 @@ class RepDataSurveyManager(SurveyManager):
 
     def update(self, surveys: list[RepDataSurveyHashed]) -> bool:
         now = datetime.now(tz=UTC)
-        update_fields = self.SURVEY_FIELDS + ["last_updated"]
+        update_fields = SURVEY_FIELDS + ["last_updated"]
 
         data = [survey.to_mysql() for survey in surveys]
-        survey_data = [[d[k] for k in self.SURVEY_FIELDS] + [now] for d in data]
+        survey_data = [[d[k] for k in SURVEY_FIELDS] + [now] for d in data]
         self.sql_helper.bulk_update(
             table_name="repdata_survey",
             field_names=update_fields,
@@ -175,7 +176,7 @@ class RepDataSurveyManager(SurveyManager):
         for d in data:
             for stream in d["streams"]:
                 stream["survey_id"] = d["survey_id"]
-                stream_data.append([stream[k] for k in self.STREAM_FIELDS])
+                stream_data.append([stream[k] for k in STREAM_FIELDS])
 
         self.sql_helper.bulk_update(
             table_name="repdata_surveystream",

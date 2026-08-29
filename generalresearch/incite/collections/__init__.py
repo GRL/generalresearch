@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 import subprocess
 import time
@@ -12,16 +11,18 @@ from typing import Any
 import dask
 import dask.dataframe as dd
 import pandas as pd
+import pyarrow as pa
 import pyarrow.parquet as pq
+from dask.distributed import Client as DaskClient
 from dask.distributed import Future
-from distributed import Client, as_completed
+from distributed import as_completed
 from more_itertools import chunked
 from pandera.pandas import DataFrameSchema
 from psycopg import Cursor
 from pydantic import Field, FilePath, ValidationInfo, field_validator
 from sentry_sdk import capture_exception
 
-from generalresearch.incite.base import CollectionBase, CollectionItemBase
+from generalresearch.incite.base import LOG, CollectionBase, CollectionItemBase
 from generalresearch.incite.schemas import (
     ARCHIVE_AFTER,
     ORDER_KEY,
@@ -49,9 +50,6 @@ from generalresearch.incite.schemas.thl_web import (
     UserHealthIPHistoryWSSchema,
 )
 from generalresearch.pg_helper import PostgresConfig
-from generalresearch.sql_helper import SqlHelper
-
-LOG = logging.getLogger("incite")
 
 DT_STR = "%Y-%m-%d %H:%M:%S"
 
@@ -106,18 +104,6 @@ class DFCollectionItem(CollectionItemBase):
 
     # --- Methods ---
 
-    def has_mysql(self) -> bool:
-        if self._collection.sql_helper is None:
-            return False
-
-        connected = True
-        try:
-            self._collection.sql_helper.execute_sql_query("""SELECT 1;""")
-        except:
-            connected = False
-
-        return connected
-
     def has_postgres(self) -> bool:
         if self._collection.pg_config is None:
             return False
@@ -125,7 +111,7 @@ class DFCollectionItem(CollectionItemBase):
         connected = True
         try:
             self._collection.pg_config.execute_sql_query("""SELECT 1;""")
-        except:
+        except AssertionError:
             connected = False
 
         return connected
@@ -148,7 +134,7 @@ class DFCollectionItem(CollectionItemBase):
         since = max([since, self.start])  # don't allow to query before the item's start
         df = df[df[order_key] < since].copy()
 
-        _df = self.from_mysql(since=since)
+        _df = self.from_db(since=since)
 
         if _df is not None:
             df = pd.concat([df, _df])
@@ -161,7 +147,7 @@ class DFCollectionItem(CollectionItemBase):
         return True
 
     def create_partial_archive(self) -> bool:
-        _df = self.from_mysql()
+        _df = self.from_db()
         if _df is None:
             # Returned no rows, but the period is not closed, so we
             #   don't want to mark as empty. Do nothing.
@@ -172,71 +158,15 @@ class DFCollectionItem(CollectionItemBase):
     def to_dict(self) -> dict[str, Any]:
         return self._to_dict()
 
-    def from_mysql(self, since: datetime | None = None) -> pd.DataFrame | None:
+    def from_db(self, since: datetime | None = None) -> pd.DataFrame | None:
         if self._collection.data_type == DFCollectionType.LEDGER:
             assert since is None, "Shouldn't pass since for Ledger item"
             assert self._collection.pg_config is not None
             return self.from_postgres_ledger()
         else:
-            if self._collection.sql_helper:
-                return self.from_mysql_standard(since=since)
-            else:
-                return self.from_postgres_standard(since=since)
+            return self.from_db_standard(since=since)
 
-    def from_mysql_standard(self, since: datetime | None = None) -> pd.DataFrame | None:
-
-        assert (
-            self._collection.data_type != DFCollectionType.LEDGER
-        ), "Can't call from_mysql_standard for Ledger DFCollectionItem"
-
-        start, finish = self.start, self.finish
-        LOG.debug(
-            f"{self._collection.data_type.value}.from_mysql("
-            f"start={start.strftime(DT_STR)}, "
-            f"finish={finish.strftime(DT_STR)})"
-        )
-        coll = self._collection
-        schema = coll._schema
-        sql_helper = coll.sql_helper
-
-        start = since or start
-        order_key = schema.metadata[ORDER_KEY]
-        cols = list(schema.columns.keys()) + [schema.index.name]
-        cols_str = ",".join(map(sql_helper._quote, cols))
-        db_name = sql_helper.db
-
-        try:
-            res = sql_helper.execute_sql_query(
-                query=f"""
-                    SELECT {cols_str}
-                    FROM `{db_name}`.`{coll.data_type.value}`
-                    WHERE `{order_key}` >= %s AND `{order_key}` < %s;
-                """,
-                params=[start, finish],
-            )
-        except Exception as e:
-            capture_exception(error=e)
-            LOG.error(f"_from_mysql Exception: {e}")
-            return None
-
-        if not res:
-            LOG.warning("_from_mysql query returned nothing")
-            # Return an empty df.DataFrame with the correct columns
-            return empty_dataframe_from_schema(coll._schema)
-
-        df = pd.DataFrame.from_records(res).set_index(coll._schema.index.name)
-        df = self.validate_df(df=df)
-
-        if df is None:
-            LOG.warning("_from_mysql query results failed validation")
-            # Schema validation can fail...
-            return None
-
-        return df
-
-    def from_postgres_standard(
-        self, since: datetime | None = None
-    ) -> pd.DataFrame | None:
+    def from_db_standard(self, since: datetime | None = None) -> pd.DataFrame | None:
         assert (
             self._collection.data_type != DFCollectionType.LEDGER
         ), "Can't call from_postgres_standard for Ledger DFCollectionItem"
@@ -250,6 +180,7 @@ class DFCollectionItem(CollectionItemBase):
         coll = self._collection
         schema = coll._schema
         pg_config = coll.pg_config
+        assert pg_config, "Must provide PostgresConfig"
 
         start = since or start
         order_key = schema.metadata[ORDER_KEY]
@@ -265,7 +196,7 @@ class DFCollectionItem(CollectionItemBase):
                 """,
                 params=[start, finish],
             )
-        except Exception as e:
+        except AssertionError as e:
             capture_exception(error=e)
             LOG.error(f"_from_postgres Exception: {e}")
             return None
@@ -298,13 +229,14 @@ class DFCollectionItem(CollectionItemBase):
         )
 
         coll = self._collection
+        assert coll.pg_config, "Must provide PostgresConfig"
         pg_config: PostgresConfig = coll.pg_config
 
         limit = 20000
         offset = 0
         res = []
         while True:
-            logging.info(
+            LOG.info(
                 f"{self._collection.data_type.value}.from_postgres_ledger({limit=}, {offset=})"
             )
             chunk = pg_config.execute_sql_query(
@@ -399,7 +331,7 @@ class DFCollectionItem(CollectionItemBase):
         """
         assert isinstance(ddf, dd.DataFrame), "must pass dask df"
 
-        client: Client | None = self._collection._client
+        client: DaskClient | None = self._collection._client
         # client = None
 
         if client:
@@ -455,7 +387,9 @@ class DFCollectionItem(CollectionItemBase):
         tmp_path = self.tmp_path()
         try:
             schema = self._collection._schema
-            partition = schema.metadata.get(PARTITION_ON, None)
+            assert schema
+            assert schema.metadata
+            partition = schema.metadata.get(PARTITION_ON)
 
             ddf.to_parquet(
                 path=tmp_path,
@@ -466,7 +400,7 @@ class DFCollectionItem(CollectionItemBase):
                 compression="brotli",
             )
 
-        except Exception as e:
+        except (pa.ArrowInvalid, pa.ArrowIOError, OSError) as e:
             LOG.exception(e)
             self.delete_archive(tmp_path)
             return False
@@ -516,7 +450,8 @@ class DFCollectionItem(CollectionItemBase):
 
         collection = self._collection
         schema = collection._schema
-        client: Client | None = collection._client
+        assert schema
+        client: DaskClient | None = collection._client
 
         next_numbered_path = self.next_numbered_path(self.partial_path)
         partial_path = self.partial_path
@@ -544,7 +479,8 @@ class DFCollectionItem(CollectionItemBase):
             return False
 
         try:
-            partition = schema.metadata.get(PARTITION_ON, None)
+            assert schema.metadata
+            partition = schema.metadata.get(PARTITION_ON)
             ddf.to_parquet(
                 path=next_numbered_path,
                 partition_on=partition,
@@ -553,7 +489,7 @@ class DFCollectionItem(CollectionItemBase):
                 write_metadata_file=True,
                 compression="brotli",
             )
-        except Exception as e:
+        except (pa.ArrowInvalid, pa.ArrowIOError, OSError) as e:
             LOG.exception(e)
             self.delete_archive(next_numbered_path)
             return False
@@ -572,7 +508,7 @@ class DFCollectionItem(CollectionItemBase):
 
         assert self.should_archive(), "not ready to archive!"
 
-        df: pd.DataFrame | None = self.from_mysql()
+        df: pd.DataFrame | None = self.from_db()
 
         if df is None:
             self.set_empty()
@@ -592,7 +528,6 @@ class DFCollection(CollectionBase):
 
     # --- Private ---
     pg_config: PostgresConfig | None = Field(default=None)
-    sql_helper: SqlHelper | None = Field(default=None)
 
     def __repr__(self):
         res = self.signature() + "\n"
@@ -620,7 +555,7 @@ class DFCollection(CollectionBase):
         return res
 
     @field_validator("data_type")
-    def check_data_type(cls, data_type, info: ValidationInfo):
+    def check_data_type(cls, data_type: DFCollectionType | None, info: ValidationInfo):
         if data_type is None:
             raise ValueError("Must explicitly provide a data_type")
 
@@ -647,7 +582,7 @@ class DFCollection(CollectionBase):
 
     def initial_load(
         self,
-        client: Client | None = None,
+        client: DaskClient | None = None,
         sync: bool = True,
         since: datetime | None = None,
         client_resources: dict[str, Any] | None = None,
@@ -685,7 +620,7 @@ class DFCollection(CollectionBase):
 
         if sync:
             fs = client.compute(fs, sync=False, priority=2, resources=client_resources)
-            ac = as_completed(fs, timeout=timeout)
+            _ = as_completed(fs, timeout=timeout)
             return fs
 
         else:
@@ -734,7 +669,7 @@ class DFCollection(CollectionBase):
 
     def force_rr_latest(
         self,
-        client: Client,
+        client: DaskClient,
         client_resources: dict[str, Any] | None = None,
         sync: bool = True,
     ) -> list[Future]:

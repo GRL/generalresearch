@@ -14,6 +14,9 @@ ListOrTupleOfListOrTuple = (
 
 DataBaseDsn = MySQLDsn | MariaDBDsn | PostgresDsn | None
 
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+
 
 class MultipleObjectsReturned(Exception):
     pass
@@ -131,7 +134,7 @@ class SqlHelper(SqlConnector):
     ) -> list[dict[str, Any]]:
         for param in params if params else []:
             if isinstance(param, (tuple, list, set)) and len(param) == 0:
-                logging.warning("param is empty. not executing query")
+                logger.warning("param is empty. not executing query")
                 return []
         connection = self.make_connection()
         c = connection.cursor()

@@ -132,7 +132,7 @@ class BrowserInfo(BaseModel):
 
 class DeviceInfo(BaseModel):
     family: DeviceModelFamily = Field()
-    brand: DeviceBrand = Field()
+    brand: DeviceBrand | None = Field(default=None)
     model: DeviceModelFamily = Field()
 
     @field_validator("family", "model", mode="before")
@@ -186,7 +186,7 @@ class GrlUserAgent(BaseModel):
     def ua_string_values(self) -> dict[str, str]:
         # Returns the raw parsed string values for each of these. To be used
         #   for db filtering, identifying trends, etc.
-        d = dict()
+        d = {}
         d["ua_browser_family"] = self.ua_parsed.browser.family
         d["ua_browser_version"] = self.ua_parsed.browser.version_string
         d["ua_os_family"] = self.ua_parsed.os.family

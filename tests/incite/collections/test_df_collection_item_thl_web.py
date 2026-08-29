@@ -250,7 +250,7 @@ class TestDFCollectionItemMethod:
             # Unlike .from_mysql_ledger(), .from_mysql_standard() will return
             #   back and empty df with the correct columns in place
             delete_df_collection(coll=df_collection)
-            df = item.from_mysql()
+            df = item.from_db()
             if df_collection.data_type == DFCollectionType.LEDGER:
                 assert df is None
             else:
@@ -260,7 +260,7 @@ class TestDFCollectionItemMethod:
 
             incite_item_factory(user=u1, item=item)
 
-            df = item.from_mysql()
+            df = item.from_db()
             assert isinstance(df, pd.DataFrame)
             assert not df.empty
             assert set(df.columns) == set(df_collection._schema.columns.keys())
@@ -401,7 +401,7 @@ class TestDFCollectionItemMethod:
 
             # Load up the data that we'll be using for various to_archive
             #   methods.
-            df = item.from_mysql()
+            df = item.from_db()
             ddf = dd.from_pandas(df, npartitions=1)
 
             # (1) Write the basic archive, the issue is that because it's
@@ -444,7 +444,7 @@ class TestDFCollectionItemMethod:
 
             # Load up the data that we'll be using for various to_archive
             #   methods. Will always be empty pd.DataFrames for now...
-            df = item.from_mysql()
+            df = item.from_db()
             ddf = dd.from_pandas(df, npartitions=1)
 
             # (1) Confirm a missing ddf (shouldn't bc of type hint) should
@@ -876,7 +876,7 @@ class TestDFCollectionItemFunctionalTest:
 
             # Load up the data that we'll be using for various to_archive
             #   methods. Will always be empty pd.DataFrames for now...
-            df = item.from_mysql()
+            df = item.from_db()
             ddf = dd.from_pandas(df, npartitions=1)
             assert isinstance(ddf, dd.DataFrame)
 
@@ -946,7 +946,7 @@ class TestDFCollectionItemFunctionalTest:
 
         for item in df_collection.items:
             assert not item.has_empty()
-            df: pd.DataFrame = item.from_mysql()
+            df: pd.DataFrame = item.from_db()
 
             # We do this check b/c the Ledger returns back None and
             #   I don't want it to fail when we go to make a ddf

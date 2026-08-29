@@ -242,7 +242,7 @@ class TestMilestoneContestUserViews:
     def test_list_user_eligible_country(
         self,
         user_with_wallet: User,
-        raffle_contest_factory: Callable[..., Contest],
+        raffle_contest_factory: Callable[..., RaffleContest],
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):

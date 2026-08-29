@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-import logging
 import math
 import socket
 import threading
 import time
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from redis.client import PubSub, Redis
 
+from generalresearch.incite.base import LOG
 from generalresearch.managers.base import RedisManager
 from generalresearch.models import Source
 from generalresearch.models.custom_types import UUIDStr
@@ -216,16 +216,18 @@ class UserStatsManager(RedisManager):
 
 
 class TaskStatsManager(RedisManager):
-    task_stats = [
-        "task_created_count_last_1h",
-        "task_created_count_last_24h",
-        "live_task_count",
-        "live_tasks_max_payout",
-        "TaskStatsManager:latest",
-    ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.task_stats = [
+            "task_created_count_last_1h",
+            "task_created_count_last_24h",
+            "live_task_count",
+            "live_tasks_max_payout",
+            "TaskStatsManager:latest",
+        ]
+
         self.SUM_HASH_LUA = self.redis_client.register_script(SUM_HASH_LUA_SCRIPT)
         self.MAX_HASH_LUA = self.redis_client.register_script(MAX_HASH_LUA_SCRIPT)
 
@@ -435,8 +437,8 @@ class SessionStatsManager(RedisManager):
             pipe.hincrby(name, key, 1)
             pipe.hexpire(name, ttl, key, nx=True)
             # BP-specific tracker
-            pipe.hincrby(name + ":" + user.product_id, key, 1)
-            pipe.hexpire(name + ":" + user.product_id, ttl, key, nx=True)
+            pipe.hincrby(f"{name}:{user.product_id}", key, 1)
+            pipe.hexpire(f"{name}:{user.product_id}", ttl, key, nx=True)
 
             # We're not returning this, but keep the sums, so we can
             # calculate the avg
@@ -444,8 +446,8 @@ class SessionStatsManager(RedisManager):
             value = round(session.elapsed.total_seconds())
             pipe.hincrby(name, key, value)
             pipe.hexpire(name, ttl, key, nx=True)
-            pipe.hincrby(name + ":" + user.product_id, key, value)
-            pipe.hexpire(name + ":" + user.product_id, ttl, key, nx=True)
+            pipe.hincrby(f"{name}:{user.product_id}", key, value)
+            pipe.hexpire(f"{name}:{user.product_id}", ttl, key, nx=True)
 
         pipe.execute()
 
@@ -476,31 +478,31 @@ class SessionStatsManager(RedisManager):
             pipe.hincrby(name, key, 1)
             pipe.hexpire(name, ttl, key, nx=True)
             # BP-specific tracker
-            pipe.hincrby(name + ":" + user.product_id, key, 1)
-            pipe.hexpire(name + ":" + user.product_id, ttl, key, nx=True)
+            pipe.hincrby(f"{name}:{user.product_id}", key, 1)
+            pipe.hexpire(f"{name}:{user.product_id}", ttl, key, nx=True)
 
             name = "sum_payouts_" + name_postfix
             amount = round(session.payout * 100)
             pipe.hincrby(name, key, amount)
             pipe.hexpire(name, ttl, key, nx=True)
-            pipe.hincrby(name + ":" + user.product_id, key, amount)
-            pipe.hexpire(name + ":" + user.product_id, ttl, key, nx=True)
+            pipe.hincrby(f"{name}:{user.product_id}", key, amount)
+            pipe.hexpire(f"{name}:{user.product_id}", ttl, key, nx=True)
 
             if session.user_payout:
                 name = "sum_user_payouts_" + name_postfix
                 amount = round(session.user_payout * 100)
                 pipe.hincrby(name, key, amount)
                 pipe.hexpire(name, ttl, key, nx=True)
-                pipe.hincrby(name + ":" + user.product_id, key, amount)
-                pipe.hexpire(name + ":" + user.product_id, ttl, key, nx=True)
+                pipe.hincrby(f"{name}:{user.product_id}", key, amount)
+                pipe.hexpire(f"{name}:{user.product_id}", ttl, key, nx=True)
 
             # We're not returning this, but keep the sums, so we can calculate the avg
             name = "session_complete_loi_sum_" + name_postfix
             value = round(session.elapsed.total_seconds())
             pipe.hincrby(name, key, value)
             pipe.hexpire(name, ttl, key, nx=True)
-            pipe.hincrby(name + ":" + user.product_id, key, value)
-            pipe.hexpire(name + ":" + user.product_id, ttl, key, nx=True)
+            pipe.hincrby(f"{name}:{user.product_id}", key, value)
+            pipe.hexpire(f"{name}:{user.product_id}", ttl, key, nx=True)
 
         pipe.execute()
 
@@ -563,6 +565,7 @@ class SessionStatsManager(RedisManager):
         res["session_avg_user_payout_last_24h"] = None
         res["session_complete_avg_loi_last_24h"] = None
         res["session_fail_avg_loi_last_24h"] = None
+
         if res["session_completes_last_24h"]:
             res["session_avg_payout_last_24h"] = math.ceil(
                 res["sum_payouts_last_24h"] / res["session_completes_last_24h"]
@@ -630,7 +633,7 @@ class EventManager(StatsManager):
 
     def get_active_subscribers(self) -> set[UUIDStr]:
         res = self.redis_client.pubsub_channels(f"{self.cache_prefix}:event-channel:*")
-        product_ids = {x.rsplit(":", 1)[-1] for x in res}
+        product_ids = {str(x.rsplit(":", 1)[-1]) for x in res}
         return product_ids
 
     def stats_worker(self):
@@ -638,7 +641,7 @@ class EventManager(StatsManager):
             try:
                 self.stats_worker_task()
             except Exception as e:
-                logging.exception(e)
+                LOG.exception(e)
             finally:
                 time.sleep(60)
 
@@ -654,14 +657,14 @@ class EventManager(StatsManager):
         lock_key = f"{self.cache_prefix}:event-channel-lock"
         res = self.redis_client.set(lock_key, 1, ex=120, nx=True)
         if not res:
-            logging.debug("failed to acquire stats_worker_task lock")
+            LOG.debug("failed to acquire stats_worker_task lock")
             return
 
-        logging.info("Acquired stats_worker_task lock")
+        LOG.info("Acquired stats_worker_task lock")
 
         for product_id in self.get_active_subscribers():
             if time.monotonic() - now > 120:
-                logging.exception("stats_worker_task is taking too long")
+                LOG.exception("stats_worker_task is taking too long")
                 break
             channel = self.get_channel_name(product_id)
             msg = self.get_stats_message(product_id=product_id)
@@ -680,7 +683,7 @@ class EventManager(StatsManager):
 
         return
 
-    def make_influx_point(self, channel: str, numsub: int):
+    def make_influx_point(self, channel: str, numsub: int) -> dict[str, Any]:
         return {
             "measurement": "redis_pubsub_subscribers",
             "tags": {"hostname": socket.gethostname(), "channel": channel},

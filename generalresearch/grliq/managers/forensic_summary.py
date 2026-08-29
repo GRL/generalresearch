@@ -109,7 +109,7 @@ def calculate_timing_summary(
         for k, v in country_distributions.items()
     }
 
-    out = dict()
+    out = {}
     for country_iso, median_rtts in country_median_rtts.items():
         country_stats = country_distributions[country_iso]
         z_scores = [
@@ -158,12 +158,14 @@ def run_user_forensic_summary(
     )
 
     session_uuids = {x["session_uuid"] for x in res}
-    timing_res: list[dict] = iq_em.filter_distinct_timing(session_uuids=session_uuids)
+    timing_res: list[dict[str, Any]] = iq_em.filter_distinct_timing(
+        session_uuids=session_uuids
+    )
 
     country_timing_data_summary = (
         calculate_timing_summary(redis_config=redis_config, timing_res=timing_res)
         if timing_res
-        else dict()
+        else {}
     )
 
     s = UserForensicSummary(

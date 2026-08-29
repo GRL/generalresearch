@@ -73,7 +73,7 @@ def test():
     time.sleep(0.5)
 
     # Kill a process in the pool
-    pid = list(pool._processes.keys())[0]
+    pid = next(iter(pool._processes.keys()))
     os.kill(pid, signal.SIGKILL)
     time.sleep(0.5)
 

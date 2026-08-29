@@ -1,20 +1,27 @@
+import logging
 import threading
 import time
 from collections.abc import Callable
 from functools import wraps
-from typing import Any, Optional
+from typing import ParamSpec, TypeVar
 
 from decorator import decorator
 from wrapt import FunctionWrapper, ObjectProxy
 
+P = ParamSpec("P")
+R = TypeVar("R")
+
+ExceptionType = type[BaseException]
+ExceptionsArg = ExceptionType | tuple[ExceptionType, ...]
+
 
 def retry(
-    exceptions,
+    exceptions: ExceptionsArg,
     tries: int = 4,
     delay: float = 0.5,
     backoff: int = 2,
-    logger: Any | None = None,
-) -> Callable:
+    logger: logging.Logger | None = None,
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """
     https://www.calazan.com/retry-decorator-for-python-3/
     Retry calling the decorated function using an exponential backoff.
@@ -29,10 +36,10 @@ def retry(
         logger: Logger to use. If None, print.
     """
 
-    def deco_retry(f):
+    def deco_retry(f: Callable[P, R]) -> Callable[P, R]:
 
         @wraps(f)
-        def f_retry(*args, **kwargs):
+        def f_retry(*args: P.args, **kwargs: P.kwargs) -> R:
             mtries, mdelay = tries, delay
             while mtries > 1:
                 try:

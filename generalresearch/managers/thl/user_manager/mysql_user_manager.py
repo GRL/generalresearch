@@ -172,7 +172,7 @@ class MysqlUserManager:
 
         return user
 
-    @lru_cache(maxsize=5000)
+    @lru_cache(maxsize=5_000)
     def product_id_exists(self, product_id: str):
         # 'id' is the primary key, there can only be 0 or 1
         query = """

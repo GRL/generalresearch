@@ -9,20 +9,21 @@ from more_itertools import chunked
 from generalresearch.managers.base import SqlManager
 from generalresearch.models.thl.survey import MarketplaceCondition
 
+DB_FIELDS = [
+    "hash",
+    "question_id",
+    "logical_operator",
+    "values",
+    "value_type",
+    "negate",
+]
+
 
 class CriteriaManager(SqlManager, ABC):
     """
     Using the terms "criteria" & "condition" interchangeably!
     """
 
-    DB_FIELDS = [
-        "hash",
-        "question_id",
-        "logical_operator",
-        "values",
-        "value_type",
-        "negate",
-    ]
     CONDITION_MODEL = None
     TABLE_NAME = ""
 
@@ -59,7 +60,7 @@ class CriteriaManager(SqlManager, ABC):
 
     def update(self, conditions: Collection[MarketplaceCondition]) -> None:
         # Add any new hashes into the DB
-        this_hashes = set([condition.criterion_hash for condition in conditions])
+        this_hashes = {condition.criterion_hash for condition in conditions}
         known_hashes = self.filter_exists(this_hashes)
         new_hashes = this_hashes - known_hashes
 
@@ -94,7 +95,6 @@ class CriteriaManager(SqlManager, ABC):
                     args=chunk,
                 )
                 conn.commit()
-
 
     @property
     def mysql_fields(self) -> str:

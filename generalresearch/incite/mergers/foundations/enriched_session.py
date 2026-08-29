@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import dask.dataframe as dd
 import pandas as pd
+from dask.distributed import Client as DaskClient
 from dask.distributed import as_completed
-from distributed import Client
 from more_itertools import chunked, flatten
 
 from generalresearch.incite.collections.thl_web import (
@@ -46,7 +46,7 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
         session_coll: SessionDFCollection,
         wall_coll: WallDFCollection,
         pg_config: PostgresConfig,
-        client: Client | None = None,
+        client: DaskClient | None = None,
         client_resources: dict[str, Any] | None = None,
     ) -> None:
 
@@ -140,9 +140,9 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
 
         try:
             results = client.gather(list(futures))
-        except Exception as e:
+        except Exception:
             client.cancel(futures, asynchronous=False, force=True)
-            raise e
+            raise
 
         dfp = pd.DataFrame(
             list(flatten(results)), columns=["user_id", "product_id", "team_id"]
@@ -154,18 +154,13 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
         df = df[df["started"].between(start, end)]
 
         is_missing = df[["product_id"]].isna().sum().sum() > 0
-        session_is_partial = any([w.should_archive() is False for w in session_items])
+        session_is_partial = any(w.should_archive() is False for w in session_items)
         session_is_missing = any(
-            [
-                w.should_archive() is True and w.has_archive() is False
-                for w in session_items
-            ]
+            w.should_archive() is True and w.has_archive() is False
+            for w in session_items
         )
         wall_is_missing = any(
-            [
-                w.should_archive() is True and w.has_archive() is False
-                for w in wall_items
-            ]
+            w.should_archive() is True and w.has_archive() is False for w in wall_items
         )
         is_partial = (
             is_missing or session_is_partial or session_is_missing or wall_is_missing
@@ -203,7 +198,7 @@ class EnrichedSessionMerge(MergeCollection):
 
     def build(
         self,
-        client: Client,
+        client: DaskClient,
         session_coll: SessionDFCollection,
         wall_coll: WallDFCollection,
         pg_config: PostgresConfig,
@@ -232,7 +227,7 @@ class EnrichedSessionMerge(MergeCollection):
     def to_admin_response(
         self,
         rr: ReportRequest,
-        client: Client,
+        client: DaskClient,
         product_ids: list[UUIDStr] | None = None,
         user: User | None = None,
     ) -> pd.DataFrame:
@@ -243,6 +238,7 @@ class EnrichedSessionMerge(MergeCollection):
         filters = []
 
         if user:
+            assert product_ids
             assert (
                 len(product_ids) <= 1
             ), "Can't search more than 1 Product ID for a specific User"
