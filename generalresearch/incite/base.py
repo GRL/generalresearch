@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import glob
-import logging
 import os
 import re
 import shutil
@@ -46,7 +45,8 @@ from pydantic.json_schema import SkipJsonSchema
 from sentry_sdk import capture_exception
 
 from generalresearch.config import is_debug
-from generalresearch.incite.collections import DFCollectionItem
+from generalresearch.incite import LOG
+from generalresearch.incite.collections.base import DFCollectionItem
 from generalresearch.incite.schemas import (
     ARCHIVE_AFTER,
     empty_dataframe_from_schema,
@@ -54,16 +54,14 @@ from generalresearch.incite.schemas import (
 from generalresearch.models.custom_types import AwareDatetimeISO
 
 if TYPE_CHECKING:
-    from generalresearch.incite.collections import DFCollection
+    from generalresearch.incite.collections.base import DFCollection
     from generalresearch.incite.collections.thl_marketplaces import (
         DFCollectionType,
     )
-    from generalresearch.incite.mergers import MergeCollection, MergeType
+    from generalresearch.incite.mergers.base import MergeCollection, MergeType
 
     Collection = DFCollection | MergeCollection
 
-logging.basicConfig()
-LOG = logging.getLogger(f"{__name__}.incite")
 
 # Item = Union["DFCollectionItem", "MergeCollectionItem"]
 Item = Any

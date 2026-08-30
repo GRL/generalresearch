@@ -115,9 +115,8 @@ class GRLBaseSettings(BaseSettings):
     amt_bonus_cashout_method_id: str | None = Field(default=None)
     amt_assignment_cashout_method_id: str | None = Field(default=None)
 
-    # --- Maxmind Configuration ---
-    maxmind_account_id: str | None = Field(default=None)
-    maxmind_license_key: str | None = Field(default=None)
+    # --- GRIP Configuration ---
+    grip_token: str | None = Field(default=None)
 
 
 EXAMPLE_PRODUCT_ID = "1108d053e4fa47c5b0dbdcd03a7981e7"

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import pytest
 
 from generalresearch.incite.base import GRLDatasets
-from generalresearch.incite.mergers import MergeType
+from generalresearch.incite.mergers.base import MergeType
 from generalresearch.incite.mergers.foundations.enriched_session import (
     EnrichedSessionMerge,
 )

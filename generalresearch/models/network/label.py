@@ -51,6 +51,7 @@ class IPLabelSource(StrEnum):
     INTERNAL_USE = "internal_use"
 
     # An external "security" service flagged this IP
+    GRIP = "grip"
     SPUR = "spur"
     IPINFO = "ipinfo"
     MAXMIND = "maxmind"

@@ -6,7 +6,7 @@ from typing import Any, Literal
 from distributed import Client
 
 from generalresearch.incite.collections.thl_web import UserDFCollection
-from generalresearch.incite.mergers import (
+from generalresearch.incite.mergers.base import (
     MergeCollection,
     MergeCollectionItem,
     MergeType,

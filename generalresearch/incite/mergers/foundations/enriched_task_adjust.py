@@ -12,7 +12,7 @@ from generalresearch.incite.collections.thl_web import (
     TaskAdjustmentDFCollection,
 )
 from generalresearch.incite.exceptions import BuildError, BuildItemsError
-from generalresearch.incite.mergers import (
+from generalresearch.incite.mergers.base import (
     MergeCollection,
     MergeCollectionItem,
     MergeType,

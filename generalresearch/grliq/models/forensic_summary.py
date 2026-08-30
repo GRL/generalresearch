@@ -10,6 +10,7 @@ from typing import (
 )
 
 import numpy as np
+from grip_client.enums import AccessType
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -27,7 +28,6 @@ from generalresearch.grliq.models.forensic_result import (
 )
 from generalresearch.models.custom_types import AwareDatetimeISO, IPvAnyAddressStr
 from generalresearch.models.thl.locales import CountryISO
-from generalresearch.models.thl.maxmind.definitions import UserType
 
 example_rtt_percentiles = (
     [133.332]
@@ -185,7 +185,9 @@ class IPTimingDataSummary(BaseModel):
     client_ip: IPvAnyAddressStr = Field(examples=["123.123.123.123"])
     country_iso: CountryISO = Field(examples=["us"])
     server_location: Literal["fremont_ca"] = Field(default="fremont_ca")
-    user_type: UserType | None = Field(default=None, examples=[UserType.RESIDENTIAL])
+    user_type: AccessType | None = Field(
+        default=None, examples=[AccessType.RESIDENTIAL]
+    )
     expected_rtt_range: tuple[float, float] = Field(
         description="The expected rtt range for this IP (based on country_iso/user_type) to server_location",
         examples=[(45.193, 120.841)],

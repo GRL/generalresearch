@@ -60,3 +60,7 @@ target-version = "py314"
 exclude = [
     "generalresearch/thl_django",
 ]
+
+[tool.pylint.messages_control]
+disable = ["all"]
+enable = ["cyclic-import"]

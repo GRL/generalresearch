@@ -13,7 +13,7 @@ from generalresearch.incite.collections.thl_web import (
     WallDFCollection,
 )
 from generalresearch.incite.exceptions import FetchError
-from generalresearch.incite.mergers import (
+from generalresearch.incite.mergers.base import (
     MergeCollection,
     MergeCollectionItem,
     MergeType,

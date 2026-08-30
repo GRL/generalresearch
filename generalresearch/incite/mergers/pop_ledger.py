@@ -9,7 +9,7 @@ from distributed import Client
 from more_itertools import flatten
 
 from generalresearch.incite.collections.thl_web import LedgerDFCollection
-from generalresearch.incite.mergers import (
+from generalresearch.incite.mergers.base import (
     MergeCollection,
     MergeCollectionItem,
     MergeType,

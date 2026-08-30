@@ -22,18 +22,59 @@ from generalresearch.models.custom_types import (
     UUIDStr,
     check_valid_uuid,
 )
-from generalresearch.models.thl.ledger_example import (
-    _example_user_tx_adjustment,
-    _example_user_tx_bonus,
-    _example_user_tx_complete,
-    _example_user_tx_payout,
-)
 from generalresearch.models.thl.pagination import Page
 from generalresearch.models.thl.payout_format import (
     PayoutFormatType,
     format_payout_format,
 )
 from generalresearch.utils.enum import ReprEnumMeta
+
+
+def _example_user_tx_payout(schema: dict[str, Any]) -> None:
+
+    schema["example"] = UserLedgerTransactionUserPayout(
+        product_id=uuid4().hex,
+        payout_id=uuid4().hex,
+        amount=-5,
+        description="HIT Reward",
+        payout_format="${payout/100:.2f}",
+        created=datetime.now(tz=UTC),
+    ).model_dump(mode="json")
+
+
+def _example_user_tx_bonus(schema: dict[str, Any]) -> None:
+
+    schema["example"] = UserLedgerTransactionUserBonus(
+        product_id=uuid4().hex,
+        amount=100,
+        description="Compensation Bonus",
+        payout_format="${payout/100:.2f}",
+        created=datetime.now(tz=UTC),
+    ).model_dump(mode="json")
+
+
+def _example_user_tx_complete(schema: dict[str, Any]) -> None:
+
+    schema["example"] = UserLedgerTransactionTaskComplete(
+        product_id=uuid4().hex,
+        amount=38,
+        description="Task Complete",
+        payout_format="${payout/100:.2f}",
+        created=datetime.now(tz=UTC),
+        tsid=uuid4().hex,
+    ).model_dump(mode="json")
+
+
+def _example_user_tx_adjustment(schema: dict[str, Any]) -> None:
+
+    schema["example"] = UserLedgerTransactionTaskAdjustment(
+        product_id=uuid4().hex,
+        amount=-38,
+        description="Task Adjustment",
+        payout_format="${payout/100:.2f}",
+        created=datetime.now(tz=UTC),
+        tsid=uuid4().hex,
+    ).model_dump(mode="json")
 
 
 class Direction(IntEnum, metaclass=ReprEnumMeta):
@@ -393,7 +434,7 @@ class UserLedgerTransaction(BaseModel):
     # It is optional b/c we'll calculate this from the query
     balance_after: int | None = Field(default=None)
 
-    def create_url(self, product_id: str):
+    def create_url(self, product_id: str) -> str | None:
         raise NotImplementedError()
 
     @computed_field(
@@ -431,7 +472,7 @@ class UserLedgerTransactionUserPayout(UserLedgerTransaction):
         examples=["a3848e0a53d64f68a74ced5f61b6eb68"],
     )
 
-    def create_url(self, product_id: str):
+    def create_url(self, product_id: str) -> str | None:
         return f"https://fsb.generalresearch.com/{product_id}/cashout/{self.payout_id}/"
 
     @model_validator(mode="after")
@@ -459,7 +500,7 @@ class UserLedgerTransactionUserBonus(UserLedgerTransaction):
         default="Compensation Bonus",
     )
 
-    def create_url(self, product_id: str):
+    def create_url(self, product_id: str) -> str | None:
         return None
 
     @model_validator(mode="after")
@@ -497,7 +538,7 @@ class UserLedgerTransactionTaskComplete(UserLedgerTransaction):
         examples=["a3848e0a53d64f68a74ced5f61b6eb68"],
     )
 
-    def create_url(self, product_id: str):
+    def create_url(self, product_id: str) -> str | None:
         return f"https://fsb.generalresearch.com/{product_id}/status/{self.tsid}/"
 
     @model_validator(mode="after")
@@ -528,7 +569,7 @@ class UserLedgerTransactionTaskAdjustment(UserLedgerTransaction):
         examples=["a3848e0a53d64f68a74ced5f61b6eb68"],
     )
 
-    def create_url(self, product_id: str):
+    def create_url(self, product_id: str) -> str | None:
         return f"https://fsb.generalresearch.com/{product_id}/status/{self.tsid}/"
 
 

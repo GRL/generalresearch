@@ -185,7 +185,7 @@ class SessionStatusCode2(IntEnum, metaclass=ReprEnumMeta):
 
     # Unable to parse either the bucket_id, request_id, or nudge_id from the url
     ENTRY_URL_MODIFICATION = 1
-    # The client's IP failed maxmind lookup, or we failed to store it for some reason
+    # The client's IP failed GRIP lookup, or we failed to store it for some reason
     UNRECOGNIZED_IP = 2
     # User is using an anonymous IP
     USER_IS_ANONYMOUS = 3

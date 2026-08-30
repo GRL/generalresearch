@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal, Self
 
 from faker import Faker
+from grip_client.enums import AccessType
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -19,7 +20,6 @@ from generalresearch.models.custom_types import (
     CountryISOLike,
     IPvAnyAddressStr,
 )
-from generalresearch.models.thl.maxmind.definitions import UserType
 from generalresearch.pg_helper import PostgresConfig
 
 fake = Faker()
@@ -173,11 +173,11 @@ class IPInformation(BaseModel):
         default=None,
         description="A score indicating the likelihood that the IP address is static.",
     )
-    user_type: UserType | None = Field(
+    user_type: AccessType | None = Field(
         default=None,
         description="The type of user associated with the IP address "
         "(e.g., 'residential', 'business').",
-        examples=[UserType.SCHOOL],
+        examples=[AccessType.RESIDENTIAL],
     )
     postal_code: str | None = Field(
         default=None,
@@ -218,8 +218,8 @@ class IPInformation(BaseModel):
 
     @property
     def basic(self) -> bool:
-        # This could be almost any field, but we're checking here if maxmind
-        #   insights was run on this record. If not, then most of the optional
+        # This could be almost any field, but we're checking here if GRIP
+        #   was run on this record. If not, then most of the optional
         #   fields will be None
         return self.is_anonymous is None
 
@@ -253,7 +253,7 @@ class IPInformation(BaseModel):
         return d
 
     @classmethod
-    def from_mysql(cls, d: dict) -> Self:
+    def from_mysql(cls, d: dict[str, Any]) -> Self:
         d["updated"] = d["updated"].replace(tzinfo=UTC)
 
         return cls.model_validate(d)
@@ -261,3 +261,13 @@ class IPInformation(BaseModel):
 
 class GeoIPInformation(IPInformation, IPGeoname):
     model_config = ConfigDict(extra="ignore")
+
+    geoname_id: PositiveInt  # type: ignore[reportIncompatibleVariableOverride]
+
+    @field_validator("geoname_id", mode="before")
+    @classmethod
+    def _coerce_geoname_id(cls, v: PositiveInt | None):
+        if v is None:
+            raise ValueError("GeoIPInformation can't be constructed")
+
+        return v

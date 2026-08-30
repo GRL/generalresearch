@@ -15,7 +15,7 @@ from generalresearch.incite.collections.thl_web import (
     UserDFCollection,
     WallDFCollection,
 )
-from generalresearch.incite.mergers import MergeType
+from generalresearch.incite.mergers.base import MergeType
 from generalresearch.incite.mergers.foundations.enriched_session import (
     EnrichedSessionMerge,
 )
@@ -47,9 +47,7 @@ def session_df_collection(
     )
 
 
-def wall_df_collection(
-    ds: GRLDatasets, pg_config: PostgresConfig
-) -> WallDFCollection:
+def wall_df_collection(ds: GRLDatasets, pg_config: PostgresConfig) -> WallDFCollection:
     return WallDFCollection(
         offset="49h",
         pg_config=pg_config,
@@ -58,9 +56,7 @@ def wall_df_collection(
     )
 
 
-def user_df_collection(
-    ds: GRLDatasets, pg_config: PostgresConfig
-) -> UserDFCollection:
+def user_df_collection(ds: GRLDatasets, pg_config: PostgresConfig) -> UserDFCollection:
     return UserDFCollection(
         offset="73h",
         pg_config=pg_config,

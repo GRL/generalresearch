@@ -296,9 +296,9 @@ class WallBase(BaseModel):
         finished: datetime | None = None,
     ) -> None:
         # This should be called by the wall manager in order to actually update db
-        from generalresearch import wall_status_codes
+        from generalresearch.wall_status_codes import annotate_status_code
 
-        status, status_code_1, status_code_2 = wall_status_codes.annotate_status_code(
+        status, status_code_1, status_code_2 = annotate_status_code(
             self.source,
             ext_status_code_1,
             ext_status_code_2,
@@ -317,18 +317,18 @@ class WallBase(BaseModel):
         )
 
     def is_soft_fail(self) -> bool:
-        from generalresearch import wall_status_codes
+        from generalresearch.wall_status_codes import is_soft_fail
 
         assert self.status is not None, "status should not be None"
         assert self.status_code_1 is not None, "status_code_1 should not be None"
-        return wall_status_codes.is_soft_fail(self)
+        return is_soft_fail(self)
 
     def stop_marketplace_session(self) -> bool:
-        from generalresearch import wall_status_codes
+        from generalresearch.wall_status_codes import stop_marketplace_session
 
         assert self.status is not None, "status should not be None"
         assert self.status_code_1 is not None, "status_code_1 should not be None"
-        return wall_status_codes.stop_marketplace_session(self)
+        return stop_marketplace_session(self)
 
     def get_status_after_adjustment(self) -> Status:
         if self.adjusted_status in {
@@ -349,10 +349,13 @@ class WallBase(BaseModel):
             WallAdjustedStatus.CPI_ADJUSTMENT,
         }:
             return self.adjusted_cpi
+
         elif self.adjusted_status == WallAdjustedStatus.ADJUSTED_TO_FAIL:
             return Decimal(0)
+
         elif self.status == Status.COMPLETE:
             return self.cpi
+
         else:
             return Decimal(0)
 
@@ -442,7 +445,7 @@ class Wall(WallBase):
         d = self.model_dump(mode="json", exclude={"elapsed"})
         return json.dumps(d)
 
-    def model_dump_mysql(self, *args, **kwargs) -> dict:
+    def model_dump_mysql(self, *args, **kwargs) -> dict[str, Any]:
         # Generate a dictionary representation of the model, with special handling for datetimes
         d = self.model_dump(mode="json", exclude={"elapsed"}, *args, **kwargs)
         d["started"] = self.started.replace(tzinfo=None)
@@ -496,13 +499,13 @@ class WallOut(WallBase):
     )
 
     # Serialize user_cpi to an int
-    @field_serializer("user_cpi", return_type=int)
-    def serialize_user_cpi(self, v: Decimal, _info):
+    @field_serializer("user_cpi", return_type=int | None)
+    def serialize_user_cpi(self, v: Decimal | None) -> int | None:
         return decimal_to_int_cents(v)
 
     # If user_cpi is an int, put it back to a decimal
     @field_validator("user_cpi", mode="before")
-    def deserialize_user_cpi(cls, v):
+    def deserialize_user_cpi(cls, v: Decimal | None) -> Decimal | None:
         if isinstance(v, int):
             return int_cents_to_decimal(v)
         return v
@@ -510,7 +513,7 @@ class WallOut(WallBase):
     # noinspection PyNestedDecorators
     @field_validator("user_cpi", mode="after")
     @classmethod
-    def check_cpi_decimal_places(cls, v: Decimal) -> Decimal:
+    def check_cpi_decimal_places(cls, v: Decimal | None) -> Decimal | None:
         if v is not None:
             assert (
                 v.as_tuple().exponent >= -5

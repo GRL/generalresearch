@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Self
 
 from faker import Faker
+from grip_client.enums import AccessType
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -22,7 +23,6 @@ from generalresearch.models.thl.ipinfo import (
     GeoIPInformation,
     normalize_ip,
 )
-from generalresearch.models.thl.maxmind.definitions import UserType
 from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
@@ -53,7 +53,11 @@ class UserIPRecord(BaseModel):
         )
 
     @property
-    def user_type(self) -> UserType | None:
+    def user_type(self) -> AccessType | None:
+        return self.information.user_type if self.information else None
+
+    @property
+    def access_type(self) -> AccessType | None:
         return self.information.user_type if self.information else None
 
     @property
@@ -203,7 +207,6 @@ class UserIPHistory(BaseModel):
         for x in self.ips:
             if res.get(x.ip):
                 x.information = res[x.ip]
-
 
     def collapse_ip_records(self):
         """

@@ -12,7 +12,7 @@ from generalresearch.incite.collections.thl_web import (
     SessionDFCollection,
     WallDFCollection,
 )
-from generalresearch.incite.mergers import (
+from generalresearch.incite.mergers.base import (
     MergeCollection,
     MergeCollectionItem,
     MergeType,
@@ -25,11 +25,11 @@ from generalresearch.incite.schemas.mergers.foundations.enriched_wall import (
     EnrichedWallSchema,
 )
 from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.models.admin.request import ReportRequest
+    from generalresearch.models.thl.user import User
 
 LOG = logging.getLogger("incite")
 

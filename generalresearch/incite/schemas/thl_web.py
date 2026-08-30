@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 import pandas as pd
+from grip_client.enums import AccessType
 from pandera.pandas import Check, Column, DataFrameSchema, Index, MultiIndex
 
 from generalresearch.incite.schemas import ARCHIVE_AFTER, ORDER_KEY
@@ -16,7 +17,6 @@ from generalresearch.models.thl.definitions import (
     WallStatusCode2,
 )
 from generalresearch.models.thl.ledger import TransactionMetadataColumns
-from generalresearch.models.thl.maxmind.definitions import UserType
 
 IP_REGEX_PATTERN = (
     r"^((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4]["
@@ -392,7 +392,7 @@ THLIPInfoSchema = DataFrameSchema(
             dtype=str,
             checks=[
                 Check.str_length(min_value=3, max_value=255),
-                Check.isin([e.value for e in UserType]),
+                Check.isin([e.value for e in AccessType]),
             ],
             nullable=True,
         ),
