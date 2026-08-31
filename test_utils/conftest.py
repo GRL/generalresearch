@@ -204,11 +204,11 @@ def gr_repo(
         _ran[repo_url] = True
 
         ssh_cmd = (
-            f"ssh -i {git_key_path} "
+            f'ssh -i "{git_key_path}" '
             "-o IdentitiesOnly=yes "
             "-o StrictHostKeyChecking=no "
         )
-        env = {"GIT_SSH_COMMAND": ssh_cmd}
+        env = {**os.environ, "GIT_SSH_COMMAND": ssh_cmd}
         print("SSH ENV", env)
 
         if repo_path.exists():
