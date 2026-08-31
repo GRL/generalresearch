@@ -1,26 +1,26 @@
 from decimal import Decimal
 
-from generalresearch.models.thl.finance import (
-    POPFinancial,
-    ProductBalances,
-)
-from generalresearch.models.thl.payout import (
-    BrokerageProductPayoutEvent,
-    PayoutEvent,
-)
-from generalresearch.models.thl.product import Product
+# from generalresearch.models.thl.finance import (
+#     POPFinancial,
+#     ProductBalances,
+# )
+# from generalresearch.models.thl.payout import (
+#     BrokerageProductPayoutEvent,
+#     PayoutEvent,
+# )
+# from generalresearch.models.thl.product import Product
 
-_ = (
-    Product,
-    PayoutEvent,
-    BrokerageProductPayoutEvent,
-    ProductBalances,
-    POPFinancial,
-)
+# _ = (
+#     Product,
+#     PayoutEvent,
+#     BrokerageProductPayoutEvent,
+#     ProductBalances,
+#     POPFinancial,
+# )
 
-Product.model_rebuild()
-PayoutEvent.model_rebuild()
-BrokerageProductPayoutEvent.model_rebuild()
+# Product.model_rebuild()
+# PayoutEvent.model_rebuild()
+# BrokerageProductPayoutEvent.model_rebuild()
 
 
 def decimal_to_int_cents(usd: Decimal | None) -> int | None:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 from datetime import UTC, datetime, timedelta
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
 from faker import Faker
 from grip_client.enums import AccessType
@@ -19,13 +19,13 @@ from generalresearch.models.custom_types import (
     CountryISOLike,
     IPvAnyAddressStr,
 )
-from generalresearch.models.thl.ipinfo import (
-    GeoIPInformation,
-    normalize_ip,
-)
-from generalresearch.models.thl.user import User
+from generalresearch.models.thl.ipinfo import normalize_ip
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.ipinfo import GeoIPInformation
+    from generalresearch.models.thl.user import User
 
 fake = Faker()
 

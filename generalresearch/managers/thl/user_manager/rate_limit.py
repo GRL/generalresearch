@@ -5,8 +5,10 @@ from limits.limits import TIME_TYPES, safe_string
 from pydantic import RedisDsn
 
 from generalresearch.managers.thl.user_manager import (
-    UserCreateNotAllowedError,
     get_bp_user_create_limit_hourly,
+)
+from generalresearch.managers.thl.user_manager.exceptions import (
+    UserCreateNotAllowedError,
 )
 from generalresearch.models.thl.product import Product
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from typing import Any, Literal
 
 import dask.dataframe as dd
@@ -8,6 +7,7 @@ import pandas as pd
 from distributed import Client
 from more_itertools import flatten
 
+from generalresearch.incite import LOG
 from generalresearch.incite.collections.thl_web import LedgerDFCollection
 from generalresearch.incite.mergers.base import (
     MergeCollection,
@@ -16,8 +16,6 @@ from generalresearch.incite.mergers.base import (
 )
 from generalresearch.incite.schemas.mergers.pop_ledger import PopLedgerSchema
 from generalresearch.models.thl.ledger import Direction, TransactionType
-
-LOG = logging.getLogger("incite")
 
 
 class PopLedgerMergeItem(MergeCollectionItem):

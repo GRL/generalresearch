@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from datetime import timedelta
 from typing import Any, Literal
 
@@ -9,6 +8,7 @@ import pandas as pd
 from distributed import Client
 from sentry_sdk import capture_exception
 
+from generalresearch.incite import LOG
 from generalresearch.incite.collections.thl_web import WallDFCollection
 from generalresearch.incite.exceptions import BuildError
 from generalresearch.incite.mergers.base import (
@@ -24,8 +24,6 @@ from generalresearch.incite.schemas.mergers.ym_survey_wall import (
 )
 from generalresearch.models.custom_types import AwareDatetimeISO
 
-LOG = logging.getLogger("incite")
-
 
 class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
 
@@ -39,7 +37,7 @@ class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
         LOG.info(f"YMSurveyWallMerge.build({self.start=}, {self.finish=})")
         ir: pd.Interval = self.interval
         start, _ = self.start, self.finish
-        ddf = wall_coll.ddf(
+        ddf: dd.DataFrame | None = wall_coll.ddf(
             items=wall_coll.get_items(start),
             force_rr_latest=False,
             include_partial=True,
@@ -61,6 +59,7 @@ class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
             ],
             filters=[("started", ">=", start)],
         )
+        assert isinstance(ddf, dd.DataFrame)
         ddf = ddf[ddf["started"] > start]
 
         LOG.warning("YMSurveyWallMerge: merge session_collection")
@@ -92,6 +91,7 @@ class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
         )
 
         df = client.compute(ddf, resources=client_resources, sync=True)
+        assert isinstance(df, pd.DataFrame)
         df["elapsed"] = (df["finished"] - df["started"]).dt.total_seconds()
         df["elapsed"] = df["elapsed"].round().astype("Int64")
         df = df.drop(columns={"finished", "payout"}, errors="ignore")

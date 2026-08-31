@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Self
+from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import BaseModel, Field, NonNegativeFloat, PositiveInt
 
-from generalresearch.models.custom_types import AwareDatetimeISO
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import AwareDatetimeISO
 
 
 class AuditLogLevel(int, Enum):
@@ -73,6 +74,6 @@ class AuditLog(BaseModel):
         return d
 
     @classmethod
-    def from_mysql(cls, d: dict) -> Self:
+    def from_mysql(cls, d: dict[str, Any]) -> Self:
         d["created"] = d["created"].replace(tzinfo=UTC)
-        return AuditLog.model_validate(d)
+        return cls.model_validate(d)

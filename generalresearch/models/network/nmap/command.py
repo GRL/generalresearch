@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import subprocess
+from typing import TYPE_CHECKING
 
 from generalresearch.models.network.nmap.parser import parse_nmap_xml
 from generalresearch.models.network.nmap.result import NmapResult
-from generalresearch.models.network.tool_run_command import NmapRunCommand
+
+if TYPE_CHECKING:
+    from generalresearch.models.network.tool_run_command import NmapRunCommand
 
 
 def build_nmap_command(

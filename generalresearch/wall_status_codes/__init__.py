@@ -1,6 +1,7 @@
+from typing import TYPE_CHECKING
+
 from generalresearch.models import Source
 from generalresearch.models.thl.definitions import Status, StatusCode1
-from generalresearch.models.thl.session import Wall
 from generalresearch.wall_status_codes import (
     cint,
     dynata,
@@ -15,6 +16,9 @@ from generalresearch.wall_status_codes import (
     sago,
     spectrum,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.session import Wall
 
 
 def annotate_status_code(

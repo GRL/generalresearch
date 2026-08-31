@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -8,6 +7,7 @@ import dask.dataframe as dd
 import pandas as pd
 from distributed import Client
 
+from generalresearch.incite import LOG
 from generalresearch.incite.collections.thl_web import (
     SessionDFCollection,
     WallDFCollection,
@@ -30,8 +30,6 @@ from generalresearch.pg_helper import PostgresConfig
 if TYPE_CHECKING:
     from generalresearch.models.admin.request import ReportRequest
     from generalresearch.models.thl.user import User
-
-LOG = logging.getLogger("incite")
 
 
 class EnrichedWallMergeItem(MergeCollectionItem):

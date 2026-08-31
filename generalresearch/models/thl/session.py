@@ -42,12 +42,12 @@ from generalresearch.models.thl.definitions import (
     WallAdjustedStatus,
     WallStatusCode2,
 )
-from generalresearch.models.thl.user import User
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
+    from generalresearch.models.thl.user import User
 
 logger = logging.getLogger("Wall")
 

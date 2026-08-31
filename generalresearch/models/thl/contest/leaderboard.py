@@ -12,6 +12,7 @@ from pydantic import (
 )
 from redis import Redis
 
+from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
 from generalresearch.managers.leaderboard import country_timezone
 from generalresearch.managers.leaderboard.manager import LeaderboardManager
@@ -20,6 +21,7 @@ from generalresearch.managers.thl.user_manager.user_manager import (
 )
 from generalresearch.models.thl.contest import (
     ContestEndCondition,
+    ContestPrize,
     ContestWinner,
 )
 from generalresearch.models.thl.contest.contest import (
@@ -34,11 +36,6 @@ from generalresearch.models.thl.contest.definitions import (
     ContestType,
     LeaderboardTieBreakStrategy,
 )
-from generalresearch.models.thl.contest.examples import (
-    _example_leaderboard_contest,
-    _example_leaderboard_contest_create,
-    _example_leaderboard_contest_user_view,
-)
 from generalresearch.models.thl.leaderboard import (
     Leaderboard,
     LeaderboardCode,
@@ -50,7 +47,6 @@ class LeaderboardContestCreate(ContestBase):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_leaderboard_contest_create,
     )
 
     contest_type: Literal[ContestType.LEADERBOARD] = Field(
@@ -124,12 +120,45 @@ class LeaderboardContestCreate(ContestBase):
             parts | {"row_count": 0, "bpid": parts["product_id"]}
         )
 
+    @classmethod
+    def example(cls) -> LeaderboardContestCreate:
+        product_id = "1108d053e4fa47c5b0dbdcd03a7981e7"
+
+        return cls(
+            name="Prizes for top survey takers this week",
+            description="$15 1st place, $10 2nd, $5 3rd place US weekly",
+            contest_type=ContestType.LEADERBOARD,
+            prizes=[
+                ContestPrize(
+                    name="$15 Cash",
+                    estimated_cash_value=USDCent(15_00),
+                    cash_amount=USDCent(15_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=1,
+                ),
+                ContestPrize(
+                    name="$10 Cash",
+                    estimated_cash_value=USDCent(10_00),
+                    cash_amount=USDCent(10_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=2,
+                ),
+                ContestPrize(
+                    name="$5 Cash",
+                    estimated_cash_value=USDCent(5_00),
+                    cash_amount=USDCent(5_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=3,
+                ),
+            ],
+            leaderboard_key=f"leaderboard:{product_id}:us:weekly:2025-05-26:complete_count",
+        )
+
 
 class LeaderboardContest(LeaderboardContestCreate, Contest):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_leaderboard_contest,
         arbitrary_types_allowed=True,
     )
 
@@ -246,12 +275,46 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
         )
         return d
 
+    @classmethod
+    def example(cls) -> LeaderboardContest:
+        product_id = "1108d053e4fa47c5b0dbdcd03a7981e7"
+
+        return cls(
+            name="Prizes for top survey takers this week",
+            description="$15 1st place, $10 2nd, $5 3rd place US weekly",
+            contest_type=ContestType.LEADERBOARD,
+            prizes=[
+                ContestPrize(
+                    name="$15 Cash",
+                    estimated_cash_value=USDCent(15_00),
+                    cash_amount=USDCent(15_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=1,
+                ),
+                ContestPrize(
+                    name="$10 Cash",
+                    estimated_cash_value=USDCent(10_00),
+                    cash_amount=USDCent(10_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=2,
+                ),
+                ContestPrize(
+                    name="$5 Cash",
+                    estimated_cash_value=USDCent(5_00),
+                    cash_amount=USDCent(5_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=3,
+                ),
+            ],
+            leaderboard_key=f"leaderboard:{product_id}:us:weekly:2025-05-26:complete_count",
+            product_id=product_id,
+        )
+
 
 class LeaderboardContestUserView(LeaderboardContest, ContestUserView):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_leaderboard_contest_user_view,
     )
 
     @computed_field(description="The current rank of this user in this contest")
@@ -291,3 +354,39 @@ class LeaderboardContestUserView(LeaderboardContest, ContestUserView):
             return False, "contest is over"
 
         return True, ""
+
+    @classmethod
+    def example(cls) -> LeaderboardContestUserView:
+        product_id = "1108d053e4fa47c5b0dbdcd03a7981e7"
+
+        return cls(
+            name="Prizes for top survey takers this week",
+            description="$15 1st place, $10 2nd, $5 3rd place US weekly",
+            contest_type=ContestType.LEADERBOARD,
+            prizes=[
+                ContestPrize(
+                    name="$15 Cash",
+                    estimated_cash_value=USDCent(15_00),
+                    cash_amount=USDCent(15_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=1,
+                ),
+                ContestPrize(
+                    name="$10 Cash",
+                    estimated_cash_value=USDCent(10_00),
+                    cash_amount=USDCent(10_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=2,
+                ),
+                ContestPrize(
+                    name="$5 Cash",
+                    estimated_cash_value=USDCent(5_00),
+                    cash_amount=USDCent(5_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=3,
+                ),
+            ],
+            leaderboard_key=f"leaderboard:{product_id}:us:weekly:2025-05-26:complete_count",
+            product_id=product_id,
+            product_user_id="test-user",
+        )

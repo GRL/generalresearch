@@ -1,4 +1,3 @@
-import logging
 import os.path
 import subprocess
 from datetime import UTC, datetime
@@ -12,6 +11,7 @@ from dask.distributed import Client
 from pandera.pandas import DataFrameSchema
 from pydantic import Field, ValidationInfo, field_validator, model_validator
 
+from generalresearch.incite import LOG
 from generalresearch.incite.base import CollectionBase, CollectionItemBase
 from generalresearch.incite.schemas import PARTITION_ON
 from generalresearch.incite.schemas.mergers.foundations.enriched_session import (
@@ -36,8 +36,6 @@ from generalresearch.incite.schemas.mergers.ym_wall_summary import (
     YMWallSummarySchema,
 )
 from generalresearch.models.custom_types import AwareDatetimeISO
-
-LOG = logging.getLogger("incite")
 
 
 class MergeType(StrEnum):

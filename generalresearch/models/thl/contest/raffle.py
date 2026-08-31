@@ -17,7 +17,9 @@ from scipy.stats import hypergeom
 
 from generalresearch.currency import USDCent
 from generalresearch.models.thl.contest import (
+    ContestEndCondition,
     ContestEntryRule,
+    ContestPrize,
     ContestWinner,
 )
 from generalresearch.models.thl.contest.contest import (
@@ -25,17 +27,15 @@ from generalresearch.models.thl.contest.contest import (
     ContestBase,
     ContestUserView,
 )
-from generalresearch.models.thl.contest.contest_entry import ContestEntry
+from generalresearch.models.thl.contest.contest_entry import (
+    ContestEntry,
+    ContestEntryType,
+)
 from generalresearch.models.thl.contest.definitions import (
     ContestEndReason,
-    ContestEntryType,
+    ContestPrizeKind,
     ContestStatus,
     ContestType,
-)
-from generalresearch.models.thl.contest.examples import (
-    _example_raffle,
-    _example_raffle_create,
-    _example_raffle_user_view,
 )
 
 logging.basicConfig()
@@ -47,7 +47,7 @@ class RaffleContestCreate(ContestBase):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_raffle_create,
+        # json_schema_extra=json_example_raffle_create,
     )
 
     contest_type: Literal[ContestType.RAFFLE] = Field(default=ContestType.RAFFLE)
@@ -63,12 +63,36 @@ class RaffleContestCreate(ContestBase):
             raise ValueError("At least one end condition must be specified")
         return self
 
+    @classmethod
+    def example(cls) -> RaffleContestCreate:
+        return cls(
+            name="Win an iPhone",
+            description="iPhone winner will be drawn in proportion to entry "
+            "amount. Contest ends once $800 has been entered.",
+            contest_type=ContestType.RAFFLE,
+            end_condition=ContestEndCondition(target_entry_amount=USDCent(800_00)),
+            prizes=[
+                ContestPrize(
+                    kind=ContestPrizeKind.PHYSICAL,
+                    name="iPhone 16",
+                    estimated_cash_value=USDCent(800_00),
+                )
+            ],
+            starts_at="2025-06-12T21:12:58.061170Z",
+            terms_and_conditions=None,
+            entry_rule=ContestEntryRule(
+                max_entry_amount_per_user=10000, max_daily_entries_per_user=1000
+            ),
+            country_isos={"us", "ca"},
+            entry_type=ContestEntryType.CASH,
+        )
+
 
 class RaffleContest(RaffleContestCreate, Contest):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_raffle,
+        # json_schema_extra=json_example_raffle,
     )
 
     entries: list[ContestEntry] = Field(default_factory=list, exclude=True)
@@ -92,13 +116,16 @@ class RaffleContest(RaffleContestCreate, Contest):
         return self
 
     @field_validator("current_amount", mode="before")
-    def coerce_current_amount(cls, v, info):
+    def coerce_current_amount(cls, v: int | USDCent, info):
         if v is None:
             return None
+
         if info.data.get("entry_type") == ContestEntryType.CASH:
             return USDCent(v)
+
         elif info.data.get("entry_type") == ContestEntryType.COUNT:
             return int(v)
+
         return v
 
     @model_validator(mode="after")
@@ -215,12 +242,44 @@ class RaffleContest(RaffleContestCreate, Contest):
         data["entry_rule"] = ContestEntryRule.model_validate(data["entry_rule"])
         return super().model_validate_mysql(data)
 
+    @classmethod
+    def example(cls) -> RaffleContest:
+        product_id = "1108d053e4fa47c5b0dbdcd03a7981e7"
+        return cls(
+            name="Win an iPhone",
+            description="iPhone winner will be drawn in proportion to entry "
+            "amount. Contest ends once $800 has been entered.",
+            contest_type=ContestType.RAFFLE,
+            end_condition=ContestEndCondition(target_entry_amount=USDCent(800_00)),
+            prizes=[
+                ContestPrize(
+                    kind=ContestPrizeKind.PHYSICAL,
+                    name="iPhone 16",
+                    estimated_cash_value=USDCent(800_00),
+                )
+            ],
+            starts_at="2025-06-12T21:12:58.061170Z",
+            terms_and_conditions=None,
+            entry_rule=ContestEntryRule(
+                max_entry_amount_per_user=10000, max_daily_entries_per_user=1000
+            ),
+            country_isos={"us", "ca"},
+            entry_type=ContestEntryType.CASH,
+            status=ContestStatus.ACTIVE,
+            uuid="ce3968b8e18a4b96af62007f262ed7f7",
+            created_at="2025-06-12T21:12:58.061205Z",
+            updated_at="2025-06-12T21:12:58.061205Z",
+            current_amount=4723,
+            current_participants=12,
+            product_id=product_id,
+        )
+
 
 class RaffleUserView(RaffleContest, ContestUserView):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_raffle_user_view,
+        # json_schema_extra=json_example_raffle_user_view,
     )
 
     user_amount: int | USDCent = Field(
@@ -319,3 +378,38 @@ class RaffleUserView(RaffleContest, ContestUserView):
 
         # todo: others in self.entry_rule ... min_completes, id_verified, etc.
         return True, ""
+
+    @classmethod
+    def example(cls) -> RaffleUserView:
+        product_id = "1108d053e4fa47c5b0dbdcd03a7981e7"
+        return cls(
+            name="Win an iPhone",
+            description="iPhone winner will be drawn in proportion to entry "
+            "amount. Contest ends once $800 has been entered.",
+            contest_type=ContestType.RAFFLE,
+            end_condition=ContestEndCondition(target_entry_amount=USDCent(800_00)),
+            prizes=[
+                ContestPrize(
+                    kind=ContestPrizeKind.PHYSICAL,
+                    name="iPhone 16",
+                    estimated_cash_value=USDCent(800_00),
+                )
+            ],
+            starts_at="2025-06-12T21:12:58.061170Z",
+            terms_and_conditions=None,
+            entry_rule=ContestEntryRule(
+                max_entry_amount_per_user=10000, max_daily_entries_per_user=1000
+            ),
+            country_isos={"us", "ca"},
+            entry_type=ContestEntryType.CASH,
+            status=ContestStatus.ACTIVE,
+            uuid="ce3968b8e18a4b96af62007f262ed7f7",
+            created_at="2025-06-12T21:12:58.061205Z",
+            updated_at="2025-06-12T21:12:58.061205Z",
+            current_amount=4723,
+            current_participants=12,
+            product_id=product_id,
+            user_amount=420,
+            user_amount_today=0,
+            product_user_id="test-user",
+        )

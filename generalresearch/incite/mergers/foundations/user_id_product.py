@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-import logging
 from typing import Any, Literal
 
 from distributed import Client
 
+from generalresearch.incite import LOG
 from generalresearch.incite.collections.thl_web import UserDFCollection
 from generalresearch.incite.mergers.base import (
     MergeCollection,
     MergeCollectionItem,
     MergeType,
 )
-
-LOG = logging.getLogger("incite")
 
 
 class UserIdProductMergeItem(MergeCollectionItem):

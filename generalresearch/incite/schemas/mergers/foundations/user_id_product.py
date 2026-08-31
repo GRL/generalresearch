@@ -4,7 +4,7 @@ from pandera.pandas import Category, Check, Column, DataFrameSchema, Index
 
 from generalresearch.incite.schemas import ARCHIVE_AFTER
 
-BIGINT = 9223372036854775807
+BIGINT = 9_223_372_036_854_775_807
 
 UserIdIndex = Index(
     name="id",

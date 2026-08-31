@@ -77,6 +77,10 @@ class ContestBase(BaseModel, ABC):
         self.model_config["validate_assignment"] = True
         self.__class__.model_validate(self)
 
+    @classmethod
+    def example_json_schema_extra(cls, schema: dict[str, Any]) -> None:
+        schema["examples"] = [cls.example().model_dump(mode="json")]
+
 
 class Contest(ContestBase):
     id: int | None = Field(

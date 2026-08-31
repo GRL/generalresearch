@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import ipaddress
 from datetime import UTC, datetime
-from typing import Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 from faker import Faker
 from grip_client.enums import AccessType
@@ -20,7 +20,9 @@ from generalresearch.models.custom_types import (
     CountryISOLike,
     IPvAnyAddressStr,
 )
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ipinfo import IPGeonameManager
 
 fake = Faker()
 
@@ -235,14 +237,13 @@ class IPInformation(BaseModel):
     # --- prefetch_* ---
     def prefetch_geoname(
         self,
-        pg_config: PostgresConfig,
+        ip_gm: IPGeonameManager,
     ) -> None:
         if self.geoname_id is None:
             raise ValueError("Must provide geoname_id")
 
-        from generalresearch.managers.thl.ipinfo import IPGeonameManager
-
-        ip_gm = IPGeonameManager(pg_config=pg_config)
+        # from generalresearch.managers.thl.ipinfo import IPGeonameManager
+        # ip_gm = IPGeonameManager(pg_config=pg_config)
 
         self._geoname = ip_gm.get_by_id(geoname_id=self.geoname_id)
 

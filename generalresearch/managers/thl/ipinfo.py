@@ -156,17 +156,15 @@ class IPGeonameManager(PostgresManager):
         if len(filter_ids) == 0:
             return []
 
-        with self.pg_config.make_connection() as sql_connection:
-            sql_connection: pymysql.Connection
-            with sql_connection.cursor() as c:
-                res = []
-                for chunk in chunked(filter_ids, 500):
-                    res.extend(
-                        self.fetch_geoname_ids_(
-                            c=c,
-                            filter_ids=chunk,
-                        )
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            res = []
+            for chunk in chunked(filter_ids, 500):
+                res.extend(
+                    self.fetch_geoname_ids_(
+                        c=c,
+                        filter_ids=chunk,
                     )
+                )
         return res
 
     def fetch_geoname_ids_(
@@ -635,16 +633,14 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
         if len(ips) == 0:
             return {}
 
-        with self.pg_config.make_connection() as sql_connection:
-            sql_connection: pymysql.Connection
-            with sql_connection.cursor() as c:
-                res = {}
-                for chunk in chunked(ips, 500):
-                    inner = self.get_mysql_multi_chunk(
-                        c=c,
-                        ips=chunk,
-                    )
-                    res.update(inner)
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            res = {}
+            for chunk in chunked(ips, 500):
+                inner = self.get_mysql_multi_chunk(
+                    c=c,
+                    ips=chunk,
+                )
+                res.update(inner)
         return res
 
     def get_mysql_multi_chunk(

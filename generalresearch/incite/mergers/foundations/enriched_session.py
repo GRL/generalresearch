@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -10,6 +9,7 @@ from dask.distributed import Client as DaskClient
 from dask.distributed import as_completed
 from more_itertools import chunked, flatten
 
+from generalresearch.incite import LOG
 from generalresearch.incite.collections.thl_web import (
     SessionDFCollection,
     WallDFCollection,
@@ -30,13 +30,11 @@ from generalresearch.incite.schemas.mergers.foundations.enriched_session import 
     EnrichedSessionSchema,
 )
 from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.models.admin.request import ReportRequest
-
-LOG = logging.getLogger("incite")
+    from generalresearch.models.thl.user import User
 
 
 class EnrichedSessionMergeItem(MergeCollectionItem):

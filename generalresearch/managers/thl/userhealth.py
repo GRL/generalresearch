@@ -4,7 +4,7 @@ import ipaddress
 from collections.abc import Collection
 from datetime import UTC, datetime, timedelta
 from itertools import zip_longest
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import faker
 from pydantic import NonNegativeInt, PositiveInt
@@ -18,7 +18,6 @@ from generalresearch.managers.base import (
 from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
 from generalresearch.models.custom_types import IPvAnyAddressStr
 from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
 from generalresearch.models.thl.user_iphistory import (
     IPRecord,
     UserIPHistory,
@@ -27,6 +26,9 @@ from generalresearch.models.thl.user_iphistory import (
 from generalresearch.models.thl.userhealth import AuditLog, AuditLogLevel
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.user import User
 
 fake = faker.Faker()
 

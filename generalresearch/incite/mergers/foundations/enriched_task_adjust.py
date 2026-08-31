@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from typing import Any, Literal
 
 import dask.dataframe as dd
@@ -8,6 +7,7 @@ import pandas as pd
 from distributed import Client
 from sentry_sdk import capture_exception
 
+from generalresearch.incite import LOG
 from generalresearch.incite.collections.thl_web import (
     TaskAdjustmentDFCollection,
 )
@@ -27,8 +27,6 @@ from generalresearch.incite.schemas.mergers.foundations.enriched_task_adjust imp
     EnrichedTaskAdjustSchema,
 )
 from generalresearch.pg_helper import PostgresConfig
-
-LOG = logging.getLogger("incite")
 
 
 class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
