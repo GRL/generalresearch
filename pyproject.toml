@@ -42,7 +42,7 @@ dependencies = [
 ]
 [project.optional-dependencies]
 django = ["Django>=5.2", "psycopg>=3.1"]
-
+dask = ["dask>=2026.7.1", "distributed>=2026.7.1"]
 
 [tool.setuptools.packages.find]
 where = ["."]
