@@ -23,6 +23,18 @@ from generalresearch.models.custom_types import InternalHostname, PostgresDict
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.sql_helper import SqlHelper
 
+# -- redis notes from jenkins file
+# sh "redis-cli -u ${env.THL_REDIS} FLUSHDB"
+# sh "redis-cli -u ${env.GR_REDIS} FLUSHDB"
+
+# script {
+#     env.GR_REDIS_DB = new Random().nextInt(1024).toString()
+#     env.GR_REDIS = "redis://${env.REDIS}:6379/${env.GR_REDIS_DB}"
+#     echo "Using GR Redis: ${env.GR_REDIS}"
+#     if (sh(script: "redis-cli -u ${env.GR_REDIS} SET jenkins_lock 1 NX EX 3600", returnStdout: true).trim() != 'OK')
+#         error('Redis already locked... aborting.')
+# }
+
 
 @pytest.fixture(scope="session")
 def env_file_path(pytestconfig: Config) -> Path:
@@ -178,17 +190,17 @@ def gr_repo(
     repo_url = "ssh://code.g-r-l.com/general-research/gr-carer.git"
 
     _ran = {}
-    if _ran.get(repo_url, False):
-        print(f"Already ran django_db_factory.{repo_url}")
-        return
-
-    _ran[repo_url] = True
 
     fn = tmp_path_factory.mktemp("repos")
     repo_path = fn / "gr-carer"
-    repo_path.mkdir(parents=True, exist_ok=True)
 
     def _inner() -> Path:
+
+        if _ran.get(repo_url, False):
+            print(f"Already ran django_db_factory.{repo_url}")
+            return repo_path
+
+        _ran[repo_url] = True
 
         ssh_cmd = (
             f"ssh -i {git_key_path} "
@@ -205,11 +217,6 @@ def gr_repo(
                 check=True,
                 env=env,
             )
-
-        result = subprocess.run(
-            ["cat", git_key_path], capture_output=True, text=True, check=False
-        )
-        print(repr(result.stdout))
 
         return repo_path
 
@@ -236,7 +243,8 @@ def django_db_factory(
 
         if _ran.get(django_project, False):
             print(f"Already ran django_db_factory.{django_project}")
-            return
+            return postgres_instance
+
         _ran[django_project] = True
 
         if "gr" in django_project:
@@ -246,6 +254,8 @@ def django_db_factory(
 
         # 1. Bootstrapping Django settings
         if not django_settings.configured:
+            print(postgres_instance_dict)
+
             django_settings.configure(
                 DATABASES={
                     "default": {
@@ -265,11 +275,13 @@ def django_db_factory(
             )
         django.setup()
 
-        for model in apps.get_models():
-            print(f"Discovered model: {model._meta.label}")
+        # for model in apps.get_models():
+        # print(f"Discovered model: {model._meta.label}")
 
         # 2. Run migrations directly during fixture activation
-        call_command("makemigrations", "gr", interactive=False)
+        if "gr" in django_project:
+            call_command("makemigrations", "common", interactive=False)
+
         call_command("migrate")
 
         # 3. Return the Dsn so the factory gives a way to connect

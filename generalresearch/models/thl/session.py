@@ -27,7 +27,6 @@ from generalresearch.models.custom_types import (
 )
 from generalresearch.models.legacy.bucket import Bucket
 from generalresearch.models.thl import (
-    Product,
     decimal_to_int_cents,
     int_cents_to_decimal,
 )
@@ -47,6 +46,7 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
+    from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.user import User
 
 logger = logging.getLogger("Wall")

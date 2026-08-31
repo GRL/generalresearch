@@ -56,9 +56,11 @@ def gr_redis_config(settings: GRLBaseSettings) -> RedisConfig:
 
 @pytest.fixture(scope="session")
 def gr_db(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
+    _dsn = django_db_factory("gr.common")
+    print("DDDD:", _dsn)
 
     return PostgresConfig(
-        dsn=django_db_factory("gr_carer"),
+        dsn=_dsn,
         connect_timeout=1,
         statement_timeout=5,
     )

@@ -6,6 +6,7 @@ from decimal import Decimal
 
 import faker
 import pymysql
+from grip_client.enums import AccessType
 from more_itertools import chunked
 from psycopg import Cursor
 from pydantic import PositiveInt
@@ -24,7 +25,6 @@ from generalresearch.models.thl.ipinfo import (
     IPInformation,
     normalize_ip,
 )
-from generalresearch.models.thl.maxmind.definitions import UserType
 from generalresearch.pg_helper import PostgresConfig
 
 fake = faker.Faker()
@@ -244,7 +244,7 @@ class IPInformationManager(PostgresManager):
         network: str | None = None,
         organization: str | None = None,
         static_ip_score: float | None = None,
-        user_type: UserType | None = None,
+        user_type: AccessType | None = None,
         postal_code: str | None = None,
         latitude: Decimal | None = None,
         longitude: Decimal | None = None,

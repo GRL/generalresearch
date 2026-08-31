@@ -32,12 +32,10 @@ from generalresearch.managers.thl.userhealth import (
     UserIpHistoryManager,
 )
 from generalresearch.models import Source
+from generalresearch.models.thl.wallet.cashout_method import CashoutMethod
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
 from generalresearch.sql_helper import SqlHelper
-from test_utils.managers.cashout_methods import (
-    EXAMPLE_TANGO_CASHOUT_METHODS,
-)
 
 # === THL ===
 
@@ -172,12 +170,13 @@ def delete_cashoutmethod_db(thl_web_rw: PostgresConfig) -> Callable[..., None]:
 def setup_cashoutmethod_db(
     cashout_method_manager: CashoutMethodManager,
     delete_cashoutmethod_db: Callable[..., None],
+    example_tango_cashout_methods: list[CashoutMethod],
 ) -> Callable[..., None]:
 
     def _inner():
         delete_cashoutmethod_db()
 
-        for x in EXAMPLE_TANGO_CASHOUT_METHODS:
+        for x in example_tango_cashout_methods:
             cashout_method_manager.create(x)
 
     # TODO: convert these ids into instances to use.

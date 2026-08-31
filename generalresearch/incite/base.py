@@ -37,7 +37,6 @@ from pydantic import (
     PositiveInt,
     PrivateAttr,
     TypeAdapter,
-    ValidationInfo,
     field_validator,
     model_validator,
 )
@@ -46,7 +45,6 @@ from sentry_sdk import capture_exception
 
 from generalresearch.config import is_debug
 from generalresearch.incite import LOG
-from generalresearch.incite.collections.base import DFCollectionItem
 from generalresearch.incite.schemas import (
     ARCHIVE_AFTER,
     empty_dataframe_from_schema,
@@ -54,7 +52,7 @@ from generalresearch.incite.schemas import (
 from generalresearch.models.custom_types import AwareDatetimeISO
 
 if TYPE_CHECKING:
-    from generalresearch.incite.collections.base import DFCollection
+    from generalresearch.incite.collections.base import DFCollection, DFCollectionItem
     from generalresearch.incite.collections.thl_marketplaces import (
         DFCollectionType,
     )
@@ -213,15 +211,13 @@ class CollectionBase(BaseModel):
         return self
 
     @field_validator("start")
-    def check_start(
-        cls, start: datetime | None, info: ValidationInfo
-    ) -> datetime | None:
+    def check_start(cls, start: datetime | None) -> datetime | None:
         if start and start.microsecond != 0:
             raise ValueError("Collection.start must not have microseconds")
         return start
 
     @field_validator("offset")
-    def check_offset(cls, v: str | None, info: ValidationInfo):
+    def check_offset(cls, v: str | None):
         # pd.offsets.__all__
         if v is None:
             # In MergeCollections, offset can be None

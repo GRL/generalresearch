@@ -15,8 +15,6 @@ class TestGRPostgresDjangoCreation:
     def test_git(self, gr_repo: Callable[..., Path]):
         repo_path = gr_repo()
 
-        print("test_git.PATH:", repo_path)
-
         try:
             # Run the git command inside the target directory
             result = subprocess.run(
@@ -37,16 +35,15 @@ class TestGRPostgresDjangoCreation:
         django_db_factory: Callable[..., None],
     ):
 
-        dsn = django_db_factory("gr")
+        dsn = django_db_factory("gr.common")
         assert isinstance(dsn, PostgresDsn)
 
     def test_django_tables(self, gr_db: PostgresConfig):
         res = gr_db.execute_sql_query(query="""
-            SELECT COUNT(*) 
+            SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = 'public';
         """)
         print(res)
         assert len(res) == 1
-        assert res[0]["count"] == 56
-        assert True
+        assert res[0]["count"] == 10

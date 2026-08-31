@@ -12,11 +12,9 @@ from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
     CashMailCashoutMethodData,
+    CashoutMethod,
     PaypalCashoutMethodData,
     USDeliveryAddress,
-)
-from test_utils.managers.cashout_methods import (
-    EXAMPLE_TANGO_CASHOUT_METHODS,
 )
 
 
@@ -26,13 +24,14 @@ class TestTangoCashoutMethods:
         self,
         cashout_method_manager: CashoutMethodManager,
         setup_cashoutmethod_db: Callable[..., None],
+        example_tango_cashout_methods: list[CashoutMethod],
     ):
         setup_cashoutmethod_db()
 
         res = cashout_method_manager.filter(payout_types=[PayoutType.TANGO])
         assert len(res) == 2
         cm = next(x for x in res if x.ext_id == "U025035")
-        assert EXAMPLE_TANGO_CASHOUT_METHODS[0] == cm
+        assert example_tango_cashout_methods[0] == cm
 
     def test_user(
         self,

@@ -4,13 +4,13 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import ROUND_DOWN, Decimal
 from random import choice as rand_choice
-from random import choice as rchoice
 from random import randint, random
 from typing import Any
 from uuid import uuid4
 
 import faker
 import pytest
+from grip_client.enums import AccessType
 from pydantic import PositiveInt
 
 from generalresearch.managers.thl.ipinfo import IPGeonameManager, IPInformationManager
@@ -30,7 +30,7 @@ from generalresearch.models.legacy.bucket import Bucket
 from generalresearch.models.thl.definitions import (
     PayoutStatus,
 )
-from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation, UserType
+from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation
 from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.product import (
     PayoutConfig,
@@ -118,7 +118,7 @@ def wall_factory(
             session = session_factory()
             session_id = session.id
 
-        source = source or rchoice(list(Source))
+        source = source or rand_choice(list(Source))
         req_survey_id = req_survey_id or uuid4().hex
         req_cpi = req_cpi or Decimal(fake.random_int(min=1, max=150) / 100).quantize(
             Decimal(".01"), rounding=ROUND_DOWN
@@ -284,7 +284,7 @@ def ipinformation_factory(
         network: str | None = None,
         organization: str | None = None,
         static_ip_score: float | None = None,
-        user_type: UserType | None = None,
+        user_type: AccessType | None = None,
         postal_code: str | None = None,
         latitude: Decimal | None = None,
         longitude: Decimal | None = None,
@@ -426,8 +426,8 @@ def auditlog_factory(audit_log_manager: AuditLogManager):
 
         return audit_log_manager.create(
             user_id=user_id,
-            level=level or rchoice(list(AuditLogLevel)),
-            event_type=event_type or rchoice(list(event_types)),
+            level=level or rand_choice(list(AuditLogLevel)),
+            event_type=event_type or rand_choice(list(event_types)),
             event_msg=event_msg,
             event_value=event_value,
         )

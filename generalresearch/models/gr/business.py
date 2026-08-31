@@ -207,13 +207,13 @@ class Business(BaseModel):
 
     # Initialization is deferred until unless it's called
     # (see .prebuild_***())
-    balance: BusinessBalances | None = Field(default=None, name="Business Balance")
+    balance: BusinessBalances | None = Field(default=None, title="Business Balance")
 
     payouts_total_str: str | None = Field(default=None)
     payouts_total: USDCent | None = Field(default=None)
     payouts: list[BusinessPayoutEvent] | None = Field(
         default=None,
-        name="Business Payouts",
+        title="Business Payouts",
         description=(
             "These are the ACH or Wire payments that were sent to the"
             "Business as a single amount, summed for all the Business"
