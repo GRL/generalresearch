@@ -40,6 +40,42 @@ class MysqlUserManager:
             params=[now, user.user_id],
         )
 
+    def _change_product_user_id(
+        self, *, user: User, new_product_user_id: str
+    ) -> User:
+        """Change a user's supplier-provided ID in the primary database."""
+        assert not self.is_read_replica
+        assert user.user_id is not None
+        assert user.product_id is not None
+        assert user.product_user_id is not None
+
+        with self.pg_config.make_connection() as conn:
+            with conn.cursor() as c:
+                c.execute(
+                    query="""
+                    UPDATE thl_user
+                    SET product_user_id = %(new_product_user_id)s
+                    WHERE id = %(user_id)s
+                        AND product_id = %(product_id)s
+                        AND product_user_id = %(old_product_user_id)s
+                    RETURNING id AS user_id, product_id, product_user_id,
+                              uuid, blocked, created, last_seen
+                    """,
+                    params={
+                        "new_product_user_id": new_product_user_id,
+                        "user_id": user.user_id,
+                        "product_id": user.product_id,
+                        "old_product_user_id": user.product_user_id,
+                    },
+                )
+                row = c.fetchone()
+
+        if row is None:
+            raise RuntimeError(
+                "User was not updated; it may have been changed concurrently"
+            )
+        return User.from_db(row)
+
     def get_user_from_mysql(
         self,
         *,

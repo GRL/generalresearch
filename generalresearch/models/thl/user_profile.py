@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any
+from typing import Annotated, Any
 
 from pydantic import (
     BaseModel,
@@ -12,7 +12,7 @@ from pydantic import (
     computed_field,
 )
 from pydantic.json_schema import SkipJsonSchema
-from typing_extensions import Annotated, Self
+from typing_extensions import Self
 
 from generalresearch.models import MAX_INT32, Source
 from generalresearch.models.custom_types import UUIDStr
@@ -23,11 +23,15 @@ from generalresearch.models.thl.user_streak import UserStreak
 class UserMetadata(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
-    user_id: SkipJsonSchema[PositiveInt | None] = Field(
-        exclude=True, default=None, lt=MAX_INT32
-    )
+    user_id: SkipJsonSchema[PositiveInt] = Field(exclude=True, lt=MAX_INT32)
 
     email_address: EmailStr | None = Field(default=None, examples=["contact@mail.com"])
+
+    display_name: str | None = Field(
+        default=None,
+        max_length=255,
+        description="A public name chosen by the user. Can be used in leaderboards or event stream.",
+    )
 
     @computed_field
     def email_md5(
@@ -86,9 +90,15 @@ class UserMetadata(BaseModel):
         return res
 
     @classmethod
-    def from_db(cls, user_id, email_address, **kwargs) -> Self:
+    def from_db(cls, user_id, email_address, display_name, **kwargs) -> Self:
         # If the hashes are passed, just validate that they match
-        obj = cls.model_validate({"user_id": user_id, "email_address": email_address})
+        obj = cls.model_validate(
+            {
+                "user_id": user_id,
+                "email_address": email_address,
+                "display_name": display_name,
+            }
+        )
 
         if kwargs.get("email_md5") is not None:
             assert obj.email_md5 == kwargs["email_md5"], "email_md5 mismatch"

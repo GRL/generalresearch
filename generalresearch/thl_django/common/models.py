@@ -374,6 +374,11 @@ class THLUserMetadata(models.Model):
     email_sha1 = models.CharField(max_length=40, null=True)
     email_md5 = models.CharField(max_length=32, null=True)
 
+    # Not unique within a BP, or anything like that. A user
+    #   can set this to whatever they like. No index
+    #   as we will not ever look up a user by their name.
+    display_name = models.CharField(max_length=255, null=True)
+
     class Meta:
         db_table = "thl_usermetadata"
         indexes = [

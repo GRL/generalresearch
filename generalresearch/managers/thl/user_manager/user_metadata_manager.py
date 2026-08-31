@@ -7,6 +7,24 @@ from generalresearch.models.thl.user_profile import UserMetadata
 
 
 class UserMetadataManager(PostgresManager):
+    def filter_by_bpuids(
+        self, product_id: str, product_user_ids: Collection[str]
+    ) -> dict[str, UserMetadata]:
+        query = """
+        SELECT email_address, email_sha256, email_sha1, email_md5, display_name,
+            product_user_id, thl_user.id as user_id
+        FROM thl_usermetadata
+            RIGHT OUTER JOIN thl_user on thl_usermetadata.user_id = thl_user.id
+        WHERE product_id = %(product_id)s
+            AND product_user_id = ANY(%(product_user_ids)s);
+        """
+        res = self.pg_config.execute_sql_query(
+            query,
+            {"product_id": product_id, "product_user_ids": list(product_user_ids)},
+        )
+
+        return {x["product_user_id"]: UserMetadata.from_db(**x) for x in res}
+
     def filter(
         self,
         user_ids: Collection[int] | None = None,
@@ -22,9 +40,9 @@ class UserMetadataManager(PostgresManager):
             email_sha1s,
             email_md5s,
         ]:
-            assert arg is None or isinstance(
-                arg, (set, list)
-            ), "must pass a collection of objects"
+            assert arg is None or isinstance(arg, (set, list)), (
+                "must pass a collection of objects"
+            )
 
         filters = []
         params = {}
@@ -48,7 +66,7 @@ class UserMetadataManager(PostgresManager):
         filter_str = "WHERE " + " AND ".join(filters) if filters else ""
         res = self.pg_config.execute_sql_query(
             f"""
-        SELECT user_id, email_address, email_sha256, email_sha1, email_md5
+        SELECT user_id, email_address, email_sha256, email_sha1, email_md5, display_name
         FROM thl_usermetadata
         {filter_str}
         """,
@@ -126,8 +144,12 @@ class UserMetadataManager(PostgresManager):
                 c.execute(
                     """
                 UPDATE thl_usermetadata
-                SET email_address = %(email_address)s, email_sha256 = %(email_sha256)s,
-                email_sha1 = %(email_sha1)s, email_md5 = %(email_md5)s
+                SET 
+                    email_address = %(email_address)s,
+                    email_sha256 = %(email_sha256)s,
+                    email_sha1 = %(email_sha1)s,
+                    email_md5 = %(email_md5)s,
+                    display_name = %(display_name)s
                 WHERE user_id = %(user_id)s;
                 """,
                     params=user_metadata.to_db(),
@@ -139,10 +161,14 @@ class UserMetadataManager(PostgresManager):
     def _create(self, user_metadata: UserMetadata) -> int:
         return self.pg_config.execute_write(
             query="""
-            INSERT INTO thl_usermetadata
-            (user_id, email_address, email_sha256, email_sha1, email_md5)
-            VALUES (%(user_id)s, %(email_address)s, %(email_sha256)s, 
-                    %(email_sha1)s, %(email_md5)s);
+            INSERT INTO thl_usermetadata (
+                user_id, email_address, email_sha256,
+                email_sha1, email_md5, display_name
+            )
+            VALUES (
+                %(user_id)s, %(email_address)s, %(email_sha256)s, 
+                %(email_sha1)s, %(email_md5)s, %(display_name)s
+            );
         """,
             params=user_metadata.to_db(),
         )
