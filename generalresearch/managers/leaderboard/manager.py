@@ -91,7 +91,9 @@ class LeaderboardManager:
         return cast(int, self.redis_client.zcard(self.key))
 
     def get_leaderboard_rows(
-        self, user_metadata_manager: UserMetadataManager, limit: int | None = None
+        self,
+        limit: int | None = None,
+        user_metadata_manager: UserMetadataManager | None = None,
     ) -> list[LeaderboardRow]:
         limit = limit or 0
         res = self.redis_client.zrange(
@@ -106,29 +108,32 @@ class LeaderboardManager:
             LeaderboardRow(bpuid=bpuid, value=value, rank=rank)
             for bpuid, value, rank in s.itertuples(index=False, name=None)
         ]
-        um = user_metadata_manager.filter_by_bpuids(
-            product_id=self.product_id, product_user_ids={r.bpuid for r in rows}
-        )
-        for row in rows:
-            row.display_name = um[row.bpuid].display_name
+        if user_metadata_manager:
+            um = user_metadata_manager.filter_by_bpuids(
+                product_id=self.product_id, product_user_ids={r.bpuid for r in rows}
+            )
+            for row in rows:
+                row.display_name = um[row.bpuid].display_name
         return rows
 
     def get_personal_leaderboard_rows(
         self,
-        user_metadata_manager: UserMetadataManager,
         bp_user_id: str,
         limit: int | None = 5,
+        user_metadata_manager: UserMetadataManager | None = None,
     ) -> list[LeaderboardRow]:
         # We can't just grab this user's rank and nearby rows b/c redis does
         #   not handle ties the same way we do (in redis, each value is a
         #   unique rank, we use lowest rank for all ties). So we have to just
         #   grab everything, then filter
-        limit = limit if limit is not None else 5
-        rows = self.get_leaderboard_rows()
+        rows = self.get_leaderboard_rows(
+            user_metadata_manager=user_metadata_manager, limit=None
+        )
         rows = sorted(rows, key=lambda x: x.value, reverse=True)
         user_indices = [
             (i, row) for i, row in enumerate(rows) if row.bpuid == bp_user_id
         ]
+        limit = limit or 5
         if not user_indices:
             return rows[: limit * 2]
         user_idx = user_indices[0][0]
@@ -144,11 +149,18 @@ class LeaderboardManager:
 
     def get_leaderboard(
         self,
-        user_metadata_manager: UserMetadataManager,
         limit: int | None = None,
         bp_user_id: str | None = None,
+        user_metadata_manager: UserMetadataManager | None = None,
     ) -> Leaderboard:
-
+        """
+        Returns the leaderboard instance with populated rows.
+        :param limit: Return limit rows. If bp_user_id, default 5 rows above + below,
+            else default: no limit / all rows.
+        :param bp_user_id: If passed, the rows surrounding this user are returned.
+        :param user_metadata_manager: If passed, the user's display_names are looked up
+            and populated.
+        """
         if bp_user_id:
             rows = self.get_personal_leaderboard_rows(
                 bp_user_id=bp_user_id,
