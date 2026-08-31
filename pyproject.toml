@@ -18,6 +18,7 @@ dependencies = [
     "limits",
     "more-itertools",
     "numpy",
+    "pandas",
     "pandera",
     "protobuf",
     "pyarrow",
