@@ -30,11 +30,11 @@ pipeline {
             }
         }
 
-        stage('python versions') {
+        stage('Python Versions') {
             matrix {
                 axes {
                     axis {
-                        name 'PYTHON_VERSION'
+                        name 'VER'
                         values 'python3.14', 'python3.13', 'python3.12'
                     }
                 }
@@ -42,7 +42,7 @@ pipeline {
                 stages {
                     stage('Setup') {
                         steps {
-                            dir("generalresearch-${PYTHON_VERSION}") {
+                            dir("generalresearch-${VER}") {
                                 deleteDir()
                                 unstash 'source'
 
@@ -51,18 +51,18 @@ pipeline {
                                     variable: 'ENV_TEST_FILE')]) {
                                     sh 'cp $ENV_TEST_FILE .env.test'
                                 }
-                                sh "/usr/local/bin/${PYTHON_VERSION} -m venv ${VENV}-${PYTHON_VERSION}"
-                                sh "${VENV}-${PYTHON_VERSION}/bin/pip install -U setuptools wheel pip"
-                                sh "${VENV}-${PYTHON_VERSION}/bin/pip install '.'"
-                                sh "${VENV}-${PYTHON_VERSION}/bin/pip install '.[django,dask]'"
+                                sh "/usr/local/bin/${VER} -m venv ${VENV}-${VER}"
+                                sh "${VENV}-${VER}/bin/pip install -U setuptools wheel pip"
+                                sh "${VENV}-${VER}/bin/pip install '.'"
+                                sh "${VENV}-${VER}/bin/pip install '.[django,dask]'"
                             }
                         }
                     }
 
                     stage('base') {
                         steps {
-                            dir("generalresearch-${PYTHON_VERSION}") {
-                                sh "${VENV}-${PYTHON_VERSION}/bin/pytest tests/models/gr/test_base.py -vs"
+                            dir("generalresearch-${VER}") {
+                                sh "${VENV}-${VER}/bin/pytest tests/models/gr/test_base.py -vs"
                             }
                         }
                     }
