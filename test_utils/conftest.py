@@ -187,7 +187,7 @@ def gr_repo(
     git_key_path: Path,
     tmp_path_factory: TempPathFactory,
 ) -> Callable[..., Path | None]:
-    repo_url = "ssh://code.g-r-l.com/general-research/gr-carer.git"
+    repo_url = "ssh://code.g-r-l.com:6611/general-research/gr-carer.git"
 
     _ran = {}
 
