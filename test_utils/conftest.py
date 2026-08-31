@@ -175,7 +175,8 @@ def git_key_path(
     print("GIT CREDS", settings.git_creds)
     assert settings.git_creds, "Must define key to download alternative models"
     fn = tmp_path_factory.mktemp("keys") / "git_creds"
-    fn.write_text(settings.git_creds, encoding="utf-8")
+    key_content = settings.git_creds.replace("\\n", "\n")
+    fn.write_text(key_content, encoding="utf-8")
     os.chmod(fn, stat.S_IRUSR | stat.S_IWUSR)
 
     yield Path(fn)
