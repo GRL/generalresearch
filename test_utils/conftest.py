@@ -172,7 +172,6 @@ def git_key_path(
     # We are using the tmp_path_factory because unlike the tmp_path (which
     # is function scoped), this is session scoped.
 
-    print("GIT CREDS", settings.git_creds)
     assert settings.git_creds, "Must define key to download alternative models"
     fn = tmp_path_factory.mktemp("keys") / "git_creds"
     key_content = settings.git_creds.replace("\\n", "\n")
@@ -210,7 +209,6 @@ def gr_repo(
             "-o StrictHostKeyChecking=no "
         )
         env = {**os.environ, "GIT_SSH_COMMAND": ssh_cmd}
-        print("SSH ENV", env)
 
         if repo_path.exists():
             subprocess.run(["git", "-C", str(repo_path), "pull"], check=True, env=env)
@@ -256,8 +254,6 @@ def django_db_factory(
 
         # 1. Bootstrapping Django settings
         if not django_settings.configured:
-            print(postgres_instance_dict)
-
             django_settings.configure(
                 DATABASES={
                     "default": {

@@ -40,7 +40,6 @@ pipeline {
                 }
 
                 stages {
-
                     stage('Setup') {
                         steps {
                             dir("generalresearch-${PYTHON_VERSION}") {
@@ -54,7 +53,7 @@ pipeline {
                                 }
                                 sh "/usr/local/bin/${PYTHON_VERSION} -m venv ${VENV}-${PYTHON_VERSION}"
                                 sh "${VENV}-${PYTHON_VERSION}/bin/pip install -U setuptools wheel pip"
-                                sh "${VENV}-${PYTHON_VERSION}/bin/pip install -r requirements.txt"
+                                sh "${VENV}-${PYTHON_VERSION}/bin/pip install '.'"
                                 sh "${VENV}-${PYTHON_VERSION}/bin/pip install '.[django]'"
                             }
                         }

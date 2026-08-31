@@ -44,6 +44,5 @@ class TestGRPostgresDjangoCreation:
             FROM information_schema.tables
             WHERE table_schema = 'public';
         """)
-        print(res)
         assert len(res) == 1
         assert res[0]["count"] == 10
