@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    parameters {
-        string(name: 'BRANCH', defaultValue: 'master', description: 'Branch to build')
-    }
-
     triggers {
         cron('H */12 * * *')
         pollSCM('H */6 * * *')
@@ -23,7 +19,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scmGit(
-                    branches: [[name: "*/${params.BRANCH}"]],
+                    branches: [[name: "*/${env.BRANCH_NAME}"]],
                     extensions: [ cloneOption(shallow: true) ],
                     userRemoteConfigs: [
                         [credentialsId: 'abdeb570-b708-44f3-b857-8a6b06ed9822',
