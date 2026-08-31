@@ -1,4 +1,10 @@
 pipeline {
+    agent any
+
+    parameters {
+        string(name: 'BRANCH', defaultValue: 'main', description: 'Branch to build')
+    }
+
     triggers {
         cron('H */12 * * *')
         pollSCM('H */6 * * *')
@@ -13,8 +19,22 @@ pipeline {
     }
 
     stages {
-        stage('python versions') {
 
+        stage('Checkout') {
+            steps {
+                checkout scmGit(
+                    branches: [[name: "*/${params.BRANCH}"]],
+                    extensions: [ cloneOption(shallow: true) ],
+                    userRemoteConfigs: [
+                        [credentialsId: 'abdeb570-b708-44f3-b857-8a6b06ed9822',
+                         url: 'ssh://code.g-r-l.com:6611/generalresearch']
+                    ],
+                )
+                stash name: 'source', useDefaultExcludes: false
+            }
+        }
+
+        stage('python versions') {
             matrix {
                 axes {
                     axis {
@@ -26,30 +46,23 @@ pipeline {
                 stages {
 
                     stage('Setup') {
-                        agent { label 'any' }
                         steps {
-                            cleanWs()
-                            dir("generalresearch/$PYTHON_VERSION/") {
-                                checkout scmGit(
-                                    branches: [[name: env.BRANCH_NAME]],
-                                    extensions: [ cloneOption(shallow: true) ],
-                                    userRemoteConfigs: [
-                                        [credentialsId:  'abdeb570-b708-44f3-b857-8a6b06ed9822',
-                                         url: 'ssh://code.g-r-l.com:6611/generalresearch']
-                                    ],
-                                )
-                                sh "/usr/local/bin/$PYTHON_VERSION -m venv $VENV-$PYTHON_VERSION"
-                                sh "$VENV-$PYTHON_VERSION/bin/pip install -U setuptools wheel pip"
-                                sh "$VENV-$PYTHON_VERSION/bin/pip install -r requirements.txt"
-                                sh "$VENV-$PYTHON_VERSION/bin/pip install '.[django]'"
+                            dir("generalresearch-${PYTHON_VERSION}") {
+                                deleteDir()
+                                unstash 'source'
+
+                                sh "/usr/local/bin/${PYTHON_VERSION} -m venv ${VENV}-${PYTHON_VERSION}"
+                                sh "${VENV}-${PYTHON_VERSION}/bin/pip install -U setuptools wheel pip"
+                                sh "${VENV}-${PYTHON_VERSION}/bin/pip install -r requirements.txt"
+                                sh "${VENV}-${PYTHON_VERSION}/bin/pip install '.[django]'"
                             }
                         }
                     }
 
                     stage('base') {
                         steps {
-                            dir("generalresearch/$PYTHON_VERSION/") {
-                                sh "$VENV-$PYTHON_VERSION/bin/pytest tests/models/gr/test_base.py -vs"
+                            dir("generalresearch-${PYTHON_VERSION}") {
+                                sh "${VENV}-${PYTHON_VERSION}/bin/pytest tests/models/gr/test_base.py -vs"
                             }
                         }
                     }
@@ -62,7 +75,7 @@ pipeline {
     post {
         always {
             echo 'One way or another, I have finished'
-            deleteDir() /* clean up our workspace */
+            deleteDir()
         }
     }
 }
