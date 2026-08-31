@@ -215,10 +215,10 @@ class CountryRTTDistribution(BaseModel):
     )
 
     # we could split by this optionally
-    user_type: UserType | None = Field(
+    user_type: AccessType | None = Field(
         default=None,
         description="user_type of the client_ip as determined by MaxMind",
-        examples=[UserType.RESIDENTIAL],
+        examples=[AccessType.RESIDENTIAL],
     )
 
     rtt_min: float = Field(gt=0, examples=[133.332])

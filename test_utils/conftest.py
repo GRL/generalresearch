@@ -233,7 +233,6 @@ def django_db_factory(
     _ran = {}
 
     import django
-    from django.apps import apps
     from django.conf import settings as django_settings
     from django.core.management import call_command
 

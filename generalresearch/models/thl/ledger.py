@@ -340,8 +340,8 @@ class LedgerTransaction(BaseModel):
             ), "ledger entries must balance"
         return entries
 
-    def model_dump_mysql(self, *args, **kwargs) -> dict[str, Any]:
-        d = self.model_dump(mode="json", *args, **kwargs)
+    def model_dump_mysql(self) -> dict[str, Any]:
+        d = self.model_dump(mode="json")
         if "created" in d:
             d["created"] = self.created.replace(tzinfo=None)
         return d

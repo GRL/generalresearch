@@ -5,7 +5,6 @@ from collections.abc import Collection
 from decimal import Decimal
 
 import faker
-import pymysql
 from grip_client.enums import AccessType
 from more_itertools import chunked
 from psycopg import Cursor

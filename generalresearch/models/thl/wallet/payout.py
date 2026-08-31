@@ -129,13 +129,16 @@ class PayoutEvent(BaseModel, validate_assignment=True):
         else:
             raise ValueError("this shouldn't happen")
 
-    def model_dump_mysql(self, *args, **kwargs) -> dict[str, Any]:
-        d = self.model_dump(mode="json", *args, **kwargs)
+    def model_dump_mysql(self) -> dict[str, Any]:
+        d = self.model_dump(mode="json")
+
         if "created" in d:
             d["created"] = self.created.replace(tzinfo=None)
         if d.get("request_data") is not None:
             d["request_data"] = json.dumps(self.request_data)
         if d.get("order_data") is not None:
+            assert self.order_data
+
             if isinstance(self.order_data, dict):
                 d["order_data"] = json.dumps(self.order_data)
             else:

@@ -445,9 +445,9 @@ class Wall(WallBase):
         d = self.model_dump(mode="json", exclude={"elapsed"})
         return json.dumps(d)
 
-    def model_dump_mysql(self, *args, **kwargs) -> dict[str, Any]:
+    def model_dump_mysql(self) -> dict[str, Any]:
         # Generate a dictionary representation of the model, with special handling for datetimes
-        d = self.model_dump(mode="json", exclude={"elapsed"}, *args, **kwargs)
+        d = self.model_dump(mode="json", exclude={"elapsed"})
         d["started"] = self.started.replace(tzinfo=None)
         if self.finished:
             d["finished"] = self.finished.replace(tzinfo=None)
@@ -816,14 +816,12 @@ class Session(BaseModel):
         self.model_config["validate_assignment"] = True
         self.__class__.model_validate(self)
 
-    def model_dump_mysql(
-        self, *args, **kwargs
-    ) -> dict[str, str | int | datetime | float | None]:
+    def model_dump_mysql(self) -> dict[str, str | int | datetime | float | None]:
 
         # Generate a dictionary representation of the model, with special
         #   handling for datetimes, and nested models such as User & Bucket
 
-        d = self.model_dump(mode="json", *args, **kwargs)
+        d = self.model_dump(mode="json")
         d["started"] = self.started.replace(tzinfo=None)
 
         if self.finished:
