@@ -7,10 +7,10 @@ from generalresearch.grliq.models.forensic_result import (
     Phase,
 )
 from generalresearch.grliq.models.useragents import GrlUserAgent
+from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.models.thl.user import User
-    from generalresearch.pg_helper import PostgresConfig
 
 
 class GrlIqCategoryResultsReader:
