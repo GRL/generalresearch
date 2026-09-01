@@ -1,8 +1,10 @@
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
-from generalresearch.managers.thl.profiling.user_upk import UserUpkManager
-from generalresearch.models.thl.user import User
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.profiling.user_upk import UserUpkManager
+    from generalresearch.models.thl.user import User
 
 now = datetime.now(tz=UTC)
 base = {

@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from generalresearch.models import LogicalOperator
+from generalresearch.models.definitions import LogicalOperator
 from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
     MarketplaceCondition,
@@ -130,7 +130,7 @@ class TestMarketplaceCondition:
         assert c.evaluate_criterion(user_qas) is None
 
     def test_list_and_negate(self):
-        from generalresearch.models import LogicalOperator
+        from generalresearch.models.definitions import LogicalOperator
         from generalresearch.models.thl.survey.condition import (
             ConditionValueType,
             MarketplaceCondition,
@@ -247,7 +247,7 @@ class TestMarketplaceCondition:
         assert ["1", "10", "11", "12", "2", "3", "4", "5"] == c.values
 
     def test_ranges_infinity(self):
-        from generalresearch.models import LogicalOperator
+        from generalresearch.models.definitions import LogicalOperator
         from generalresearch.models.thl.survey.condition import (
             ConditionValueType,
             MarketplaceCondition,

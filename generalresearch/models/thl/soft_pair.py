@@ -5,7 +5,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from generalresearch.models import Source
+    from generalresearch.models.definitions import Source
     from generalresearch.models.dynata.survey import DynataCondition
     from generalresearch.models.thl.survey.condition import (
         MarketplaceCondition,

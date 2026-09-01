@@ -5,23 +5,26 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from random import randint
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.managers.thl.session import SessionManager
-from generalresearch.managers.thl.task_adjustment import (
-    TaskAdjustmentManager,
-)
-from generalresearch.managers.thl.wall import WallManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.definitions import (
     Status,
     StatusCode1,
     WallAdjustedStatus,
 )
-from generalresearch.models.thl.session import Session
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.managers.thl.task_adjustment import (
+        TaskAdjustmentManager,
+    )
+    from generalresearch.managers.thl.wall import WallManager
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
 
 
 @pytest.fixture()

@@ -8,7 +8,7 @@ from generalresearch.managers.base import Permission, PostgresManager
 from generalresearch.models.thl.survey.buyer import Buyer
 
 if TYPE_CHECKING:
-    from generalresearch.models import Source
+    from generalresearch.models.definitions import Source
     from generalresearch.pg_helper import PostgresConfig
 
 

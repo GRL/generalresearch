@@ -19,7 +19,7 @@ from pydantic import (
 )
 
 from generalresearch.locales import Localelator
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.dynata import DynataStatus
 from generalresearch.models.thl.demographics import (
     Gender,
@@ -31,7 +31,6 @@ from generalresearch.models.thl.survey.condition import (
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models import TaskCalculationType
     from generalresearch.models.custom_types import (
         AlphaNumStr,
         AlphaNumStrSet,
@@ -39,6 +38,7 @@ if TYPE_CHECKING:
         CoercedStr,
         DeviceTypes,
     )
+    from generalresearch.models.definitions import TaskCalculationType
 
 logging.basicConfig()
 logger = logging.getLogger()

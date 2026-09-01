@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta, timezone
 from os.path import exists as pexists
 from os.path import join as pjoin
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import numpy as np
@@ -11,7 +12,10 @@ import pandas as pd
 import pytest
 from _pytest._code.code import ExceptionInfo
 
-from generalresearch.incite.base import CollectionBase, GRLDatasets
+from generalresearch.incite.base import CollectionBase
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
 
 AGO_15min = (datetime.now(tz=UTC) - timedelta(minutes=15)).replace(microsecond=0)
 AGO_1HR = (datetime.now(tz=UTC) - timedelta(hours=1)).replace(microsecond=0)

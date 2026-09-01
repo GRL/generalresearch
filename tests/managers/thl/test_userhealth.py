@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import faker
@@ -12,16 +13,24 @@ from generalresearch.managers.thl.userhealth import (
     IPRecordManager,
     UserIpHistoryManager,
 )
-from generalresearch.models.thl.ipinfo import GeoIPInformation, IPGeoname, IPInformation
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
+from generalresearch.models.thl.ipinfo import (
+    GeoIPInformation,
+)
 from generalresearch.models.thl.user_iphistory import (
     IPRecord,
     UserIPHistory,
 )
 from generalresearch.models.thl.userhealth import AuditLog, AuditLogLevel
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.ipinfo import (
+        IPGeoname,
+        IPInformation,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 fake = faker.Faker()
 

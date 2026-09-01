@@ -8,7 +8,7 @@ from decimal import Decimal
 #     BrokerageProductPayoutEvent,
 #     PayoutEvent,
 # )
-# from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.product import Product
 
 # _ = (
 #     Product,
@@ -18,7 +18,7 @@ from decimal import Decimal
 #     POPFinancial,
 # )
 
-# Product.model_rebuild()
+Product.model_rebuild()
 # PayoutEvent.model_rebuild()
 # BrokerageProductPayoutEvent.model_rebuild()
 

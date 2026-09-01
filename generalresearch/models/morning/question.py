@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from generalresearch.locales import Localelator
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
     MarketplaceUserQuestionAnswer,

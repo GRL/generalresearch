@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 
-from generalresearch.managers.thl.product import ProductManager
 from generalresearch.models.thl.product import Product
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.product import ProductManager
 
 logger = logging.getLogger()
 

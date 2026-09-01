@@ -4,16 +4,11 @@ import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.managers.thl.buyer import BuyerManager
-from generalresearch.managers.thl.profiling.question import (
-    QuestionManager,
-)
-from generalresearch.managers.thl.profiling.uqa import UQAManager
-from generalresearch.managers.thl.survey import SurveyManager, SurveyStatManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.legacy.bucket import (
     DurationSummary,
     PayoutSummary,
@@ -29,6 +24,14 @@ from generalresearch.models.thl.survey.model import (
     SurveyEligibilityDefinition,
     SurveyStat,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.buyer import BuyerManager
+    from generalresearch.managers.thl.profiling.question import (
+        QuestionManager,
+    )
+    from generalresearch.managers.thl.profiling.uqa import UQAManager
+    from generalresearch.managers.thl.survey import SurveyManager, SurveyStatManager
 
 
 @pytest.fixture(scope="session")
@@ -223,7 +226,6 @@ class TestSurvey:
 class TestSurveyStat:
     def test(
         self,
-        delete_buyers_surveys: Callable[..., None],
         surveystat_manager,
         survey_manager: SurveyManager,
         surveys_fixture: list[Survey],

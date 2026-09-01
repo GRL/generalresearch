@@ -3,24 +3,27 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from faker import Faker
 
-from generalresearch.managers.thl.session import SessionManager
-from generalresearch.models import DeviceType
-from generalresearch.models.gr.business import Business
-from generalresearch.models.gr.team import Team
+from generalresearch.models.definitions import DeviceType
 from generalresearch.models.legacy.bucket import Bucket
 from generalresearch.models.thl.definitions import (
     SessionStatusCode2,
     Status,
     StatusCode1,
 )
-from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import Session
 from generalresearch.models.thl.user import User
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.models.gr.business import Business
+    from generalresearch.models.gr.team import Team
+    from generalresearch.models.thl.product import Product
+    from generalresearch.pg_helper import PostgresConfig
 
 fake = Faker()
 

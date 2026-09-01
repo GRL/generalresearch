@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from generalresearch.managers.gr.authentication import GRUserManager
-from generalresearch.managers.gr.team import MembershipManager, TeamManager
-from generalresearch.models.gr.authentication import GRUser
 from generalresearch.models.gr.team import Membership, Team
-from generalresearch.models.thl.product import Product
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.gr.authentication import GRUserManager
+    from generalresearch.managers.gr.team import MembershipManager, TeamManager
+    from generalresearch.models.gr.authentication import GRUser
+    from generalresearch.models.thl.product import Product
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 
 class TestMembershipManager:

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from os.path import join as pjoin
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import dask.dataframe as dd
@@ -10,7 +11,10 @@ import pandas as pd
 import pytest
 from pydantic import ValidationError
 
-from generalresearch.incite.base import CollectionItemBase, GRLDatasets
+from generalresearch.incite.base import CollectionItemBase
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
 
 
 class TestCollectionItemBase:

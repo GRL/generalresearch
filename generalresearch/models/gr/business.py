@@ -11,7 +11,7 @@ from uuid import uuid4
 
 import pandas as pd
 import pyarrow as pa
-from dask.distributed import Client
+from dask.distributed import Client as DaskClient
 from psycopg.cursor import Cursor
 from psycopg.rows import dict_row
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, ValidationError
@@ -24,6 +24,11 @@ from generalresearch.incite.schemas.mergers.pop_ledger import (
     numerical_col_names,
 )
 from generalresearch.models.admin.request import ReportRequest, ReportType
+from generalresearch.models.custom_types import (
+    AwareDatetime,
+    UUIDStr,
+    UUIDStrCoerce,
+)
 from generalresearch.models.gr.team import Team
 from generalresearch.models.thl.finance import BusinessBalances, POPFinancial
 from generalresearch.models.thl.ledger import OrderBy
@@ -32,11 +37,6 @@ from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:
     from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
-    from generalresearch.models.custom_types import (
-        AwareDatetime,
-        UUIDStr,
-        UUIDStrCoerce,
-    )
     from generalresearch.models.thl.ledger import LedgerAccount
     from generalresearch.models.thl.payout import BusinessPayoutEvent
     from generalresearch.pg_helper import PostgresConfig
@@ -354,7 +354,7 @@ class Business(BaseModel):
         thl_pg_config: PostgresConfig,
         lm: LedgerManager,
         ds: GRLDatasets,
-        client: Client,
+        client: DaskClient,
         pop_ledger: PopLedgerMerge | None = None,
         at_timestamp: AwareDatetime | None = None,
     ) -> None:
@@ -464,7 +464,7 @@ class Business(BaseModel):
         thl_pg_config: PostgresConfig,
         thl_lm: ThlLedgerManager,
         ds: GRLDatasets,
-        client: Client,
+        client: DaskClient,
         pop_ledger: PopLedgerMerge | None = None,
     ) -> None:
         """This is very similar to the Product POP Financial endpoint; however,
@@ -518,7 +518,7 @@ class Business(BaseModel):
         self,
         thl_pg_config: PostgresConfig,
         ds: GRLDatasets,
-        client: Client,
+        client: DaskClient,
         mnt_gr_api: Path,
         enriched_session: EnrichedSessionMerge | None = None,
     ) -> None:
@@ -561,7 +561,7 @@ class Business(BaseModel):
         self,
         thl_pg_config: PostgresConfig,
         ds: GRLDatasets,
-        client: Client,
+        client: DaskClient,
         mnt_gr_api: Path,
         enriched_wall: EnrichedWallMerge | None = None,
     ) -> None:
@@ -633,7 +633,7 @@ class Business(BaseModel):
         pg_config: PostgresConfig,
         thl_web_rr: PostgresConfig,
         redis_config: RedisConfig,
-        client: Client,
+        client: DaskClient,
         ds: GRLDatasets,
         lm: LedgerManager,
         thl_lm: ThlLedgerManager,

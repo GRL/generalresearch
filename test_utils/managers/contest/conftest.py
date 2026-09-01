@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from generalresearch.managers.base import Permission
 from generalresearch.managers.thl.contest_manager import ContestManager
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.pg_helper import PostgresConfig
 
 
 @pytest.fixture(scope="session")

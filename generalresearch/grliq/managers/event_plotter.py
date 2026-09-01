@@ -1,12 +1,15 @@
 import html
 import webbrowser
+from typing import TYPE_CHECKING
 
 import numpy as np
 from more_itertools import windowed
 from scipy.spatial.distance import euclidean
 
 from generalresearch.grliq.managers.colormap import turbo_colormap_data
-from generalresearch.grliq.models.events import KeyboardEvent, MouseEvent
+
+if TYPE_CHECKING:
+    from generalresearch.grliq.models.events import KeyboardEvent, MouseEvent
 
 
 def make_events_svg(

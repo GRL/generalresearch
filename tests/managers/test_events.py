@@ -8,13 +8,13 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from functools import partial
 from math import floor
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 
-from generalresearch.managers.events import EventManager, EventSubscriber
-from generalresearch.managers.thl.product import ProductManager
-from generalresearch.models import Source
+from generalresearch.managers.events import EventSubscriber
+from generalresearch.models.definitions import Source
 from generalresearch.models.events import (
     AggregateBySource,
     EventType,
@@ -25,7 +25,11 @@ from generalresearch.models.legacy.bucket import Bucket
 from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.models.thl.session import Session, Wall
 from generalresearch.models.thl.user import User
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.events import EventManager
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.redis_helper import RedisConfig
 
 
 # We don't need anything in the db, so not using the db fixtures

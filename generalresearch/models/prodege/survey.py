@@ -20,7 +20,11 @@ from pydantic import (
 )
 
 from generalresearch.locales import Localelator
-from generalresearch.models import LogicalOperator, Source, TaskCalculationType
+from generalresearch.models.definitions import (
+    LogicalOperator,
+    Source,
+    TaskCalculationType,
+)
 from generalresearch.models.prodege import (
     ProdegePastParticipationType,
     ProdegeStatus,

@@ -1,18 +1,21 @@
 from datetime import UTC, datetime
 from itertools import product
+from typing import TYPE_CHECKING
 
 import pytest
 from pandera.pandas import Column, DataFrameSchema, Index
 
-from generalresearch.incite.base import GRLDatasets
-from generalresearch.incite.collections import DFCollection, DFCollectionType
+from generalresearch.incite.collections.base import DFCollection, DFCollectionType
 from generalresearch.incite.collections.thl_marketplaces import (
     InnovateSurveyHistoryCollection,
     MorningSurveyTimeseriesCollection,
     SagoSurveyHistoryCollection,
     SpectrumSurveyTimeseriesCollection,
 )
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
+    from generalresearch.pg_helper import PostgresConfig
 
 
 def combo_object():

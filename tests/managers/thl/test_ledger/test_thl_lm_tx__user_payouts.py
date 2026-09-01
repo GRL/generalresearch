@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -11,12 +12,14 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionConditionFailedError,
     LedgerTransactionFlagAlreadyExistsError,
 )
-from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.models.thl.payout import UserPayoutEvent
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
-from generalresearch.models.thl.wallet import PayoutType
+from generalresearch.models.thl.wallet.definitions import PayoutType
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
 
 
 class TestLedgerManagerAMT:

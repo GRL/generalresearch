@@ -2,19 +2,17 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import pytest
 from pydantic import ValidationError
 from pytest import approx
 
 from generalresearch.currency import USDCent
-from generalresearch.managers.thl.contest_manager import ContestManager
 from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionConditionFailedError,
 )
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.models.thl.contest import (
-    Contest,
     ContestEndCondition,
     ContestEntryRule,
     ContestPrize,
@@ -29,11 +27,20 @@ from generalresearch.models.thl.contest.raffle import (
     ContestEntry,
     ContestEntryType,
     RaffleContest,
-    RaffleContestCreate,
-    RaffleUserView,
 )
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.contest_manager import ContestManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.models.thl.contest import (
+        Contest,
+    )
+    from generalresearch.models.thl.contest.raffle import (
+        RaffleContestCreate,
+        RaffleUserView,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
 
 
 class TestRaffleContest:

@@ -4,6 +4,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from itertools import product as iter_product
 from random import randint
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pandas as pd
@@ -16,24 +17,26 @@ from distributed.utils_test import (
 )
 from faker import Faker
 
-from generalresearch.incite.collections.thl_web import LedgerDFCollection
-from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 from generalresearch.incite.schemas.mergers.pop_ledger import (
     numerical_col_names,
 )
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.models.thl.finance import (
     BusinessBalances,
     POPFinancial,
     ProductBalances,
 )
-from generalresearch.models.thl.ledger import LedgerAccount
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.session import Session
-from generalresearch.models.thl.user import User
-from generalresearch.pg_helper import PostgresConfig
 from test_utils.incite.collections.conftest import ledger_collection
 from test_utils.incite.mergers.conftest import pop_ledger_merge
+
+if TYPE_CHECKING:
+    from generalresearch.incite.collections.thl_web import LedgerDFCollection
+    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.models.thl.ledger import LedgerAccount
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
 
 fake = Faker()
 

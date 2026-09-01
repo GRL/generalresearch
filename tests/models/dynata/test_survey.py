@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class TestDynataCondition:
 
     def test_condition_create(self):

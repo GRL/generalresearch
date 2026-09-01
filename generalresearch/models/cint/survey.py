@@ -18,7 +18,7 @@ from pydantic import (
 )
 
 from generalresearch.locales import Localelator
-from generalresearch.models import Source, TaskCalculationType
+from generalresearch.models.definitions import Source, TaskCalculationType
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.survey import MarketplaceTask
 from generalresearch.models.thl.survey.condition import (

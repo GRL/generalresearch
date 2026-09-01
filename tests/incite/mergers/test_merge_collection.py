@@ -2,16 +2,19 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from itertools import product
+from typing import TYPE_CHECKING
 
 import pandas as pd
 import pytest
 from pandera.pandas import DataFrameSchema
 
-from generalresearch.incite.base import GRLDatasets
-from generalresearch.incite.mergers import (
+from generalresearch.incite.mergers.base import (
     MergeCollection,
     MergeType,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
 
 merge_types = [e for e in MergeType if e != MergeType.TEST]
 

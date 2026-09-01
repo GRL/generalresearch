@@ -1,6 +1,6 @@
 from user_agents import parse as parse_ua
 
-from generalresearch.models import DeviceType
+from generalresearch.models.definitions import DeviceType
 
 
 def parse_device_from_useragent(user_agent: str) -> DeviceType:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from itertools import product as iproduct
 from random import randint
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -13,12 +14,17 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerAccountDoesntExistError,
 )
 from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
-from generalresearch.models.custom_types import AccountType, Direction, UUIDStr
+from generalresearch.models.custom_types import AccountType, Direction
 from generalresearch.models.thl.ledger import (
     LedgerAccount,
     LedgerEntry,
-    LedgerTransaction,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.models.thl.ledger import (
+        LedgerTransaction,
+    )
 
 
 @pytest.mark.parametrize(

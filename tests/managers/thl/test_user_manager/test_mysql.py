@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from generalresearch.managers.thl.user_manager.mysql_user_manager import (
-    MysqlUserManager,
-)
-from generalresearch.models.thl.user import User
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.user_manager.mysql_user_manager import (
+        MysqlUserManager,
+    )
+    from generalresearch.models.thl.user import User
 
 
 class TestUserManagerMysqlNew:

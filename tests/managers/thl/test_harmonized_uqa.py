@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.managers.thl.profiling.uqa import UQAManager
 from generalresearch.models.thl.profiling.user_question_answer import (
     DUMMY_UQA,
     UserQuestionAnswer,
 )
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.profiling.uqa import UQAManager
+    from generalresearch.models.thl.user import User
 
 
 @pytest.mark.usefixtures("uqa_db_index", "upk_data", "uqa_manager_clear_cache")

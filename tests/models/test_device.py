@@ -15,7 +15,7 @@ chromebook_ua_string = (
 )
 
 
-from generalresearch.models import DeviceType
+from generalresearch.models.definitions import DeviceType
 from generalresearch.models.device import parse_device_from_useragent
 
 

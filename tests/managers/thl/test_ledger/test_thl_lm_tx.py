@@ -5,26 +5,21 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from random import randint
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 
-from generalresearch.currency import LedgerCurrency, USDCent
+from generalresearch.currency import USDCent
 from generalresearch.managers.thl.ledger_manager.ledger import (
-    LedgerManager,
     LedgerTransaction,
 )
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.managers.thl.product import ProductManager
-from generalresearch.managers.thl.session import SessionManager
-from generalresearch.managers.thl.wall import WallManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.definitions import (
     WALL_ALLOWED_STATUS_STATUS_CODE,
 )
 from generalresearch.models.thl.ledger import (
     Direction,
-    LedgerAccount,
     TransactionType,
 )
 from generalresearch.models.thl.payout import UserPayoutEvent
@@ -41,8 +36,21 @@ from generalresearch.models.thl.session import (
     Wall,
     WallAdjustedStatus,
 )
-from generalresearch.models.thl.user import User
-from generalresearch.models.thl.wallet import PayoutType
+from generalresearch.models.thl.wallet.definitions import PayoutType
+
+if TYPE_CHECKING:
+    from generalresearch.currency import LedgerCurrency
+    from generalresearch.managers.thl.ledger_manager.ledger import (
+        LedgerManager,
+    )
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.managers.thl.wall import WallManager
+    from generalresearch.models.thl.ledger import (
+        LedgerAccount,
+    )
+    from generalresearch.models.thl.user import User
 
 logger = logging.getLogger("LedgerManager")
 

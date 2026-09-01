@@ -25,7 +25,7 @@ from pydantic import (
 )
 
 from generalresearch.locales import Localelator
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.morning import MorningStatus
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.survey import MarketplaceTask

@@ -38,13 +38,13 @@ from pydantic.json_schema import SkipJsonSchema
 
 from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
-from generalresearch.models import Source
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     CountryISOLike,
     HttpsUrlStr,
     UUIDStr,
 )
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.finance import (
     POPFinancial,
     ProductBalances,
@@ -63,7 +63,7 @@ from generalresearch.models.thl.payout_format import (
     examples as payout_format_examples,
 )
 from generalresearch.models.thl.supplier_tag import SupplierTag
-from generalresearch.models.thl.wallet import PayoutType
+from generalresearch.models.thl.wallet.definitions import PayoutType
 from generalresearch.models.utils import decimal_to_usd_cents
 from generalresearch.redis_helper import RedisConfig
 

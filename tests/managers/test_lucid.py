@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from generalresearch.managers.lucid.profiling import get_profiling_library
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.pg_helper import PostgresConfig
 
 qids = ["42", "43", "45", "97", "120", "639", "15297"]
 

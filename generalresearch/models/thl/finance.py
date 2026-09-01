@@ -27,8 +27,9 @@ adjustment_example = random.randint(-1_000, 50 * 100)
 
 if TYPE_CHECKING:
     from generalresearch.currency import USDCent
+    from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.thl.ledger import LedgerAccount
-    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.models.thl.product import Product
 
 
 class AdjustmentType(BaseModel):
@@ -516,7 +517,7 @@ class ProductBalances(BaseModel):
         if isinstance(input_data, pd.Series):
             return ProductBalances.model_validate(input_data.to_dict())
 
-        elif isinstance(input_data, pd.DataFrame):
+        else:
             assert isinstance(input_data.index, pd.DatetimeIndex), "Invalid input data"
 
             # The pop merge is grouped by 1min intervals. Therefore, if we take
@@ -528,9 +529,6 @@ class ProductBalances(BaseModel):
             pb = ProductBalances.model_validate(input_data.sum().to_dict())
             pb.last_event = pq_last_event_close.to_pydatetime()
             return pb
-
-        else:
-            raise NotImplementedError("Can't handle this input")
 
     def __str__(self) -> str:
         return (
@@ -834,19 +832,17 @@ class BusinessBalances(BaseModel):
     def from_pandas(
         input_data: pd.DataFrame,
         accounts: list[LedgerAccount],
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
     ) -> BusinessBalances:
         LOG.debug(f"BusinessBalances.from_pandas(input_data={input_data.shape})")
 
         from generalresearch.incite.schemas.mergers.pop_ledger import (
             numerical_col_names,
         )
-        from generalresearch.managers.thl.product import ProductManager
         from generalresearch.models.thl.ledger import (
             AccountType,
             Direction,
         )
-        from generalresearch.models.thl.product import Product
 
         # Validate the input accounts
         assert len(accounts) > 0, "Must provide accounts"
@@ -872,8 +868,7 @@ class BusinessBalances(BaseModel):
         # Sort the ProductBalances so that they're always in a consistent
         #   sorted order.
 
-        pm = ProductManager(pg_config=thl_pg_config)
-        products: list[Product] = pm.get_by_uuids(
+        products: list[Product] = product_manager.get_by_uuids(
             product_uuids=[pb.product_id for pb in product_balances]
         )
         sorted_products_uuids = [

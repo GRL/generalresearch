@@ -14,12 +14,12 @@ from pydantic import (
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models import Source
     from generalresearch.models.custom_types import (
         AwareDatetimeISO,
         CountryISOLike,
         UUIDStr,
     )
+    from generalresearch.models.definitions import Source
     from generalresearch.models.thl.definitions import (
         SessionStatusCode2,
         Status,

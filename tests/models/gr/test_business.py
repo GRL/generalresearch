@@ -19,40 +19,42 @@ from distributed.utils_test import (
 from pytest import approx
 
 from generalresearch.currency import USDCent
-from generalresearch.incite.base import GRLDatasets
-from generalresearch.incite.collections.thl_web import (
-    SessionDFCollection,
-    WallDFCollection,
-)
-from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
-from generalresearch.managers.gr.business import BusinessBankAccountManager
-from generalresearch.managers.gr.team import TeamManager
-from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.managers.thl.payout import (
-    BusinessPayoutEventManager,
-    PayoutEventManager,
-)
 from generalresearch.models.gr.business import (
     Business,
     BusinessAddress,
-    BusinessBankAccount,
     BusinessContact,
 )
-from generalresearch.models.gr.team import Team
 from generalresearch.models.thl.finance import (
     BusinessBalances,
     ProductBalances,
 )
 from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
 
 if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
+    from generalresearch.incite.collections.thl_web import (
+        SessionDFCollection,
+        WallDFCollection,
+    )
+    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
+    from generalresearch.managers.gr.business import BusinessBankAccountManager
+    from generalresearch.managers.gr.team import TeamManager
+    from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.managers.thl.payout import (
+        BusinessPayoutEventManager,
+        PayoutEventManager,
+    )
     from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.gr.business import (
+        BusinessBankAccount,
+    )
+    from generalresearch.models.gr.team import Team
     from generalresearch.models.thl.product import BrokerageProductPayoutEvent
     from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 
 class TestBusinessBankAccount:

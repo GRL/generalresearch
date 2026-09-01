@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
-from generalresearch.config import GRLBaseSettings
 from generalresearch.managers.base import Permission
 from generalresearch.managers.thl.user_manager.redis_user_manager import (
     RedisUserManager,
 )
-from generalresearch.models.thl.user import User
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.config import GRLBaseSettings
+    from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class TestUserManagerRedis:

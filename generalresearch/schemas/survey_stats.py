@@ -2,7 +2,7 @@ import pandas as pd
 from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 
 COUNTRY_ISOS = Localelator().get_all_countries()
 kosovo = "xk"

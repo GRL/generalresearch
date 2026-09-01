@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, PositiveInt, field_validator, model_validator
 
-from generalresearch.models import MAX_INT32, Source
+from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
 
 if TYPE_CHECKING:

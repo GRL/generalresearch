@@ -5,6 +5,7 @@ import shutil
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -12,22 +13,9 @@ from dask.distributed import Client as DaskClient
 from pydantic import ValidationError
 
 from generalresearch.currency import USDCent
-from generalresearch.incite.base import GRLDatasets
-from generalresearch.incite.collections.thl_web import LedgerDFCollection
-from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
-from generalresearch.managers.thl.payout import PayoutEventManager
-from generalresearch.managers.thl.product import ProductManager
-from generalresearch.models import Source
-from generalresearch.models.gr.business import Business
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.finance import ProductBalances
-from generalresearch.models.thl.payout import (
-    BrokerageProductPayoutEvent,
-)
 from generalresearch.models.thl.product import (
-    BrokerageProductPayoutEventManager,
     IntegrationMode,
     PayoutConfig,
     PayoutTransformation,
@@ -39,9 +27,24 @@ from generalresearch.models.thl.product import (
     SupplyConfig,
     SupplyPolicy,
 )
-from generalresearch.models.thl.session import Session
-from generalresearch.models.thl.user import User
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
+    from generalresearch.incite.collections.thl_web import LedgerDFCollection
+    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.managers.thl.payout import PayoutEventManager
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.gr.business import Business
+    from generalresearch.models.thl.payout import (
+        BrokerageProductPayoutEvent,
+    )
+    from generalresearch.models.thl.product import BrokerageProductPayoutEventManager
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
+    from generalresearch.redis_helper import RedisConfig
 
 
 class TestProduct:

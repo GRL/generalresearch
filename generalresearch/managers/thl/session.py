@@ -10,12 +10,12 @@ from faker import Faker
 from psycopg import sql
 from pydantic import NonNegativeInt, PositiveInt
 
-from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
     Permission,
     PostgresManager,
 )
 from generalresearch.managers.thl.product import ProductManager
+from generalresearch.managers.utils import parse_order_by
 from generalresearch.models.legacy.bucket import Bucket
 from generalresearch.models.thl.session import (
     Session,
@@ -28,8 +28,8 @@ from generalresearch.models.thl.task_status import (
 from generalresearch.models.thl.user import User
 
 if TYPE_CHECKING:
-    from generalresearch.models import DeviceType
     from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.models.definitions import DeviceType
     from generalresearch.models.thl.definitions import (
         SessionStatusCode2,
         Status,

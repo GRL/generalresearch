@@ -12,10 +12,12 @@ from pydantic import (
 )
 
 from generalresearch.currency import USDCent
+from generalresearch.models.thl.contest.definitions import (
+    ContestEntryType,
+)
 
 if TYPE_CHECKING:
     from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
-    from generalresearch.models.thl.contest.definitions import ContestEntryType
     from generalresearch.models.thl.user import User
 
 
@@ -59,10 +61,7 @@ class ContestEntry(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_amount_type(cls, data: dict) -> dict:
-        from generalresearch.models.thl.contest.definitions import (
-            ContestEntryType,
-        )
+    def validate_amount_type(cls, data: dict[str, Any]) -> dict[str, Any]:
 
         amount = data.get("amount")
         entry_type = data.get("entry_type")
@@ -71,6 +70,7 @@ class ContestEntry(BaseModel):
             assert isinstance(amount, int) and not isinstance(
                 amount, USDCent
             ), "amount must be int in ContestEntryType.COUNT"
+
         elif entry_type == ContestEntryType.CASH:
             # This may be coming from the DB, in which case it is an int.
             data["amount"] = USDCent(data["amount"])
@@ -79,9 +79,6 @@ class ContestEntry(BaseModel):
 
     @computed_field()
     def amount_str(self) -> str:
-        from generalresearch.models.thl.contest.definitions import (
-            ContestEntryType,
-        )
 
         if self.entry_type == ContestEntryType.COUNT:
             return str(self.amount)

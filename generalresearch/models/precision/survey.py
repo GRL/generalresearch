@@ -15,7 +15,7 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.precision import PrecisionStatus
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.survey import MarketplaceTask

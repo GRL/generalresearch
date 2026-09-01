@@ -14,7 +14,9 @@ from generalresearch.models.thl.contest import (
     ContestPrize,
     ContestWinner,
 )
+from generalresearch.models.thl.contest.contest_entry import ContestEntry
 from generalresearch.models.thl.contest.definitions import (
+    ContestEntryType,
     ContestStatus,
     ContestType,
 )
@@ -35,8 +37,6 @@ from generalresearch.models.thl.contest.milestone import (
     MilestoneUserView,
 )
 from generalresearch.models.thl.contest.raffle import (
-    ContestEntry,
-    ContestEntryType,
     RaffleContest,
     RaffleUserView,
 )

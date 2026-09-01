@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from itertools import product as iter_product
 from os.path import join as pjoin
 from pathlib import Path, PurePath
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import dask.dataframe as dd
@@ -21,18 +22,23 @@ from faker import Faker
 from pandera.pandas import DataFrameSchema
 from pydantic import FilePath
 
-from generalresearch.incite.base import CollectionItemBase, GRLDatasets
-from generalresearch.incite.collections import (
-    DFCollection,
-    DFCollectionItem,
+from generalresearch.incite.base import CollectionItemBase
+from generalresearch.incite.collections.base import (
     DFCollectionType,
 )
 from generalresearch.incite.schemas import ARCHIVE_AFTER
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.sql_helper import PostgresDsn
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
+    from generalresearch.incite.collections.base import (
+        DFCollection,
+        DFCollectionItem,
+    )
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
 
 fake = Faker()
 

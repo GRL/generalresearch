@@ -6,6 +6,7 @@ import zoneinfo
 from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -26,7 +27,9 @@ from generalresearch.models.thl.product import (
 )
 from generalresearch.models.thl.session import Session
 from generalresearch.models.thl.user import User
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.redis_helper import RedisConfig
 
 # random uuid for leaderboard tests
 product_id = uuid4().hex

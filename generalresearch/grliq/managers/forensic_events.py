@@ -1,7 +1,7 @@
 import json
 from collections.abc import Collection
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from psycopg import sql
@@ -14,8 +14,10 @@ from generalresearch.grliq.models.events import (
     PointerMove,
     TimingData,
 )
-from generalresearch.models.custom_types import UUIDStr
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class GrlIqEventManager:

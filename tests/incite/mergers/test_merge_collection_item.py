@@ -3,14 +3,17 @@ from __future__ import annotations
 from datetime import timedelta
 from itertools import product
 from pathlib import PurePath
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.incite.mergers import (
-    MergeCollection,
-    MergeCollectionItem,
-    MergeType,
-)
+from generalresearch.incite.mergers.base import MergeType
+
+if TYPE_CHECKING:
+    from generalresearch.incite.mergers.base import (
+        MergeCollection,
+        MergeCollectionItem,
+    )
 
 
 @pytest.mark.parametrize(

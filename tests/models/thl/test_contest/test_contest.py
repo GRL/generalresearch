@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
+if TYPE_CHECKING:
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
 
 
 class TestContest:

@@ -13,7 +13,7 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models import MAX_INT32
+from generalresearch.models.definitions import MAX_INT32
 from generalresearch.models.thl.profiling.upk_property import (
     Cardinality,
     PropertyType,

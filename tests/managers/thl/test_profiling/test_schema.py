@@ -1,9 +1,12 @@
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
-from generalresearch.managers.thl.profiling.schema import (
-    UpkSchemaManager,
-)
 from generalresearch.models.thl.profiling.upk_property import PropertyType
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.profiling.schema import (
+        UpkSchemaManager,
+    )
 
 
 class TestUpkSchemaManager:

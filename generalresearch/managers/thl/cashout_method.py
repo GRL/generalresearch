@@ -9,10 +9,10 @@ from uuid import UUID, uuid4
 from pydantic import NonNegativeInt
 
 from generalresearch.managers.base import PostgresManager
-from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
     CashoutMethod,
 )
+from generalresearch.models.thl.wallet.definitions import PayoutType
 
 if TYPE_CHECKING:
     from generalresearch.models.thl.user import User

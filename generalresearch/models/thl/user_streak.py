@@ -19,7 +19,7 @@ from pydantic import (
 from pydantic.json_schema import SkipJsonSchema
 
 from generalresearch.managers.leaderboard import country_timezone
-from generalresearch.models import MAX_INT32
+from generalresearch.models.definitions import MAX_INT32
 
 if TYPE_CHECKING:
     from generalresearch.models.thl.locales import CountryISO

@@ -3,36 +3,41 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 from pytest import FixtureRequest as Request
 
 from generalresearch.currency import USDCent
-from generalresearch.managers.thl.contest_manager import ContestManager
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.models.thl.contest import (
     ContestEndCondition,
     ContestPrize,
 )
-from generalresearch.models.thl.contest.contest import Contest
 from generalresearch.models.thl.contest.definitions import (
     ContestPrizeKind,
     ContestType,
 )
-from generalresearch.models.thl.contest.leaderboard import (
-    LeaderboardContestCreate,
-)
-from generalresearch.models.thl.contest.milestone import (
-    MilestoneContestCreate,
-)
 from generalresearch.models.thl.contest.raffle import (
     ContestEntryType,
-    RaffleContest,
     RaffleContestCreate,
 )
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.contest_manager import ContestManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.models.thl.contest.contest import Contest
+    from generalresearch.models.thl.contest.leaderboard import (
+        LeaderboardContestCreate,
+    )
+    from generalresearch.models.thl.contest.milestone import (
+        MilestoneContestCreate,
+    )
+    from generalresearch.models.thl.contest.raffle import (
+        RaffleContest,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
 
 # === Miscellaneous ===
 

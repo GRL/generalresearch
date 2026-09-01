@@ -1,11 +1,12 @@
 import ipaddress
+from datetime import datetime
+from typing import TYPE_CHECKING
 
 import faker
 import pytest
 from psycopg.errors import UniqueViolation
 from pydantic import ValidationError
 
-from generalresearch.managers.network.label import IPLabelManager
 from generalresearch.models.network.label import (
     IPLabel,
     IPLabelKind,
@@ -14,11 +15,14 @@ from generalresearch.models.network.label import (
 )
 from generalresearch.models.thl.ipinfo import normalize_ip
 
+if TYPE_CHECKING:
+    from generalresearch.managers.network.label import IPLabelManager
+
 fake = faker.Faker()
 
 
 @pytest.fixture
-def ip_label(utc_now) -> IPLabel:
+def ip_label(utc_now: datetime) -> IPLabel:
     ip = ipaddress.IPv6Network((fake.ipv6(), 64), strict=False)
     return IPLabel(
         label_kind=IPLabelKind.VPN,
@@ -31,7 +35,7 @@ def ip_label(utc_now) -> IPLabel:
     )
 
 
-def test_model(utc_now):
+def test_model(utc_now: datetime):
     ip = fake.ipv4_public()
     lbl = IPLabel(
         label_kind=IPLabelKind.VPN,
@@ -142,7 +146,7 @@ def test_filter_network(
     assert len(res) == 2
 
 
-def test_network(iplabel_manager: IPLabelManager, utc_now):
+def test_network(iplabel_manager: IPLabelManager, utc_now: datetime):
     # This is a fully-specific /128 ipv6 address.
     # e.g. '51b7:b38d:8717:6c5b:cd3e:f5c3:3aba:17d'
     ip = fake.ipv6()
@@ -174,7 +178,10 @@ def test_network(iplabel_manager: IPLabelManager, utc_now):
 
 
 def test_label_cidr_and_ipinfo(
-    iplabel_manager: IPLabelManager, ip_information_factory, ip_geoname, utc_now
+    iplabel_manager: IPLabelManager,
+    ip_information_factory,
+    ip_geoname,
+    utc_now: datetime,
 ):
     # We have network_iplabel.ip as a cidr col and
     # thl_ipinformation.ip as a inet col. Make sure we can join appropriately

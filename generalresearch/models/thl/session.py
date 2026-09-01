@@ -18,7 +18,7 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl import (
     decimal_to_int_cents,
     int_cents_to_decimal,
@@ -37,13 +37,13 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
-    from generalresearch.models import DeviceType
     from generalresearch.models.custom_types import (
         AwareDatetimeISO,
         EnumNameSerializer,
         IPvAnyAddressStr,
         UUIDStr,
     )
+    from generalresearch.models.definitions import DeviceType
     from generalresearch.models.legacy.bucket import Bucket
     from generalresearch.models.thl.definitions import (
         ReportValue,

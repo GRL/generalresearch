@@ -9,6 +9,7 @@ from collections.abc import Callable, Generator
 from datetime import UTC, datetime, timedelta
 from os.path import join as pjoin
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -17,23 +18,13 @@ from dotenv import load_dotenv
 from pydantic import MariaDBDsn, PostgresDsn, TypeAdapter
 from pytest import TempPathFactory
 
-from generalresearch.config import GRLBaseSettings
 from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import InternalHostname, PostgresDict
-from generalresearch.pg_helper import PostgresConfig
 from generalresearch.sql_helper import SqlHelper
 
-# -- redis notes from jenkins file
-# sh "redis-cli -u ${env.THL_REDIS} FLUSHDB"
-# sh "redis-cli -u ${env.GR_REDIS} FLUSHDB"
-
-# script {
-#     env.GR_REDIS_DB = new Random().nextInt(1024).toString()
-#     env.GR_REDIS = "redis://${env.REDIS}:6379/${env.GR_REDIS_DB}"
-#     echo "Using GR Redis: ${env.GR_REDIS}"
-#     if (sh(script: "redis-cli -u ${env.GR_REDIS} SET jenkins_lock 1 NX EX 3600", returnStdout: true).trim() != 'OK')
-#         error('Redis already locked... aborting.')
-# }
+if TYPE_CHECKING:
+    from generalresearch.config import GRLBaseSettings
+    from generalresearch.pg_helper import PostgresConfig
 
 
 @pytest.fixture(scope="session")

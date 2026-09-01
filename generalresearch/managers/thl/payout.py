@@ -31,11 +31,11 @@ from generalresearch.models.thl.payout import (
     PayoutEvent,
     UserPayoutEvent,
 )
-from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
     CashMailOrderData,
     CashoutRequestInfo,
 )
+from generalresearch.models.thl.wallet.definitions import PayoutType
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (

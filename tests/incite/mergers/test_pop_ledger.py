@@ -3,23 +3,26 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from itertools import product as iter_product
+from typing import TYPE_CHECKING
 
 import pandas as pd
 import pytest
 from dask.distributed import Client as DaskClient
 
-from generalresearch.incite.base import GRLDatasets
-from generalresearch.incite.collections.thl_web import (
-    LedgerDFCollection,
-    SessionDFCollection,
-)
-from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 from generalresearch.incite.schemas.mergers.pop_ledger import (
     numerical_col_names,
 )
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
+    from generalresearch.incite.collections.thl_web import (
+        LedgerDFCollection,
+        SessionDFCollection,
+    )
+    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
 
 
 @pytest.mark.parametrize(

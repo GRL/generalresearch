@@ -14,8 +14,8 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models import Source
 from generalresearch.models.custom_types import IPvAnyAddressStr
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.locales import (
     CountryISO,
     LanguageISO,

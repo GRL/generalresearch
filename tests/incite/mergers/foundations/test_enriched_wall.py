@@ -2,27 +2,32 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from itertools import product as iter_product
+from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 import pandas as pd
 import pytest
 from dask.distributed import Client as DaskClient
 
-from generalresearch.incite.collections.thl_web import (
-    SessionDFCollection,
-    WallDFCollection,
-)
-
-# noinspection PyUnresolvedReferences
 from generalresearch.incite.mergers.foundations.enriched_wall import (
-    EnrichedWallMerge,
     EnrichedWallMergeItem,
 )
-from generalresearch.models.admin.request import ReportRequest
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.session import Session
-from generalresearch.models.thl.user import User
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.incite.collections.thl_web import (
+        SessionDFCollection,
+        WallDFCollection,
+    )
+
+    # noinspection PyUnresolvedReferences
+    from generalresearch.incite.mergers.foundations.enriched_wall import (
+        EnrichedWallMerge,
+    )
+    from generalresearch.models.admin.request import ReportRequest
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
 
 
 @pytest.mark.parametrize(

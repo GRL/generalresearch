@@ -6,11 +6,11 @@ from uuid import uuid4
 
 import pytest
 
-from generalresearch.models.thl.wallet import Currency, PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
     CashoutMethod,
     TangoCashoutMethodData,
 )
+from generalresearch.models.thl.wallet.definitions import Currency, PayoutType
 
 
 @pytest.fixture(scope="session")

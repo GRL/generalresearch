@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 from pydantic import BaseModel, Field, MySQLDsn, ValidationError
 from pydantic_core import Url
 
-from generalresearch.models.custom_types import DaskDsn, SentryDsn
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import DaskDsn, SentryDsn
 
 # --- Test Pydantic Models ---
 

@@ -12,13 +12,12 @@ import pytest
 from pydantic import AwareDatetime, PositiveInt
 from pytest import FixtureRequest as Request
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.definitions import (
     WALL_ALLOWED_STATUS_STATUS_CODE,
     Status,
 )
 from generalresearch.models.thl.survey.model import Buyer, Survey
-from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.currency import USDCent
@@ -53,6 +52,7 @@ if TYPE_CHECKING:
     from generalresearch.models.thl.user import User
     from generalresearch.models.thl.user_iphistory import IPRecord
     from generalresearch.models.thl.userhealth import AuditLog, AuditLogLevel
+    from generalresearch.pg_helper import PostgresConfig
 
 # === THL ===
 

@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from random import choice as rand_choice
 from random import randint
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pandas as pd
@@ -13,35 +14,39 @@ import pytest
 from dask.distributed import Client as DaskClient
 
 from generalresearch.currency import USDCent
-from generalresearch.incite.base import GRLDatasets
-from generalresearch.incite.collections.thl_web import (
-    LedgerDFCollection,
-)
-from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
-from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.managers.thl.payout import (
-    BrokerageProductPayoutEventManager,
-    BusinessPayoutEventManager,
-    PayoutEventManager,
-    UserPayoutEventManager,
-)
-from generalresearch.managers.thl.product import ProductManager
-from generalresearch.models.gr.business import Business
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.finance import BusinessBalances
-from generalresearch.models.thl.ledger import LedgerAccount
 from generalresearch.models.thl.payout import (
     BrokerageProductPayoutEvent,
     BusinessPayoutEvent,
-    UserPayoutEvent,
 )
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.session import Session
-from generalresearch.models.thl.user import User
-from generalresearch.models.thl.wallet import PayoutType
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+from generalresearch.models.thl.wallet.definitions import PayoutType
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
+    from generalresearch.incite.collections.thl_web import (
+        LedgerDFCollection,
+    )
+    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
+    from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.managers.thl.payout import (
+        BrokerageProductPayoutEventManager,
+        BusinessPayoutEventManager,
+        PayoutEventManager,
+        UserPayoutEventManager,
+    )
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.gr.business import Business
+    from generalresearch.models.thl.ledger import LedgerAccount
+    from generalresearch.models.thl.payout import (
+        UserPayoutEvent,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 logger = logging.getLogger()
 
@@ -189,7 +194,7 @@ class TestPayout:
         utc_now: datetime,
     ):
         from generalresearch.models.thl.definitions import PayoutStatus
-        from generalresearch.models.thl.wallet import PayoutType
+        from generalresearch.models.thl.wallet.definitions import PayoutType
 
         user_account = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
         bp_account = thl_ledger_manager.get_account_or_create_bp_wallet(product=product)

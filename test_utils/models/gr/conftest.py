@@ -2,30 +2,32 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from random import randint
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 from pydantic import PositiveInt
 from pydantic_extra_types.phone_numbers import PhoneNumber
 
-from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
-from generalresearch.managers.gr.business import (
-    BusinessAddressManager,
-    BusinessBankAccountManager,
-    BusinessManager,
-)
-from generalresearch.managers.gr.team import MembershipManager, TeamManager
-from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.gr.authentication import GRToken, GRUser
-from generalresearch.models.gr.business import (
-    Business,
-    BusinessAddress,
-    BusinessBankAccount,
-    TransferMethod,
-)
-from generalresearch.models.gr.team import Membership, Team
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+if TYPE_CHECKING:
+    from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
+    from generalresearch.managers.gr.business import (
+        BusinessAddressManager,
+        BusinessBankAccountManager,
+        BusinessManager,
+    )
+    from generalresearch.managers.gr.team import MembershipManager, TeamManager
+    from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.models.gr.authentication import GRToken, GRUser
+    from generalresearch.models.gr.business import (
+        Business,
+        BusinessAddress,
+        BusinessBankAccount,
+        TransferMethod,
+    )
+    from generalresearch.models.gr.team import Membership, Team
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 # --- Static ---
 

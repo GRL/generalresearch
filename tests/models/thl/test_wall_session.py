@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.models.thl.session import Session, Wall
 from generalresearch.models.thl.user import User

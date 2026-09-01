@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.managers.thl.category import CategoryManager
 from generalresearch.models.thl.category import Category
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.category import CategoryManager
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class TestCategory:

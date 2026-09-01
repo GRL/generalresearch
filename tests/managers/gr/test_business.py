@@ -1,21 +1,24 @@
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 
-from generalresearch.managers.gr.business import (
-    BusinessAddressManager,
-    BusinessBankAccountManager,
-    BusinessManager,
-)
-from generalresearch.managers.gr.team import MembershipManager, TeamManager
-from generalresearch.models.gr.authentication import GRUser
 from generalresearch.models.gr.business import (
     Business,
     BusinessAddress,
     BusinessBankAccount,
     TransferMethod,
 )
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.gr.business import (
+        BusinessAddressManager,
+        BusinessBankAccountManager,
+        BusinessManager,
+    )
+    from generalresearch.managers.gr.team import MembershipManager, TeamManager
+    from generalresearch.models.gr.authentication import GRUser
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class TestBusinessBankAccountManager:

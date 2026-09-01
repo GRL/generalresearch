@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.legacy.bucket import (
     BucketTask,
     DurationSummary,

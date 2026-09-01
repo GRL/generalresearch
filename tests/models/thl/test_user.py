@@ -6,15 +6,18 @@ from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from random import choice as rand_choice
 from random import randint
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
 
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.managers.thl.userhealth import AuditLogManager
-from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.managers.thl.userhealth import AuditLogManager
+    from generalresearch.models.thl.product import Product
 
 
 class TestUserUserID:

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
-from generalresearch.models import Source, string_utils
+from generalresearch.models.definitions import Source, string_utils
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
     MarketplaceUserQuestionAnswer,

@@ -18,7 +18,7 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models import MAX_INT32, Source, string_utils
+from generalresearch.models.definitions import MAX_INT32, Source, string_utils
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
 )

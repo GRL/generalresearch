@@ -6,7 +6,7 @@ import pandas as pd
 from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
-from generalresearch.models import TaskCalculationType
+from generalresearch.models.definitions import TaskCalculationType
 from generalresearch.models.spectrum import SpectrumStatus
 from generalresearch.models.thl.survey.task_collection import (
     TaskCollection,

@@ -24,7 +24,7 @@ from pydantic import (
 )
 
 from generalresearch.locales import Localelator
-from generalresearch.models import (
+from generalresearch.models.definitions import (
     LogicalOperator,
     Source,
 )
@@ -41,14 +41,14 @@ from generalresearch.models.thl.survey.condition import (
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models import (
-        TaskCalculationType,
-    )
     from generalresearch.models.custom_types import (
         AlphaNumStrSet,
         AwareDatetimeISO,
         CoercedStr,
         DeviceTypes,
+    )
+    from generalresearch.models.definitions import (
+        TaskCalculationType,
     )
     from generalresearch.models.innovate.question import InnovateQuestionID
 

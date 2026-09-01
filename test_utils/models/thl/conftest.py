@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from decimal import ROUND_DOWN, Decimal
 from random import choice as rand_choice
 from random import randint, random
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import faker
@@ -13,47 +13,53 @@ import pytest
 from grip_client.enums import AccessType
 from pydantic import PositiveInt
 
-from generalresearch.managers.thl.ipinfo import IPGeonameManager, IPInformationManager
-from generalresearch.managers.thl.payout import UserPayoutEventManager
-from generalresearch.managers.thl.product import ProductManager
-from generalresearch.managers.thl.session import SessionManager
-from generalresearch.managers.thl.user_manager.user_manager import UserManager
-from generalresearch.managers.thl.userhealth import AuditLogManager, IPRecordManager
-from generalresearch.managers.thl.wall import WallManager
-from generalresearch.models import DeviceType
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    IPvAnyAddressStr,
-    UUIDStr,
-)
-from generalresearch.models.legacy.bucket import Bucket
-from generalresearch.models.thl.definitions import (
-    PayoutStatus,
-)
-from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation
-from generalresearch.models.thl.payout import UserPayoutEvent
-from generalresearch.models.thl.product import (
-    PayoutConfig,
-    Product,
-    ProfilingConfig,
-    SessionConfig,
-    SourcesConfig,
-    SupplyConfig,
-    UserCreateConfig,
-    UserHealthConfig,
-    UserWalletConfig,
-)
+from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.session import (
-    Session,
     Source,
     Status,
-    Wall,
 )
 from generalresearch.models.thl.user import User
-from generalresearch.models.thl.user_iphistory import IPRecord
-from generalresearch.models.thl.userhealth import AuditLog, AuditLogLevel
-from generalresearch.models.thl.wallet import PayoutType
-from generalresearch.models.thl.wallet.cashout_method import CashMailOrderData
+from generalresearch.models.thl.userhealth import AuditLogLevel
+from generalresearch.models.thl.wallet.definitions import PayoutType
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ipinfo import (
+        IPGeonameManager,
+        IPInformationManager,
+    )
+    from generalresearch.managers.thl.payout import UserPayoutEventManager
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.managers.thl.user_manager.user_manager import UserManager
+    from generalresearch.managers.thl.userhealth import AuditLogManager, IPRecordManager
+    from generalresearch.managers.thl.wall import WallManager
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        IPvAnyAddressStr,
+        UUIDStr,
+    )
+    from generalresearch.models.definitions import DeviceType
+    from generalresearch.models.legacy.bucket import Bucket
+    from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation
+    from generalresearch.models.thl.payout import UserPayoutEvent
+    from generalresearch.models.thl.product import (
+        PayoutConfig,
+        Product,
+        ProfilingConfig,
+        SessionConfig,
+        SourcesConfig,
+        SupplyConfig,
+        UserCreateConfig,
+        UserHealthConfig,
+        UserWalletConfig,
+    )
+    from generalresearch.models.thl.session import (
+        Session,
+        Wall,
+    )
+    from generalresearch.models.thl.user_iphistory import IPRecord
+    from generalresearch.models.thl.userhealth import AuditLog
+    from generalresearch.models.thl.wallet.cashout_method import CashMailOrderData
 
 fake = faker.Faker()
 

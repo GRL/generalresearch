@@ -3,26 +3,28 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import timedelta
 from itertools import product as iter_product
+from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 import pandas as pd
 import pytest
 from dask.distributed import Client as DaskClient
 
-from generalresearch.incite.collections.thl_web import (
-    SessionDFCollection,
-    TaskAdjustmentDFCollection,
-    WallDFCollection,
-)
-from generalresearch.incite.mergers.foundations.enriched_task_adjust import (
-    EnrichedTaskAdjustMerge,
-)
-from generalresearch.incite.mergers.foundations.enriched_wall import (
-    EnrichedWallMerge,
-)
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
-from generalresearch.pg_helper import PostgresConfig
+if TYPE_CHECKING:
+    from generalresearch.incite.collections.thl_web import (
+        SessionDFCollection,
+        TaskAdjustmentDFCollection,
+        WallDFCollection,
+    )
+    from generalresearch.incite.mergers.foundations.enriched_task_adjust import (
+        EnrichedTaskAdjustMerge,
+    )
+    from generalresearch.incite.mergers.foundations.enriched_wall import (
+        EnrichedWallMerge,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
 
 
 @pytest.mark.parametrize(

@@ -9,7 +9,7 @@ import pandas as pd
 import pytest
 from pandera.pandas import DataFrameSchema
 
-from generalresearch.incite.collections import (
+from generalresearch.incite.collections.base import (
     DFCollection,
     DFCollectionType,
 )

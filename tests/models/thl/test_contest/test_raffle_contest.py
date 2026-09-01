@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -21,9 +22,11 @@ from generalresearch.models.thl.contest.definitions import (
     ContestType,
 )
 from generalresearch.models.thl.contest.raffle import RaffleContest
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
 from tests.models.thl.test_contest.test_contest import TestContest
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
 
 
 class TestRaffleContest(TestContest):

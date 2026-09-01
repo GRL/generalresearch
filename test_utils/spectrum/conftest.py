@@ -3,16 +3,15 @@ from __future__ import annotations
 import time
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from generalresearch.config import GRLBaseSettings
 from generalresearch.managers.spectrum.survey import (
     SpectrumCriteriaManager,
     SpectrumSurveyManager,
 )
-from generalresearch.models import (
+from generalresearch.models.definitions import (
     LogicalOperator,
 )
 from generalresearch.models.spectrum.survey import (
@@ -21,6 +20,9 @@ from generalresearch.models.spectrum.survey import (
 )
 from generalresearch.models.thl.survey.condition import ConditionValueType
 from generalresearch.sql_helper import SqlHelper
+
+if TYPE_CHECKING:
+    from generalresearch.config import GRLBaseSettings
 
 
 @pytest.fixture(scope="session")

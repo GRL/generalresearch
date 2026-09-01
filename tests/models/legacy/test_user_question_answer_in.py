@@ -4,18 +4,21 @@ import json
 from collections.abc import Callable
 from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 
-from generalresearch.managers.thl.user_manager.user_manager import UserManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.legacy.questions import (
     UserQuestionAnswers,
 )
-from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import Session, Wall
 from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.user_manager.user_manager import UserManager
+    from generalresearch.models.thl.product import Product
 
 
 class TestUserQuestionAnswers:

@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import faker
 
@@ -12,8 +13,10 @@ from generalresearch.models.thl.ipinfo import (
     IPGeoname,
     IPInformation,
 )
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 fake = faker.Faker()
 

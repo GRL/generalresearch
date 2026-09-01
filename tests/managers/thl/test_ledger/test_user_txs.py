@@ -3,12 +3,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from generalresearch.config import GRLBaseSettings
-from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.managers.thl.payout import UserPayoutEventManager
 from generalresearch.managers.thl.user_compensate import user_compensate
 from generalresearch.models.thl.definitions import (
     Status,
@@ -18,10 +15,16 @@ from generalresearch.models.thl.ledger import (
     UserLedgerTransactionTypesSummary,
     UserLedgerTransactionTypeSummary,
 )
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.session import Session
-from generalresearch.models.thl.user import User
-from generalresearch.models.thl.wallet import PayoutType
+from generalresearch.models.thl.wallet.definitions import PayoutType
+
+if TYPE_CHECKING:
+    from generalresearch.config import GRLBaseSettings
+    from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.managers.thl.payout import UserPayoutEventManager
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
 
 
 def test_user_txs(

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 
-from generalresearch.models import (
+from generalresearch.models.definitions import (
     LogicalOperator,
     Source,
     TaskCalculationType,

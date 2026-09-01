@@ -5,10 +5,10 @@ from collections.abc import Callable, Generator
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from logging import LogCaptureFixture
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.currency import LedgerCurrency
 from generalresearch.managers.thl.ledger_manager.conditions import (
     generate_condition_mp_payment,
 )
@@ -17,11 +17,8 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionCreateLockError,
     LedgerTransactionFlagAlreadyExistsError,
 )
-from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.ledger import LedgerTransaction
-from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import (
     Session,
     Status,
@@ -29,7 +26,13 @@ from generalresearch.models.thl.session import (
     Wall,
     WallAdjustedStatus,
 )
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.currency import LedgerCurrency
+    from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
 
 logger = logging.getLogger("LedgerManager")
 

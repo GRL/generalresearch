@@ -18,7 +18,7 @@ from pydantic import (
 )
 
 from generalresearch.locales import Localelator
-from generalresearch.models import MAX_INT32, Source
+from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
 
 if TYPE_CHECKING:

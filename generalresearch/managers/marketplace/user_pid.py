@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from generalresearch.managers.base import SqlManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 
 if TYPE_CHECKING:
     from generalresearch.sql_helper import SqlHelper

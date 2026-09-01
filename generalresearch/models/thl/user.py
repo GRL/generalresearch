@@ -20,7 +20,7 @@ from pydantic import (
 )
 from sentry_sdk import set_tag, set_user
 
-from generalresearch.models import MAX_INT32
+from generalresearch.models.definitions import MAX_INT32
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
@@ -253,7 +253,7 @@ class User(BaseModel):
 
         # # Delete from db.thl-marketplaces
         # We need DELETE credentials for all these...
-        # from generalresearch.models import Source
+        # from generalresearch.models.definitions import Source
         # mp_db_table = {
         #     Source.SPECTRUM: "`thl-spectrum`.`spectrum_marketresearchprofilequestion`",
         #     Source.INNOVATE: "`thl-innovate`.`innovate_marketresearchprofilequestion`",

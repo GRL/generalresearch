@@ -2,18 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import pytest
 from pydantic import PostgresDsn
 
-from generalresearch.config import GRLBaseSettings
 from generalresearch.grliq.managers.forensic_data import (
     GrlIqDataManager,
-)
-from generalresearch.grliq.managers.forensic_events import (
-    GrlIqEventManager,
 )
 from generalresearch.grliq.managers.forensic_results import (
     GrlIqCategoryResultsReader,
@@ -24,6 +20,12 @@ from generalresearch.grliq.models.forensic_result import (
     GrlIqForensicCategoryResult,
 )
 from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.config import GRLBaseSettings
+    from generalresearch.grliq.managers.forensic_events import (
+        GrlIqEventManager,
+    )
 
 # === Miscellaneous ===
 

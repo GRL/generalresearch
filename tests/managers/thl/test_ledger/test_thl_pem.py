@@ -2,27 +2,30 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from random import randint
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 import pytest
 
 from generalresearch.currency import USDCent
-from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
-from generalresearch.managers.thl.payout import (
-    BrokerageProductPayoutEventManager,
-    UserPayoutEventManager,
-)
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.payout import (
     BrokerageProductPayoutEvent,
 )
-from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.wallet.cashout_method import (
     CashoutRequestInfo,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.managers.thl.payout import (
+        BrokerageProductPayoutEventManager,
+        UserPayoutEventManager,
+    )
+    from generalresearch.models.thl.product import Product
 
 
 class TestThlPayoutEventManager:

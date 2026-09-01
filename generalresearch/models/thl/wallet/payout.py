@@ -16,7 +16,7 @@ from pydantic import (
 
 from generalresearch.currency import USDCent
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.wallet import PayoutType
+from generalresearch.models.thl.wallet.definitions import PayoutType
 
 if TYPE_CHECKING:
     from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr

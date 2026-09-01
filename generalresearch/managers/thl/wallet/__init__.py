@@ -6,7 +6,7 @@ from generalresearch.managers.thl.wallet.approve import (
     approve_paypal_order,
 )
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.wallet import PayoutType
+from generalresearch.models.thl.wallet.definitions import PayoutType
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (

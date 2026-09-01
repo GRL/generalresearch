@@ -6,7 +6,7 @@ from pandera.pandas import Check, Column, DataFrameSchema, Index, MultiIndex
 
 from generalresearch.incite.schemas import ARCHIVE_AFTER, ORDER_KEY
 from generalresearch.locales import Localelator
-from generalresearch.models import DeviceType, Source
+from generalresearch.models.definitions import DeviceType, Source
 from generalresearch.models.thl.definitions import (
     ReportValue,
     SessionAdjustedStatus,

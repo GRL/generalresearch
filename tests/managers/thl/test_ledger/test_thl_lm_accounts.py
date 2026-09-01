@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -9,18 +10,20 @@ from generalresearch.currency import LedgerCurrency
 from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerAccountDoesntExistError,
 )
-from generalresearch.managers.thl.ledger_manager.ledger import (
-    LedgerAccountManager,
-    LedgerManager,
-)
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.models.thl.ledger import (
     AccountType,
     Direction,
     LedgerAccount,
 )
 from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.ledger import (
+        LedgerAccountManager,
+        LedgerManager,
+    )
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.models.thl.user import User
 
 
 class TestThlLedgerManagerAccounts:

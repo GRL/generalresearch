@@ -19,7 +19,7 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.legacy.bucket import (
     Bucket as LegacyBucket,
 )

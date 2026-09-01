@@ -20,7 +20,7 @@ from pydantic.functional_validators import AfterValidator, BeforeValidator
 from pydantic.networks import IPvAnyNetwork, UrlConstraints
 from pydantic_core import MultiHostHost, Url
 
-from generalresearch.models import DeviceType, Source
+from generalresearch.models.definitions import DeviceType, Source
 
 HOSTNAME_REGEX = re.compile(
     r"^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"

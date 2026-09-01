@@ -19,7 +19,7 @@ from pydantic import (
 
 from generalresearch.models.legacy.api_status import StatusResponse
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.wallet import PayoutType
+from generalresearch.models.thl.wallet.definitions import PayoutType
 from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     )
     from generalresearch.models.thl.locales import CountryISO
     from generalresearch.models.thl.user import BPUIDStr, User
-    from generalresearch.models.thl.wallet import Currency
+    from generalresearch.models.thl.wallet.definitions import Currency
 
 logger = logging.getLogger()
 

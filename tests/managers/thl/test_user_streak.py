@@ -3,23 +3,28 @@ from __future__ import annotations
 import copy
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 import pytest
 
-from generalresearch.managers.thl.session import SessionManager
 from generalresearch.managers.thl.user_streak import (
-    UserStreakManager,
     compute_streaks_from_days,
 )
 from generalresearch.models.thl.definitions import Status, StatusCode1
-from generalresearch.models.thl.user import User
 from generalresearch.models.thl.user_streak import (
     StreakFulfillment,
     StreakPeriod,
     StreakState,
     UserStreak,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.managers.thl.user_streak import (
+        UserStreakManager,
+    )
+    from generalresearch.models.thl.user import User
 
 
 def test_compute_streaks_from_days():

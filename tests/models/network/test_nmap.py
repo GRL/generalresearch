@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import subprocess
+from typing import TYPE_CHECKING
 
 import faker
 
-from generalresearch.managers.network.tool_run import ToolRunManager
 from generalresearch.models.network.definitions import IPProtocol
 from generalresearch.models.network.nmap.execute import execute_nmap
 from generalresearch.models.network.nmap.result import NmapResult, PortState
-from generalresearch.models.network.tool_run import NmapRun, ToolClass, ToolName
+from generalresearch.models.network.tool_run import ToolClass, ToolName
+
+if TYPE_CHECKING:
+    from generalresearch.managers.network.tool_run import ToolRunManager
+    from generalresearch.models.network.tool_run import NmapRun
 
 fake = faker.Faker()
 

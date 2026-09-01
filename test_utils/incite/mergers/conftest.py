@@ -2,36 +2,39 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.incite.base import GRLDatasets
-from generalresearch.incite.mergers.base import MergeType
-from generalresearch.incite.mergers.foundations.enriched_session import (
-    EnrichedSessionMerge,
-)
-from generalresearch.incite.mergers.foundations.enriched_task_adjust import (
-    EnrichedTaskAdjustMerge,
-)
-from generalresearch.incite.mergers.foundations.enriched_wall import (
-    EnrichedWallMerge,
-)
-from generalresearch.incite.mergers.foundations.user_id_product import (
-    UserIdProductMerge,
-)
-from generalresearch.incite.mergers.pop_ledger import (
-    PopLedgerMerge,
-    PopLedgerMergeItem,
-)
-from generalresearch.incite.mergers.ym_survey_wall import (
-    YMSurveyWallMerge,
-    YMSurveyWallMergeCollectionItem,
-)
-from generalresearch.incite.mergers.ym_wall_summary import (
-    YMWallSummaryMerge,
-    YMWallSummaryMergeItem,
-)
 from test_utils.conftest import clear_directory
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
+    from generalresearch.incite.mergers.base import MergeType
+    from generalresearch.incite.mergers.foundations.enriched_session import (
+        EnrichedSessionMerge,
+    )
+    from generalresearch.incite.mergers.foundations.enriched_task_adjust import (
+        EnrichedTaskAdjustMerge,
+    )
+    from generalresearch.incite.mergers.foundations.enriched_wall import (
+        EnrichedWallMerge,
+    )
+    from generalresearch.incite.mergers.foundations.user_id_product import (
+        UserIdProductMerge,
+    )
+    from generalresearch.incite.mergers.pop_ledger import (
+        PopLedgerMerge,
+        PopLedgerMergeItem,
+    )
+    from generalresearch.incite.mergers.ym_survey_wall import (
+        YMSurveyWallMerge,
+        YMSurveyWallMergeCollectionItem,
+    )
+    from generalresearch.incite.mergers.ym_wall_summary import (
+        YMWallSummaryMerge,
+        YMWallSummaryMergeItem,
+    )
 
 # --------------------------
 #      Merges

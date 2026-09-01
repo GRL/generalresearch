@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
     MarketplaceCondition,

@@ -11,7 +11,6 @@ import pytest
 from pytest import FixtureRequest as Request
 
 from generalresearch.currency import USDCent
-from generalresearch.managers.base import PostgresManager
 from test_utils.models.conftest import (
     payout_config,
     product_amt_true,
@@ -23,6 +22,9 @@ from test_utils.models.conftest import (
     wall,
     wall_factory,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.managers.base import PostgresManager
 
 _ = (
     user_factory,

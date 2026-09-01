@@ -16,7 +16,7 @@ from pydantic import (
 )
 from scipy.stats import beta as beta_dist
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 
 if TYPE_CHECKING:
     from generalresearch.models.custom_types import (

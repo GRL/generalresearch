@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 from collections.abc import Callable, Generator
 from random import randint
+from typing import TYPE_CHECKING
 
 import pytest
 import redis
@@ -10,8 +11,6 @@ import redis.asyncio as redis_async
 from pydantic import PostgresDsn
 from redis import Redis
 
-from generalresearch.config import GRLBaseSettings
-from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
 from generalresearch.managers.gr.business import (
     BusinessAddressManager,
     BusinessBankAccountManager,
@@ -19,6 +18,10 @@ from generalresearch.managers.gr.business import (
 )
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.config import GRLBaseSettings
+    from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
 
 
 # === Msc ===

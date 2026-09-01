@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.innovate.question import (
     InnovateQuestion,
     InnovateQuestionOption,

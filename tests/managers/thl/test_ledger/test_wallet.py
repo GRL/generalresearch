@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.managers.thl.product import ProductManager
 from generalresearch.models.thl.product import (
     PayoutConfig,
     PayoutTransformation,
@@ -15,7 +14,11 @@ from generalresearch.models.thl.product import (
     Product,
     UserWalletConfig,
 )
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.thl.user import User
 
 
 @pytest.fixture()

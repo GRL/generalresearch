@@ -1,43 +1,46 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 from pydantic import PostgresDsn
 
-from generalresearch.config import GRLBaseSettings
 from generalresearch.managers.base import Permission
-from generalresearch.managers.thl.buyer import BuyerManager
-from generalresearch.managers.thl.category import CategoryManager
-from generalresearch.managers.thl.payout import (
-    BrokerageProductPayoutEventManager,
-    BusinessPayoutEventManager,
-    PayoutEventManager,
-    UserPayoutEventManager,
-)
-from generalresearch.managers.thl.product import ProductManager
-from generalresearch.managers.thl.session import SessionManager
-from generalresearch.managers.thl.task_adjustment import (
-    TaskAdjustmentManager,
-)
 from generalresearch.managers.thl.user_manager.mysql_user_manager import (
     MysqlUserManager,
 )
 from generalresearch.managers.thl.user_manager.redis_user_manager import (
     RedisUserManager,
 )
-from generalresearch.managers.thl.user_manager.user_manager import (
-    UserManager,
-)
-from generalresearch.managers.thl.user_manager.user_metadata_manager import (
-    UserMetadataManager,
-)
-from generalresearch.managers.thl.wall import (
-    WallCacheManager,
-    WallManager,
-)
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.config import GRLBaseSettings
+    from generalresearch.managers.thl.buyer import BuyerManager
+    from generalresearch.managers.thl.category import CategoryManager
+    from generalresearch.managers.thl.payout import (
+        BrokerageProductPayoutEventManager,
+        BusinessPayoutEventManager,
+        PayoutEventManager,
+        UserPayoutEventManager,
+    )
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.managers.thl.task_adjustment import (
+        TaskAdjustmentManager,
+    )
+    from generalresearch.managers.thl.user_manager.user_manager import (
+        UserManager,
+    )
+    from generalresearch.managers.thl.user_manager.user_metadata_manager import (
+        UserMetadataManager,
+    )
+    from generalresearch.managers.thl.wall import (
+        WallCacheManager,
+        WallManager,
+    )
 
 
 @pytest.fixture(scope="session")

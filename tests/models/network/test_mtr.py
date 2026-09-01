@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import faker
 
-from generalresearch.managers.network.tool_run import ToolRunManager
 from generalresearch.models.network.mtr.execute import execute_mtr
 from generalresearch.models.network.tool_run import ToolClass, ToolName
+
+if TYPE_CHECKING:
+    from generalresearch.managers.network.tool_run import ToolRunManager
 
 fake = faker.Faker()
 

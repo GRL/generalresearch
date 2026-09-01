@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 
-from generalresearch.managers.thl.product import ProductManager
-from generalresearch.models import Source
-from generalresearch.models.gr.team import Team
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.product import (
     Product,
     ProfilingConfig,
@@ -18,6 +17,10 @@ from generalresearch.models.thl.product import (
     UserCreateConfig,
     UserHealthConfig,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.gr.team import Team
 
 
 class TestProductManagerGetMethods:

@@ -6,12 +6,12 @@ from decimal import Decimal
 from functools import cached_property
 from typing import TYPE_CHECKING
 
-from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
     PostgresManager,
 )
 from generalresearch.managers.thl.session import SessionManager
 from generalresearch.managers.thl.wall import WallManager
+from generalresearch.managers.utils import parse_order_by
 from generalresearch.models.thl.definitions import (
     Status,
     WallAdjustedStatus,

@@ -13,7 +13,7 @@ from pydantic import NonNegativeInt
 from generalresearch.managers.base import Permission, PostgresManager
 from generalresearch.managers.thl.buyer import BuyerManager
 from generalresearch.managers.thl.category import CategoryManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.survey.model import (
     Survey,
     SurveyStat,

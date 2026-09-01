@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from generalresearch.models import MAX_INT32
+from generalresearch.models.definitions import MAX_INT32
 from generalresearch.models.thl.user_profile import UserMetadata
 
 

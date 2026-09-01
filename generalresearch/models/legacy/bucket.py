@@ -15,7 +15,7 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.stats import StatisticalSummary
 
 if TYPE_CHECKING:

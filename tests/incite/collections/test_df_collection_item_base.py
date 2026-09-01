@@ -5,15 +5,16 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.incite.collections import (
+from generalresearch.incite.collections.base import (
     DFCollection,
     DFCollectionItem,
     DFCollectionType,
 )
-from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
+    from generalresearch.pg_helper import PostgresConfig
+
 
 df_collection_types = [e for e in DFCollectionType if e is not DFCollectionType.TEST]
 

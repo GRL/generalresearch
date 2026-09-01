@@ -13,7 +13,6 @@ from pydantic import AwareDatetime, NonNegativeInt, PositiveInt
 from redis.exceptions import LockError, LockNotOwnedError
 
 from generalresearch.currency import LedgerCurrency
-from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
     Permission,
     PostgresManager,
@@ -28,6 +27,7 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionFlagAlreadyExistsError,
     LedgerTransactionReleaseLockError,
 )
+from generalresearch.managers.utils import parse_order_by
 from generalresearch.models.custom_types import check_valid_uuid
 from generalresearch.models.thl.ledger import (
     LedgerAccount,

@@ -12,7 +12,7 @@ from redis.client import PubSub, Redis
 
 from generalresearch.incite.base import LOG
 from generalresearch.managers.base import RedisManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.events import (
     AggregateBySource,
     EventEnvelope,

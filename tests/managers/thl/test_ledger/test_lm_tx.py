@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from random import randint
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -12,10 +13,14 @@ from generalresearch.managers.thl.ledger_manager.ledger import (
 )
 from generalresearch.models.thl.ledger import (
     Direction,
-    LedgerAccount,
     LedgerEntry,
     LedgerTransaction,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.ledger import (
+        LedgerAccount,
+    )
 
 
 class TestLedgerManagerCreateTx:

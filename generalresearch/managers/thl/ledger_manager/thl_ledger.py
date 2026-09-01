@@ -52,7 +52,7 @@ from generalresearch.models.thl.ledger import (
 )
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import Status
-from generalresearch.models.thl.wallet import PayoutType
+from generalresearch.models.thl.wallet.definitions import PayoutType
 
 if TYPE_CHECKING:
     from generalresearch.models.custom_types import UUIDStr

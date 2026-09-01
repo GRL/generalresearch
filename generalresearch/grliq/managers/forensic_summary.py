@@ -3,14 +3,10 @@ from __future__ import annotations
 import statistics
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from generalresearch.grliq.managers.forensic_data import GrlIqDataManager
-from generalresearch.grliq.managers.forensic_events import (
-    GrlIqEventManager,
-)
 from generalresearch.grliq.models.forensic_result import (
     GrlIqCheckerResults,
     GrlIqForensicCategoryResult,
@@ -22,8 +18,14 @@ from generalresearch.grliq.models.forensic_summary import (
     TimingDataCountrySummary,
     UserForensicSummary,
 )
-from generalresearch.models.thl.user import User
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.grliq.managers.forensic_data import GrlIqDataManager
+    from generalresearch.grliq.managers.forensic_events import (
+        GrlIqEventManager,
+    )
+    from generalresearch.models.thl.user import User
+    from generalresearch.redis_helper import RedisConfig
 
 
 def calculate_category_summary(

@@ -8,7 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from generalresearch.models import Source, string_utils
+from generalresearch.models.definitions import Source, string_utils
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
     MarketplaceUserQuestionAnswer,

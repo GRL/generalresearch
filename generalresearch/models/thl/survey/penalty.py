@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING, Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
 if TYPE_CHECKING:
-    from generalresearch.models import Source
     from generalresearch.models.custom_types import (
         AwareDatetimeISO,
         UUIDStr,
     )
+    from generalresearch.models.definitions import Source
 
 
 class SurveyPenalty(BaseModel, abc.ABC):

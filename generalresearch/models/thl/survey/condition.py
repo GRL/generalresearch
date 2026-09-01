@@ -17,7 +17,7 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models import LogicalOperator
+from generalresearch.models.definitions import LogicalOperator
 
 MarketplaceConditionHash = Annotated[
     str, StringConstraints(min_length=7, max_length=7, pattern=r"^[a-f0-9]+$")

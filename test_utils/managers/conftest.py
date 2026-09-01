@@ -1,41 +1,44 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.managers.gr.business import (
-    BusinessAddressManager,
-    BusinessBankAccountManager,
-    BusinessManager,
-)
-from generalresearch.managers.gr.team import (
-    MembershipManager,
-    TeamManager,
-)
-from generalresearch.managers.spectrum.survey import SpectrumSurveyManager
-from generalresearch.managers.thl.buyer import BuyerManager
 from generalresearch.managers.thl.cashout_method import (
     CashoutMethodManager,
-)
-from generalresearch.managers.thl.ipinfo import (
-    GeoIpInfoManager,
-    IPGeonameManager,
-    IPInformationManager,
 )
 from generalresearch.managers.thl.user_streak import (
     UserStreakManager,
 )
-from generalresearch.managers.thl.userhealth import (
-    AuditLogManager,
-    IPRecordManager,
-    UserIpHistoryManager,
-)
-from generalresearch.models import Source
-from generalresearch.models.thl.wallet.cashout_method import CashoutMethod
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
-from generalresearch.sql_helper import SqlHelper
+from generalresearch.models.definitions import Source
+
+if TYPE_CHECKING:
+    from generalresearch.managers.gr.business import (
+        BusinessAddressManager,
+        BusinessBankAccountManager,
+        BusinessManager,
+    )
+    from generalresearch.managers.gr.team import (
+        MembershipManager,
+        TeamManager,
+    )
+    from generalresearch.managers.spectrum.survey import SpectrumSurveyManager
+    from generalresearch.managers.thl.buyer import BuyerManager
+    from generalresearch.managers.thl.ipinfo import (
+        GeoIpInfoManager,
+        IPGeonameManager,
+        IPInformationManager,
+    )
+    from generalresearch.managers.thl.userhealth import (
+        AuditLogManager,
+        IPRecordManager,
+        UserIpHistoryManager,
+    )
+    from generalresearch.models.thl.wallet.cashout_method import CashoutMethod
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
+    from generalresearch.sql_helper import SqlHelper
 
 # === THL ===
 

@@ -5,6 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from random import randint
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -12,7 +13,7 @@ import redis
 from pydantic import RedisDsn
 from redis.lock import Lock
 
-from generalresearch.currency import LedgerCurrency, USDCent
+from generalresearch.currency import USDCent
 from generalresearch.managers.base import Permission
 from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionConditionFailedError,
@@ -22,23 +23,26 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
 )
 from generalresearch.managers.thl.ledger_manager.ledger import LedgerTransaction
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.managers.thl.payout import (
-    BrokerageProductPayoutEventManager,
-)
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.ledger import Direction, TransactionType
-from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import (
     Session,
     Status,
     StatusCode1,
     Wall,
 )
-from generalresearch.models.thl.user import User
-from generalresearch.models.thl.wallet import PayoutType
-from generalresearch.pg_helper import PostgresConfig
+from generalresearch.models.thl.wallet.definitions import PayoutType
 from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.currency import LedgerCurrency
+    from generalresearch.managers.thl.payout import (
+        BrokerageProductPayoutEventManager,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
 
 
 def broken_acquire(self, *args, **kwargs):

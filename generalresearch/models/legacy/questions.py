@@ -219,7 +219,7 @@ class UserQuestionAnswers(BaseModel):
         self.user = res
 
     def prefetch_wall(self, wm: WallManager) -> None:
-        from generalresearch.models import Source
+        from generalresearch.models.definitions import Source
 
         res: Wall | None = wm.get_from_uuid_if_exists(wall_uuid=self.session_id)
 

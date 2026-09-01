@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 
-from generalresearch.managers.thl.user_manager.user_metadata_manager import (
-    UserMetadataManager,
-)
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
 from generalresearch.models.thl.user_profile import UserMetadata
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.user_manager.user_metadata_manager import (
+        UserMetadataManager,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
 
 
 class TestUserMetadataManager:

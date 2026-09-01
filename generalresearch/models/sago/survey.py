@@ -18,7 +18,7 @@ from pydantic import (
 )
 
 from generalresearch.locales import Localelator
-from generalresearch.models import LogicalOperator, Source
+from generalresearch.models.definitions import LogicalOperator, Source
 from generalresearch.models.sago import SagoStatus
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.survey import MarketplaceTask

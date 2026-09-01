@@ -26,11 +26,9 @@ from generalresearch.models.thl.contest.contest import (
     ContestBase,
     ContestUserView,
 )
-from generalresearch.models.thl.contest.contest_entry import (
-    ContestEntryType,
-)
 from generalresearch.models.thl.contest.definitions import (
     ContestEndReason,
+    ContestEntryType,
     ContestPrizeKind,
     ContestStatus,
     ContestType,

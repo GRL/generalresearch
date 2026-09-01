@@ -9,10 +9,10 @@ from generalresearch.incite.collections import (
     DFCollection,
     DFCollectionType,
 )
-from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
+    from generalresearch.pg_helper import PostgresConfig
 
 df_collection_types = [e for e in DFCollectionType if e is not DFCollectionType.TEST]
 

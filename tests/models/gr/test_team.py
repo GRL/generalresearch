@@ -5,6 +5,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pandas as pd
 from dask.distributed import Client as DaskClient
@@ -12,24 +13,29 @@ from distributed.utils_test import (
     client_no_amm,
 )
 
-from generalresearch.incite.base import GRLDatasets
-from generalresearch.incite.collections.thl_web import (
-    SessionDFCollection,
-    WallDFCollection,
-)
-from generalresearch.incite.mergers.foundations.enriched_session import (
-    EnrichedSessionMerge,
-)
-from generalresearch.incite.mergers.foundations.enriched_wall import EnrichedWallMerge
-from generalresearch.managers.gr.team import MembershipManager, TeamManager
-from generalresearch.models.gr.authentication import GRUser
 from generalresearch.models.gr.business import Business
-from generalresearch.models.gr.team import Membership, Team
+from generalresearch.models.gr.team import Team
 from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.session import Session
-from generalresearch.models.thl.user import User
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
+    from generalresearch.incite.collections.thl_web import (
+        SessionDFCollection,
+        WallDFCollection,
+    )
+    from generalresearch.incite.mergers.foundations.enriched_session import (
+        EnrichedSessionMerge,
+    )
+    from generalresearch.incite.mergers.foundations.enriched_wall import (
+        EnrichedWallMerge,
+    )
+    from generalresearch.managers.gr.team import MembershipManager, TeamManager
+    from generalresearch.models.gr.authentication import GRUser
+    from generalresearch.models.gr.team import Membership
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 
 class TestTeam:

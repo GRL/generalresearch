@@ -354,7 +354,7 @@ class LedgerTransaction(BaseModel):
     def to_user_tx(
         self, user_account: LedgerAccount, product_id: str, payout_format: str
     ):
-        from generalresearch.models.thl.wallet import PayoutType
+        from generalresearch.models.thl.wallet.definitions import PayoutType
 
         d = self.model_dump(include={"created"})
         d["tx_type"] = self.metadata.get("tx_type")

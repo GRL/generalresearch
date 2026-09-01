@@ -3,13 +3,11 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.managers.thl.product import ProductManager
-from generalresearch.managers.thl.session import SessionManager
-from generalresearch.managers.thl.wall import WallManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.definitions import (
     Status,
     StatusCode1,
@@ -19,12 +17,18 @@ from generalresearch.models.thl.product import (
     PayoutConfig,
     PayoutTransformation,
     PayoutTransformationPercentArgs,
-    Product,
     UserWalletConfig,
 )
-from generalresearch.models.thl.session import Session, WallOut
+from generalresearch.models.thl.session import WallOut
 from generalresearch.models.thl.task_status import TaskStatusResponse
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.managers.thl.wall import WallManager
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
 
 start1 = datetime(2023, 2, 1, tzinfo=UTC)
 finish1 = start1 + timedelta(minutes=5)

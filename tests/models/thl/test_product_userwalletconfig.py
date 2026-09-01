@@ -6,7 +6,7 @@ from random import shuffle as rshuffle
 from generalresearch.models.thl.product import (
     UserWalletConfig,
 )
-from generalresearch.models.thl.wallet import PayoutType
+from generalresearch.models.thl.wallet.definitions import PayoutType
 
 
 def all_equal(iterable: list[str]) -> bool:

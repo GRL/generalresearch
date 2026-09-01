@@ -3,21 +3,24 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 from pydantic import PositiveInt
 
-from generalresearch.managers.thl.session import SessionManager
-from generalresearch.managers.thl.wall import WallCacheManager, WallManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.session import (
     ReportValue,
-    Session,
     Status,
     StatusCode1,
 )
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.managers.thl.wall import WallCacheManager, WallManager
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
 
 
 class TestWallManager:

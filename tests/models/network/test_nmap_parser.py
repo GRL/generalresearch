@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import os
+from typing import TYPE_CHECKING
 
 import pytest
 
 from generalresearch.models.network.nmap.parser import parse_nmap_xml
-from generalresearch.models.network.nmap.result import (
-    NmapResult,
-    NmapTrace,
-)
+from generalresearch.models.network.nmap.result import NmapTrace
+
+if TYPE_CHECKING:
+    from generalresearch.models.network.nmap.result import NmapResult
 
 
 @pytest.fixture

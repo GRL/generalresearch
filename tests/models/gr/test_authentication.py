@@ -6,17 +6,21 @@ import os
 from collections.abc import Callable
 from datetime import UTC, datetime
 from random import randint
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 from redis import Redis
 
 from generalresearch.models.gr.authentication import Claims, GRToken, GRUser
-from generalresearch.models.gr.business import Business
-from generalresearch.models.gr.team import Membership, Team
-from generalresearch.models.thl.product import Product
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+from generalresearch.models.gr.team import Team
+
+if TYPE_CHECKING:
+    from generalresearch.models.gr.business import Business
+    from generalresearch.models.gr.team import Membership
+    from generalresearch.models.thl.product import Product
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 SSO_ISSUER = ""
 

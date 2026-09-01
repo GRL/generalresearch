@@ -14,12 +14,12 @@ from psycopg import sql
 from psycopg.rows import dict_row
 from pydantic import AwareDatetime, PositiveInt
 
-from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
     PostgresManager,
     PostgresManagerWithRedis,
 )
-from generalresearch.models import Source
+from generalresearch.managers.utils import parse_order_by
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.definitions import (
     WallAdjustedStatus,
 )

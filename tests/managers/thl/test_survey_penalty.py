@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.managers.thl.survey_penalty import SurveyPenaltyManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.survey.penalty import (
     BPSurveyPenalty,
     TeamSurveyPenalty,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.survey_penalty import SurveyPenaltyManager
 
 
 @pytest.fixture

@@ -1,18 +1,24 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from generalresearch.managers.base import Permission
 from generalresearch.managers.thl.ledger_manager.ledger import (
-    LedgerAccountManager,
     LedgerManager,
-    LedgerTransactionManager,
 )
 from generalresearch.managers.thl.ledger_manager.thl_ledger import (
     ThlLedgerManager,
 )
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.ledger import (
+        LedgerAccountManager,
+        LedgerTransactionManager,
+    )
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 # --- Ledger ---
 

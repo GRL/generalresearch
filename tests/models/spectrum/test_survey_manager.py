@@ -3,15 +3,17 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pymysql import IntegrityError
 
 from generalresearch.config import is_debug
-from generalresearch.managers.spectrum.survey import (
-    SpectrumSurveyManager,
-)
-from generalresearch.sql_helper import SqlHelper
+
+if TYPE_CHECKING:
+    from generalresearch.managers.spectrum.survey import (
+        SpectrumSurveyManager,
+    )
+    from generalresearch.sql_helper import SqlHelper
 
 logger = logging.getLogger()
 

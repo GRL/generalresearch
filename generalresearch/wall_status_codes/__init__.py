@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.wall_status_codes import (
     cint,

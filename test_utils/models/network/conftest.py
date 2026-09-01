@@ -1,5 +1,6 @@
 import os
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -23,7 +24,9 @@ from generalresearch.models.network.tool_run_command import (
     RDNSRunCommand,
     RDNSRunCommandOptions,
 )
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.pg_helper import PostgresConfig
 
 
 @pytest.fixture(scope="session")

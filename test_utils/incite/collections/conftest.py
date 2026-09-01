@@ -6,12 +6,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.pg_helper import PostgresConfig
 from test_utils.conftest import clear_directory
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import DFCollectionType, GRLDatasets
-    from generalresearch.incite.collections import DFCollection
+    from generalresearch.incite.collections.base import DFCollection
     from generalresearch.incite.collections.thl_web import (
         AuditLogDFCollection,
         LedgerDFCollection,
@@ -20,6 +19,7 @@ if TYPE_CHECKING:
         UserDFCollection,
         WallDFCollection,
     )
+    from generalresearch.pg_helper import PostgresConfig
 
 
 @pytest.fixture

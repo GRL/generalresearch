@@ -1,8 +1,11 @@
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from generalresearch.managers.thl.profiling.question import QuestionManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.profiling.question import QuestionManager
 
 
 class TestQuestionManager:

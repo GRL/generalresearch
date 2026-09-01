@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.spectrum.question import (
     SpectrumQuestion,
     SpectrumQuestionClass,

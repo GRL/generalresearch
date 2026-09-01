@@ -3,11 +3,13 @@ from __future__ import annotations
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from pydantic import PostgresDsn
 
-from generalresearch.pg_helper import PostgresConfig
+if TYPE_CHECKING:
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class TestGRPostgresDjangoCreation:

@@ -9,10 +9,9 @@ from uuid import UUID
 import pandas as pd
 import pytest
 
-from generalresearch.pg_helper import PostgresConfig
-
 if TYPE_CHECKING:
     from generalresearch.managers.thl.category import CategoryManager
+    from generalresearch.pg_helper import PostgresConfig
 
 
 def insert_data_from_csv(

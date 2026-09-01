@@ -2,16 +2,21 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from itertools import product
+from typing import TYPE_CHECKING
 
 import pandas as pd
 import pytest
 from dask.distributed import Client as DaskClient
 
-# noinspection PyUnresolvedReferences
 from generalresearch.incite.mergers.foundations.user_id_product import (
-    UserIdProductMerge,
     UserIdProductMergeItem,
 )
+
+if TYPE_CHECKING:
+    # noinspection PyUnresolvedReferences
+    from generalresearch.incite.mergers.foundations.user_id_product import (
+        UserIdProductMerge,
+    )
 
 
 @pytest.mark.parametrize(

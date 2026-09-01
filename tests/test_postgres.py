@@ -1,11 +1,14 @@
 import socket
 import subprocess
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from pydantic import PostgresDsn
 
-from generalresearch.models.custom_types import InternalHostname, PostgresDict
 from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import InternalHostname, PostgresDict
 
 
 def is_port_open(host: InternalHostname, port: int = 5432, timeout: int = 3):

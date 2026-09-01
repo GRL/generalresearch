@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field, PositiveInt
 
-from generalresearch.models import MAX_INT32, Source
+from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:

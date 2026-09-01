@@ -1,21 +1,26 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.config import GRLBaseSettings
-from generalresearch.managers.thl.cashout_method import (
-    CashoutMethodManager,
-)
-from generalresearch.models.thl.user import User
-from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
     CashMailCashoutMethodData,
-    CashoutMethod,
     PaypalCashoutMethodData,
     USDeliveryAddress,
 )
+from generalresearch.models.thl.wallet.definitions import PayoutType
+
+if TYPE_CHECKING:
+    from generalresearch.config import GRLBaseSettings
+    from generalresearch.managers.thl.cashout_method import (
+        CashoutMethodManager,
+    )
+    from generalresearch.models.thl.user import User
+    from generalresearch.models.thl.wallet.cashout_method import (
+        CashoutMethod,
+    )
 
 
 class TestTangoCashoutMethods:

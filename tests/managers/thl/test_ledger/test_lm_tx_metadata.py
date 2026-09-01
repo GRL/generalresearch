@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from generalresearch.managers.thl.ledger_manager.ledger import (
-    LedgerManager,
-    LedgerTransaction,
-)
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.ledger import (
+        LedgerManager,
+        LedgerTransaction,
+    )
 
 
 class TestLedgerMetadataManager:

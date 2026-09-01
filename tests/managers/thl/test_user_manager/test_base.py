@@ -1,11 +1,11 @@
 import logging
 from datetime import UTC, datetime
 from random import randint
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 
-from generalresearch.managers.thl.product import ProductManager
 from generalresearch.managers.thl.user_manager import (
     UserCreateNotAllowedError,
     get_bp_user_create_limit_hourly,
@@ -17,13 +17,17 @@ from generalresearch.managers.thl.user_manager.rate_limit import (
     RateLimitItemPerHourConstantKey,
     UserManagerLimiter,
 )
-from generalresearch.managers.thl.user_manager.user_manager import (
-    UserManager,
-)
-from generalresearch.managers.thl.userhealth import AuditLogManager
-from generalresearch.models.thl.product import Product, UserCreateConfig
+from generalresearch.models.thl.product import UserCreateConfig
 from generalresearch.models.thl.user import User
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.managers.thl.user_manager.user_manager import (
+        UserManager,
+    )
+    from generalresearch.managers.thl.userhealth import AuditLogManager
+    from generalresearch.models.thl.product import Product
+    from generalresearch.pg_helper import PostgresConfig
 
 logger = logging.getLogger()
 

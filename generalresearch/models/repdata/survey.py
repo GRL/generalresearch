@@ -21,7 +21,7 @@ from pydantic import (
 
 from generalresearch.grpc import timestamp_from_datetime
 from generalresearch.locales import Localelator
-from generalresearch.models import (
+from generalresearch.models.definitions import (
     DeviceType,
     LogicalOperator,
     Source,

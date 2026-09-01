@@ -3,22 +3,27 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.managers.thl.session import SessionManager
-from generalresearch.managers.thl.wall import WallManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import (
-    Session,
     SessionAdjustedStatus,
     Status,
     StatusCode1,
-    Wall,
     WallAdjustedStatus,
 )
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.managers.thl.wall import WallManager
+    from generalresearch.models.thl.session import (
+        Session,
+        Wall,
+    )
+    from generalresearch.models.thl.user import User
 
 started1 = datetime(2023, 1, 1, tzinfo=UTC)
 started2 = datetime(2023, 1, 1, 0, 10, 0, tzinfo=UTC)

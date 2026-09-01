@@ -18,7 +18,7 @@ from generalresearch.models.thl.survey.condition import (
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models import Source
+    from generalresearch.models.definitions import Source
     from generalresearch.models.thl.locales import (
         CountryISO,
         CountryISOs,

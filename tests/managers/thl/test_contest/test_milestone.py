@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
-from generalresearch.managers.thl.contest_manager import ContestManager
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.models.thl.contest.definitions import (
     ContestEndReason,
     ContestStatus,
@@ -12,12 +11,18 @@ from generalresearch.models.thl.contest.definitions import (
 from generalresearch.models.thl.contest.milestone import (
     ContestEntryTrigger,
     MilestoneContest,
-    MilestoneContestCreate,
     MilestoneUserView,
 )
-from generalresearch.models.thl.contest.raffle import RaffleContest
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.contest_manager import ContestManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.models.thl.contest.milestone import (
+        MilestoneContestCreate,
+    )
+    from generalresearch.models.thl.contest.raffle import RaffleContest
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
 
 
 class TestMilestoneContest:
@@ -25,8 +30,6 @@ class TestMilestoneContest:
     def test_should_end(
         self,
         contest: MilestoneContest,
-        thl_ledger_manager: ThlLedgerManager,
-        contest_manager: ContestManager,
     ):
         # contest is active and has no entries
         should, msg = contest.should_end()
@@ -53,7 +56,6 @@ class TestMilestoneContestCRUD:
         self,
         contest_create: MilestoneContestCreate,
         product_user_wallet_yes: Product,
-        thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
         c = contest_manager.create(

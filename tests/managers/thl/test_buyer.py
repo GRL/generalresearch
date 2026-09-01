@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
-from generalresearch.managers.thl.buyer import BuyerManager
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.buyer import BuyerManager
 
 
 class TestBuyer:

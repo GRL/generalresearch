@@ -1,23 +1,28 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 from generalresearch.currency import USDCent
-from generalresearch.managers.thl.contest_manager import ContestManager
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.managers.thl.user_manager.user_manager import UserManager
 from generalresearch.models.thl.contest.definitions import (
     ContestEndReason,
     ContestStatus,
 )
 from generalresearch.models.thl.contest.leaderboard import (
     LeaderboardContest,
-    LeaderboardContestCreate,
 )
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.contest_manager import ContestManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.managers.thl.user_manager.user_manager import UserManager
+    from generalresearch.models.thl.contest.leaderboard import (
+        LeaderboardContestCreate,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
+    from generalresearch.redis_helper import RedisConfig
 
 
 class TestLeaderboardContestCRUD:

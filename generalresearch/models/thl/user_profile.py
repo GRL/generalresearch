@@ -13,7 +13,7 @@ from pydantic import (
 )
 from pydantic.json_schema import SkipJsonSchema
 
-from generalresearch.models import MAX_INT32, Source
+from generalresearch.models.definitions import MAX_INT32, Source
 
 if TYPE_CHECKING:
     from generalresearch.models.custom_types import UUIDStr
