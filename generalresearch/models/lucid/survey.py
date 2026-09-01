@@ -4,6 +4,12 @@ from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    BigAutoInteger,
+    CoercedStr,
+    UUIDStr,
+)
 from generalresearch.models.definitions import Source
 from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
@@ -11,12 +17,6 @@ from generalresearch.models.thl.survey.condition import (
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        BigAutoInteger,
-        CoercedStr,
-        UUIDStr,
-    )
     from generalresearch.models.thl.locales import CountryISO, LanguageISO
 
 

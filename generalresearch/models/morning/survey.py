@@ -25,6 +25,10 @@ from pydantic import (
 )
 
 from generalresearch.locales import Localelator
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    UUIDStrCoerce,
+)
 from generalresearch.models.definitions import Source
 from generalresearch.models.morning import MorningStatus
 from generalresearch.models.thl.demographics import Gender
@@ -35,10 +39,7 @@ from generalresearch.models.thl.survey.condition import (
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        UUIDStrCoerce,
-    )
+
     from generalresearch.models.morning import MorningQuestionID
     from generalresearch.models.morning.question import MorningQuestion
     from generalresearch.models.thl.locales import (

@@ -14,9 +14,10 @@ from generalresearch.grliq.models.events import (
     PointerMove,
     TimingData,
 )
+from generalresearch.models.custom_types import UUIDStr
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import UUIDStr
+
     from generalresearch.pg_helper import PostgresConfig
 
 

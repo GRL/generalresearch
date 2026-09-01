@@ -13,12 +13,14 @@ from pydantic import (
     model_validator,
 )
 
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    CountryISOLike,
+    UUIDStr,
+)
+
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        CountryISOLike,
-        UUIDStr,
-    )
+
     from generalresearch.models.definitions import Source
     from generalresearch.models.thl.definitions import (
         SessionStatusCode2,

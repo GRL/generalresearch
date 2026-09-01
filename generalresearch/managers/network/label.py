@@ -9,6 +9,7 @@ from pydantic import TypeAdapter
 
 from generalresearch.managers.base import PostgresManager
 from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
     IPvAnyAddressStr,
     IPvAnyNetwork,
     IPvAnyNetworkStr,
@@ -16,9 +17,7 @@ from generalresearch.models.custom_types import (
 from generalresearch.models.network.label import IPLabel
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-    )
+
     from generalresearch.models.network.label import IPLabelKind, IPLabelSource
 
 

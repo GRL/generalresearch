@@ -19,6 +19,7 @@ from pydantic import (
     model_validator,
 )
 
+from generalresearch.models.custom_types import HttpsUrl, UUIDStr
 from generalresearch.models.definitions import Source
 from generalresearch.models.legacy.bucket import (
     Bucket as LegacyBucket,
@@ -38,7 +39,6 @@ from generalresearch.models.thl.offerwall.bucket import (
 from generalresearch.models.thl.soft_pair import SoftPairResultType
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import HttpsUrl, UUIDStr
     from generalresearch.models.legacy.bucket import (
         CategoryAssociation,
         Eligibility,

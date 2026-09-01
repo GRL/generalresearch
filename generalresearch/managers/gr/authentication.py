@@ -10,9 +10,10 @@ from psycopg import sql
 from pydantic import AnyHttpUrl, PositiveInt
 
 from generalresearch.managers.base import PostgresManager, PostgresManagerWithRedis
+from generalresearch.models.custom_types import UUIDStr
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import UUIDStr
+
     from generalresearch.models.gr.authentication import GRToken, GRUser
     from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig

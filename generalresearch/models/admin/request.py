@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 import pandas as pd
 from pydantic import BaseModel, Field, computed_field, model_validator
 
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import AwareDatetimeISO
+from generalresearch.models.custom_types import AwareDatetimeISO
 
 
 class ReportType(Enum):

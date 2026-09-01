@@ -8,6 +8,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.definitions import Source, string_utils
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
@@ -16,7 +17,6 @@ from generalresearch.models.thl.profiling.marketplace import (
 
 if TYPE_CHECKING:
     from generalresearch.models.cint import CintQuestionIdType
-    from generalresearch.models.custom_types import AwareDatetimeISO
     from generalresearch.models.thl.profiling.upk_question import (
         UpkQuestion,
     )

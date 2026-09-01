@@ -19,6 +19,13 @@ from pydantic import (
 )
 
 from generalresearch.locales import Localelator
+from generalresearch.models.custom_types import (
+    AlphaNumStr,
+    AlphaNumStrSet,
+    AwareDatetimeISO,
+    CoercedStr,
+    DeviceTypes,
+)
 from generalresearch.models.definitions import Source
 from generalresearch.models.dynata import DynataStatus
 from generalresearch.models.thl.demographics import (
@@ -31,13 +38,7 @@ from generalresearch.models.thl.survey.condition import (
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AlphaNumStr,
-        AlphaNumStrSet,
-        AwareDatetimeISO,
-        CoercedStr,
-        DeviceTypes,
-    )
+
     from generalresearch.models.definitions import TaskCalculationType
 
 logging.basicConfig()

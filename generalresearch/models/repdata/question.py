@@ -17,11 +17,11 @@ from pydantic import (
     model_validator,
 )
 
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
     from generalresearch.models.thl.profiling.upk_question import (
         UpkQuestion,
     )

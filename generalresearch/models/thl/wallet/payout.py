@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Collection
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from uuid import uuid4
 
 from pydantic import (
@@ -15,14 +15,12 @@ from pydantic import (
 )
 
 from generalresearch.currency import USDCent
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.definitions import PayoutStatus
+from generalresearch.models.thl.wallet.cashout_method import (
+    CashMailOrderData,
+)
 from generalresearch.models.thl.wallet.definitions import PayoutType
-
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
-    from generalresearch.models.thl.wallet.cashout_method import (
-        CashMailOrderData,
-    )
 
 
 class PayoutEvent(BaseModel, validate_assignment=True):

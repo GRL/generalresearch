@@ -6,7 +6,7 @@ import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import Any, Literal, Self
 from uuid import UUID
 
 from pydantic import (
@@ -21,6 +21,11 @@ from pydantic import (
 
 from generalresearch.grpc import timestamp_from_datetime
 from generalresearch.locales import Localelator
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    CoercedStr,
+    UUIDStr,
+)
 from generalresearch.models.definitions import (
     DeviceType,
     LogicalOperator,
@@ -34,13 +39,6 @@ from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
     MarketplaceCondition,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        CoercedStr,
-        UUIDStr,
-    )
 
 logging.basicConfig()
 logger = logging.getLogger()

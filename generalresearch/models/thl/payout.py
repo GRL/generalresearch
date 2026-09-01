@@ -17,18 +17,16 @@ from pydantic import (
 from pydantic.json_schema import SkipJsonSchema
 
 from generalresearch.currency import USDCent
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    UUIDStr,
+    UUIDStrCoerce,
+)
 from generalresearch.models.thl.definitions import PayoutStatus
+from generalresearch.models.thl.wallet.cashout_method import (
+    CashMailOrderData,
+)
 from generalresearch.models.thl.wallet.definitions import PayoutType
-
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        UUIDStr,
-        UUIDStrCoerce,
-    )
-    from generalresearch.models.thl.wallet.cashout_method import (
-        CashMailOrderData,
-    )
 
 
 class PayoutEvent(BaseModel):

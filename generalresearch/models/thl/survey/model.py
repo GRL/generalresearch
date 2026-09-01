@@ -17,17 +17,18 @@ from pydantic import (
 )
 
 from generalresearch.managers.thl.buyer import Buyer
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    CountryISOLike,
+    EnumNameSerializer,
+    PropertyCode,
+    SurveyKey,
+)
 from generalresearch.models.thl.definitions import StatusCode1
 from generalresearch.models.thl.pagination import Page
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        CountryISOLike,
-        EnumNameSerializer,
-        PropertyCode,
-        SurveyKey,
-    )
+
     from generalresearch.models.definitions import Source
     from generalresearch.models.thl.category import Category
     from generalresearch.models.thl.definitions import Status

@@ -7,11 +7,11 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field, PositiveInt
 
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
     from generalresearch.models.thl.definitions import WallAdjustedStatus
     from generalresearch.models.thl.user import BPUIDStr
 

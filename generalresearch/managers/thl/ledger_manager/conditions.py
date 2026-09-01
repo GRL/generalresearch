@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from generalresearch.config import JAMES_BILLINGS_BPID, JAMES_BILLINGS_TX_CUTOFF
 from generalresearch.currency import USDCent
+from generalresearch.models.custom_types import UUIDStr
 
 if TYPE_CHECKING:
 
@@ -16,7 +17,6 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
-    from generalresearch.models.custom_types import UUIDStr
     from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.session import Session, Wall
     from generalresearch.models.thl.user import User

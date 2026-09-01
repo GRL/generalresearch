@@ -4,13 +4,14 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.legacy.definitions import OfferwallReason
 from generalresearch.models.thl.payout_format import (
     PayoutFormatField,
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import UUIDStr
+
     from generalresearch.models.legacy.bucket import (
         BucketBase,
         MarketplaceBucket,

@@ -6,12 +6,14 @@ from uuid import uuid4
 
 from pydantic import BaseModel, Field, PositiveInt
 
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    IPvAnyAddressStr,
+    UUIDStr,
+)
+
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        IPvAnyAddressStr,
-        UUIDStr,
-    )
+
     from generalresearch.models.network.mtr.result import MTRResult
     from generalresearch.models.network.nmap.result import NmapResult
     from generalresearch.models.network.rdns.result import RDNSResult

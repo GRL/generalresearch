@@ -31,13 +31,12 @@ from generalresearch.models.custom_types import (
 from generalresearch.models.gr.definitions import BusinessType, TransferMethod
 from generalresearch.models.gr.team import Team
 from generalresearch.models.thl.finance import BusinessBalances, POPFinancial
-from generalresearch.models.thl.ledger import OrderBy
+from generalresearch.models.thl.ledger import LedgerAccount, OrderBy
+from generalresearch.models.thl.payout import BusinessPayoutEvent
 from generalresearch.utils.aggregation import group_by_year
 
 if TYPE_CHECKING:
     from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
-    from generalresearch.models.thl.ledger import LedgerAccount
-    from generalresearch.models.thl.payout import BusinessPayoutEvent
     from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig
 

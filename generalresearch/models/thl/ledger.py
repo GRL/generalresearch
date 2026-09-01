@@ -16,7 +16,12 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models.custom_types import check_valid_uuid
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    HttpsUrlStr,
+    UUIDStr,
+    check_valid_uuid,
+)
 from generalresearch.models.thl.pagination import Page
 from generalresearch.models.thl.payout_format import (
     PayoutFormatType,
@@ -25,11 +30,6 @@ from generalresearch.models.thl.payout_format import (
 from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        HttpsUrlStr,
-        UUIDStr,
-    )
     from generalresearch.models.thl.payout_format import (
         PayoutFormatType,
     )

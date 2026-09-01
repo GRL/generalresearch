@@ -9,6 +9,8 @@ import pytest
 from pydantic import PositiveInt
 from pydantic_extra_types.phone_numbers import PhoneNumber
 
+from generalresearch.models.custom_types import UUIDStr
+
 if TYPE_CHECKING:
     from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
     from generalresearch.managers.gr.business import (
@@ -17,7 +19,6 @@ if TYPE_CHECKING:
         BusinessManager,
     )
     from generalresearch.managers.gr.team import MembershipManager, TeamManager
-    from generalresearch.models.custom_types import UUIDStr
     from generalresearch.models.gr.authentication import GRToken, GRUser
     from generalresearch.models.gr.business import (
         Business,

@@ -14,9 +14,10 @@ from generalresearch.grliq.models.forensic_result import (
     GrlIqForensicCategoryResult,
     Phase,
 )
+from generalresearch.models.custom_types import UUIDStr
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import UUIDStr
+
     from generalresearch.models.thl.user import User
     from generalresearch.pg_helper import PostgresConfig
 

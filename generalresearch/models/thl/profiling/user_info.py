@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.json_schema import SkipJsonSchema
 
+from generalresearch.models.custom_types import AwareDatetimeISO
+
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import AwareDatetimeISO
     from generalresearch.models.definitions import Source
     from generalresearch.models.thl.profiling.user_question_answer import (
         MarketplaceResearchProfileQuestion,

@@ -4,7 +4,7 @@ import logging
 import math
 from datetime import timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -15,15 +15,13 @@ from pydantic import (
     model_validator,
 )
 
+from generalresearch.models.custom_types import (
+    HttpsUrl,
+    PropertyCode,
+    UUIDStr,
+)
 from generalresearch.models.definitions import Source
 from generalresearch.models.thl.stats import StatisticalSummary
-
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        HttpsUrl,
-        PropertyCode,
-        UUIDStr,
-    )
 
 logger = logging.getLogger()
 

@@ -28,7 +28,7 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionReleaseLockError,
 )
 from generalresearch.managers.utils import parse_order_by
-from generalresearch.models.custom_types import check_valid_uuid
+from generalresearch.models.custom_types import UUIDStr, check_valid_uuid
 from generalresearch.models.thl.ledger import (
     LedgerAccount,
     LedgerEntry,
@@ -37,7 +37,7 @@ from generalresearch.models.thl.ledger import (
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import UUIDStr
+
     from generalresearch.models.thl.ledger import UserLedgerTransactionType
     from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig

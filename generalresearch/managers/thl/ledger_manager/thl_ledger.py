@@ -29,6 +29,7 @@ from generalresearch.managers.thl.ledger_manager.conditions import (
 from generalresearch.managers.thl.ledger_manager.ledger import (
     LedgerManager,
 )
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.contest.definitions import (
     ContestPrizeKind,
     ContestType,
@@ -55,7 +56,7 @@ from generalresearch.models.thl.session import Status
 from generalresearch.models.thl.wallet.definitions import PayoutType
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import UUIDStr
+    
     from generalresearch.models.thl.contest.contest import Contest, ContestWinner
     from generalresearch.models.thl.contest.raffle import (
         ContestEntry,

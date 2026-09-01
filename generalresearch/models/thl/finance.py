@@ -18,6 +18,7 @@ from pydantic import (
 from pydantic.json_schema import SkipJsonSchema
 
 from generalresearch.config import is_debug
+from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.definitions import SessionAdjustedStatus
@@ -26,7 +27,7 @@ payout_example = random.randint(150, 750 * 100)
 adjustment_example = random.randint(-1_000, 50 * 100)
 
 if TYPE_CHECKING:
-    from generalresearch.currency import USDCent
+
     from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.thl.ledger import LedgerAccount
     from generalresearch.models.thl.product import Product
@@ -324,8 +325,6 @@ class ProductBalances(BaseModel):
     )
     @property
     def payout_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.payout).to_usd_str()
 
     @computed_field(
@@ -384,8 +383,6 @@ class ProductBalances(BaseModel):
     )
     @property
     def payment_usd_str(self):
-        from generalresearch.currency import USDCent
-
         return USDCent(self.payment).to_usd_str()
 
     @computed_field(
@@ -427,8 +424,6 @@ class ProductBalances(BaseModel):
     )
     @property
     def retainer_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.retainer).to_usd_str()
 
     @computed_field(
@@ -460,8 +455,6 @@ class ProductBalances(BaseModel):
     )
     @property
     def available_balance_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.available_balance).to_usd_str()
 
     @computed_field(
@@ -477,8 +470,6 @@ class ProductBalances(BaseModel):
     )
     @property
     def recoup(self) -> USDCent:
-        from generalresearch.currency import USDCent
-
         if self.balance >= 0:
             return USDCent(0)
 
@@ -578,8 +569,6 @@ class BusinessBalances(BaseModel):
     )
     @property
     def payout_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.payout).to_usd_str()
 
     @computed_field(
@@ -681,8 +670,6 @@ class BusinessBalances(BaseModel):
     )
     @property
     def payment_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.payment).to_usd_str()
 
     @computed_field(
@@ -730,8 +717,6 @@ class BusinessBalances(BaseModel):
     )
     @property
     def retainer_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.retainer).to_usd_str()
 
     @computed_field(
@@ -763,8 +748,6 @@ class BusinessBalances(BaseModel):
     )
     @property
     def available_balance_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.available_balance).to_usd_str()
 
     # --- Properties: account related ---
@@ -799,8 +782,6 @@ class BusinessBalances(BaseModel):
         """Returns the sum of this Business' recouped amount from any
         children Products.
         """
-        from generalresearch.currency import USDCent
-
         return USDCent(sum([i.recoup for i in self.product_balances]))
 
     @computed_field(

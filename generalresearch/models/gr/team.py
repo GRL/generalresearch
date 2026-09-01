@@ -23,6 +23,11 @@ from pydantic.json_schema import SkipJsonSchema
 
 from generalresearch.decorators import LOG
 from generalresearch.models.admin.request import ReportRequest, ReportType
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    UUIDStr,
+    UUIDStrCoerce,
+)
 from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:
@@ -39,11 +44,6 @@ if TYPE_CHECKING:
     from generalresearch.managers.gr.business import BusinessManager
     from generalresearch.managers.gr.team import MembershipManager
     from generalresearch.managers.thl.product import ProductManager
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        UUIDStr,
-        UUIDStrCoerce,
-    )
     from generalresearch.models.gr.authentication import GRUser
     from generalresearch.models.gr.business import Business
     from generalresearch.models.thl.product import Product

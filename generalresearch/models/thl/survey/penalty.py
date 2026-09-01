@@ -6,11 +6,13 @@ from typing import TYPE_CHECKING, Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    UUIDStr,
+)
+
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        UUIDStr,
-    )
+
     from generalresearch.models.definitions import Source
 
 

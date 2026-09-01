@@ -18,6 +18,11 @@ from pydantic import (
 )
 
 from generalresearch.locales import Localelator
+from generalresearch.models.custom_types import (
+    AlphaNumStr,
+    AwareDatetimeISO,
+    CoercedStr,
+)
 from generalresearch.models.definitions import Source, TaskCalculationType
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.survey import MarketplaceTask
@@ -28,11 +33,7 @@ from generalresearch.models.thl.survey.condition import (
 
 if TYPE_CHECKING:
     from generalresearch.models.cint import CintQuestionIdType
-    from generalresearch.models.custom_types import (
-        AlphaNumStr,
-        AwareDatetimeISO,
-        CoercedStr,
-    )
+
 
 logging.basicConfig()
 logger = logging.getLogger()

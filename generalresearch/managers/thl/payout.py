@@ -19,6 +19,7 @@ from generalresearch.managers.base import (
 from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionConditionFailedError,
 )
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.ledger import (
     Direction,
@@ -42,7 +43,6 @@ if TYPE_CHECKING:
         ThlLedgerManager,
     )
     from generalresearch.managers.thl.product import ProductManager
-    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
     from generalresearch.models.gr.business import Business
     from generalresearch.models.thl.ledger import LedgerAccount
     from generalresearch.models.thl.product import Product

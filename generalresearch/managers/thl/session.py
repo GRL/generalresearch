@@ -16,6 +16,7 @@ from generalresearch.managers.base import (
 )
 from generalresearch.managers.thl.product import ProductManager
 from generalresearch.managers.utils import parse_order_by
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.legacy.bucket import Bucket
 from generalresearch.models.thl.session import (
     Session,
@@ -28,7 +29,7 @@ from generalresearch.models.thl.task_status import (
 from generalresearch.models.thl.user import User
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import UUIDStr
+
     from generalresearch.models.definitions import DeviceType
     from generalresearch.models.thl.definitions import (
         SessionStatusCode2,

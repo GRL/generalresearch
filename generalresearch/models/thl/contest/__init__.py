@@ -12,11 +12,11 @@ from pydantic import (
     model_validator,
 )
 
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.contest.definitions import ContestPrizeKind
 
 if TYPE_CHECKING:
     from generalresearch.currency import USDCent
-    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
     from generalresearch.models.thl.user import User
 
 

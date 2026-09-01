@@ -4,11 +4,11 @@ from collections.abc import Collection
 from typing import TYPE_CHECKING
 
 from generalresearch.managers.base import PostgresManager
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.category import Category
 
 if TYPE_CHECKING:
     from generalresearch.managers.base import Permission
-    from generalresearch.models.custom_types import UUIDStr
     from generalresearch.pg_helper import PostgresConfig
 
 

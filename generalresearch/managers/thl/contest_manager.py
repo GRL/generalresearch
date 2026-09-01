@@ -10,6 +10,7 @@ from pydantic import NonNegativeInt, PositiveInt
 from redis import Redis
 
 from generalresearch.managers.base import PostgresManager
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.contest import (
     ContestPrize,
     ContestWinner,
@@ -49,7 +50,6 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.user_manager.user_manager import (
         UserManager,
     )
-    from generalresearch.models.custom_types import UUIDStr
     from generalresearch.models.thl.contest.contest import (
         Contest,
         ContestUserView,

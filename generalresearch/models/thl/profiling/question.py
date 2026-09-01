@@ -9,13 +9,14 @@ from pydantic import (
     computed_field,
 )
 
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    CountryISOLike,
+    LanguageISOLike,
+    UUIDStr,
+)
+
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        CountryISOLike,
-        LanguageISOLike,
-        UUIDStr,
-    )
     from generalresearch.models.thl.profiling.upk_question import UpkQuestion
 
 

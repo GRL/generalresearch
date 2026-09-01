@@ -10,12 +10,11 @@ from cachetools import TTLCache, cachedmethod
 
 from generalresearch.decorators import LOG
 from generalresearch.managers.base import RedisManager
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.survey.penalty import PenaltyListAdapter
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        UUIDStr,
-    )
+
     from generalresearch.models.thl.survey.penalty import (
         BPSurveyPenalty,
         Penalty,

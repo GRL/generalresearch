@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 from pydantic import BaseModel, Field, ValidationError
 
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import UUIDStr
+from generalresearch.models.custom_types import UUIDStr
 
 
 class UUIDStrModel(BaseModel):

@@ -11,6 +11,7 @@ from generalresearch.managers.base import (
     PostgresManager,
     PostgresManagerWithRedis,
 )
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.gr.business import (
     Business,
     BusinessBankAccount,
@@ -18,7 +19,7 @@ from generalresearch.models.gr.business import (
 from generalresearch.models.gr.definitions import BusinessType, TransferMethod
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import UUIDStr
+
     from generalresearch.models.gr.business import (
         BusinessAddress,
     )

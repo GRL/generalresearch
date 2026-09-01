@@ -7,15 +7,16 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, computed_field
 
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    CountryISOLike,
+    LanguageISOLike,
+    UUIDStr,
+)
 from generalresearch.models.definitions import MAX_INT32
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        CountryISOLike,
-        LanguageISOLike,
-        UUIDStr,
-    )
+
     from generalresearch.models.definitions import Source
     from generalresearch.models.thl.locales import CountryISO, LanguageISO
 

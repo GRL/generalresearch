@@ -7,11 +7,12 @@ from uuid import uuid4
 
 from pydantic import NonNegativeInt
 
+from generalresearch.models.custom_types import UUIDStr
+
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
-    from generalresearch.models.custom_types import UUIDStr
     from generalresearch.models.thl.user import User
 
 

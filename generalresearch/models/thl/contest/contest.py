@@ -15,6 +15,7 @@ from pydantic import (
     model_validator,
 )
 
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.contest import (
     ContestEndCondition,
     ContestPrize,
@@ -26,7 +27,6 @@ from generalresearch.models.thl.contest.definitions import (
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
     from generalresearch.models.thl.contest import (
         ContestWinner,
     )

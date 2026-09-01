@@ -18,6 +18,12 @@ from pydantic import (
     model_validator,
 )
 
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    EnumNameSerializer,
+    IPvAnyAddressStr,
+    UUIDStr,
+)
 from generalresearch.models.definitions import Source
 from generalresearch.models.thl.definitions import (
     WALL_ALLOWED_STATUS_CODE_1_2,
@@ -36,12 +42,6 @@ from generalresearch.models.thl.utils import (
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
-    )
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        EnumNameSerializer,
-        IPvAnyAddressStr,
-        UUIDStr,
     )
     from generalresearch.models.definitions import DeviceType
     from generalresearch.models.legacy.bucket import Bucket

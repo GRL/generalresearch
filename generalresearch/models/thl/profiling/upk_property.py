@@ -7,10 +7,10 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
+from generalresearch.models.custom_types import CountryISOLike, UUIDStr
 from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import CountryISOLike, UUIDStr
     from generalresearch.models.thl.category import Category
 
 

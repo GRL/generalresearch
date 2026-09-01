@@ -10,10 +10,11 @@ from uuid import uuid4
 import psycopg
 from psycopg import sql
 
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.user import User
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import UUIDStr
+
     from generalresearch.pg_helper import PostgresConfig
 
 logging.basicConfig()

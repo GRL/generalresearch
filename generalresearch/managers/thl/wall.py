@@ -19,6 +19,7 @@ from generalresearch.managers.base import (
     PostgresManagerWithRedis,
 )
 from generalresearch.managers.utils import parse_order_by
+from generalresearch.models.custom_types import SurveyKey, UUIDStr
 from generalresearch.models.definitions import Source
 from generalresearch.models.thl.definitions import (
     WallAdjustedStatus,
@@ -35,7 +36,6 @@ if TYPE_CHECKING:
     from generalresearch.managers.base import (
         Permission,
     )
-    from generalresearch.models.custom_types import SurveyKey, UUIDStr
     from generalresearch.models.thl.definitions import (
         ReportValue,
         Status,

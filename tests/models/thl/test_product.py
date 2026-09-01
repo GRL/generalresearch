@@ -631,8 +631,6 @@ class TestProductFinancials:
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
 
-        from generalresearch.currency import USDCent
-
         p1: Product = product_factory(business=gr_business)
         u1: User = user_factory(product=p1)
         bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
@@ -713,6 +711,8 @@ class TestProductFinancials:
         assert p1.payouts_total_str == "$0.00"
 
         # -- Now pay them out...
+
+        from generalresearch.currency import USDCent
 
         bp_payout_factory(
             product=p1,

@@ -20,6 +20,7 @@ from pydantic import (
 )
 from sentry_sdk import set_tag, set_user
 
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.definitions import MAX_INT32
 
 if TYPE_CHECKING:
@@ -27,7 +28,6 @@ if TYPE_CHECKING:
         ThlLedgerManager,
     )
     from generalresearch.managers.thl.userhealth import AuditLogManager
-    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
     from generalresearch.models.thl.ipinfo import GeoIPInformation
     from generalresearch.models.thl.ledger import LedgerTransaction
     from generalresearch.models.thl.product import Product

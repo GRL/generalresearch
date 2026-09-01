@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Self
+from typing import Any, Self
 from uuid import uuid4
 
 from pydantic import (
@@ -13,18 +13,16 @@ from pydantic import (
     model_validator,
 )
 
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    CountryISOLike,
+    UUIDStr,
+)
 from generalresearch.models.definitions import MAX_INT32
 from generalresearch.models.thl.profiling.upk_property import (
     Cardinality,
     PropertyType,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        CountryISOLike,
-        UUIDStr,
-    )
 
 
 class UpkQuestionAnswer(BaseModel):

@@ -13,6 +13,11 @@ from pydantic import (
     model_validator,
 )
 
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    EnumNameSerializer,
+    UUIDStr,
+)
 from generalresearch.models.thl.definitions import (
     SessionAdjustedStatus,
     SessionStatusCode2,
@@ -27,11 +32,7 @@ from generalresearch.models.thl.session import WallOut
 from generalresearch.models.thl.utils import decimal_to_int_cents
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        EnumNameSerializer,
-        UUIDStr,
-    )
+
     from generalresearch.models.thl.payout_format import (
         PayoutFormatType,
     )

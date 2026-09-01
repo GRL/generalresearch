@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
 
 import pytest
 import pytz
 from pydantic import BaseModel, Field, ValidationError
 
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import AwareDatetimeISO
+from generalresearch.models.custom_types import AwareDatetimeISO
 
 logger = logging.getLogger()
 

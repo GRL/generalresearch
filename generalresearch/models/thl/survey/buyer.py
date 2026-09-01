@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 from math import log
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from pydantic import (
     BaseModel,
@@ -16,14 +16,12 @@ from pydantic import (
 )
 from scipy.stats import beta as beta_dist
 
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    CountryISOLike,
+    UUIDStr,
+)
 from generalresearch.models.definitions import Source
-
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        CountryISOLike,
-        UUIDStr,
-    )
 
 
 class Buyer(BaseModel):

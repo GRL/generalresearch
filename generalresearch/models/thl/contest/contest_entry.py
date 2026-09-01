@@ -12,12 +12,12 @@ from pydantic import (
 )
 
 from generalresearch.currency import USDCent
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.contest.definitions import (
     ContestEntryType,
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
     from generalresearch.models.thl.user import User
 
 

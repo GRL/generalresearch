@@ -17,9 +17,9 @@ from pydantic import (
 )
 
 from generalresearch.decorators import LOG
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
     from generalresearch.models.gr.business import Business
     from generalresearch.models.gr.team import Team
     from generalresearch.models.thl.product import Product
@@ -164,8 +164,8 @@ class GRUser(BaseModel):
 
         self.prefetch_businesses(pg_config=pg_config, redis_config=redis_config)
         self.prefetch_teams(pg_config=pg_config, redis_config=redis_config)
-        business_uuids = self.business_uuids
-        team_uuids = self.team_uuids
+        business_uuids = self.business_uuids or []
+        team_uuids = self.team_uuids or []
 
         if len(business_uuids + team_uuids) == 0:
             self.products = []

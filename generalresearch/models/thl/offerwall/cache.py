@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
+from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
     from generalresearch.models.definitions import Source
     from generalresearch.models.thl.offerwall import OfferWallRequest
     from generalresearch.models.thl.offerwall.base import (

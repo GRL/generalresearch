@@ -13,6 +13,11 @@ import pytest
 from grip_client.enums import AccessType
 from pydantic import PositiveInt
 
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    IPvAnyAddressStr,
+    UUIDStr,
+)
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.session import (
     Source,
@@ -33,11 +38,6 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.user_manager.user_manager import UserManager
     from generalresearch.managers.thl.userhealth import AuditLogManager, IPRecordManager
     from generalresearch.managers.thl.wall import WallManager
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        IPvAnyAddressStr,
-        UUIDStr,
-    )
     from generalresearch.models.definitions import DeviceType
     from generalresearch.models.legacy.bucket import Bucket
     from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation

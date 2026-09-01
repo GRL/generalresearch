@@ -20,13 +20,12 @@ from generalresearch.decorators import LOG
 from generalresearch.managers.base import (
     PostgresManager,
 )
-from generalresearch.models.custom_types import is_valid_uuid
+from generalresearch.models.custom_types import UUIDStr, is_valid_uuid
 
 if TYPE_CHECKING:
     from generalresearch.managers.base import (
         Permission,
     )
-    from generalresearch.models.custom_types import UUIDStr
     from generalresearch.models.thl.product import (
         PayoutConfig,
         Product,

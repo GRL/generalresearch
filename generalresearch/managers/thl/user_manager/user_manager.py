@@ -22,12 +22,12 @@ from generalresearch.managers.thl.user_manager.rate_limit import (
 from generalresearch.managers.thl.user_manager.redis_user_manager import (
     RedisUserManager,
 )
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.utils.copying_cache import deepcopy_return
 
 if TYPE_CHECKING:
 
     from generalresearch.managers.thl.userhealth import AuditLogManager
-    from generalresearch.models.custom_types import UUIDStr
     from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.user import User
     from generalresearch.models.thl.userhealth import AuditLog

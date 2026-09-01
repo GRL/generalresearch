@@ -15,6 +15,13 @@ from pydantic import (
     model_validator,
 )
 
+from generalresearch.models.custom_types import (
+    AlphaNumStrSet,
+    AwareDatetimeISO,
+    CoercedStr,
+    DeviceTypes,
+    UUIDStrCoerce,
+)
 from generalresearch.models.definitions import Source
 from generalresearch.models.precision import PrecisionStatus
 from generalresearch.models.thl.demographics import Gender
@@ -25,13 +32,6 @@ from generalresearch.models.thl.survey.condition import (
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AlphaNumStrSet,
-        AwareDatetimeISO,
-        CoercedStr,
-        DeviceTypes,
-        UUIDStrCoerce,
-    )
     from generalresearch.models.precision import PrecisionQuestionID
 
 

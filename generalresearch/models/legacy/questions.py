@@ -15,6 +15,7 @@ from pydantic import (
 )
 from sentry_sdk import capture_exception
 
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.legacy.api_status import StatusResponse
 
 if TYPE_CHECKING:
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
         UserManager,
     )
     from generalresearch.managers.thl.wall import WallManager
-    from generalresearch.models.custom_types import UUIDStr
     from generalresearch.models.thl.profiling.upk_question import (
         UpkQuestionOut,
     )
