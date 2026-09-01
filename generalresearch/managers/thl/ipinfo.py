@@ -3,6 +3,7 @@ from __future__ import annotations
 import ipaddress
 from collections.abc import Collection
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import faker
 from grip_client.enums import AccessType
@@ -14,17 +15,19 @@ from generalresearch.managers.base import (
     PostgresManager,
     PostgresManagerWithRedis,
 )
-from generalresearch.models.custom_types import (
-    CountryISOLike,
-    IPvAnyAddressStr,
-)
 from generalresearch.models.thl.ipinfo import (
     GeoIPInformation,
     IPGeoname,
     IPInformation,
     normalize_ip,
 )
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import (
+        CountryISOLike,
+        IPvAnyAddressStr,
+    )
+    from generalresearch.pg_helper import PostgresConfig
 
 fake = faker.Faker()
 

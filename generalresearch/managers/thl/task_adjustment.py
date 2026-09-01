@@ -4,17 +4,14 @@ import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 from functools import cached_property
+from typing import TYPE_CHECKING
 
 from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
     PostgresManager,
 )
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
 from generalresearch.managers.thl.session import SessionManager
 from generalresearch.managers.thl.wall import WallManager
-from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.definitions import (
     Status,
     WallAdjustedStatus,
@@ -23,6 +20,12 @@ from generalresearch.models.thl.session import (
     _check_adjusted_status_wall_consistent,
 )
 from generalresearch.models.thl.task_adjustment import TaskAdjustmentEvent
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.models.custom_types import UUIDStr
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)

@@ -3,19 +3,23 @@ from __future__ import annotations
 from collections.abc import Collection
 from copy import copy
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from pydantic import NonNegativeInt
 
 from generalresearch.managers.base import PostgresManager
-from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
-    CashMailCashoutMethodData,
     CashoutMethod,
-    PaypalCashoutMethodData,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.user import User
+    from generalresearch.models.thl.wallet.cashout_method import (
+        CashMailCashoutMethodData,
+        PaypalCashoutMethodData,
+    )
 
 
 class CashoutMethodManager(PostgresManager):

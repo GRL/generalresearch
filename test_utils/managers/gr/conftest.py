@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+import subprocess
+from collections.abc import Callable, Generator
+from random import randint
 
 import pytest
+import redis
 import redis.asyncio as redis_async
 from pydantic import PostgresDsn
 from redis import Redis
@@ -20,8 +23,15 @@ from generalresearch.redis_helper import RedisConfig
 
 # === Msc ===
 @pytest.fixture(scope="session")
+def gr_redis_config_db() -> str:
+    return str(randint(99, 1_023))
+
+
+@pytest.fixture(scope="session")
 def gr_redis(settings: GRLBaseSettings) -> Redis:
-    assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
+    assert "unittest" in str(settings.testing_redis) or "127.0.0.1" in str(
+        settings.testing_redis
+    )
     return Redis.from_url(
         url=str(settings.gr_redis),
         decode_responses=True,
@@ -32,10 +42,12 @@ def gr_redis(settings: GRLBaseSettings) -> Redis:
 
 @pytest.fixture
 def gr_redis_async(settings: GRLBaseSettings) -> redis_async.Redis:
-    assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
+    assert "unittest" in str(settings.testing_redis) or "127.0.0.1" in str(
+        settings.testing_redis
+    )
 
     return redis_async.Redis.from_url(
-        str(settings.gr_redis),
+        str(settings.testing_redis),
         decode_responses=True,
         socket_timeout=0.20,
         socket_connect_timeout=0.20,
@@ -43,21 +55,39 @@ def gr_redis_async(settings: GRLBaseSettings) -> redis_async.Redis:
 
 
 @pytest.fixture(scope="session")
-def gr_redis_config(settings: GRLBaseSettings) -> RedisConfig:
-    assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
+def gr_redis_config(
+    settings: GRLBaseSettings, gr_redis_config_db: str
+) -> Generator[RedisConfig]:
+    assert "unittest" in str(settings.testing_redis) or "127.0.0.1" in str(
+        settings.testing_redis
+    )
 
-    return RedisConfig(
-        dsn=settings.gr_redis,
+    uri = f"redis://{settings.testing_redis}/{gr_redis_config_db}"
+
+    res = subprocess.run(
+        ["redis-cli", "-u", uri, "SET", "jenkins_lock", "1", "NX", "EX", "3600"],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    if res.stdout.strip() != "OK":
+        raise ValueError("Redis already locked... aborting.")
+
+    yield RedisConfig(
+        dsn=uri,
         decode_responses=True,
         socket_timeout=settings.redis_timeout,
         socket_connect_timeout=settings.redis_timeout,
     )
 
+    r = redis.from_url(uri)
+    r.flushdb()
+
 
 @pytest.fixture(scope="session")
 def gr_db(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
     _dsn = django_db_factory("gr.common")
-    print("DDDD:", _dsn)
 
     return PostgresConfig(
         dsn=_dsn,

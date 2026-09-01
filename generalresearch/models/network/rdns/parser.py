@@ -1,8 +1,11 @@
 import ipaddress
 import re
+from typing import TYPE_CHECKING
 
-from generalresearch.models.custom_types import IPvAnyAddressStr
 from generalresearch.models.network.rdns.result import RDNSResult
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import IPvAnyAddressStr
 
 PTR_RE = re.compile(r"\sPTR\s+([^\s]+)\.")
 

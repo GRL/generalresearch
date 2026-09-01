@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -14,10 +14,13 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models import MAX_INT32, Source
-from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
-from generalresearch.models.thl.locales import CountryISO, LanguageISO
-from generalresearch.models.thl.profiling.upk_question import UpkQuestion
+from generalresearch.models import MAX_INT32
+
+if TYPE_CHECKING:
+    from generalresearch.models import Source
+    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+    from generalresearch.models.thl.locales import CountryISO, LanguageISO
+    from generalresearch.models.thl.profiling.upk_question import UpkQuestion
 
 
 class UserQuestionAnswer(BaseModel):

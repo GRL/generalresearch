@@ -11,14 +11,16 @@ from generalresearch.managers.base import (
     PostgresManager,
     PostgresManagerWithRedis,
 )
-from generalresearch.models.custom_types import UUIDStr
+from generalresearch.models.gr.business import (
+    Business,
+    BusinessBankAccount,
+    BusinessType,
+)
 
 if TYPE_CHECKING:
+    from generalresearch.models.custom_types import UUIDStr
     from generalresearch.models.gr.business import (
-        Business,
         BusinessAddress,
-        BusinessBankAccount,
-        BusinessType,
         TransferMethod,
     )
     from generalresearch.models.gr.team import Team
@@ -36,8 +38,6 @@ class BusinessBankAccountManager(PostgresManager):
         iban: str | None = None,
         swift: str | None = None,
     ) -> BusinessBankAccount:
-        from generalresearch.models.gr.business import BusinessBankAccount
-
         ba = BusinessBankAccount.model_validate(
             {
                 "business_id": business_id,
@@ -73,7 +73,6 @@ class BusinessBankAccountManager(PostgresManager):
         return ba
 
     def get_by_business_id(self, business_id: UUIDStr) -> list[BusinessBankAccount]:
-        from generalresearch.models.gr.business import BusinessBankAccount
 
         with self.pg_config.make_connection() as conn, conn.cursor() as c:
             c.execute(
@@ -192,11 +191,7 @@ class BusinessManager(PostgresManagerWithRedis):
         """
         Behavior: does this raise on duplicate?
         """
-        from generalresearch.models.gr.business import (
-            Business,
-            BusinessType,
-        )
-
+        # Business.model_rebuild()
         business = Business.model_validate(
             {
                 "uuid": uuid or uuid4().hex,
@@ -281,7 +276,6 @@ class BusinessManager(PostgresManagerWithRedis):
             res = c.fetchall()
 
         response = []
-        from generalresearch.models.gr.business import Business
 
         for i in res:
             # i["contact"] = BusinessContact.model_validate(i)
@@ -370,8 +364,6 @@ class BusinessManager(PostgresManagerWithRedis):
         self,
         business_uuid: UUIDStr,
     ) -> Business | None:
-        from generalresearch.models.gr.business import Business
-
         assert UUID(hex=business_uuid).hex == business_uuid
 
         with self.pg_config.make_connection() as conn, conn.cursor() as c:
@@ -397,8 +389,6 @@ class BusinessManager(PostgresManagerWithRedis):
         return Business.model_validate(data)
 
     def get_by_id(self, business_id: PositiveInt) -> Business | None:
-        from generalresearch.models.gr.business import Business
-
         assert isinstance(business_id, int)
 
         with self.pg_config.make_connection() as conn, conn.cursor() as c:

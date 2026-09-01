@@ -1,25 +1,26 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, PositiveInt
 
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    IPvAnyAddressStr,
-    UUIDStr,
-)
-from generalresearch.models.network.mtr.result import MTRResult
-from generalresearch.models.network.nmap.result import NmapResult
-from generalresearch.models.network.rdns.result import RDNSResult
-from generalresearch.models.network.tool_run_command import (
-    MTRRunCommand,
-    NmapRunCommand,
-    RDNSRunCommand,
-    ToolRunCommand,
-)
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        IPvAnyAddressStr,
+        UUIDStr,
+    )
+    from generalresearch.models.network.mtr.result import MTRResult
+    from generalresearch.models.network.nmap.result import NmapResult
+    from generalresearch.models.network.rdns.result import RDNSResult
+    from generalresearch.models.network.tool_run_command import (
+        MTRRunCommand,
+        NmapRunCommand,
+        RDNSRunCommand,
+        ToolRunCommand,
+    )
 
 
 class ToolClass(StrEnum):

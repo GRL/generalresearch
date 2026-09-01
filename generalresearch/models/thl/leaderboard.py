@@ -4,7 +4,7 @@ import logging
 import math
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 from uuid import UUID, uuid3
 from zoneinfo import ZoneInfo
 
@@ -21,8 +21,11 @@ from pydantic import (
 
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.legacy.api_status import StatusResponse
-from generalresearch.models.thl.locales import CountryISO
 from generalresearch.utils.enum import ReprEnumMeta
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.locales import CountryISO
+
 
 logger = logging.getLogger()
 

@@ -19,13 +19,13 @@ from pydantic import (
 )
 
 from generalresearch.models import MAX_INT32, Source, string_utils
-from generalresearch.models.custom_types import AwareDatetimeISO
-from generalresearch.models.spectrum import SpectrumQuestionIdType
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
 )
 
 if TYPE_CHECKING:
+    from generalresearch.models.custom_types import AwareDatetimeISO
+    from generalresearch.models.spectrum import SpectrumQuestionIdType
     from generalresearch.models.thl.profiling.upk_question import (
         UpkQuestion,
     )

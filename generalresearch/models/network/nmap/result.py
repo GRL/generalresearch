@@ -4,12 +4,14 @@ import json
 from datetime import timedelta
 from enum import StrEnum
 from functools import cached_property
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, computed_field
 
-from generalresearch.models.custom_types import AwareDatetimeISO, IPvAnyAddressStr
 from generalresearch.models.network.definitions import IPProtocol
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import AwareDatetimeISO, IPvAnyAddressStr
 
 
 class PortState(StrEnum):

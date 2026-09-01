@@ -11,24 +11,25 @@ from pydantic import NonNegativeInt, PositiveInt
 
 from generalresearch.decorators import LOG
 from generalresearch.managers.base import (
-    Permission,
     PostgresManager,
     PostgresManagerWithRedis,
 )
 from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
-from generalresearch.models.custom_types import IPvAnyAddressStr
-from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user_iphistory import (
     IPRecord,
     UserIPHistory,
     UserIPRecord,
 )
-from generalresearch.models.thl.userhealth import AuditLog, AuditLogLevel
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+from generalresearch.models.thl.userhealth import AuditLog
 
 if TYPE_CHECKING:
+    from generalresearch.managers.base import Permission
+    from generalresearch.models.custom_types import IPvAnyAddressStr
+    from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.user import User
+    from generalresearch.models.thl.userhealth import AuditLogLevel
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 fake = faker.Faker()
 

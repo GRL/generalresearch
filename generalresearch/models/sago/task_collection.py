@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
 from generalresearch.models.sago import SagoStatus
-from generalresearch.models.sago.survey import SagoSurvey
 from generalresearch.models.thl.survey.task_collection import (
     TaskCollection,
     create_empty_df_from_schema,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.sago.survey import SagoSurvey
 
 COUNTRY_ISOS: set[str] = Localelator().get_all_countries()
 LANGUAGE_ISOS: set[str] = Localelator().get_all_languages()

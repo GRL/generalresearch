@@ -13,14 +13,12 @@ from redis.client import PubSub, Redis
 from generalresearch.incite.base import LOG
 from generalresearch.managers.base import RedisManager
 from generalresearch.models import Source
-from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.events import (
     AggregateBySource,
     EventEnvelope,
     EventMessage,
     EventType,
     MaxGaugeBySource,
-    ServerToClientMessage,
     ServerToClientMessageAdapter,
     SessionEnterPayload,
     SessionFinishPayload,
@@ -30,11 +28,15 @@ from generalresearch.models.events import (
     TaskStatsSnapshot,
 )
 from generalresearch.models.thl.definitions import Status
-from generalresearch.models.thl.session import Session, Wall
-from generalresearch.models.thl.user import User
 
 if TYPE_CHECKING:
     from influxdb import InfluxDBClient
+
+    from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.models.events import ServerToClientMessage
+    from generalresearch.models.thl.session import Session, Wall
+    from generalresearch.models.thl.user import User
+
 else:
     InfluxDBClient = object
 

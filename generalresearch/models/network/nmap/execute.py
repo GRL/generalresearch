@@ -1,14 +1,22 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.network.nmap.command import run_nmap
-from generalresearch.models.network.tool_run import NmapRun, Status, ToolClass, ToolName
+from generalresearch.models.network.tool_run import (
+    NmapRun,
+    Status,
+    ToolClass,
+    ToolName,
+)
 from generalresearch.models.network.tool_run_command import (
     NmapRunCommand,
     NmapRunCommandOptions,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import UUIDStr
 
 
 def execute_nmap(

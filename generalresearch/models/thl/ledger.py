@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import IntEnum, StrEnum
-from typing import Annotated, Any, Literal, Self
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Self
 from uuid import uuid4
 
 from pydantic import (
@@ -16,18 +16,23 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    HttpsUrlStr,
-    UUIDStr,
-    check_valid_uuid,
-)
+from generalresearch.models.custom_types import check_valid_uuid
 from generalresearch.models.thl.pagination import Page
 from generalresearch.models.thl.payout_format import (
     PayoutFormatType,
     format_payout_format,
 )
 from generalresearch.utils.enum import ReprEnumMeta
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        HttpsUrlStr,
+        UUIDStr,
+    )
+    from generalresearch.models.thl.payout_format import (
+        PayoutFormatType,
+    )
 
 
 def _example_user_tx_payout(schema: dict[str, Any]) -> None:

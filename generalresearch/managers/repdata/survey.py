@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Collection
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import pymysql
 
@@ -11,9 +12,11 @@ from generalresearch.managers.survey import SurveyManager
 from generalresearch.models.repdata.survey import (
     RepDataCondition,
     RepDataStreamHashed,
-    RepDataSurvey,
     RepDataSurveyHashed,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.repdata.survey import RepDataSurvey
 
 SURVEY_FIELDS = [
     "survey_id",

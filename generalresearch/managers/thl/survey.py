@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Collection
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from more_itertools import chunked
@@ -14,12 +14,14 @@ from generalresearch.managers.base import Permission, PostgresManager
 from generalresearch.managers.thl.buyer import BuyerManager
 from generalresearch.managers.thl.category import CategoryManager
 from generalresearch.models import Source
-from generalresearch.models.custom_types import SurveyKey
 from generalresearch.models.thl.survey.model import (
     Survey,
     SurveyStat,
 )
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import SurveyKey
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class SurveyManager(PostgresManager):

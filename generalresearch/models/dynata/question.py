@@ -7,13 +7,15 @@ import re
 from datetime import timedelta
 from enum import StrEnum
 from functools import cached_property
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, PositiveInt, field_validator, model_validator
 
 from generalresearch.models import MAX_INT32, Source
-from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import AwareDatetimeISO
 
 logging.basicConfig()
 logger = logging.getLogger()

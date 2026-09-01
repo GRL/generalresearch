@@ -18,15 +18,15 @@ from sentry_sdk import capture_exception
 
 from generalresearch.decorators import LOG
 from generalresearch.managers.base import (
-    Permission,
     PostgresManager,
 )
-from generalresearch.models.custom_types import UUIDStr, is_valid_uuid
-from generalresearch.pg_helper import PostgresConfig
-
-logger = logging.getLogger()
+from generalresearch.models.custom_types import is_valid_uuid
 
 if TYPE_CHECKING:
+    from generalresearch.managers.base import (
+        Permission,
+    )
+    from generalresearch.models.custom_types import UUIDStr
     from generalresearch.models.thl.product import (
         PayoutConfig,
         Product,
@@ -38,6 +38,9 @@ if TYPE_CHECKING:
         UserHealthConfig,
         UserWalletConfig,
     )
+    from generalresearch.pg_helper import PostgresConfig
+
+logger = logging.getLogger()
 
 
 class ProductManager(PostgresManager):

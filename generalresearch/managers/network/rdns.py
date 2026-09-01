@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from psycopg import Cursor
 
 from generalresearch.managers.base import PostgresManager
-from generalresearch.models.network.tool_run import RDNSRun
+
+if TYPE_CHECKING:
+    from generalresearch.models.network.tool_run import RDNSRun
 
 
 class RDNSRunManager(PostgresManager):

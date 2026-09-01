@@ -6,7 +6,7 @@ import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 from functools import cached_property
-from typing import Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal, Self
 from uuid import UUID
 
 from pydantic import (
@@ -27,11 +27,6 @@ from generalresearch.models import (
     Source,
     TaskCalculationType,
 )
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    CoercedStr,
-    UUIDStr,
-)
 from generalresearch.models.repdata import RepDataStatus
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.survey import MarketplaceTask
@@ -39,6 +34,13 @@ from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
     MarketplaceCondition,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        CoercedStr,
+        UUIDStr,
+    )
 
 logging.basicConfig()
 logger = logging.getLogger()

@@ -8,9 +8,8 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 
-from generalresearch.models.thl.locales import CountryISO
-
 if TYPE_CHECKING:
+    from generalresearch.models.thl.locales import CountryISO
     from generalresearch.models.thl.survey import MarketplaceTask
 
 

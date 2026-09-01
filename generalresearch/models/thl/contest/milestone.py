@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-from typing import Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -13,7 +13,6 @@ from pydantic import (
 )
 
 from generalresearch.currency import USDCent
-from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.thl.contest import (
     ContestPrize,
 )
@@ -31,6 +30,9 @@ from generalresearch.models.thl.contest.definitions import (
     ContestStatus,
     ContestType,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import AwareDatetimeISO
 
 logging.basicConfig()
 LOG = logging.getLogger()

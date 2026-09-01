@@ -2,9 +2,9 @@ import subprocess
 from typing import TYPE_CHECKING
 
 from generalresearch.models.network.rdns.parser import parse_rdns_output
-from generalresearch.models.network.rdns.result import RDNSResult
 
 if TYPE_CHECKING:
+    from generalresearch.models.network.rdns.result import RDNSResult
     from generalresearch.models.network.tool_run_command import RDNSRunCommand
 
 

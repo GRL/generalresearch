@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 
 from generalresearch.models.network.definitions import IPProtocol
 from generalresearch.models.network.mtr.parser import parse_mtr_output
-from generalresearch.models.network.mtr.result import MTRResult
 
 if TYPE_CHECKING:
+    from generalresearch.models.network.mtr.result import MTRResult
     from generalresearch.models.network.tool_run_command import MTRRunCommand
 
 SUPPORTED_PROTOCOLS = {

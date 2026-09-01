@@ -3,11 +3,14 @@ from __future__ import annotations
 from abc import ABC
 from collections.abc import Collection
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from more_itertools import chunked
 
 from generalresearch.managers.base import SqlManager
-from generalresearch.models.thl.survey import MarketplaceCondition
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.survey import MarketplaceCondition
 
 DB_FIELDS = [
     "hash",

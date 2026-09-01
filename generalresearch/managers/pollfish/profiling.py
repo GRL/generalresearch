@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import json
 from collections.abc import Collection
+from typing import TYPE_CHECKING
 
 from generalresearch.models.pollfish.question import PollfishQuestion
-from generalresearch.sql_helper import SqlHelper
+
+if TYPE_CHECKING:
+    from generalresearch.sql_helper import SqlHelper
 
 
 def get_profiling_library(

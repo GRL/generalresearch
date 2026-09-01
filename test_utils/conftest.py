@@ -180,7 +180,7 @@ def git_key_path(
 
     yield Path(fn)
 
-    # os.unlink(fn)
+    os.unlink(fn)
 
 
 @pytest.fixture(scope="session")

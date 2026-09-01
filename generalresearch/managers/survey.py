@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC
+from typing import TYPE_CHECKING
 
 from generalresearch.managers.base import SqlManager
-from generalresearch.models.thl.survey import MarketplaceTask
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.survey import MarketplaceTask
 
 
 class SurveyManager(SqlManager, ABC):

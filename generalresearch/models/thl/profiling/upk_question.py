@@ -5,7 +5,7 @@ import json
 import re
 from enum import StrEnum
 from functools import cached_property
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -18,8 +18,10 @@ from pydantic import (
 )
 
 from generalresearch.models import Source
-from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.category import Category
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import UUIDStr
 
 
 class UPKImportance(BaseModel):

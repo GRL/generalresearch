@@ -3,13 +3,16 @@ from __future__ import annotations
 import logging
 from collections.abc import Collection
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from generalresearch.managers.base import PostgresManagerWithRedis
 from generalresearch.models.thl.profiling.user_question_answer import (
     DUMMY_UQA,
     UserQuestionAnswer,
 )
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.user import User
 
 logger = logging.getLogger()
 

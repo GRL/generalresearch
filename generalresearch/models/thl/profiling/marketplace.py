@@ -3,18 +3,21 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
 from functools import cached_property
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, computed_field
 
-from generalresearch.models import MAX_INT32, Source
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    CountryISOLike,
-    LanguageISOLike,
-    UUIDStr,
-)
-from generalresearch.models.thl.locales import CountryISO, LanguageISO
+from generalresearch.models import MAX_INT32
+
+if TYPE_CHECKING:
+    from generalresearch.models import Source
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        CountryISOLike,
+        LanguageISOLike,
+        UUIDStr,
+    )
+    from generalresearch.models.thl.locales import CountryISO, LanguageISO
 
 
 class MarketplaceQuestion(BaseModel, ABC):

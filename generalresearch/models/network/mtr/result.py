@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from functools import cached_property
 from ipaddress import ip_address
+from typing import TYPE_CHECKING
 
 import tldextract
 from pydantic import (
@@ -14,7 +15,13 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models.network.definitions import IPKind, IPProtocol, get_ip_kind
+from generalresearch.models.network.definitions import (
+    IPProtocol,
+    get_ip_kind,
+)
+
+if TYPE_CHECKING:
+    from generalresearch.models.network.definitions import IPKind
 
 HOST_RE = re.compile(r"^(?P<hostname>.+?) \((?P<ip>[^)]+)\)$")
 

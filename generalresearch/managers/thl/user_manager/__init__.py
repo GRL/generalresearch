@@ -4,11 +4,12 @@ import csv
 import logging
 from pathlib import Path
 from threading import RLock
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from cachetools import TTLCache, cached
 
-from generalresearch.models.thl.product import Product
+if TYPE_CHECKING:
+    from generalresearch.models.thl.product import Product
 
 logger = logging.getLogger()
 

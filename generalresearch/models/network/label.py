@@ -3,6 +3,7 @@ from __future__ import annotations
 import ipaddress
 from enum import StrEnum
 from ipaddress import IPv4Network, IPv6Network
+from typing import TYPE_CHECKING
 
 from pydantic import (
     BaseModel,
@@ -13,10 +14,10 @@ from pydantic import (
     field_validator,
 )
 
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    now_utc_factory,
-)
+from generalresearch.models.custom_types import now_utc_factory
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import AwareDatetimeISO
 
 
 class IPTrustClass(StrEnum):

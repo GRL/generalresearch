@@ -45,7 +45,13 @@ from generalresearch.models.custom_types import (
     HttpsUrlStr,
     UUIDStr,
 )
-from generalresearch.models.thl.ledger import LedgerAccount
+from generalresearch.models.thl.finance import (
+    POPFinancial,
+    ProductBalances,
+)
+from generalresearch.models.thl.payout import (
+    BrokerageProductPayoutEvent,
+)
 from generalresearch.models.thl.payout_format import (
     PayoutFormatType,
     format_payout_format,
@@ -70,13 +76,7 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.payout import (
         BrokerageProductPayoutEventManager,
     )
-    from generalresearch.models.thl.finance import (
-        POPFinancial,
-        ProductBalances,
-    )
-    from generalresearch.models.thl.payout import (
-        BrokerageProductPayoutEvent,
-    )
+    from generalresearch.models.thl.ledger import LedgerAccount
 
 
 # fmt: off

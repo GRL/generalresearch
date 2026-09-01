@@ -22,27 +22,33 @@ from pydantic import (
 from pydantic.json_schema import SkipJsonSchema
 
 from generalresearch.decorators import LOG
-from generalresearch.incite.mergers.foundations.enriched_session import (
-    EnrichedSessionMerge,
-)
-from generalresearch.incite.mergers.foundations.enriched_wall import (
-    EnrichedWallMerge,
-)
 from generalresearch.models.admin.request import ReportRequest, ReportType
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    UUIDStr,
-    UUIDStrCoerce,
-)
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
 from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
+    from generalresearch.incite.mergers.foundations.enriched_session import (
+        EnrichedSessionMerge,
+    )
+    from generalresearch.incite.mergers.foundations.enriched_wall import (
+        EnrichedWallMerge,
+    )
+    from generalresearch.managers.gr.authentication import (
+        GRUserManager,
+    )
+    from generalresearch.managers.gr.business import BusinessManager
+    from generalresearch.managers.gr.team import MembershipManager
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        UUIDStr,
+        UUIDStrCoerce,
+    )
     from generalresearch.models.gr.authentication import GRUser
     from generalresearch.models.gr.business import Business
     from generalresearch.models.thl.product import Product
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 
 class MembershipPrivilege(Enum, metaclass=ReprEnumMeta):
@@ -120,36 +126,17 @@ class Team(BaseModel):
 
     # --- Prefetch Methods ---
 
-    def prefetch_memberships(self, pg_config: PostgresConfig) -> None:
-        from generalresearch.managers.gr.team import MembershipManager
+    def prefetch_memberships(self, membership_manager: MembershipManager) -> None:
+        self.memberships = membership_manager.get_by_team_id(team_id=self.id)
 
-        mm = MembershipManager(pg_config=pg_config)
-        self.memberships = mm.get_by_team_id(team_id=self.id)
+    def prefetch_gr_users(self, gr_user_manager: GRUserManager) -> None:
+        self.gr_users = gr_user_manager.get_by_team(team_id=self.id)
 
-    def prefetch_gr_users(
-        self, pg_config: PostgresConfig, redis_config: RedisConfig
-    ) -> None:
-        from generalresearch.managers.gr.authentication import (
-            GRUserManager,
-        )
+    def prefetch_businesses(self, business_manager: BusinessManager) -> None:
+        self.businesses = business_manager.get_by_team(team_id=self.id)
 
-        gr_um = GRUserManager(pg_config=pg_config, redis_config=redis_config)
-
-        self.gr_users = gr_um.get_by_team(team_id=self.id)
-
-    def prefetch_businesses(
-        self, pg_config: PostgresConfig, redis_config: RedisConfig
-    ) -> None:
-        from generalresearch.managers.gr.business import BusinessManager
-
-        bm = BusinessManager(pg_config=pg_config, redis_config=redis_config)
-        self.businesses = bm.get_by_team(team_id=self.id)
-
-    def prefetch_products(self, thl_pg_config: PostgresConfig) -> None:
-        from generalresearch.managers.thl.product import ProductManager
-
-        pm = ProductManager(pg_config=thl_pg_config)
-        self.products = pm.fetch_uuids(team_uuids=[self.uuid])
+    def prefetch_products(self, product_manager: ProductManager) -> None:
+        self.products = product_manager.fetch_uuids(team_uuids=[self.uuid])
 
     # --- Prebuild Methods ---
 

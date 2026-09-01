@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from pydantic import (
     BaseModel,
@@ -17,17 +17,20 @@ from pydantic import (
 )
 
 from generalresearch.managers.thl.buyer import Buyer
-from generalresearch.models import Source
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    CountryISOLike,
-    EnumNameSerializer,
-    PropertyCode,
-    SurveyKey,
-)
-from generalresearch.models.thl.category import Category
-from generalresearch.models.thl.definitions import Status, StatusCode1
+from generalresearch.models.thl.definitions import StatusCode1
 from generalresearch.models.thl.pagination import Page
+
+if TYPE_CHECKING:
+    from generalresearch.models import Source
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        CountryISOLike,
+        EnumNameSerializer,
+        PropertyCode,
+        SurveyKey,
+    )
+    from generalresearch.models.thl.category import Category
+    from generalresearch.models.thl.definitions import Status
 
 
 class SurveyCategoryModel(BaseModel):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Collection
 from datetime import UTC, datetime
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 from uuid import UUID
 
 import redis
@@ -10,20 +10,9 @@ from pydantic import NonNegativeInt, PositiveInt
 from redis import Redis
 
 from generalresearch.managers.base import PostgresManager
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
-from generalresearch.managers.thl.user_manager.user_manager import (
-    UserManager,
-)
-from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.contest import (
     ContestPrize,
     ContestWinner,
-)
-from generalresearch.models.thl.contest.contest import (
-    Contest,
-    ContestUserView,
 )
 from generalresearch.models.thl.contest.definitions import (
     ContestStatus,
@@ -41,7 +30,6 @@ from generalresearch.models.thl.contest.leaderboard import (
     LeaderboardContestUserView,
 )
 from generalresearch.models.thl.contest.milestone import (
-    ContestEntryTrigger,
     MilestoneContest,
     MilestoneEntry,
     MilestoneUserView,
@@ -53,6 +41,20 @@ from generalresearch.models.thl.contest.raffle import (
     RaffleUserView,
 )
 from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.managers.thl.user_manager.user_manager import (
+        UserManager,
+    )
+    from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.models.thl.contest.contest import (
+        Contest,
+        ContestUserView,
+    )
+    from generalresearch.models.thl.contest.milestone import ContestEntryTrigger
 
 CONTEST_SELECT = """
     c.id,

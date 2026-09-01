@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Collection
+from typing import TYPE_CHECKING
 
-from generalresearch.managers.base import Permission, PostgresManager
-from generalresearch.models.custom_types import UUIDStr
+from generalresearch.managers.base import PostgresManager
 from generalresearch.models.thl.category import Category
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.base import Permission
+    from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class CategoryManager(PostgresManager):

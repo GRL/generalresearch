@@ -6,7 +6,7 @@ from collections import Counter
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from functools import cached_property
-from typing import Annotated, Any, Literal, Self
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Self
 from uuid import uuid4
 
 import pycountry
@@ -53,8 +53,10 @@ from generalresearch.models.custom_types import (
     IPvAnyAddressStr,
     UUIDStr,
 )
-from generalresearch.models.thl.ipinfo import GeoIPInformation
-from generalresearch.models.thl.session import Session
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.ipinfo import GeoIPInformation
+    from generalresearch.models.thl.session import Session
 
 fake = Faker()
 

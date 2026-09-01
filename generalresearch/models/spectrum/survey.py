@@ -4,20 +4,13 @@ import json
 import logging
 from datetime import UTC
 from decimal import Decimal
-from typing import Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 from more_itertools import flatten
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from generalresearch.locales import Localelator
 from generalresearch.models import Source, TaskCalculationType
-from generalresearch.models.custom_types import (
-    AlphaNumStr,
-    AlphaNumStrSet,
-    AwareDatetimeISO,
-    CoercedStr,
-    UUIDStrSet,
-)
 from generalresearch.models.spectrum import SpectrumStatus
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.survey import MarketplaceTask
@@ -25,6 +18,15 @@ from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
     MarketplaceCondition,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import (
+        AlphaNumStr,
+        AlphaNumStrSet,
+        AwareDatetimeISO,
+        CoercedStr,
+        UUIDStrSet,
+    )
 
 logging.basicConfig()
 logger = logging.getLogger()

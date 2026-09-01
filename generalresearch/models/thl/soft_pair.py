@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
-from generalresearch.models import Source
-from generalresearch.models.dynata.survey import DynataCondition
-from generalresearch.models.thl.survey.condition import (
-    MarketplaceCondition,
-)
+if TYPE_CHECKING:
+    from generalresearch.models import Source
+    from generalresearch.models.dynata.survey import DynataCondition
+    from generalresearch.models.thl.survey.condition import (
+        MarketplaceCondition,
+    )
 
 
 class SoftPairResultType(int, Enum):

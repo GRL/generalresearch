@@ -1,7 +1,10 @@
 import json
+from typing import TYPE_CHECKING
 
-from generalresearch.models.network.definitions import IPProtocol
 from generalresearch.models.network.mtr.result import MTRResult
+
+if TYPE_CHECKING:
+    from generalresearch.models.network.definitions import IPProtocol
 
 
 def parse_mtr_output(raw: str, port: int, protocol: IPProtocol) -> MTRResult:

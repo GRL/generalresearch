@@ -5,6 +5,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pandas as pd
@@ -43,18 +44,22 @@ from generalresearch.models.thl.finance import (
     BusinessBalances,
     ProductBalances,
 )
-from generalresearch.models.thl.product import BrokerageProductPayoutEvent, Product
-from generalresearch.models.thl.session import Session
+from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.thl.product import BrokerageProductPayoutEvent
+    from generalresearch.models.thl.session import Session
 
 
 class TestBusinessBankAccount:
 
     def test_init(
         self,
-        business: Business,
+        gr_business: Business,
         business_bank_account_manager: BusinessBankAccountManager,
     ):
         from generalresearch.models.gr.business import (
@@ -63,7 +68,7 @@ class TestBusinessBankAccount:
         )
 
         instance = business_bank_account_manager.create(
-            business_id=business.id,
+            business_id=gr_business.id,
             uuid=uuid4().hex,
             transfer_method=TransferMethod.ACH,
         )
@@ -72,7 +77,7 @@ class TestBusinessBankAccount:
     def test_business(
         self,
         business_bank_account: BusinessBankAccount,
-        business: Business,
+        gr_business: Business,
         gr_db: PostgresConfig,
         gr_redis_config: RedisConfig,
     ):
@@ -84,7 +89,7 @@ class TestBusinessBankAccount:
             pg_config=gr_db, redis_config=gr_redis_config
         )
         assert isinstance(business_bank_account.business, Business)
-        assert business_bank_account.business.uuid == business.uuid
+        assert business_bank_account.business.uuid == gr_business.uuid
 
 
 class TestBusinessAddress:
@@ -122,11 +127,12 @@ class TestBusiness:
 
     def test_str_and_repr(
         self,
-        business: Business,
+        gr_business: Business,
         product_factory: Callable[..., Product],
         thl_web_rr: PostgresConfig,
         ledger_manager: LedgerManager,
         thl_ledger_manager: ThlLedgerManager,
+        product_manager: ProductManager,
         business_payout_event_manager: BusinessPayoutEventManager,
         bp_payout_factory: Callable[..., BusinessPayoutEventManager],
         start: datetime,
@@ -139,28 +145,28 @@ class TestBusiness:
         create_main_accounts: Callable[..., None],
     ):
         create_main_accounts()
-        p1 = product_factory(business=business)
+        p1 = product_factory(business=gr_business)
         u1 = user_factory(product=p1)
-        p2 = product_factory(business=business)
+        p2 = product_factory(business=gr_business)
         thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
         thl_ledger_manager.get_account_or_create_bp_wallet(product=p2)
 
-        res1 = repr(business)
+        res1 = repr(gr_business)
 
-        assert business.uuid in res1
+        assert gr_business.uuid in res1
         assert "<Business: " in res1
 
-        res2 = str(business)
+        res2 = str(gr_business)
 
-        assert business.uuid in res2
+        assert gr_business.uuid in res2
         assert "Name:" in res2
         assert "Not Loaded" in res2
 
-        business.prefetch_products(thl_pg_config=thl_web_rr)
-        business.prefetch_bp_accounts(
-            thl_lm=thl_ledger_manager, thl_pg_config=thl_web_rr
+        gr_business.prefetch_products(product_manager=product_manager)
+        gr_business.prefetch_bp_accounts(
+            thl_lm=thl_ledger_manager, product_manager=product_manager
         )
-        res3 = str(business)
+        res3 = str(gr_business)
         assert "Products: 2" in res3
         assert "Ledger Accounts: 2" in res3
 
@@ -184,26 +190,23 @@ class TestBusiness:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
-        business.prebuild_payouts(
-            thl_pg_config=thl_web_rr,
-            thl_lm=thl_ledger_manager,
+        gr_business.prebuild_payouts(
             bpem=business_payout_event_manager,
         )
-        business.prebuild_balance(
+        gr_business.prebuild_balance(
             thl_pg_config=thl_web_rr,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
         )
-        res4 = str(business)
+        res4 = str(gr_business)
         assert "Payouts: 1" in res4
         assert "Available Balance: 141" in res4
 
     def test_addresses(
         self,
         business: Business,
-        business_address: BusinessAddress,
         gr_db: PostgresConfig,
     ):
         from generalresearch.models.gr.business import BusinessAddress
@@ -237,13 +240,13 @@ class TestBusiness:
         self,
         business: Business,
         product_factory: Callable[..., Product],
-        thl_web_rr: PostgresConfig,
+        product_manager: ProductManager,
     ):
 
         p1 = product_factory(business=business)
         assert business.products is None
 
-        business.prefetch_products(thl_pg_config=thl_web_rr)
+        business.prefetch_products(product_manager=product_manager)
         assert isinstance(business.products, list)
         assert len(business.products) == 1
         assert isinstance(business.products[0], Product)
@@ -255,30 +258,36 @@ class TestBusiness:
         product_factory(business=business)
         assert len(business.products) == 1
 
-        business.prefetch_products(thl_pg_config=thl_web_rr)
+        business.prefetch_products(product_manager=product_manager)
         assert len(business.products) == 3
 
-    def test_bank_accounts(self, business: Business, gr_db: PostgresConfig):
-        assert business.products is None
+    def test_bank_accounts(
+        self,
+        gr_business: Business,
+        business_bank_account_manager: BusinessBankAccountManager,
+    ):
+        assert gr_business.products is None
 
         # It's an empty list after prefetch
-        business.prefetch_bank_accounts(pg_config=gr_db)
-        assert isinstance(business.bank_accounts, list)
-        assert len(business.bank_accounts) == 1
+        gr_business.prefetch_bank_accounts(
+            business_bank_account_manager=business_bank_account_manager
+        )
+        assert isinstance(gr_business.bank_accounts, list)
+        assert len(gr_business.bank_accounts) == 1
 
     def test_balance(
         self,
-        business: Business,
+        gr_business: Business,
         mnt_filepath: GRLDatasets,
         client_no_amm: DaskClient,
         thl_web_rr: PostgresConfig,
         ledger_manager: LedgerManager,
         pop_ledger_merge: PopLedgerMerge,
     ):
-        assert business.balance is None
+        assert gr_business.balance is None
 
         with pytest.raises(expected_exception=AssertionError) as cm:
-            business.prebuild_balance(
+            gr_business.prebuild_balance(
                 thl_pg_config=thl_web_rr,
                 lm=ledger_manager,
                 ds=mnt_filepath,
@@ -286,43 +295,41 @@ class TestBusiness:
                 pop_ledger=pop_ledger_merge,
             )
         assert "Cannot build Business Balance" in str(cm.value)
-        assert business.balance is None
+        assert gr_business.balance is None
 
         # TODO: Add parquet building so that this doesn't fail and we can
         #    properly assign a business.balance
 
     def test_payouts_no_accounts(
         self,
-        business: Business,
+        gr_business: Business,
         product_factory: Callable[..., Product],
         thl_web_rr: PostgresConfig,
         thl_ledger_manager: ThlLedgerManager,
         business_payout_event_manager: BusinessPayoutEventManager,
     ):
-        assert business.payouts is None
+        assert gr_business.payouts is None
 
         with pytest.raises(expected_exception=AssertionError) as cm:
-            business.prebuild_payouts(
-                thl_pg_config=thl_web_rr,
-                thl_lm=thl_ledger_manager,
+            gr_business.prebuild_payouts(
                 bpem=business_payout_event_manager,
             )
         assert "Must provide product_uuids" in str(cm.value)
 
-        p = product_factory(business=business)
+        p = product_factory(business=gr_business)
         thl_ledger_manager.get_account_or_create_bp_wallet(product=p)
 
-        business.prebuild_payouts(
+        gr_business.prebuild_payouts(
             thl_pg_config=thl_web_rr,
             thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
-        assert isinstance(business.payouts, list)
-        assert len(business.payouts) == 0
+        assert isinstance(gr_business.payouts, list)
+        assert len(gr_business.payouts) == 0
 
     def test_payouts(
         self,
-        business: Business,
+        gr_business: Business,
         product_factory: Callable[..., Product],
         bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
         thl_ledger_manager: ThlLedgerManager,
@@ -331,7 +338,7 @@ class TestBusiness:
         create_main_accounts: Callable[..., None],
     ):
         create_main_accounts()
-        p = product_factory(business=business)
+        p = product_factory(business=gr_business)
         thl_ledger_manager.get_account_or_create_bp_wallet(product=p)
         business_payout_event_manager.set_account_lookup_table(
             thl_lm=thl_ledger_manager
@@ -341,13 +348,13 @@ class TestBusiness:
             product=p, amount=USDCent(123), skip_wallet_balance_check=True
         )
 
-        business.prebuild_payouts(
+        gr_business.prebuild_payouts(
             thl_pg_config=thl_web_rr,
             thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
-        assert len(business.payouts) == 1
-        assert sum([p.amount for p in business.payouts]) == 123
+        assert len(gr_business.payouts) == 1
+        assert sum([p.amount for p in gr_business.payouts]) == 123
 
         # Add another!
         bp_payout_factory(
@@ -359,19 +366,17 @@ class TestBusiness:
         business_payout_event_manager.set_account_lookup_table(
             thl_lm=thl_ledger_manager
         )
-        business.prebuild_payouts(
-            thl_pg_config=thl_web_rr,
-            thl_lm=thl_ledger_manager,
+        gr_business.prebuild_payouts(
             bpem=business_payout_event_manager,
         )
-        assert isinstance(business.payouts, list)
-        assert len(business.payouts) == 1
-        assert len(business.payouts[0].bp_payouts) == 2
-        assert sum([p.amount for p in business.payouts]) == 246
+        assert isinstance(gr_business.payouts, list)
+        assert len(gr_business.payouts) == 1
+        assert len(gr_business.payouts[0].bp_payouts) == 2
+        assert sum([p.amount for p in gr_business.payouts]) == 246
 
     def test_payouts_totals(
         self,
-        business: Business,
+        gr_business: Business,
         product_factory: Callable[..., Product],
         bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
         thl_ledger_manager: ThlLedgerManager,
@@ -382,7 +387,7 @@ class TestBusiness:
 
         create_main_accounts()
 
-        p1: Product = product_factory(business=business)
+        p1: Product = product_factory(business=gr_business)
         thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
         business_payout_event_manager.set_account_lookup_table(
             thl_lm=thl_ledger_manager
@@ -409,57 +414,58 @@ class TestBusiness:
             skip_one_per_day_check=True,
         )
 
-        business.prebuild_payouts(
+        gr_business.prebuild_payouts(
             thl_pg_config=thl_web_rr,
             thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
 
-        assert isinstance(business.payouts, list)
-        assert len(business.payouts) == 1
-        assert len(business.payouts[0].bp_payouts) == 3
-        assert business.payouts_total == USDCent(76)
-        assert business.payouts_total_str == "$0.76"
+        assert isinstance(gr_business.payouts, list)
+        assert len(gr_business.payouts) == 1
+        assert len(gr_business.payouts[0].bp_payouts) == 3
+        assert gr_business.payouts_total == USDCent(76)
+        assert gr_business.payouts_total_str == "$0.76"
 
     def test_pop_financial(
         self,
-        business: Business,
+        gr_business: Business,
         thl_web_rr: PostgresConfig,
         thl_ledger_manager: ThlLedgerManager,
         mnt_filepath: GRLDatasets,
         client_no_amm: DaskClient,
         pop_ledger_merge: PopLedgerMerge,
     ):
-        assert business.pop_financial is None
-        business.prebuild_pop_financial(
+        assert gr_business.pop_financial is None
+        gr_business.prebuild_pop_financial(
             thl_pg_config=thl_web_rr,
             thl_lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
         )
-        assert business.pop_financial == []
+        assert gr_business.pop_financial == []
 
     def test_bp_accounts(
         self,
-        business: Business,
+        gr_business: Business,
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
         thl_ledger_manager: ThlLedgerManager,
+        product_manager: ProductManager,
     ):
-        assert business.bp_accounts is None
-        business.prefetch_bp_accounts(
-            thl_lm=thl_ledger_manager, thl_pg_config=thl_web_rr
+        assert gr_business.bp_accounts is None
+        gr_business.prefetch_bp_accounts(
+            thl_lm=thl_ledger_manager, product_manager=product_manager
         )
-        assert business.bp_accounts == []
+        assert gr_business.bp_accounts == []
 
-        p1: Product = product_factory(business=business)
+        p1: Product = product_factory(business=gr_business)
         thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
 
-        business.prefetch_bp_accounts(
-            thl_lm=thl_ledger_manager, thl_pg_config=thl_web_rr
+        gr_business.prefetch_bp_accounts(
+            thl_lm=thl_ledger_manager, product_manager=product_manager
         )
-        assert len(business.bp_accounts) == 1
+        assert len(gr_business.bp_accounts) == 1
 
 
 class TestBusinessBalance:
@@ -484,7 +490,7 @@ class TestBusinessBalance:
 
     def test_single_product(
         self,
-        business: Business,
+        gr_business: Business,
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
         mnt_filepath,
@@ -503,7 +509,7 @@ class TestBusinessBalance:
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
 
-        p1: Product = product_factory(business=business)
+        p1: Product = product_factory(business=gr_business)
         u1: User = user_factory(product=p1)
         u2: User = user_factory(product=p1)
 
@@ -522,30 +528,30 @@ class TestBusinessBalance:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
-        business.prebuild_balance(
+        gr_business.prebuild_balance(
             thl_pg_config=thl_web_rr,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
         )
-        assert isinstance(business.balance, BusinessBalances)
-        assert business.balance.payout == 190
-        assert business.balance.adjustment == 0
-        assert business.balance.net == 190
-        assert business.balance.retainer == 47
-        assert business.balance.available_balance == 143
+        assert isinstance(gr_business.balance, BusinessBalances)
+        assert gr_business.balance.payout == 190
+        assert gr_business.balance.adjustment == 0
+        assert gr_business.balance.net == 190
+        assert gr_business.balance.retainer == 47
+        assert gr_business.balance.available_balance == 143
 
-        assert len(business.balance.product_balances) == 1
-        pb = business.balance.product_balances[0]
+        assert len(gr_business.balance.product_balances) == 1
+        pb = gr_business.balance.product_balances[0]
         assert isinstance(pb, ProductBalances)
-        assert pb.balance == business.balance.balance
-        assert pb.available_balance == business.balance.available_balance
+        assert pb.balance == gr_business.balance.balance
+        assert pb.available_balance == gr_business.balance.available_balance
         assert pb.adjustment_percent == 0.0
 
     def test_multi_product(
         self,
-        business: Business,
+        gr_business: Business,
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
         mnt_filepath: GRLDatasets,
@@ -564,8 +570,8 @@ class TestBusinessBalance:
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
 
-        u1: User = user_factory(product=product_factory(business=business))
-        u2: User = user_factory(product=product_factory(business=business))
+        u1: User = user_factory(product=product_factory(business=gr_business))
+        u2: User = user_factory(product=product_factory(business=gr_business))
 
         session_with_tx_factory(
             user=u1,
@@ -582,33 +588,33 @@ class TestBusinessBalance:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
-        business.prebuild_balance(
+        gr_business.prebuild_balance(
             thl_pg_config=thl_web_rr,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
         )
-        assert isinstance(business.balance, BusinessBalances)
-        assert business.balance.payout == 190
-        assert business.balance.balance == 190
-        assert business.balance.adjustment == 0
-        assert business.balance.net == 190
-        assert business.balance.retainer == 46
-        assert business.balance.available_balance == 144
+        assert isinstance(gr_business.balance, BusinessBalances)
+        assert gr_business.balance.payout == 190
+        assert gr_business.balance.balance == 190
+        assert gr_business.balance.adjustment == 0
+        assert gr_business.balance.net == 190
+        assert gr_business.balance.retainer == 46
+        assert gr_business.balance.available_balance == 144
 
-        assert len(business.balance.product_balances) == 2
+        assert len(gr_business.balance.product_balances) == 2
 
-        pb1 = business.balance.product_balances[0]
-        pb2 = business.balance.product_balances[1]
+        pb1 = gr_business.balance.product_balances[0]
+        pb2 = gr_business.balance.product_balances[1]
         assert isinstance(pb1, ProductBalances)
         assert pb1.product_id == u1.product_id
         assert isinstance(pb2, ProductBalances)
         assert pb2.product_id == u2.product_id
 
         for pb in [pb1, pb2]:
-            assert pb.balance != business.balance.balance
-            assert pb.available_balance != business.balance.available_balance
+            assert pb.balance != gr_business.balance.balance
+            assert pb.available_balance != gr_business.balance.available_balance
             assert pb.adjustment_percent == 0.0
 
         assert pb1.product_id in [u1.product_id, u2.product_id]
@@ -629,7 +635,7 @@ class TestBusinessBalance:
 
     def test_multi_product_multi_payout(
         self,
-        business: Business,
+        gr_business: Business,
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
         mnt_filepath: GRLDatasets,
@@ -651,8 +657,8 @@ class TestBusinessBalance:
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
 
-        u1: User = user_factory(product=product_factory(business=business))
-        u2: User = user_factory(product=product_factory(business=business))
+        u1: User = user_factory(product=product_factory(business=gr_business))
+        u2: User = user_factory(product=product_factory(business=gr_business))
 
         session_with_tx_factory(
             user=u1,
@@ -687,7 +693,7 @@ class TestBusinessBalance:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
-        business.prebuild_balance(
+        gr_business.prebuild_balance(
             thl_pg_config=thl_web_rr,
             lm=ledger_manager,
             ds=mnt_filepath,
@@ -695,15 +701,15 @@ class TestBusinessBalance:
             pop_ledger=pop_ledger_merge,
         )
 
-        assert isinstance(business.balance, BusinessBalances)
-        assert business.balance.payout == 190
-        assert business.balance.net == 190
+        assert isinstance(gr_business.balance, BusinessBalances)
+        assert gr_business.balance.payout == 190
+        assert gr_business.balance.net == 190
 
-        assert business.balance.balance == 135
+        assert gr_business.balance.balance == 135
 
     def test_multi_product_multi_payout_adjustment(
         self,
-        business: Business,
+        gr_business: Business,
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
         mnt_filepath: GRLDatasets,
@@ -744,9 +750,9 @@ class TestBusinessBalance:
         delete_df_collection(coll=ledger_collection)
         delete_df_collection(coll=task_adj_collection)
 
-        u1: User = user_factory(product=product_factory(business=business))
-        u2: User = user_factory(product=product_factory(business=business))
-        u3: User = user_factory(product=product_factory(business=business))
+        u1: User = user_factory(product=product_factory(business=gr_business))
+        u2: User = user_factory(product=product_factory(business=gr_business))
+        u3: User = user_factory(product=product_factory(business=gr_business))
 
         s1 = session_with_tx_factory(
             user=u1,
@@ -799,7 +805,7 @@ class TestBusinessBalance:
         df = client_no_amm.compute(pop_ledger_merge.ddf(), sync=True)
         assert df.shape == (20, 28)
 
-        business.prebuild_balance(
+        gr_business.prebuild_balance(
             thl_pg_config=thl_web_rr,
             lm=ledger_manager,
             ds=mnt_filepath,
@@ -807,26 +813,28 @@ class TestBusinessBalance:
             pop_ledger=pop_ledger_merge,
         )
 
-        assert isinstance(business.balance, BusinessBalances)
-        assert business.balance.payout == 714
-        assert business.balance.adjustment == -238
+        assert isinstance(gr_business.balance, BusinessBalances)
+        assert gr_business.balance.payout == 714
+        assert gr_business.balance.adjustment == -238
 
-        assert business.balance.product_balances[0].adjustment == -238
-        assert business.balance.product_balances[1].adjustment == 0
-        assert business.balance.product_balances[2].adjustment == 0
+        assert gr_business.balance.product_balances[0].adjustment == -238
+        assert gr_business.balance.product_balances[1].adjustment == 0
+        assert gr_business.balance.product_balances[2].adjustment == 0
 
-        assert business.balance.expense == 0
-        assert business.balance.net == 714 - 238
-        assert business.balance.balance == business.balance.payout - (250 + 50 + 238)
+        assert gr_business.balance.expense == 0
+        assert gr_business.balance.net == 714 - 238
+        assert gr_business.balance.balance == gr_business.balance.payout - (
+            250 + 50 + 238
+        )
 
         predicted_retainer = sum(
             [
                 pb.balance * 0.25
-                for pb in business.balance.product_balances
+                for pb in gr_business.balance.product_balances
                 if pb.balance > 0
             ]
         )
-        assert business.balance.retainer == approx(predicted_retainer, rel=0.01)
+        assert gr_business.balance.retainer == approx(predicted_retainer, rel=0.01)
 
     def test_neg_balance_cache(
         self,
@@ -837,7 +845,7 @@ class TestBusinessBalance:
         create_main_accounts: Callable[..., None],
         delete_df_collection: Callable[..., None],
         ledger_collection,
-        business: Business,
+        gr_business: Business,
         user_factory: Callable[..., User],
         product_factory: Callable[..., Product],
         session_with_tx_factory: Callable[..., Session],
@@ -858,8 +866,8 @@ class TestBusinessBalance:
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
 
-        p1: Product = product_factory(business=business)
-        p2: Product = product_factory(business=business)
+        p1: Product = product_factory(business=gr_business)
+        p2: Product = product_factory(business=gr_business)
         u1: User = user_factory(product=p1)
         u2: User = user_factory(product=p2)
         thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
@@ -901,7 +909,7 @@ class TestBusinessBalance:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
-        business.prebuild_balance(
+        gr_business.prebuild_balance(
             thl_pg_config=thl_web_rr,
             lm=ledger_manager,
             ds=mnt_filepath,
@@ -910,8 +918,8 @@ class TestBusinessBalance:
         )
 
         # Check Product 1
-        assert isinstance(business.balance, BusinessBalances)
-        pb1 = business.balance.product_balances[0]
+        assert isinstance(gr_business.balance, BusinessBalances)
+        pb1 = gr_business.balance.product_balances[0]
         assert pb1.product_id == p1.uuid
         assert pb1.payout == 71
         assert pb1.adjustment == -71
@@ -921,7 +929,7 @@ class TestBusinessBalance:
         assert pb1.available_balance == 0
 
         # Check Product 2
-        pb2 = business.balance.product_balances[1]
+        pb2 = gr_business.balance.product_balances[1]
         assert pb2.product_id == p2.uuid
         assert pb2.payout == 71 * 2
         assert pb2.adjustment == 0
@@ -931,7 +939,7 @@ class TestBusinessBalance:
         assert pb2.available_balance == 107
 
         # Check Business
-        bb1 = business.balance
+        bb1 = gr_business.balance
         assert isinstance(bb1, BusinessBalances)
         assert bb1.payout == (71 * 3)  # Raw total of completes
         assert bb1.adjustment == -71  # 1 Complete >> Failure
@@ -950,7 +958,7 @@ class TestBusinessBalance:
 
     def test_multi_product_multi_payout_adjustment_at_timestamp(
         self,
-        business: Business,
+        gr_business: Business,
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
         mnt_filepath: GRLDatasets,
@@ -1008,9 +1016,9 @@ class TestBusinessBalance:
         delete_df_collection(coll=ledger_collection)
         delete_df_collection(coll=task_adj_collection)
 
-        u1: User = user_factory(product=product_factory(business=business))
-        u2: User = user_factory(product=product_factory(business=business))
-        u3: User = user_factory(product=product_factory(business=business))
+        u1: User = user_factory(product=product_factory(business=gr_business))
+        u2: User = user_factory(product=product_factory(business=gr_business))
+        u3: User = user_factory(product=product_factory(business=gr_business))
 
         s1 = session_with_tx_factory(
             user=u1,
@@ -1063,7 +1071,7 @@ class TestBusinessBalance:
         df = client_no_amm.compute(pop_ledger_merge.ddf(), sync=True)
         assert df.shape == (20, 28)
 
-        business.prebuild_balance(
+        gr_business.prebuild_balance(
             thl_pg_config=thl_web_rr,
             lm=ledger_manager,
             ds=mnt_filepath,
@@ -1071,7 +1079,7 @@ class TestBusinessBalance:
             pop_ledger=pop_ledger_merge,
         )
 
-        business.prebuild_balance(
+        gr_business.prebuild_balance(
             thl_pg_config=thl_web_rr,
             lm=ledger_manager,
             ds=mnt_filepath,
@@ -1079,9 +1087,9 @@ class TestBusinessBalance:
             pop_ledger=pop_ledger_merge,
             at_timestamp=start + timedelta(days=1, hours=1),
         )
-        day1_bal = business.balance
+        day1_bal = gr_business.balance
 
-        business.prebuild_balance(
+        gr_business.prebuild_balance(
             thl_pg_config=thl_web_rr,
             lm=ledger_manager,
             ds=mnt_filepath,
@@ -1089,9 +1097,9 @@ class TestBusinessBalance:
             pop_ledger=pop_ledger_merge,
             at_timestamp=start + timedelta(days=2, hours=1),
         )
-        day2_bal = business.balance
+        day2_bal = gr_business.balance
 
-        business.prebuild_balance(
+        gr_business.prebuild_balance(
             thl_pg_config=thl_web_rr,
             lm=ledger_manager,
             ds=mnt_filepath,
@@ -1099,9 +1107,9 @@ class TestBusinessBalance:
             pop_ledger=pop_ledger_merge,
             at_timestamp=start + timedelta(days=3, hours=1),
         )
-        day3_bal = business.balance
+        day3_bal = gr_business.balance
 
-        business.prebuild_balance(
+        gr_business.prebuild_balance(
             thl_pg_config=thl_web_rr,
             lm=ledger_manager,
             ds=mnt_filepath,
@@ -1109,9 +1117,9 @@ class TestBusinessBalance:
             pop_ledger=pop_ledger_merge,
             at_timestamp=start + timedelta(days=4, hours=1),
         )
-        day4_bal = business.balance
+        day4_bal = gr_business.balance
 
-        business.prebuild_balance(
+        gr_business.prebuild_balance(
             thl_pg_config=thl_web_rr,
             lm=ledger_manager,
             ds=mnt_filepath,
@@ -1119,9 +1127,9 @@ class TestBusinessBalance:
             pop_ledger=pop_ledger_merge,
             at_timestamp=start + timedelta(days=5, hours=1),
         )
-        day5_bal = business.balance
+        day5_bal = gr_business.balance
 
-        business.prebuild_balance(
+        gr_business.prebuild_balance(
             thl_pg_config=thl_web_rr,
             lm=ledger_manager,
             ds=mnt_filepath,
@@ -1129,7 +1137,7 @@ class TestBusinessBalance:
             pop_ledger=pop_ledger_merge,
             at_timestamp=start + timedelta(days=6, hours=1),
         )
-        day6_bal = business.balance
+        day6_bal = gr_business.balance
 
         assert isinstance(day1_bal, BusinessBalances)
         assert isinstance(day2_bal, BusinessBalances)
@@ -1187,7 +1195,7 @@ class TestBusinessMethods:
 
     def test_set_cache(
         self,
-        business: Business,
+        gr_business: Business,
         gr_redis: RedisConfig,
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
@@ -1208,9 +1216,9 @@ class TestBusinessMethods:
         gr_redis_config: RedisConfig,
         mnt_gr_api_dir: Path,
     ):
-        assert gr_redis.get(name=business.cache_key) is None
+        assert gr_redis.get(name=gr_business.cache_key) is None
 
-        p1 = product_factory(team=team, business=business)
+        p1 = product_factory(team=team, business=gr_business)
         u1 = user_factory(product=p1)
 
         # Business needs tx & incite to build balance
@@ -1221,7 +1229,7 @@ class TestBusinessMethods:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
-        business.set_cache(
+        gr_business.set_cache(
             pg_config=gr_db,
             thl_web_rr=thl_web_rr,
             redis_config=gr_redis_config,
@@ -1234,14 +1242,14 @@ class TestBusinessMethods:
             mnt_gr_api=mnt_gr_api_dir,
         )
 
-        assert gr_redis.hgetall(name=business.cache_key) is not None
+        assert gr_redis.hgetall(name=gr_business.cache_key) is not None
         from generalresearch.models.gr.business import Business
 
         # We're going to pull only a specific year, but make sure that
         # it's being assigned to the field regardless
         year = datetime.now(tz=UTC).year
         res = Business.from_redis(
-            uuid=business.uuid,
+            uuid=gr_business.uuid,
             fields=[f"pop_financial:{year}"],
             gr_redis_config=gr_redis_config,
         )
@@ -1249,7 +1257,7 @@ class TestBusinessMethods:
 
     def test_set_cache_business(
         self,
-        business: Business,
+        gr_business: Business,
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
@@ -1272,9 +1280,9 @@ class TestBusinessMethods:
     ):
         from generalresearch.models.gr.business import Business
 
-        p1 = product_factory(team=team, business=business)
+        p1 = product_factory(team=team, business=gr_business)
         u1 = user_factory(product=p1)
-        team_manager.add_business(team=team, business=business)
+        team_manager.add_business(team=team, business=gr_business)
 
         # Business needs tx & incite to build balance
         delete_ledger_db()
@@ -1284,7 +1292,7 @@ class TestBusinessMethods:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
-        business.set_cache(
+        gr_business.set_cache(
             pg_config=gr_db,
             thl_web_rr=thl_web_rr,
             redis_config=gr_redis_config,
@@ -1299,7 +1307,7 @@ class TestBusinessMethods:
 
         # keys: List = Business.required_fields() + ["products", "bp_accounts"]
         business2 = Business.from_redis(
-            uuid=business.uuid,
+            uuid=gr_business.uuid,
             fields=[
                 "id",
                 "tax_number",
@@ -1319,7 +1327,7 @@ class TestBusinessMethods:
         )
 
         assert isinstance(business2, Business)
-        assert business.model_dump_json() == business2.model_dump_json()
+        assert gr_business.model_dump_json() == business2.model_dump_json()
         # assert isinstance(business2.balance, BusinessBalances)
         assert isinstance(business2.products, list)
         assert isinstance(business2.teams, list)
@@ -1413,7 +1421,7 @@ class TestBusinessMethods:
         session_factory: Callable[..., Session],
         product_factory: Callable[..., Product],
         delete_df_collection: Callable[..., None],
-        business: Business,
+        gr_business: Business,
         mnt_filepath: GRLDatasets,
         mnt_gr_api_dir: Path,
     ):
@@ -1421,8 +1429,8 @@ class TestBusinessMethods:
         delete_df_collection(coll=wall_collection)
         delete_df_collection(coll=session_collection)
 
-        p1 = product_factory(business=business)
-        p2 = product_factory(business=business)
+        p1 = product_factory(business=gr_business)
+        p2 = product_factory(business=gr_business)
 
         for p in [p1, p2]:
             u = user_factory(product=p)
@@ -1443,7 +1451,7 @@ class TestBusinessMethods:
             pg_config=thl_web_rr,
         )
 
-        business.prebuild_enriched_wall_parquet(
+        gr_business.prebuild_enriched_wall_parquet(
             thl_pg_config=thl_web_rr,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -1453,6 +1461,6 @@ class TestBusinessMethods:
 
         # Now try to read from path
         df = pd.read_parquet(
-            os.path.join(mnt_gr_api_dir, "pop_event", f"{business.file_key}.parquet")
+            os.path.join(mnt_gr_api_dir, "pop_event", f"{gr_business.file_key}.parquet")
         )
         assert isinstance(df, pd.DataFrame)

@@ -3,10 +3,12 @@ from __future__ import annotations
 from collections.abc import Collection
 from contextlib import nullcontext
 from enum import Enum
+from typing import TYPE_CHECKING
 
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
-from generalresearch.sql_helper import SqlHelper
+if TYPE_CHECKING:
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
+    from generalresearch.sql_helper import SqlHelper
 
 
 class Permission(int, Enum):

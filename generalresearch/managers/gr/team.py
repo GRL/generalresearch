@@ -11,15 +11,16 @@ from generalresearch.managers.base import (
     PostgresManager,
     PostgresManagerWithRedis,
 )
-from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.gr.team import Membership, MembershipPrivilege
+from generalresearch.models.gr.team import (
+    Membership,
+    MembershipPrivilege,
+)
 
 if TYPE_CHECKING:
+    from generalresearch.models.custom_types import UUIDStr
     from generalresearch.models.gr.authentication import GRUser
     from generalresearch.models.gr.business import Business
-    from generalresearch.models.gr.team import (
-        Team,
-    )
+    from generalresearch.models.gr.team import Team
 
 
 class MembershipManager(PostgresManager):

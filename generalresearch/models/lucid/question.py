@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING, Any, Literal, Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from generalresearch.models import Source
-from generalresearch.models.lucid import LucidQuestionIdType
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
 )
 
 if TYPE_CHECKING:
+    from generalresearch.models.lucid import LucidQuestionIdType
     from generalresearch.models.thl.profiling.upk_question import (
         UpkQuestion,
     )

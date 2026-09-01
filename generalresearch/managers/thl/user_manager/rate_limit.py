@@ -1,4 +1,5 @@
 import logging
+from typing import TYPE_CHECKING
 
 from limits import RateLimitItem, RateLimitItemPerHour, storage, strategies
 from limits.limits import TIME_TYPES, safe_string
@@ -10,7 +11,9 @@ from generalresearch.managers.thl.user_manager import (
 from generalresearch.managers.thl.user_manager.exceptions import (
     UserCreateNotAllowedError,
 )
-from generalresearch.models.thl.product import Product
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.product import Product
 
 logger = logging.getLogger()
 

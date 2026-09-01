@@ -18,17 +18,17 @@ from pydantic import (
 from pydantic.json_schema import SkipJsonSchema
 
 from generalresearch.config import is_debug
-from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.definitions import SessionAdjustedStatus
-from generalresearch.pg_helper import PostgresConfig
 
 payout_example = random.randint(150, 750 * 100)
 adjustment_example = random.randint(-1_000, 50 * 100)
 
 if TYPE_CHECKING:
+    from generalresearch.currency import USDCent
     from generalresearch.models.thl.ledger import LedgerAccount
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class AdjustmentType(BaseModel):

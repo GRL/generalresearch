@@ -2,15 +2,17 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from pydantic import NonNegativeInt
 
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
-from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.thl.user import User
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.models.thl.user import User
 
 
 def user_compensate(

@@ -18,14 +18,7 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models import DeviceType, Source
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    EnumNameSerializer,
-    IPvAnyAddressStr,
-    UUIDStr,
-)
-from generalresearch.models.legacy.bucket import Bucket
+from generalresearch.models import Source
 from generalresearch.models.thl import (
     decimal_to_int_cents,
     int_cents_to_decimal,
@@ -33,9 +26,7 @@ from generalresearch.models.thl import (
 from generalresearch.models.thl.definitions import (
     WALL_ALLOWED_STATUS_CODE_1_2,
     WALL_ALLOWED_STATUS_STATUS_CODE,
-    ReportValue,
     SessionAdjustedStatus,
-    SessionStatusCode2,
     Status,
     StatusCode1,
     WallAdjustedStatus,
@@ -45,6 +36,18 @@ from generalresearch.models.thl.definitions import (
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
+    )
+    from generalresearch.models import DeviceType
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        EnumNameSerializer,
+        IPvAnyAddressStr,
+        UUIDStr,
+    )
+    from generalresearch.models.legacy.bucket import Bucket
+    from generalresearch.models.thl.definitions import (
+        ReportValue,
+        SessionStatusCode2,
     )
     from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.user import User

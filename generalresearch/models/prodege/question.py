@@ -19,11 +19,11 @@ from pydantic import (
 
 from generalresearch.locales import Localelator
 from generalresearch.models import MAX_INT32, Source
-from generalresearch.models.custom_types import AwareDatetimeISO
-from generalresearch.models.prodege import ProdegeQuestionIdType
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
 
 if TYPE_CHECKING:
+    from generalresearch.models.custom_types import AwareDatetimeISO
+    from generalresearch.models.prodege import ProdegeQuestionIdType
     from generalresearch.models.thl.profiling.upk_question import (
         UpkQuestion,
     )

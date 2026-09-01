@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Collection
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from generalresearch.managers.base import SqlManager
 from generalresearch.models import Source
-from generalresearch.sql_helper import SqlHelper
+
+if TYPE_CHECKING:
+    from generalresearch.sql_helper import SqlHelper
 
 
 class UserPidManager(SqlManager, ABC):

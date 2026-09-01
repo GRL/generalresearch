@@ -1,16 +1,21 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from generalresearch.config import (
     is_debug,
 )
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
-from generalresearch.managers.thl.payout import PayoutEventManager
-from generalresearch.managers.thl.tango_api import TangoClient, TangoOrderRequest
+from generalresearch.managers.thl.tango_api import TangoOrderRequest
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.payout import UserPayoutEvent
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.managers.thl.payout import PayoutEventManager
+    from generalresearch.managers.thl.tango_api import TangoClient
+    from generalresearch.models.thl.payout import UserPayoutEvent
+    from generalresearch.models.thl.user import User
 
 
 def complete_tango_order(

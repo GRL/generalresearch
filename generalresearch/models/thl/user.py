@@ -21,18 +21,18 @@ from pydantic import (
 from sentry_sdk import set_tag, set_user
 
 from generalresearch.models import MAX_INT32
-from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
-from generalresearch.models.thl.ipinfo import GeoIPInformation
-from generalresearch.models.thl.ledger import LedgerTransaction
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.userhealth import AuditLog
-from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
     from generalresearch.managers.thl.userhealth import AuditLogManager
+    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+    from generalresearch.models.thl.ipinfo import GeoIPInformation
+    from generalresearch.models.thl.ledger import LedgerTransaction
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.userhealth import AuditLog
+    from generalresearch.pg_helper import PostgresConfig
 
     # from generalresearch.managers.thl.userhealth import UserIpHistoryManager
 

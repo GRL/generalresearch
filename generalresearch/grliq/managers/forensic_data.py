@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Collection
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from psycopg import sql
 from pydantic import NonNegativeInt, PositiveInt
@@ -14,9 +14,11 @@ from generalresearch.grliq.models.forensic_result import (
     GrlIqForensicCategoryResult,
     Phase,
 )
-from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.thl.user import User
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class GrlIqDataManager:

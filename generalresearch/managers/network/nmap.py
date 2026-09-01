@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from psycopg import Cursor, sql
 
 from generalresearch.managers.base import PostgresManager
-from generalresearch.models.network.tool_run import NmapRun
+
+if TYPE_CHECKING:
+    from generalresearch.models.network.tool_run import NmapRun
 
 
 class NmapRunManager(PostgresManager):

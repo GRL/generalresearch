@@ -3,26 +3,31 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from decimal import Decimal
 from itertools import product
+from typing import TYPE_CHECKING
 
 from more_itertools import flatten
 from pydantic import BaseModel, Field
 
-from generalresearch.models import Source
 from generalresearch.models.thl.demographics import (
     AgeGroup,
     DemographicTarget,
     Gender,
 )
-from generalresearch.models.thl.locales import (
-    CountryISO,
-    CountryISOs,
-    LanguageISO,
-    LanguageISOs,
-)
 from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
-    MarketplaceCondition,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models import Source
+    from generalresearch.models.thl.locales import (
+        CountryISO,
+        CountryISOs,
+        LanguageISO,
+        LanguageISOs,
+    )
+    from generalresearch.models.thl.survey.condition import (
+        MarketplaceCondition,
+    )
 
 
 class MarketplaceTask(BaseModel, ABC):

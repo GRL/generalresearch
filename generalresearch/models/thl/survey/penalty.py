@@ -2,15 +2,16 @@ from __future__ import annotations
 
 import abc
 from datetime import UTC, datetime
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter
 
-from generalresearch.models import Source
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    UUIDStr,
-)
+if TYPE_CHECKING:
+    from generalresearch.models import Source
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        UUIDStr,
+    )
 
 
 class SurveyPenalty(BaseModel, abc.ABC):

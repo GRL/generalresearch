@@ -29,15 +29,12 @@ from generalresearch.managers.thl.ledger_manager.conditions import (
 from generalresearch.managers.thl.ledger_manager.ledger import (
     LedgerManager,
 )
-from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.thl.contest.contest import Contest
 from generalresearch.models.thl.contest.definitions import (
     ContestPrizeKind,
     ContestType,
 )
 from generalresearch.models.thl.contest.milestone import MilestoneContest
 from generalresearch.models.thl.contest.raffle import (
-    ContestEntry,
     ContestEntryType,
     RaffleContest,
 )
@@ -53,14 +50,20 @@ from generalresearch.models.thl.ledger import (
 from generalresearch.models.thl.ledger import (
     TransactionMetadataColumns as tmc,
 )
-from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.session import Session, Status, Wall
-from generalresearch.models.thl.user import User
+from generalresearch.models.thl.session import Status
 from generalresearch.models.thl.wallet import PayoutType
 
 if TYPE_CHECKING:
-    from generalresearch.models.thl.contest.contest import ContestWinner
+    from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.models.thl.contest.contest import Contest, ContestWinner
+    from generalresearch.models.thl.contest.raffle import (
+        ContestEntry,
+    )
+    from generalresearch.models.thl.ledger import LedgerTransaction
+    from generalresearch.models.thl.payout import UserPayoutEvent
+    from generalresearch.models.thl.session import Session, Wall
+    from generalresearch.models.thl.user import User
 
 logging.basicConfig()
 logger = logging.getLogger("LedgerManager")
@@ -663,9 +666,7 @@ class ThlLedgerManager(LedgerManager):
                     )
 
             else:
-                logger.info(
-                    "create_transaction_bp_adjustment. No transactions needed."
-                )
+                logger.info("create_transaction_bp_adjustment. No transactions needed.")
                 return None
         else:
             new_bp_payout = new_payout
@@ -735,9 +736,7 @@ class ThlLedgerManager(LedgerManager):
                     )
 
             else:
-                logger.info(
-                    "create_transaction_bp_adjustment. No transactions needed."
-                )
+                logger.info("create_transaction_bp_adjustment. No transactions needed.")
                 return None
 
         logger.info(entries)
@@ -796,9 +795,7 @@ class ThlLedgerManager(LedgerManager):
         if skip_one_per_day_check or skip_wallet_balance_check:
             skip_flag_check = True
 
-        assert (
-            datetime.now(tz=UTC) > created
-        ), "created cannot be in the future"
+        assert datetime.now(tz=UTC) > created, "created cannot be in the future"
         f = lambda: self.create_tx_bp_payout_(
             product=product,
             amount=amount,
@@ -902,9 +899,7 @@ class ThlLedgerManager(LedgerManager):
         :param skip_flag_check: If True, we skip the flag check to allow
             for retry of a failed previous call.
         """
-        assert (
-            datetime.now(tz=UTC) > created
-        ), "created cannot be in the future"
+        assert datetime.now(tz=UTC) > created, "created cannot be in the future"
         assert isinstance(amount, int)
         assert isinstance(amount, USDCent)
 

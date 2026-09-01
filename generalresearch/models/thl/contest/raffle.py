@@ -4,7 +4,7 @@ import logging
 import random
 from collections import defaultdict
 from datetime import UTC, datetime
-from typing import Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 from pydantic import (
     ConfigDict,
@@ -20,7 +20,6 @@ from generalresearch.models.thl.contest import (
     ContestEndCondition,
     ContestEntryRule,
     ContestPrize,
-    ContestWinner,
 )
 from generalresearch.models.thl.contest.contest import (
     Contest,
@@ -28,7 +27,6 @@ from generalresearch.models.thl.contest.contest import (
     ContestUserView,
 )
 from generalresearch.models.thl.contest.contest_entry import (
-    ContestEntry,
     ContestEntryType,
 )
 from generalresearch.models.thl.contest.definitions import (
@@ -37,6 +35,14 @@ from generalresearch.models.thl.contest.definitions import (
     ContestStatus,
     ContestType,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.contest import (
+        ContestWinner,
+    )
+    from generalresearch.models.thl.contest.contest_entry import (
+        ContestEntry,
+    )
 
 logging.basicConfig()
 LOG = logging.getLogger()

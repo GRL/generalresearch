@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from collections.abc import Collection
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from generalresearch.managers.base import Permission, PostgresManager
-from generalresearch.models import Source
 from generalresearch.models.thl.survey.buyer import Buyer
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models import Source
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class BuyerManager(PostgresManager):

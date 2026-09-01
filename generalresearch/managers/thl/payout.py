@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Collection
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import numpy as np
@@ -19,16 +19,9 @@ from generalresearch.managers.base import (
 from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionConditionFailedError,
 )
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
-from generalresearch.managers.thl.product import ProductManager
-from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
-from generalresearch.models.gr.business import Business
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.ledger import (
     Direction,
-    LedgerAccount,
     OrderBy,
 )
 from generalresearch.models.thl.payout import (
@@ -38,12 +31,21 @@ from generalresearch.models.thl.payout import (
     PayoutEvent,
     UserPayoutEvent,
 )
-from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
     CashMailOrderData,
     CashoutRequestInfo,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+    from generalresearch.models.gr.business import Business
+    from generalresearch.models.thl.ledger import LedgerAccount
+    from generalresearch.models.thl.product import Product
 
 
 class PayoutEventManager(PostgresManagerWithRedis):

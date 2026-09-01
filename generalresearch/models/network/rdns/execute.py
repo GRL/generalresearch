@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.network.rdns.command import (
     get_dig_version,
     run_rdns,
@@ -18,6 +18,9 @@ from generalresearch.models.network.tool_run_command import (
     RDNSRunCommand,
     RDNSRunCommandOptions,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import UUIDStr
 
 
 def execute_rdns(ip: str, scan_group_id: UUIDStr | None = None):

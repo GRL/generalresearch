@@ -1,21 +1,23 @@
 from __future__ import annotations
 
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from generalresearch.models import Source
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    BigAutoInteger,
-    CoercedStr,
-    UUIDStr,
-)
-from generalresearch.models.thl.locales import CountryISO, LanguageISO
 from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
     MarketplaceCondition,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        BigAutoInteger,
+        CoercedStr,
+        UUIDStr,
+    )
+    from generalresearch.models.thl.locales import CountryISO, LanguageISO
 
 
 class LucidCondition(MarketplaceCondition):

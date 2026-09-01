@@ -10,7 +10,9 @@ from pydantic import RedisDsn
 
 from generalresearch.managers.base import Permission
 from generalresearch.managers.thl.product import ProductManager
-from generalresearch.managers.thl.user_manager.exceptions import UserDoesntExistError
+from generalresearch.managers.thl.user_manager.exceptions import (
+    UserDoesntExistError,
+)
 from generalresearch.managers.thl.user_manager.mysql_user_manager import (
     MysqlUserManager,
 )
@@ -20,15 +22,16 @@ from generalresearch.managers.thl.user_manager.rate_limit import (
 from generalresearch.managers.thl.user_manager.redis_user_manager import (
     RedisUserManager,
 )
-from generalresearch.pg_helper import PostgresConfig
 from generalresearch.utils.copying_cache import deepcopy_return
 
 if TYPE_CHECKING:
+
     from generalresearch.managers.thl.userhealth import AuditLogManager
     from generalresearch.models.custom_types import UUIDStr
     from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.user import User
     from generalresearch.models.thl.userhealth import AuditLog
+    from generalresearch.pg_helper import PostgresConfig
 
 logging.basicConfig()
 logger = logging.getLogger()

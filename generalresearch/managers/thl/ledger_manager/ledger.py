@@ -4,7 +4,7 @@ import logging
 from collections import defaultdict
 from collections.abc import Callable, Collection
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import redis
@@ -28,16 +28,19 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionFlagAlreadyExistsError,
     LedgerTransactionReleaseLockError,
 )
-from generalresearch.models.custom_types import UUIDStr, check_valid_uuid
+from generalresearch.models.custom_types import check_valid_uuid
 from generalresearch.models.thl.ledger import (
     LedgerAccount,
     LedgerEntry,
     LedgerTransaction,
-    UserLedgerTransactionType,
     UserLedgerTransactionTypesSummary,
 )
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.models.thl.ledger import UserLedgerTransactionType
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 logging.basicConfig()
 logger = logging.getLogger("LedgerManager")

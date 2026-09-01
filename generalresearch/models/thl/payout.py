@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from typing import Self
+from typing import TYPE_CHECKING, Self
 from uuid import uuid4
 
 from pydantic import (
@@ -17,12 +17,18 @@ from pydantic import (
 from pydantic.json_schema import SkipJsonSchema
 
 from generalresearch.currency import USDCent
-from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr, UUIDStrCoerce
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.wallet import PayoutType
-from generalresearch.models.thl.wallet.cashout_method import (
-    CashMailOrderData,
-)
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        UUIDStr,
+        UUIDStrCoerce,
+    )
+    from generalresearch.models.thl.wallet.cashout_method import (
+        CashMailOrderData,
+    )
 
 
 class PayoutEvent(BaseModel):
@@ -59,9 +65,7 @@ class PayoutEvent(BaseModel):
         examples=["a6dc1fc1bf934557b952f253dee12813"],
     )
 
-    created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=UTC)
-    )
+    created: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # In the smallest unit of the currency being transacted. For USD, this
     #   is cents.
@@ -233,9 +237,7 @@ class BusinessPayoutEventCreate(BaseModel):
         examples=[uuid4().hex],
     )
 
-    created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=UTC)
-    )
+    created: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # In the smallest unit of the currency being transacted. For USD, this
     #   is cents.
@@ -350,6 +352,7 @@ class BusinessPayoutEventCreate(BaseModel):
             json.dumps(self.order_data) if self.order_data is not None else None
         )
         return d
+
 
 class BusinessPayoutEvent(BusinessPayoutEventCreate):
     id: SkipJsonSchema[PositiveInt] = Field(exclude=True)

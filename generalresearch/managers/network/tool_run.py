@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Collection
+from typing import TYPE_CHECKING
 
 from psycopg import Cursor, sql
 
-from generalresearch.managers.base import Permission, PostgresManager
+from generalresearch.managers.base import PostgresManager
 from generalresearch.managers.network.mtr import MTRRunManager
 from generalresearch.managers.network.nmap import NmapRunManager
 from generalresearch.managers.network.rdns import RDNSRunManager
@@ -13,10 +14,13 @@ from generalresearch.models.network.tool_run import (
     MTRRun,
     NmapRun,
     RDNSRun,
-    ToolName,
     ToolRun,
 )
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.base import Permission
+    from generalresearch.models.network.tool_run import ToolName
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class ToolRunManager(PostgresManager):

@@ -1,7 +1,9 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.wall_status_codes import lucid
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.definitions import Status, StatusCode1
 
 
 def annotate_status_code(

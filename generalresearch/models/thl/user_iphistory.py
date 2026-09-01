@@ -5,7 +5,6 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Self
 
 from faker import Faker
-from grip_client.enums import AccessType
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -14,18 +13,20 @@ from pydantic import (
     field_validator,
 )
 
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    CountryISOLike,
-    IPvAnyAddressStr,
-)
 from generalresearch.models.thl.ipinfo import normalize_ip
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
 
 if TYPE_CHECKING:
+    from grip_client.enums import AccessType
+
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        CountryISOLike,
+        IPvAnyAddressStr,
+    )
     from generalresearch.models.thl.ipinfo import GeoIPInformation
     from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 fake = Faker()
 

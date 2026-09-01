@@ -1,20 +1,28 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.network.definitions import IPProtocol
 from generalresearch.models.network.mtr.command import (
     get_mtr_version,
     run_mtr,
 )
-from generalresearch.models.network.tool_run import MTRRun, Status, ToolClass, ToolName
+from generalresearch.models.network.tool_run import (
+    MTRRun,
+    Status,
+    ToolClass,
+    ToolName,
+)
 from generalresearch.models.network.tool_run_command import (
     MTRRunCommand,
     MTRRunCommandOptions,
 )
 from generalresearch.models.network.utils import get_source_ip
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import UUIDStr
 
 
 def execute_mtr(

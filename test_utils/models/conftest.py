@@ -22,12 +22,6 @@ from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.currency import USDCent
-    from generalresearch.managers.gr.business import (
-        BusinessAddressManager,
-        BusinessBankAccountManager,
-        BusinessManager,
-    )
-    from generalresearch.managers.gr.team import TeamManager
     from generalresearch.managers.thl.buyer import BuyerManager
     from generalresearch.managers.thl.ipinfo import (
         IPGeonameManager,
@@ -45,8 +39,6 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.wall import WallManager
     from generalresearch.models.gr.business import (
         Business,
-        BusinessAddress,
-        BusinessBankAccount,
     )
     from generalresearch.models.gr.team import Team
     from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation
@@ -405,35 +397,6 @@ def bp_payout_factory(
         )
 
     return _inner
-
-
-# === GR ===
-
-
-@pytest.fixture
-def business(request, business_manager: BusinessManager) -> Business:
-    return business_manager.create_dummy()
-
-
-@pytest.fixture
-def business_address(
-    request, business: Business, business_address_manager: BusinessAddressManager
-) -> BusinessAddress:
-    return business_address_manager.create_dummy(business_id=business.id)
-
-
-@pytest.fixture
-def business_bank_account(
-    request,
-    business: Business,
-    business_bank_account_manager: BusinessBankAccountManager,
-) -> BusinessBankAccount:
-    return business_bank_account_manager.create_dummy(business_id=business.id)
-
-
-@pytest.fixture
-def team(request, team_manager: TeamManager) -> Team:
-    return team_manager.create_dummy()
 
 
 @pytest.fixture

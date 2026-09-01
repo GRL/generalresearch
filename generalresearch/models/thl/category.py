@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Self
+from typing import TYPE_CHECKING, Any, Self
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, PositiveInt, model_validator
 
-from generalresearch.models.custom_types import UUIDStr
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import UUIDStr
 
 
 class Category(BaseModel, frozen=True):

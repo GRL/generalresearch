@@ -1,28 +1,30 @@
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
-from generalresearch.managers.thl.payout import (
-    PayoutEventManager,
-    UserPayoutEventManager,
-)
-from generalresearch.managers.thl.tango_api import TangoClient
-from generalresearch.managers.thl.user_manager.user_manager import (
-    UserManager,
-)
-from generalresearch.managers.thl.userhealth import UserIpHistoryManager
 from generalresearch.managers.thl.wallet.approve import (
     approve_amt_cashout,
     approve_paypal_order,
 )
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.wallet import PayoutType
-from generalresearch.models.thl.wallet.cashout_method import (
-    CashMailOrderData,
-)
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.managers.thl.payout import (
+        PayoutEventManager,
+        UserPayoutEventManager,
+    )
+    from generalresearch.managers.thl.tango_api import TangoClient
+    from generalresearch.managers.thl.user_manager.user_manager import (
+        UserManager,
+    )
+    from generalresearch.managers.thl.userhealth import UserIpHistoryManager
+    from generalresearch.models.thl.payout import UserPayoutEvent
+    from generalresearch.models.thl.wallet.cashout_method import (
+        CashMailOrderData,
+    )
 
 
 def manage_pending_cashout(

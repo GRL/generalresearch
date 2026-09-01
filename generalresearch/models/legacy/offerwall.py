@@ -1,27 +1,33 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
-from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.legacy.bucket import (
-    BucketBase,
-    MarketplaceBucket,
-    OneShotOfferwallBucket,
-    OneShotSoftPairOfferwallBucket,
-    SingleEntryBucket,
-    SoftPairBucket,
-    TimeBucksBucket,
-    TopNBucket,
-    TopNPlusBucket,
-    TopNPlusRecontactBucket,
-    WXETOfferwallBucket,
-)
 from generalresearch.models.legacy.definitions import OfferwallReason
 from generalresearch.models.thl.payout_format import (
     PayoutFormatField,
-    PayoutFormatType,
 )
-from generalresearch.models.thl.profiling.upk_question import UpkQuestion
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.models.legacy.bucket import (
+        BucketBase,
+        MarketplaceBucket,
+        OneShotOfferwallBucket,
+        OneShotSoftPairOfferwallBucket,
+        SingleEntryBucket,
+        SoftPairBucket,
+        TimeBucksBucket,
+        TopNBucket,
+        TopNPlusBucket,
+        TopNPlusRecontactBucket,
+        WXETOfferwallBucket,
+    )
+    from generalresearch.models.thl.payout_format import (
+        PayoutFormatType,
+    )
+    from generalresearch.models.thl.profiling.upk_question import UpkQuestion
 
 """
 Not Done:

@@ -1,17 +1,19 @@
 import json
 from enum import StrEnum
-from typing import Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from generalresearch.locales import Localelator
 from generalresearch.models import Source
-from generalresearch.models.morning import MorningQuestionID
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
     MarketplaceUserQuestionAnswer,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.models.morning import MorningQuestionID
 
 # todo: we could validate that the country_iso / language_iso exists ...
 locale_helper = Localelator()

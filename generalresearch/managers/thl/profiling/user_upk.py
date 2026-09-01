@@ -4,27 +4,29 @@ import json
 from collections import defaultdict
 from collections.abc import Collection
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from psycopg import Cursor
 from pydantic import PositiveInt
 
 from generalresearch.managers.base import (
-    Permission,
     PostgresManagerWithRedis,
 )
 from generalresearch.managers.thl.profiling.schema import UpkSchemaManager
 from generalresearch.models.thl.profiling.upk_property import (
     Cardinality,
     PropertyType,
-    UpkProperty,
 )
 from generalresearch.models.thl.profiling.upk_question_answer import (
     UpkQuestionAnswer,
 )
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.base import Permission
+    from generalresearch.models.thl.profiling.upk_property import UpkProperty
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 
 class UserUpkManager(PostgresManagerWithRedis):

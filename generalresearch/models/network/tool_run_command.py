@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field
 
-from generalresearch.models.custom_types import IPvAnyAddressStr
 from generalresearch.models.network.definitions import IPProtocol
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import IPvAnyAddressStr
 
 
 class ToolRunCommand(BaseModel):

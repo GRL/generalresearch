@@ -4,7 +4,7 @@ import statistics
 from datetime import timedelta
 from decimal import Decimal
 from string import Formatter
-from typing import Annotated, Any, Self
+from typing import TYPE_CHECKING, Annotated, Any, Self
 from uuid import uuid4
 
 import numpy as np
@@ -20,31 +20,37 @@ from pydantic import (
 )
 
 from generalresearch.models import Source
-from generalresearch.models.custom_types import HttpsUrl, UUIDStr
 from generalresearch.models.legacy.bucket import (
     Bucket as LegacyBucket,
 )
 from generalresearch.models.legacy.bucket import (
-    CategoryAssociation,
     DurationSummary,
-    Eligibility,
     PayoutSummary,
     PayoutSummaryDecimal,
-    SurveyEligibilityCriterion,
 )
 from generalresearch.models.legacy.definitions import OfferwallReason
-from generalresearch.models.thl.locales import CountryISO
 from generalresearch.models.thl.offerwall import (
     OFFERWALL_TYPE_CLASS,
-    OfferWallType,
-    OfferWallTypeClass,
 )
 from generalresearch.models.thl.offerwall.bucket import (
     generate_offerwall_entry_url,
 )
-from generalresearch.models.thl.profiling.upk_question import UpkQuestion
 from generalresearch.models.thl.soft_pair import SoftPairResultType
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import HttpsUrl, UUIDStr
+    from generalresearch.models.legacy.bucket import (
+        CategoryAssociation,
+        Eligibility,
+        SurveyEligibilityCriterion,
+    )
+    from generalresearch.models.thl.locales import CountryISO
+    from generalresearch.models.thl.offerwall import (
+        OfferWallType,
+        OfferWallTypeClass,
+    )
+    from generalresearch.models.thl.profiling.upk_question import UpkQuestion
+    from generalresearch.models.thl.user import User
 
 
 class MergeTableFeatures(BaseModel):

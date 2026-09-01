@@ -7,22 +7,23 @@ from typing import TYPE_CHECKING
 
 from generalresearch.config import JAMES_BILLINGS_BPID, JAMES_BILLINGS_TX_CUTOFF
 from generalresearch.currency import USDCent
-from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.session import Session, Wall
-from generalresearch.models.thl.user import User
-
-logging.basicConfig()
-logger = logging.getLogger("LedgerManager")
-logger.setLevel(logging.INFO)
 
 if TYPE_CHECKING:
+
     from generalresearch.managers.thl.ledger_manager.ledger import (
         LedgerManager,
     )
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
+    from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.session import Session, Wall
+    from generalresearch.models.thl.user import User
+
+logging.basicConfig()
+logger = logging.getLogger("LedgerManager")
+logger.setLevel(logging.INFO)
 
 
 def generate_condition_mp_payment(wall: Wall) -> Callable[..., bool]:

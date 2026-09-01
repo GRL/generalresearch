@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from random import randint
 from uuid import uuid4
 
 import pytest
@@ -20,7 +21,6 @@ from generalresearch.models.gr.business import (
     Business,
     BusinessAddress,
     BusinessBankAccount,
-    BusinessType,
     TransferMethod,
 )
 from generalresearch.models.gr.team import Membership, Team
@@ -134,27 +134,38 @@ def gr_business_address_factory(
 
 @pytest.fixture
 def gr_business_factory(
-    gr_bm: BusinessManager,
+    gr_business_manager: BusinessManager,
 ) -> Callable[..., Business]:
 
     def _inner(
-        uuid: UUIDStr | None = None,
-        name: str | None = None,
-        team: Team | None = None,
-        kind: BusinessType | None = None,
-        tax_number: str | None = None,
+        save: bool = True, name: str | None = None, team: Team | None = None, **kwargs
     ) -> Business:
-        from random import randint
+        name = name or f"<Unknown {uuid4().hex[:12]}>"
+        tax_number = str(randint(1, 999_999_999))
 
-        uuid = uuid or uuid4().hex
-        name = name or "< Unknown >"
-        tax_number = tax_number or str(randint(1, 999_999_999))
-
-        return gr_bm.create(
-            uuid=uuid, name=name, team=team, kind=kind, tax_number=tax_number
-        )
+        if save:
+            return gr_business_manager.create(
+                name=name,
+                kind="c",
+                uuid=uuid4().hex,
+                team=team,
+                tax_number=tax_number,
+                **kwargs,
+            )
+        else:
+            raise ValueError("Unsaved Business not supported yet")
 
     return _inner
+
+
+@pytest.fixture
+def gr_business(gr_business_factory: Callable[..., Business]) -> Business:
+    return gr_business_factory(save=True)
+
+
+@pytest.fixture
+def unsaved_gr_business(gr_business_factory: Callable[..., Business]) -> Business:
+    return gr_business_factory(save=False)
 
 
 @pytest.fixture
@@ -181,6 +192,21 @@ def gr_user_token(
     res = gr_user.token
     assert res is not None, "GRToken should exist after creation and prefetching"
     return res
+
+
+@pytest.fixture
+def business_address(
+    gr_business: Business, business_address_manager: BusinessAddressManager
+) -> BusinessAddress:
+    return business_address_manager.create_dummy(business_id=gr_business.id)
+
+
+@pytest.fixture
+def business_bank_account(
+    gr_business: Business,
+    business_bank_account_manager: BusinessBankAccountManager,
+) -> BusinessBankAccount:
+    return business_bank_account_manager.create_dummy(business_id=gr_business.id)
 
 
 @pytest.fixture()

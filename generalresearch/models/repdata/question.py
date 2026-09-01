@@ -18,10 +18,10 @@ from pydantic import (
 )
 
 from generalresearch.models import MAX_INT32, Source
-from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
 
 if TYPE_CHECKING:
+    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
     from generalresearch.models.thl.profiling.upk_question import (
         UpkQuestion,
     )

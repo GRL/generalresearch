@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Collection
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from faker import Faker
@@ -16,14 +16,7 @@ from generalresearch.managers.base import (
     PostgresManager,
 )
 from generalresearch.managers.thl.product import ProductManager
-from generalresearch.models import DeviceType
-from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.legacy.bucket import Bucket
-from generalresearch.models.thl.definitions import (
-    SessionStatusCode2,
-    Status,
-    StatusCode1,
-)
 from generalresearch.models.thl.session import (
     Session,
     Wall,
@@ -33,6 +26,15 @@ from generalresearch.models.thl.task_status import (
     TaskStatusResponse,
 )
 from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.models import DeviceType
+    from generalresearch.models.custom_types import UUIDStr
+    from generalresearch.models.thl.definitions import (
+        SessionStatusCode2,
+        Status,
+        StatusCode1,
+    )
 
 fake = Faker()
 
@@ -190,7 +192,12 @@ class SessionManager(PostgresManager):
         # re-run model_validate after
         finished = finished if finished else datetime.now(tz=UTC)
         session.update(
-            status=status, status_code_1=status_code_1, status_code_2=status_code_2, finished=finished, payout=payout, user_payout=user_payout
+            status=status,
+            status_code_1=status_code_1,
+            status_code_2=status_code_2,
+            finished=finished,
+            payout=payout,
+            user_payout=user_payout,
         )
         d = session.model_dump_mysql()
         self.pg_config.execute_write(
@@ -446,9 +453,7 @@ class SessionManager(PostgresManager):
         if started_before or started_after:
             started_after = started_after or datetime(2017, 1, 1, tzinfo=UTC)
             started_before = started_before or datetime.now(tz=UTC)
-            assert (
-                started_after.tzinfo == UTC
-            ), "started_after must be tz-aware as UTC"
+            assert started_after.tzinfo == UTC, "started_after must be tz-aware as UTC"
             assert (
                 started_before.tzinfo == UTC
             ), "started_before must be tz-aware as UTC"

@@ -4,21 +4,24 @@ import json
 import threading
 from collections import defaultdict
 from datetime import timedelta
+from typing import TYPE_CHECKING
 
 from cachetools import TTLCache, cachedmethod
 
 from generalresearch.decorators import LOG
 from generalresearch.managers.base import RedisManager
-from generalresearch.models.custom_types import (
-    UUIDStr,
-)
-from generalresearch.models.thl.survey.penalty import (
-    BPSurveyPenalty,
-    Penalty,
-    PenaltyListAdapter,
-    TeamSurveyPenalty,
-)
-from generalresearch.redis_helper import RedisConfig
+from generalresearch.models.thl.survey.penalty import PenaltyListAdapter
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import (
+        UUIDStr,
+    )
+    from generalresearch.models.thl.survey.penalty import (
+        BPSurveyPenalty,
+        Penalty,
+        TeamSurveyPenalty,
+    )
+    from generalresearch.redis_helper import RedisConfig
 
 
 class SurveyPenaltyManager(RedisManager):

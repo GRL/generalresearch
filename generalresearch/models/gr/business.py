@@ -20,23 +20,27 @@ from pydantic_extra_types.phone_numbers import PhoneNumber
 
 from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
-from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 from generalresearch.incite.schemas.mergers.pop_ledger import (
     numerical_col_names,
 )
 from generalresearch.models.admin.request import ReportRequest, ReportType
-from generalresearch.models.custom_types import (
-    AwareDatetime,
-    UUIDStr,
-    UUIDStrCoerce,
-)
+from generalresearch.models.gr.team import Team
 from generalresearch.models.thl.finance import BusinessBalances, POPFinancial
-from generalresearch.models.thl.ledger import LedgerAccount, OrderBy
-from generalresearch.models.thl.payout import BusinessPayoutEvent
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+from generalresearch.models.thl.ledger import OrderBy
 from generalresearch.utils.aggregation import group_by_year
 from generalresearch.utils.enum import ReprEnumMeta
+
+if TYPE_CHECKING:
+    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
+    from generalresearch.models.custom_types import (
+        AwareDatetime,
+        UUIDStr,
+        UUIDStrCoerce,
+    )
+    from generalresearch.models.thl.ledger import LedgerAccount
+    from generalresearch.models.thl.payout import BusinessPayoutEvent
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -49,6 +53,9 @@ if TYPE_CHECKING:
     from generalresearch.incite.mergers.foundations.enriched_wall import (
         EnrichedWallMerge,
     )
+    from generalresearch.managers.gr.business import (
+        BusinessBankAccountManager,
+    )
     from generalresearch.managers.thl.ledger_manager.ledger import (
         LedgerManager,
     )
@@ -58,7 +65,7 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.payout import (
         BusinessPayoutEventManager,
     )
-    from generalresearch.models.gr.team import Team
+    from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.thl.product import Product
 
 
@@ -263,8 +270,6 @@ class Business(BaseModel):
         self.addresses = [BusinessAddress.model_validate(i) for i in res]
 
     def prefetch_teams(self, pg_config: PostgresConfig) -> None:
-        from generalresearch.models.gr.team import Team
-
         with pg_config.make_connection() as conn, conn.cursor(
             row_factory=dict_row
         ) as c:
@@ -288,30 +293,27 @@ class Business(BaseModel):
 
         self.teams = [Team.model_validate(i) for i in res]
 
-    def prefetch_products(self, thl_pg_config: PostgresConfig) -> None:
+    def prefetch_products(self, product_manager: ProductManager) -> None:
         """
         :return: All the Products for this Business
         """
-        from generalresearch.managers.thl.product import ProductManager
 
-        pm = ProductManager(pg_config=thl_pg_config)
-        self.products = pm.fetch_uuids(business_uuids=[self.uuid])
+        self.products = product_manager.fetch_uuids(business_uuids=[self.uuid])
 
-    def prefetch_bank_accounts(self, pg_config: PostgresConfig) -> None:
-        from generalresearch.managers.gr.business import (
-            BusinessBankAccountManager,
+    def prefetch_bank_accounts(
+        self, business_bank_account_manager: BusinessBankAccountManager
+    ) -> None:
+        self.bank_accounts = business_bank_account_manager.get_by_business_id(
+            business_id=self.id
         )
 
-        bam = BusinessBankAccountManager(pg_config=pg_config)
-        self.bank_accounts = bam.get_by_business_id(business_id=self.id)
-
     def prefetch_bp_accounts(
-        self, thl_lm: ThlLedgerManager, thl_pg_config: PostgresConfig
+        self, thl_lm: ThlLedgerManager, product_manager: ProductManager
     ):
         # We need to prefetch the Products everytime because there is no way
         #   of knowing if a new Product has been added since the last time it
         #   ran.
-        self.prefetch_products(thl_pg_config=thl_pg_config)
+        self.prefetch_products(product_manager=product_manager)
         product_lookup = {p.uuid: p for p in self.products}
 
         accounts = thl_lm.get_accounts_if_exists(
@@ -332,6 +334,7 @@ class Business(BaseModel):
                 )
                 product = product_lookup[product_uuid]
                 thl_lm.get_account_or_create_bp_wallet(product=product)
+
         if refresh:
             accounts = thl_lm.get_accounts_if_exists(
                 qualified_names=[

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 from pydantic import (
     ConfigDict,
@@ -16,9 +16,6 @@ from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
 from generalresearch.managers.leaderboard import country_timezone
 from generalresearch.managers.leaderboard.manager import LeaderboardManager
-from generalresearch.managers.thl.user_manager.user_manager import (
-    UserManager,
-)
 from generalresearch.models.thl.contest import (
     ContestEndCondition,
     ContestPrize,
@@ -41,6 +38,11 @@ from generalresearch.models.thl.leaderboard import (
     LeaderboardCode,
     LeaderboardFrequency,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.user_manager.user_manager import (
+        UserManager,
+    )
 
 
 class LeaderboardContestCreate(ContestBase):

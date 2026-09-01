@@ -4,7 +4,7 @@ import hashlib
 import logging
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -17,18 +17,21 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.currency import USDCent
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    HttpsUrlStr,
-    UUIDStr,
-)
 from generalresearch.models.legacy.api_status import StatusResponse
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.locales import CountryISO
-from generalresearch.models.thl.user import BPUIDStr, User
-from generalresearch.models.thl.wallet import Currency, PayoutType
+from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.utils.enum import ReprEnumMeta
+
+if TYPE_CHECKING:
+    from generalresearch.currency import USDCent
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        HttpsUrlStr,
+        UUIDStr,
+    )
+    from generalresearch.models.thl.locales import CountryISO
+    from generalresearch.models.thl.user import BPUIDStr, User
+    from generalresearch.models.thl.wallet import Currency
 
 logger = logging.getLogger()
 

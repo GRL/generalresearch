@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Collection
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from psycopg import sql
 from pydantic import IPvAnyNetwork, TypeAdapter
@@ -9,10 +10,16 @@ from pydantic import IPvAnyNetwork, TypeAdapter
 from generalresearch.managers.base import PostgresManager
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
-    IPvAnyAddressStr,
     IPvAnyNetworkStr,
 )
-from generalresearch.models.network.label import IPLabel, IPLabelKind, IPLabelSource
+from generalresearch.models.network.label import IPLabel
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        IPvAnyNetworkStr,
+    )
+    from generalresearch.models.network.label import IPLabelKind, IPLabelSource
 
 
 class IPLabelManager(PostgresManager):

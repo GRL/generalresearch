@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -13,11 +13,6 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models.custom_types import (
-    AwareDatetimeISO,
-    EnumNameSerializer,
-    UUIDStr,
-)
 from generalresearch.models.thl import decimal_to_int_cents
 from generalresearch.models.thl.definitions import (
     SessionAdjustedStatus,
@@ -28,13 +23,23 @@ from generalresearch.models.thl.definitions import (
 from generalresearch.models.thl.pagination import Page
 from generalresearch.models.thl.payout_format import (
     PayoutFormatOptionalField,
-    PayoutFormatType,
 )
-from generalresearch.models.thl.product import (
-    PayoutTransformation,
-    Product,
-)
-from generalresearch.models.thl.session import Session, WallOut
+from generalresearch.models.thl.session import WallOut
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import (
+        AwareDatetimeISO,
+        EnumNameSerializer,
+        UUIDStr,
+    )
+    from generalresearch.models.thl.payout_format import (
+        PayoutFormatType,
+    )
+    from generalresearch.models.thl.product import (
+        PayoutTransformation,
+        Product,
+    )
+    from generalresearch.models.thl.session import Session
 
 # API uses the ints, b/c this is what the grpc returned originally ...
 STATUS_MAP = {
@@ -171,12 +176,12 @@ class TaskStatusResponse(BaseModel):
 
     # Serialize enum → int
     @field_serializer("status", return_type=int)
-    def serialize_status(self, v: Status | None, _info):
+    def serialize_status(self, v: Status | None):
         return STATUS_MAP[v]
 
     # Accept int OR string for input, but internally store a Status enum
     @field_validator("status", mode="before")
-    def deserialize_status(cls, v):
+    def deserialize_status(cls, v: Status | None):
         # int → enum
         if isinstance(v, int):
             return REVERSE_STATUS_MAP[v]

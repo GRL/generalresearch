@@ -6,6 +6,7 @@ from collections.abc import Collection
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from functools import cached_property
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from faker import Faker
@@ -15,18 +16,12 @@ from pydantic import AwareDatetime, PositiveInt
 
 from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
-    Permission,
     PostgresManager,
     PostgresManagerWithRedis,
 )
 from generalresearch.models import Source
-from generalresearch.models.custom_types import SurveyKey, UUIDStr
 from generalresearch.models.thl.definitions import (
-    ReportValue,
-    Status,
-    StatusCode1,
     WallAdjustedStatus,
-    WallStatusCode2,
 )
 from generalresearch.models.thl.ledger import OrderBy
 from generalresearch.models.thl.session import (
@@ -35,7 +30,19 @@ from generalresearch.models.thl.session import (
     check_adjusted_status_wall_consistent,
 )
 from generalresearch.models.thl.survey.model import TaskActivity
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.base import (
+        Permission,
+    )
+    from generalresearch.models.custom_types import SurveyKey, UUIDStr
+    from generalresearch.models.thl.definitions import (
+        ReportValue,
+        Status,
+        StatusCode1,
+        WallStatusCode2,
+    )
+    from generalresearch.pg_helper import PostgresConfig
 
 logger = logging.getLogger("WallManager")
 fake = Faker()

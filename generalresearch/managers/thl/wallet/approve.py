@@ -1,10 +1,16 @@
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
-from generalresearch.managers.thl.payout import PayoutEventManager
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.payout import UserPayoutEvent
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.managers.thl.payout import PayoutEventManager
+    from generalresearch.models.thl.payout import UserPayoutEvent
+    from generalresearch.models.thl.user import User
 
 
 def approve_paypal_order(

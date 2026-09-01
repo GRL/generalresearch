@@ -17,14 +17,14 @@ from pydantic import (
 )
 
 from generalresearch.decorators import LOG
-from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
 
 if TYPE_CHECKING:
+    from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
     from generalresearch.models.gr.business import Business
     from generalresearch.models.gr.team import Team
     from generalresearch.models.thl.product import Product
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 
 class Claims(BaseModel):
