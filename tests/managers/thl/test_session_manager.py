@@ -137,19 +137,19 @@ class TestSessionManagerFilter:
     def test_business(
         self,
         product_factory: Callable[..., Product],
-        business: Business,
+        gr_business: Business,
         user_factory: Callable[..., User],
         session_manager: SessionManager,
         utc_hour_ago: datetime,
         thl_web_rr: PostgresConfig,
     ):
-        p1 = product_factory(business=business)
+        p1 = product_factory(business=gr_business)
 
         for _ in range(5):
             u = user_factory(product=p1)
             session_manager.create(started=utc_hour_ago, user=u, uuid_id=uuid4().hex)
 
-        business.prefetch_products(thl_pg_config=thl_web_rr)
-        assert len(business.product_uuids) == 1
-        res = session_manager.filter(product_uuids=business.product_uuids)
+        gr_business.prefetch_products(thl_pg_config=thl_web_rr)
+        assert len(gr_business.product_uuids) == 1
+        res = session_manager.filter(product_uuids=gr_business.product_uuids)
         assert len(res) == 5

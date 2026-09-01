@@ -342,7 +342,7 @@ def delete_df_collection(
     thl_web_rw: PostgresConfig, create_main_accounts: Callable[..., None]
 ) -> Callable[..., None]:
 
-    from generalresearch.incite.collections import (
+    from generalresearch.incite.collections.base import (
         DFCollection,
         DFCollectionType,
     )

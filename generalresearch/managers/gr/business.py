@@ -14,14 +14,13 @@ from generalresearch.managers.base import (
 from generalresearch.models.gr.business import (
     Business,
     BusinessBankAccount,
-    BusinessType,
 )
+from generalresearch.models.gr.definitions import BusinessType, TransferMethod
 
 if TYPE_CHECKING:
     from generalresearch.models.custom_types import UUIDStr
     from generalresearch.models.gr.business import (
         BusinessAddress,
-        TransferMethod,
     )
     from generalresearch.models.gr.team import Team
 

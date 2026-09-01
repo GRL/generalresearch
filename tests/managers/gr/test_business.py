@@ -7,8 +7,8 @@ from generalresearch.models.gr.business import (
     Business,
     BusinessAddress,
     BusinessBankAccount,
-    TransferMethod,
 )
+from generalresearch.models.gr.definitions import TransferMethod
 
 if TYPE_CHECKING:
     from generalresearch.managers.gr.business import (
@@ -32,12 +32,12 @@ class TestBusinessBankAccountManager:
 
     def test_create(
         self,
-        business: Business,
+        gr_business: Business,
         business_bank_account_manager: BusinessBankAccountManager,
     ):
 
         instance = business_bank_account_manager.create(
-            business_id=business.id,
+            business_id=gr_business.id,
             uuid=uuid4().hex,
             transfer_method=TransferMethod.ACH,
         )
@@ -56,10 +56,12 @@ class TestBusinessBankAccountManager:
 class TestBusinessAddressManager:
 
     def test_create(
-        self, business: Business, business_address_manager: BusinessAddressManager
+        self, gr_business: Business, business_address_manager: BusinessAddressManager
     ):
 
-        res = business_address_manager.create(uuid=uuid4().hex, business_id=business.id)
+        res = business_address_manager.create(
+            uuid=uuid4().hex, business_id=gr_business.id
+        )
         assert isinstance(res, BusinessAddress)
         assert isinstance(res.id, int)
 
@@ -140,18 +142,20 @@ class TestBusinessManager:
     def test_get_uuids_by_user_id(self):
         pass
 
-    def test_get_by_uuid(self, business: Business, business_manager: BusinessManager):
-        instance = business_manager.get_by_uuid(business_uuid=business.uuid)
+    def test_get_by_uuid(
+        self, gr_business: Business, business_manager: BusinessManager
+    ):
+        instance = business_manager.get_by_uuid(business_uuid=gr_business.uuid)
         assert isinstance(instance, Business)
-        assert business.id == instance.id
+        assert gr_business.id == instance.id
 
-    def test_get_by_id(self, business: Business, business_manager: BusinessManager):
-        instance = business_manager.get_by_id(business_id=business.id)
+    def test_get_by_id(self, gr_business: Business, business_manager: BusinessManager):
+        instance = business_manager.get_by_id(business_id=gr_business.id)
         assert isinstance(instance, Business)
-        assert business.uuid == instance.uuid
+        assert gr_business.uuid == instance.uuid
 
-    def test_cache_key(self, business: Business):
-        assert "business:" in business.cache_key
+    def test_cache_key(self, gr_business: Business):
+        assert "business:" in gr_business.cache_key
 
     # def test_create_raise_on_duplicate(self):
     #     b_uuid = uuid4().hex
@@ -160,7 +164,7 @@ class TestBusinessManager:
     #     business = BusinessManager.create(
     #         uuid=b_uuid,
     #         name=f"test-{b_uuid[:6]}")
-    #     assert isinstance(business: Business, Business)
+    #     assert isinstance(gr_business: Business, Business)
     #
     #     # Try to make it again
     #     with pytest.raises(expected_exception=psycopg.errors.UniqueViolation):

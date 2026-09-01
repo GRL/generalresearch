@@ -4,7 +4,6 @@ import json
 import logging
 import os
 from datetime import UTC, datetime
-from enum import Enum, StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -29,11 +28,11 @@ from generalresearch.models.custom_types import (
     UUIDStr,
     UUIDStrCoerce,
 )
+from generalresearch.models.gr.definitions import BusinessType, TransferMethod
 from generalresearch.models.gr.team import Team
 from generalresearch.models.thl.finance import BusinessBalances, POPFinancial
 from generalresearch.models.thl.ledger import OrderBy
 from generalresearch.utils.aggregation import group_by_year
-from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:
     from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
@@ -67,16 +66,6 @@ if TYPE_CHECKING:
     )
     from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.thl.product import Product
-
-
-class TransferMethod(Enum, metaclass=ReprEnumMeta):
-    ACH = 0
-    WIRE = 1
-
-
-class BusinessType(StrEnum, metaclass=ReprEnumMeta):
-    INDIVIDUAL = "i"
-    COMPANY = "c"
 
 
 class BusinessBankAccount(BaseModel):

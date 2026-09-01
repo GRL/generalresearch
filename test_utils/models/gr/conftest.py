@@ -23,8 +23,8 @@ if TYPE_CHECKING:
         Business,
         BusinessAddress,
         BusinessBankAccount,
-        TransferMethod,
     )
+    from generalresearch.models.gr.definitions import TransferMethod
     from generalresearch.models.gr.team import Membership, Team
     from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig

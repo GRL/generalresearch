@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from generalresearch.incite.base import GRLDatasets
-from generalresearch.incite.collections import DFCollectionType
+from generalresearch.incite.collections.base import DFCollectionType
 from generalresearch.incite.collections.thl_marketplaces import (
     InnovateSurveyHistoryCollection,
     MorningSurveyTimeseriesCollection,
@@ -82,7 +82,7 @@ def ledger_df_collection(
     ds: GRLDatasets, pg_config: PostgresConfig
 ) -> LedgerDFCollection:
     return LedgerDFCollection(
-        offset="12d",
+        offset="12D",
         pg_config=pg_config,
         # thl_web:ledger_transaction - 1st record is 2018-03-14 20:22:17.408232
         start=datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC),
@@ -153,7 +153,7 @@ def user_id_product(ds: GRLDatasets) -> UserIdProductMerge:
 def enriched_session(ds: GRLDatasets) -> EnrichedSessionMerge:
     return EnrichedSessionMerge(
         start=datetime(year=2023, month=5, day=1, tzinfo=UTC),
-        offset="14d",
+        offset="14D",
         archive_path=ds.archive_path(enum_type=MergeType.ENRICHED_SESSION),
     )
 
@@ -162,7 +162,7 @@ def enriched_wall(ds: GRLDatasets) -> EnrichedWallMerge:
     return EnrichedWallMerge(
         # start=datetime(year=2022, month=5, day=1, tzinfo=timezone.utc),
         start=datetime(year=2023, month=7, day=23, tzinfo=UTC),
-        offset="14d",
+        offset="14D",
         archive_path=ds.archive_path(enum_type=MergeType.ENRICHED_WALL),
     )
 
@@ -180,7 +180,7 @@ def pop_ledger(ds: GRLDatasets) -> PopLedgerMerge:
     return PopLedgerMerge(
         # thl_web:ledger_transaction - 1st record is 2018-03-14 20:22:17.408232
         start=datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC),
-        offset="30d",
+        offset="30D",
         archive_path=ds.archive_path(enum_type=MergeType.POP_LEDGER),
     )
 

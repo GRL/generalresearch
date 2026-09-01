@@ -152,7 +152,6 @@ class TestTeamMethods:
     def test_set_cache(
         self,
         team: Team,
-        gr_redis: RedisConfig,
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         gr_redis_config: RedisConfig,
@@ -162,7 +161,8 @@ class TestTeamMethods:
         enriched_wall_merge: EnrichedWallMerge,
         enriched_session_merge: EnrichedSessionMerge,
     ):
-        assert gr_redis.get(name=team.cache_key) is None
+        client = gr_redis_config.create_redis_client()
+        assert client.get(name=team.cache_key) is None
 
         team.set_cache(
             pg_config=gr_db,
@@ -175,7 +175,7 @@ class TestTeamMethods:
             enriched_session=enriched_session_merge,
         )
 
-        assert gr_redis.hgetall(name=team.cache_key) is not None
+        assert client.hgetall(name=team.cache_key) is not None
 
     def test_set_cache_team(
         self,

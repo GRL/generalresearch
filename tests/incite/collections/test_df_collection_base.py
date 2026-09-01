@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 from pandera.pandas import DataFrameSchema
 
-from generalresearch.incite.collections import (
+from generalresearch.incite.collections.base import (
     DFCollection,
     DFCollectionType,
 )
@@ -53,7 +53,7 @@ class TestDFCollectionBaseProperties:
             data_type=df_coll_type,
             start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
             finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
-            offset="100d",
+            offset="100D",
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),
         )
 
@@ -67,7 +67,7 @@ class TestDFCollectionBaseProperties:
             data_type=df_coll_type,
             start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
             finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
-            offset="100d",
+            offset="100D",
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),
         )
 

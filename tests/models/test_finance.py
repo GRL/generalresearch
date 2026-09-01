@@ -760,7 +760,7 @@ class TestPOPFinancialData:
         duration: timedelta,
         create_main_accounts: Callable[..., None],
         session_with_tx_factory: Callable[..., Session],
-        thl_lm: ThlLedgerManager,
+        thl_ledger_manager: ThlLedgerManager,
         delete_df_collection: Callable[..., None],
         delete_ledger_db: Callable[..., None],
     ):
@@ -798,8 +798,10 @@ class TestPOPFinancialData:
         last_item_finish = item_finishes[0]
 
         accounts = []
-        for _ in users:
-            account = thl_lm.get_account_or_create_bp_wallet(product=u.product)
+        for _u in users:
+            account = thl_ledger_manager.get_account_or_create_bp_wallet(
+                product=_u.product
+            )
             accounts.append(account)
         account_ids = [a.uuid for a in accounts]
 
@@ -856,7 +858,7 @@ class TestBusinessBalanceData:
         user_factory: Callable[..., User],
         product: Product,
         create_main_accounts: Callable[..., None],
-        thl_lm: ThlLedgerManager,
+        thl_ledger_manager: ThlLedgerManager,
         thl_web_rr: PostgresConfig,
         delete_df_collection: Callable[..., None],
         delete_ledger_db: Callable[..., None],
@@ -886,7 +888,9 @@ class TestBusinessBalanceData:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         # assert pop_ledger_merge.progress.has_archive.eq(True).all()
 
-        account: LedgerAccount = thl_lm.get_account_or_create_bp_wallet(product=product)
+        account: LedgerAccount = thl_ledger_manager.get_account_or_create_bp_wallet(
+            product=product
+        )
 
         ddf = pop_ledger_merge.ddf(
             force_rr_latest=False,

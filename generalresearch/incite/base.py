@@ -95,7 +95,7 @@ class GRLDatasets(BaseModel):
         from generalresearch.incite.collections.thl_marketplaces import (
             DFCollectionType,
         )
-        from generalresearch.incite.mergers import MergeType
+        from generalresearch.incite.mergers.base import MergeType
 
         assert self.data_src, "data src must be defined"
 
@@ -128,7 +128,7 @@ class GRLDatasets(BaseModel):
             type..
         """
 
-        from generalresearch.incite.mergers import MergeType
+        from generalresearch.incite.mergers.base import MergeType
 
         folder = "mergers" if isinstance(enum_type, MergeType) else "raw/df-collections"
         assert self.incite is not None

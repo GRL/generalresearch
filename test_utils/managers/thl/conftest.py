@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+import subprocess
+from collections.abc import Callable, Generator
+from random import randint
 from typing import TYPE_CHECKING
 
 import pytest
+import redis
 from pydantic import PostgresDsn
 
 from generalresearch.managers.base import Permission
@@ -59,13 +62,39 @@ def thl_web_rw(thl_web_rr: PostgresConfig) -> PostgresConfig:
 
 
 @pytest.fixture(scope="session")
-def thl_redis_config(settings: GRLBaseSettings) -> RedisConfig:
-    return RedisConfig(
-        dsn=settings.thl_redis,
+def thl_redis_config_db() -> str:
+    return str(randint(99, 1_023))
+
+
+@pytest.fixture(scope="session")
+def thl_redis_config(
+    settings: GRLBaseSettings, thl_redis_config_db: str
+) -> Generator[RedisConfig]:
+    assert "unittest" in str(settings.testing_redis) or "127.0.0.1" in str(
+        settings.testing_redis
+    )
+
+    uri = f"redis://{settings.testing_redis}/{thl_redis_config_db}"
+
+    res = subprocess.run(
+        ["redis-cli", "-u", uri, "SET", "jenkins_lock", "1", "NX", "EX", "3600"],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    if res.stdout.strip() != "OK":
+        raise ValueError("Redis already locked... aborting.")
+
+    yield RedisConfig(
+        dsn=uri,
         decode_responses=True,
         socket_timeout=settings.redis_timeout,
         socket_connect_timeout=settings.redis_timeout,
     )
+
+    r = redis.from_url(uri)
+    r.flushdb()
 
 
 @pytest.fixture(scope="session")

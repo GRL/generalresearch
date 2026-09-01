@@ -197,7 +197,7 @@ def df_collection(
     utc_90days_ago: datetime,
     thl_web_rr: PostgresConfig,
 ) -> DFCollection:
-    from generalresearch.incite.collections import DFCollection
+    from generalresearch.incite.collections.base import DFCollection
 
     start = utc_90days_ago.replace(microsecond=0)
 

@@ -275,24 +275,26 @@ def user_with_money(
     request: Request,
     user_factory: Callable[..., User],
     product_user_wallet_yes: Product,
-    thl_lm: ThlLedgerManager,
+    thl_ledger_manager: ThlLedgerManager,
 ) -> User:
 
     params = getattr(request, "param", {}) or {}
     min_balance = int(params.get("min_balance", USDCent(1_00)))
 
     user: User = user_factory(product=product_user_wallet_yes)
-    wallet = thl_lm.get_account_or_create_user_wallet(user)
-    balance = thl_lm.get_account_balance(wallet)
+    wallet = thl_ledger_manager.get_account_or_create_user_wallet(user)
+    balance = thl_ledger_manager.get_account_balance(wallet)
     todo = min_balance - balance
     if todo > 0:
         # # Put money in user's wallet
-        thl_lm.create_tx_user_bonus(
+        thl_ledger_manager.create_tx_user_bonus(
             user=user,
             ref_uuid=uuid4().hex,
             description="bonus",
             amount=Decimal(todo) / 100,
         )
-        print(f"wallet balance: {thl_lm.get_user_wallet_balance(user=user)}")
+        print(
+            f"wallet balance: {thl_ledger_manager.get_user_wallet_balance(user=user)}"
+        )
 
     return user

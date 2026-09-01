@@ -25,7 +25,7 @@ class TestDFCollectionItemBase:
     def test_init(self, mnt_filepath: GRLDatasets, df_coll_type: DFCollectionType):
         collection = DFCollection(
             data_type=df_coll_type,
-            offset="100d",
+            offset="100D",
             start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
             finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),
@@ -53,7 +53,7 @@ class TestDFCollectionItemMethods:
     ):
         collection = DFCollection(
             data_type=df_coll_type,
-            offset="100d",
+            offset="100D",
             start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
             finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),
@@ -70,7 +70,7 @@ class TestDFCollectionItemMethods:
     ):
         collection = DFCollection(
             data_type=df_coll_type,
-            offset="100d",
+            offset="100D",
             start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
             finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),

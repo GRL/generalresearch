@@ -64,10 +64,8 @@ class TestBusinessBankAccount:
         gr_business: Business,
         business_bank_account_manager: BusinessBankAccountManager,
     ):
-        from generalresearch.models.gr.business import (
-            BusinessBankAccount,
-            TransferMethod,
-        )
+        from generalresearch.models.gr.business import BusinessBankAccount
+        from generalresearch.models.gr.definitions import TransferMethod
 
         instance = business_bank_account_manager.create(
             business_id=gr_business.id,
@@ -115,7 +113,7 @@ class TestBusiness:
 
     @pytest.fixture
     def offset(self) -> str:
-        return "30d"
+        return "30D"
 
     @pytest.fixture
     def duration(self) -> timedelta | None:
@@ -222,46 +220,46 @@ class TestBusiness:
 
     def test_teams(
         self,
-        business: Business,
+        gr_business: Business,
         team: Team,
         team_manager: TeamManager,
         gr_db: PostgresConfig,
     ):
-        assert business.teams is None
+        assert gr_business.teams is None
 
-        business.prefetch_teams(pg_config=gr_db)
-        assert isinstance(business.teams, list)
-        assert len(business.teams) == 0
+        gr_business.prefetch_teams(pg_config=gr_db)
+        assert isinstance(gr_business.teams, list)
+        assert len(gr_business.teams) == 0
 
-        team_manager.add_business(team=team, business=business)
-        assert len(business.teams) == 0
-        business.prefetch_teams(pg_config=gr_db)
-        assert len(business.teams) == 1
+        team_manager.add_business(team=team, business=gr_business)
+        assert len(gr_business.teams) == 0
+        gr_business.prefetch_teams(pg_config=gr_db)
+        assert len(gr_business.teams) == 1
 
     def test_products(
         self,
-        business: Business,
+        gr_business: Business,
         product_factory: Callable[..., Product],
         product_manager: ProductManager,
     ):
 
-        p1 = product_factory(business=business)
-        assert business.products is None
+        p1 = product_factory(business=gr_business)
+        assert gr_business.products is None
 
-        business.prefetch_products(product_manager=product_manager)
-        assert isinstance(business.products, list)
-        assert len(business.products) == 1
-        assert isinstance(business.products[0], Product)
+        gr_business.prefetch_products(product_manager=product_manager)
+        assert isinstance(gr_business.products, list)
+        assert len(gr_business.products) == 1
+        assert isinstance(gr_business.products[0], Product)
 
-        assert business.products[0].uuid == p1.uuid
+        assert gr_business.products[0].uuid == p1.uuid
 
         # Add two more, but list is still one until we prefetch
-        product_factory(business=business)
-        product_factory(business=business)
-        assert len(business.products) == 1
+        product_factory(business=gr_business)
+        product_factory(business=gr_business)
+        assert len(gr_business.products) == 1
 
-        business.prefetch_products(product_manager=product_manager)
-        assert len(business.products) == 3
+        gr_business.prefetch_products(product_manager=product_manager)
+        assert len(gr_business.products) == 3
 
     def test_bank_accounts(
         self,
@@ -306,7 +304,6 @@ class TestBusiness:
         self,
         gr_business: Business,
         product_factory: Callable[..., Product],
-        thl_web_rr: PostgresConfig,
         thl_ledger_manager: ThlLedgerManager,
         business_payout_event_manager: BusinessPayoutEventManager,
     ):
@@ -322,8 +319,6 @@ class TestBusiness:
         thl_ledger_manager.get_account_or_create_bp_wallet(product=p)
 
         gr_business.prebuild_payouts(
-            thl_pg_config=thl_web_rr,
-            thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
         assert isinstance(gr_business.payouts, list)
@@ -335,7 +330,6 @@ class TestBusiness:
         product_factory: Callable[..., Product],
         bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
         thl_ledger_manager: ThlLedgerManager,
-        thl_web_rr: PostgresConfig,
         business_payout_event_manager: BusinessPayoutEventManager,
         create_main_accounts: Callable[..., None],
     ):
@@ -351,8 +345,6 @@ class TestBusiness:
         )
 
         gr_business.prebuild_payouts(
-            thl_pg_config=thl_web_rr,
-            thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
         assert len(gr_business.payouts) == 1
@@ -478,7 +470,7 @@ class TestBusinessBalance:
 
     @pytest.fixture
     def offset(self) -> str:
-        return "30d"
+        return "30D"
 
     @pytest.fixture
     def duration(self) -> timedelta | None:
@@ -1190,15 +1182,14 @@ class TestBusinessMethods:
     ) -> timedelta | None:
         return None
 
-    def test_cache_key(self, business: Business):
-        assert isinstance(business.cache_key, str)
-        assert ":" in business.cache_key
-        assert str(business.uuid) in business.cache_key
+    def test_cache_key(self, gr_business: Business):
+        assert isinstance(gr_business.cache_key, str)
+        assert ":" in gr_business.cache_key
+        assert str(gr_business.uuid) in gr_business.cache_key
 
     def test_set_cache(
         self,
         gr_business: Business,
-        gr_redis: RedisConfig,
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         client_no_amm: DaskClient,
@@ -1218,7 +1209,8 @@ class TestBusinessMethods:
         gr_redis_config: RedisConfig,
         mnt_gr_api_dir: Path,
     ):
-        assert gr_redis.get(name=gr_business.cache_key) is None
+        client = gr_redis_config.create_redis_client()
+        assert client.get(name=gr_business.cache_key) is None
 
         p1 = product_factory(team=team, business=gr_business)
         u1 = user_factory(product=p1)
@@ -1244,7 +1236,7 @@ class TestBusinessMethods:
             mnt_gr_api=mnt_gr_api_dir,
         )
 
-        assert gr_redis.hgetall(name=gr_business.cache_key) is not None
+        assert client.hgetall(name=gr_business.cache_key) is not None
         from generalresearch.models.gr.business import Business
 
         # We're going to pull only a specific year, but make sure that
@@ -1367,7 +1359,7 @@ class TestBusinessMethods:
         session_factory: Callable[..., Session],
         product_factory: Callable[..., Product],
         delete_df_collection: Callable[..., None],
-        business: Business,
+        gr_business: Business,
         mnt_filepath: GRLDatasets,
         mnt_gr_api_dir: Path,
     ):
@@ -1375,8 +1367,8 @@ class TestBusinessMethods:
         delete_df_collection(coll=wall_collection)
         delete_df_collection(coll=session_collection)
 
-        p1 = product_factory(business=business)
-        p2 = product_factory(business=business)
+        p1 = product_factory(business=gr_business)
+        p2 = product_factory(business=gr_business)
 
         for p in [p1, p2]:
             u = user_factory(product=p)
@@ -1397,7 +1389,7 @@ class TestBusinessMethods:
             pg_config=thl_web_rr,
         )
 
-        business.prebuild_enriched_session_parquet(
+        gr_business.prebuild_enriched_session_parquet(
             thl_pg_config=thl_web_rr,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -1407,7 +1399,9 @@ class TestBusinessMethods:
 
         # Now try to read from path
         df = pd.read_parquet(
-            os.path.join(mnt_gr_api_dir, "pop_session", f"{business.file_key}.parquet")
+            os.path.join(
+                mnt_gr_api_dir, "pop_session", f"{gr_business.file_key}.parquet"
+            )
         )
         assert isinstance(df, pd.DataFrame)
 

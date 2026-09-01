@@ -9,7 +9,6 @@ import pytest
 import redis
 import redis.asyncio as redis_async
 from pydantic import PostgresDsn
-from redis import Redis
 
 from generalresearch.managers.gr.business import (
     BusinessAddressManager,
@@ -28,33 +27,6 @@ if TYPE_CHECKING:
 @pytest.fixture(scope="session")
 def gr_redis_config_db() -> str:
     return str(randint(99, 1_023))
-
-
-@pytest.fixture(scope="session")
-def gr_redis(settings: GRLBaseSettings) -> Redis:
-    assert "unittest" in str(settings.testing_redis) or "127.0.0.1" in str(
-        settings.testing_redis
-    )
-    return Redis.from_url(
-        url=str(settings.gr_redis),
-        decode_responses=True,
-        socket_timeout=settings.redis_timeout,
-        socket_connect_timeout=settings.redis_timeout,
-    )
-
-
-@pytest.fixture
-def gr_redis_async(settings: GRLBaseSettings) -> redis_async.Redis:
-    assert "unittest" in str(settings.testing_redis) or "127.0.0.1" in str(
-        settings.testing_redis
-    )
-
-    return redis_async.Redis.from_url(
-        str(settings.testing_redis),
-        decode_responses=True,
-        socket_timeout=0.20,
-        socket_connect_timeout=0.20,
-    )
 
 
 @pytest.fixture(scope="session")

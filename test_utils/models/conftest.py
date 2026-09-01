@@ -370,7 +370,7 @@ def product_amt_true(
 
 @pytest.fixture
 def bp_payout_factory(
-    thl_lm: ThlLedgerManager,
+    thl_ledger_manager: ThlLedgerManager,
     product_manager: ProductManager,
     business_payout_event_manager: BusinessPayoutEventManager,
 ) -> Callable[..., BrokerageProductPayoutEvent]:
@@ -389,7 +389,7 @@ def bp_payout_factory(
         amount = amount or USDCent(randint(1, 99_99))
 
         return business_payout_event_manager.create_bp_payout_event(
-            thl_ledger_manager=thl_lm,
+            thl_ledger_manager=thl_ledger_manager,
             product=product,
             amount=amount,
             ext_ref_id=ext_ref_id or uuid4().hex,

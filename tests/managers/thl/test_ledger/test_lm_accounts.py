@@ -44,7 +44,7 @@ class TestLedgerAccountManagerNoResults:
         currency: LedgerCurrency,
         kind: str,
         acct_id: UUIDStr,
-        lm: LedgerManager,
+        ledger_manager: LedgerManager,
     ):
         """Try to query for accounts that we know don't exist and confirm that
         we either get the expected None result or it raises the correct
@@ -54,40 +54,50 @@ class TestLedgerAccountManagerNoResults:
 
         # (1) .get_account is just a wrapper for .get_account_many_ but
         #   call it either way
-        assert lm.get_account(qualified_name=qn, raise_on_error=False) is None
+        assert (
+            ledger_manager.get_account(qualified_name=qn, raise_on_error=False) is None
+        )
 
         with pytest.raises(expected_exception=LedgerAccountDoesntExistError):
-            lm.get_account(qualified_name=qn, raise_on_error=True)
+            ledger_manager.get_account(qualified_name=qn, raise_on_error=True)
 
         # (2) .get_account_if_exists is another wrapper
-        assert lm.get_account(qualified_name=qn, raise_on_error=False) is None
+        assert (
+            ledger_manager.get_account(qualified_name=qn, raise_on_error=False) is None
+        )
 
     def test_get_account_no_results_many(
         self,
         currency: LedgerCurrency,
         kind: str,
         acct_id: UUIDStr,
-        lm: LedgerManager,
+        ledger_manager: LedgerManager,
     ):
         qn = f"{currency}:{kind}:{acct_id}"
 
         # (1) .get_many_
-        assert lm.get_account_many_(qualified_names=[qn], raise_on_error=False) == []
+        assert (
+            ledger_manager.get_account_many_(qualified_names=[qn], raise_on_error=False)
+            == []
+        )
 
         with pytest.raises(expected_exception=LedgerAccountDoesntExistError):
-            lm.get_account_many_(qualified_names=[qn], raise_on_error=True)
+            ledger_manager.get_account_many_(qualified_names=[qn], raise_on_error=True)
 
         # (2) .get_many
-        assert lm.get_account_many(qualified_names=[qn], raise_on_error=False) == []
+        assert (
+            ledger_manager.get_account_many(qualified_names=[qn], raise_on_error=False)
+            == []
+        )
 
         with pytest.raises(expected_exception=LedgerAccountDoesntExistError):
-            lm.get_account_many(qualified_names=[qn], raise_on_error=True)
+            ledger_manager.get_account_many(qualified_names=[qn], raise_on_error=True)
 
         # (3) .get_accounts(..)
-        assert lm.get_accounts_if_exists(qualified_names=[qn]) == []
+        assert ledger_manager.get_accounts_if_exists(qualified_names=[qn]) == []
 
         with pytest.raises(expected_exception=LedgerAccountDoesntExistError):
-            lm.get_accounts(qualified_names=[qn])
+            ledger_manager.get_accounts(qualified_names=[qn])
 
 
 @pytest.mark.parametrize(
@@ -107,7 +117,7 @@ class TestLedgerAccountManagerCreate:
         currency: LedgerCurrency,
         account_type: AccountType,
         direction: Direction,
-        lm: LedgerManager,
+        ledger_manager: LedgerManager,
     ):
         """Confirm that the Permission values that are set on the Ledger Manger
         allow the Creation action to occur.
@@ -124,11 +134,11 @@ class TestLedgerAccountManagerCreate:
 
         # (1) With no Permissions defined
         test_lm = LedgerManager(
-            pg_config=lm.pg_config,
+            pg_config=ledger_manager.pg_config,
             permissions=[],
-            redis_config=lm.redis_config,
-            cache_prefix=lm.cache_prefix,
-            testing=lm.testing,
+            redis_config=ledger_manager.redis_config,
+            cache_prefix=ledger_manager.cache_prefix,
+            testing=ledger_manager.testing,
         )
 
         with pytest.raises(expected_exception=AssertionError) as excinfo:
@@ -139,11 +149,11 @@ class TestLedgerAccountManagerCreate:
 
         # (2) With Permissions defined, but not CREATE
         test_lm = LedgerManager(
-            pg_config=lm.pg_config,
+            pg_config=ledger_manager.pg_config,
             permissions=[Permission.READ, Permission.UPDATE, Permission.DELETE],
-            redis_config=lm.redis_config,
-            cache_prefix=lm.cache_prefix,
-            testing=lm.testing,
+            redis_config=ledger_manager.redis_config,
+            cache_prefix=ledger_manager.cache_prefix,
+            testing=ledger_manager.testing,
         )
 
         with pytest.raises(expected_exception=AssertionError) as excinfo:
@@ -157,7 +167,7 @@ class TestLedgerAccountManagerCreate:
         currency: LedgerCurrency,
         account_type: AccountType,
         direction: Direction,
-        lm: LedgerManager,
+        ledger_manager: LedgerManager,
     ):
         """Confirm that the Permission values that are set on the Ledger Manger
         allow the Creation action to occur.
@@ -174,11 +184,11 @@ class TestLedgerAccountManagerCreate:
             account_type=account_type,
             normal_balance=direction,
         )
-        account = lm.create_account(account=acct_model)
+        account = ledger_manager.create_account(account=acct_model)
         assert isinstance(account, LedgerAccount)
 
         # Query for, and make sure the Account was saved in the DB
-        res = lm.get_account(qualified_name=qn, raise_on_error=True)
+        res = ledger_manager.get_account(qualified_name=qn, raise_on_error=True)
         assert res is not None
         assert account.uuid == res.uuid
 
@@ -187,7 +197,7 @@ class TestLedgerAccountManagerCreate:
         currency: LedgerCurrency,
         account_type: AccountType,
         direction: Direction,
-        lm: LedgerManager,
+        ledger_manager: LedgerManager,
     ):
         """Confirm that the Permission values that are set on the Ledger Manger
         allow the Creation action to occur.
@@ -204,27 +214,31 @@ class TestLedgerAccountManagerCreate:
             account_type=account_type,
             normal_balance=direction,
         )
-        account = lm.get_account_or_create(account=acct_model)
+        account = ledger_manager.get_account_or_create(account=acct_model)
         assert isinstance(account, LedgerAccount)
 
         # Query for, and make sure the Account was saved in the DB
-        res = lm.get_account(qualified_name=qn, raise_on_error=True)
+        res = ledger_manager.get_account(qualified_name=qn, raise_on_error=True)
         assert res is not None
         assert account.uuid == res.uuid
 
 
 class TestLedgerAccountManagerGet:
 
-    def test_get(self, ledger_account: LedgerAccount, lm: LedgerManager):
-        res = lm.get_account(qualified_name=ledger_account.qualified_name)
+    def test_get(self, ledger_account: LedgerAccount, ledger_manager: LedgerManager):
+        res = ledger_manager.get_account(qualified_name=ledger_account.qualified_name)
         assert res is not None
         assert res.uuid == ledger_account.uuid
 
-        res = lm.get_account_many(qualified_names=[ledger_account.qualified_name])
+        res = ledger_manager.get_account_many(
+            qualified_names=[ledger_account.qualified_name]
+        )
         assert len(res) == 1
         assert res[0].uuid == ledger_account.uuid
 
-        res = lm.get_accounts(qualified_names=[ledger_account.qualified_name])
+        res = ledger_manager.get_accounts(
+            qualified_names=[ledger_account.qualified_name]
+        )
         assert len(res) == 1
         assert res[0].uuid == ledger_account.uuid
 
@@ -237,15 +251,15 @@ class TestLedgerAccountManagerGet:
         ledger_account_credit: LedgerAccount,
         ledger_account_debit: LedgerAccount,
         ledger_tx: LedgerTransaction,
-        lm: LedgerManager,
+        ledger_manager: LedgerManager,
     ):
-        res = lm.get_account_balance(account=ledger_account)
+        res = ledger_manager.get_account_balance(account=ledger_account)
         assert res == 0
 
-        res = lm.get_account_balance(account=ledger_account_credit)
+        res = ledger_manager.get_account_balance(account=ledger_account_credit)
         assert res == 100
 
-        res = lm.get_account_balance(account=ledger_account_debit)
+        res = ledger_manager.get_account_balance(account=ledger_account_debit)
         assert res == 100
 
     @pytest.mark.parametrize("n_times", range(5))
@@ -256,7 +270,7 @@ class TestLedgerAccountManagerGet:
         ledger_account_debit: LedgerAccount,
         ledger_tx: LedgerTransaction,
         n_times: PositiveInt,
-        lm: LedgerManager,
+        ledger_manager: LedgerManager,
     ):
         """Try searching for random metadata and confirm it's always 0 because
         Tx can be found.
@@ -265,7 +279,7 @@ class TestLedgerAccountManagerGet:
         rand_value = uuid4().hex
 
         assert (
-            lm.get_account_filtered_balance(
+            ledger_manager.get_account_filtered_balance(
                 account=ledger_account, metadata_key=rand_key, metadata_value=rand_value
             )
             == 0
@@ -275,7 +289,7 @@ class TestLedgerAccountManagerGet:
         #   and that we can filter it back
         rand_amount = randint(10, 1_000)
 
-        lm.create_tx(
+        ledger_manager.create_tx(
             entries=[
                 LedgerEntry(
                     direction=Direction.CREDIT,
@@ -292,7 +306,7 @@ class TestLedgerAccountManagerGet:
         )
 
         assert (
-            lm.get_account_filtered_balance(
+            ledger_manager.get_account_filtered_balance(
                 account=ledger_account_credit,
                 metadata_key=rand_key,
                 metadata_value=rand_value,
@@ -301,7 +315,7 @@ class TestLedgerAccountManagerGet:
         )
 
         assert (
-            lm.get_account_filtered_balance(
+            ledger_manager.get_account_filtered_balance(
                 account=ledger_account_debit,
                 metadata_key=rand_key,
                 metadata_value=rand_value,
@@ -310,7 +324,7 @@ class TestLedgerAccountManagerGet:
         )
 
     def test_get_balance_timerange_empty(
-        self, ledger_account: LedgerAccount, lm: LedgerManager
+        self, ledger_account: LedgerAccount, ledger_manager: LedgerManager
     ):
-        res = lm.get_account_balance_timerange(account=ledger_account)
+        res = ledger_manager.get_account_balance_timerange(account=ledger_account)
         assert res == 0

@@ -65,7 +65,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def ledger_account(
-    request: Request, lm: LedgerManager, currency: LedgerCurrency
+    request: Request, ledger_manager: LedgerManager, currency: LedgerCurrency
 ) -> LedgerAccount:
     from generalresearch.models.thl.ledger import (
         AccountType,
@@ -87,14 +87,14 @@ def ledger_account(
         account_type=account_type,
         normal_balance=direction,
     )
-    return lm.create_account(account=acct_model)
+    return ledger_manager.create_account(account=acct_model)
 
 
 @pytest.fixture
 def ledger_account_factory(
     request: Request,
-    thl_lm: ThlLedgerManager,
-    lm: LedgerManager,
+    thl_ledger_manager: ThlLedgerManager,
+    ledger_manager: LedgerManager,
     currency: LedgerCurrency,
 ) -> Callable[..., LedgerAccount]:
 
@@ -109,7 +109,7 @@ def ledger_account_factory(
         account_type: AccountType = AccountType.CASH,
         direction: Direction = Direction.CREDIT,
     ) -> LedgerAccount:
-        thl_lm.get_account_or_create_bp_wallet(product=product)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
         acct_uuid = uuid4().hex
         qn = f"{currency}:{account_type}:{acct_uuid}"
 
@@ -121,14 +121,14 @@ def ledger_account_factory(
             account_type=account_type,
             normal_balance=direction,
         )
-        return lm.create_account(account=acct_model)
+        return ledger_manager.create_account(account=acct_model)
 
     return _inner
 
 
 @pytest.fixture
 def ledger_account_credit(
-    request: Request, lm: LedgerManager, currency: LedgerCurrency
+    request: Request, ledger_manager: LedgerManager, currency: LedgerCurrency
 ) -> LedgerAccount:
     from generalresearch.models.thl.ledger import AccountType, Direction
 
@@ -146,12 +146,12 @@ def ledger_account_credit(
         account_type=account_type,
         normal_balance=Direction.CREDIT,
     )
-    return lm.create_account(account=acct_model)
+    return ledger_manager.create_account(account=acct_model)
 
 
 @pytest.fixture
 def ledger_account_debit(
-    request: Request, lm: LedgerManager, currency: LedgerCurrency
+    request: Request, ledger_manager: LedgerManager, currency: LedgerCurrency
 ) -> LedgerAccount:
     from generalresearch.models.thl.ledger import AccountType, Direction
 
@@ -169,11 +169,11 @@ def ledger_account_debit(
         account_type=account_type,
         normal_balance=Direction.DEBIT,
     )
-    return lm.create_account(account=acct_model)
+    return ledger_manager.create_account(account=acct_model)
 
 
 @pytest.fixture
-def tag(request: Request, lm: LedgerManager) -> str:
+def tag(request: Request) -> str:
     from generalresearch.currency import LedgerCurrency
 
     return (
@@ -194,11 +194,11 @@ def bp_payout_event(
     product: Product,
     usd_cent: USDCent,
     business_payout_event_manager: BusinessPayoutEventManager,
-    thl_lm: ThlLedgerManager,
+    thl_ledger_manager: ThlLedgerManager,
 ) -> BrokerageProductPayoutEvent:
 
     return business_payout_event_manager.create_bp_payout_event(
-        thl_ledger_manager=thl_lm,
+        thl_ledger_manager=thl_ledger_manager,
         product=product,
         amount=usd_cent,
         skip_wallet_balance_check=True,
@@ -209,7 +209,7 @@ def bp_payout_event(
 @pytest.fixture
 def bp_payout_event_factory(
     brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
-    thl_lm: ThlLedgerManager,
+    thl_ledger_manager: ThlLedgerManager,
 ) -> Callable[..., BrokerageProductPayoutEvent]:
 
     def _inner(
@@ -217,7 +217,7 @@ def bp_payout_event_factory(
     ) -> BrokerageProductPayoutEvent:
 
         return brokerage_product_payout_event_manager.create_bp_payout_event(
-            thl_ledger_manager=thl_lm,
+            thl_ledger_manager=thl_ledger_manager,
             product=product,
             amount=usd_cent,
             ext_ref_id=ext_ref_id,
@@ -229,10 +229,12 @@ def bp_payout_event_factory(
 
 
 @pytest.fixture
-def currency(lm: LedgerManager) -> LedgerCurrency:
+def currency(ledger_manager: LedgerManager) -> LedgerCurrency:
     # return request.param if hasattr(request, "currency") else LedgerCurrency.TEST
-    assert lm.currency, "LedgerManager must have a currency specified for these tests"
-    return lm.currency
+    assert (
+        ledger_manager.currency
+    ), "LedgerManager must have a currency specified for these tests"
+    return ledger_manager.currency
 
 
 @pytest.fixture
@@ -252,7 +254,7 @@ def ledger_tx(
     tag: str,
     currency: LedgerCurrency,
     tx_metadata: dict[str, str] | None,
-    lm: LedgerManager,
+    ledger_manager: LedgerManager,
 ) -> LedgerTransaction:
     from generalresearch.models.thl.ledger import Direction, LedgerEntry
 
@@ -271,12 +273,12 @@ def ledger_tx(
         ),
     ]
 
-    return lm.create_tx(entries=entries, tag=tag, metadata=tx_metadata)
+    return ledger_manager.create_tx(entries=entries, tag=tag, metadata=tx_metadata)
 
 
 @pytest.fixture
 def create_main_accounts(
-    lm: LedgerManager, currency: LedgerCurrency
+    ledger_manager: LedgerManager, currency: LedgerCurrency
 ) -> Callable[..., None]:
 
     def _inner() -> None:
@@ -291,9 +293,9 @@ def create_main_accounts(
             qualified_name=f"{currency.value}:revenue:task_complete",
             normal_balance=Direction.CREDIT,
             account_type=AccountType.REVENUE,
-            currency=lm.currency,
+            currency=ledger_manager.currency,
         )
-        lm.get_account_or_create(account=account)
+        ledger_manager.get_account_or_create(account=account)
 
         account = LedgerAccount(
             display_name="Operating Cash Account",
@@ -303,7 +305,7 @@ def create_main_accounts(
             currency=currency,
         )
 
-        lm.get_account_or_create(account=account)
+        ledger_manager.get_account_or_create(account=account)
 
     return _inner
 
@@ -327,7 +329,7 @@ def delete_ledger_db(thl_web_rw: PostgresManager) -> Callable[..., None]:
 
 @pytest.fixture
 def wipe_main_accounts(
-    thl_web_rw: PostgresManager, lm: LedgerManager, currency: LedgerCurrency
+    thl_web_rw: PostgresManager, ledger_manager: LedgerManager, currency: LedgerCurrency
 ) -> Callable[..., None]:
 
     def _inner() -> None:
@@ -397,7 +399,9 @@ def wipe_main_accounts(
 
 
 @pytest.fixture
-def account_cash(lm: LedgerManager, currency: LedgerCurrency) -> LedgerAccount:
+def account_cash(
+    ledger_manager: LedgerManager, currency: LedgerCurrency
+) -> LedgerAccount:
     from generalresearch.models.thl.ledger import (
         AccountType,
         Direction,
@@ -411,12 +415,12 @@ def account_cash(lm: LedgerManager, currency: LedgerCurrency) -> LedgerAccount:
         account_type=AccountType.CASH,
         currency=currency,
     )
-    return lm.get_account_or_create(account=account)
+    return ledger_manager.get_account_or_create(account=account)
 
 
 @pytest.fixture
 def account_revenue_task_complete(
-    lm: LedgerManager, currency: LedgerCurrency
+    ledger_manager: LedgerManager, currency: LedgerCurrency
 ) -> LedgerAccount:
     from generalresearch.models.thl.ledger import (
         AccountType,
@@ -431,11 +435,13 @@ def account_revenue_task_complete(
         account_type=AccountType.REVENUE,
         currency=currency,
     )
-    return lm.get_account_or_create(account=account)
+    return ledger_manager.get_account_or_create(account=account)
 
 
 @pytest.fixture
-def account_expense_tango(lm: LedgerManager, currency: LedgerCurrency) -> LedgerAccount:
+def account_expense_tango(
+    ledger_manager: LedgerManager, currency: LedgerCurrency
+) -> LedgerAccount:
     from generalresearch.models.thl.ledger import (
         AccountType,
         Direction,
@@ -449,12 +455,12 @@ def account_expense_tango(lm: LedgerManager, currency: LedgerCurrency) -> Ledger
         account_type=AccountType.EXPENSE,
         currency=currency,
     )
-    return lm.get_account_or_create(account=account)
+    return ledger_manager.get_account_or_create(account=account)
 
 
 @pytest.fixture
 def user_account_user_wallet(
-    lm: LedgerManager, user: User, currency: LedgerCurrency
+    ledger_manager: LedgerManager, user: User, currency: LedgerCurrency
 ) -> LedgerAccount:
     from generalresearch.models.thl.ledger import (
         AccountType,
@@ -471,12 +477,12 @@ def user_account_user_wallet(
         reference_uuid=user.uuid,
         currency=currency,
     )
-    return lm.get_account_or_create(account=account)
+    return ledger_manager.get_account_or_create(account=account)
 
 
 @pytest.fixture
 def product_account_bp_wallet(
-    lm: LedgerManager, product: Product, currency: LedgerCurrency
+    ledger_manager: LedgerManager, product: Product, currency: LedgerCurrency
 ) -> LedgerAccount:
     from generalresearch.models.thl.ledger import (
         AccountType,
@@ -495,13 +501,13 @@ def product_account_bp_wallet(
             "currency": currency,
         }
     )
-    return lm.get_account_or_create(account=account)
+    return ledger_manager.get_account_or_create(account=account)
 
 
 @pytest.fixture
 def setup_accounts(
     product_factory: Callable[..., Product],
-    lm: LedgerManager,
+    ledger_manager: LedgerManager,
     user: User,
     currency: LedgerCurrency,
 ) -> Callable[..., None]:
@@ -524,7 +530,7 @@ def setup_accounts(
             reference_uuid=p1.uuid,
             currency=currency,
         )
-        lm.get_account_or_create(account=account)
+        ledger_manager.get_account_or_create(account=account)
 
         account = LedgerAccount.model_validate(
             {
@@ -537,7 +543,7 @@ def setup_accounts(
                 "currency": currency,
             }
         )
-        lm.get_account_or_create(account=account)
+        ledger_manager.get_account_or_create(account=account)
 
         # BP's wallet, user's wallet, and a revenue from their commissions account.
         p2 = product_factory()
@@ -550,7 +556,7 @@ def setup_accounts(
             reference_uuid=p2.uuid,
             currency=currency,
         )
-        lm.get_account_or_create(account)
+        ledger_manager.get_account_or_create(account)
 
         account = LedgerAccount(
             display_name=f"{p2.name} Wallet",
@@ -561,7 +567,7 @@ def setup_accounts(
             reference_uuid=p2.uuid,
             currency=currency,
         )
-        lm.get_account_or_create(account)
+        ledger_manager.get_account_or_create(account)
 
         account = LedgerAccount(
             display_name=f"{user.uuid} Wallet",
@@ -572,7 +578,7 @@ def setup_accounts(
             reference_uuid=user.uuid,
             currency="test",
         )
-        lm.get_account_or_create(account=account)
+        ledger_manager.get_account_or_create(account=account)
 
     return _inner
 
@@ -583,7 +589,7 @@ def session_with_tx_factory(
     session_manager: SessionManager,
     wall_manager: WallManager,
     utc_hour_ago: datetime,
-    thl_lm: ThlLedgerManager,
+    thl_ledger_manager: ThlLedgerManager,
 ) -> Callable[..., Session]:
 
     from generalresearch.models.thl.session import (
@@ -624,14 +630,16 @@ def session_with_tx_factory(
             status_code_1=status_code_1,
         )
 
-        thl_lm.create_tx_task_complete(
+        thl_ledger_manager.create_tx_task_complete(
             wall=last_wall,
             user=user,
             created=last_wall.finished,
             force=True,
         )
 
-        thl_lm.create_tx_bp_payment(session=s, created=last_wall.finished, force=True)
+        thl_ledger_manager.create_tx_bp_payment(
+            session=s, created=last_wall.finished, force=True
+        )
 
         return s
 
@@ -642,7 +650,7 @@ def session_with_tx_factory(
 def adj_to_fail_with_tx_factory(
     session_manager: SessionManager,
     wall_manager: WallManager,
-    thl_lm: ThlLedgerManager,
+    thl_ledger_manager: ThlLedgerManager,
 ) -> Callable[..., None]:
     from datetime import timedelta
 
@@ -675,7 +683,7 @@ def adj_to_fail_with_tx_factory(
             adjusted_timestamp=created,
         )
 
-        thl_lm.create_tx_task_adjustment(
+        thl_ledger_manager.create_tx_task_adjustment(
             wall=w1,
             user=session.user,
             created=created + timedelta(milliseconds=1),
@@ -684,7 +692,7 @@ def adj_to_fail_with_tx_factory(
         session.wall_events = wall_manager.get_wall_events(session_id=session.id)
         session_manager.adjust_status(session=session)
 
-        thl_lm.create_tx_bp_adjustment(
+        thl_ledger_manager.create_tx_bp_adjustment(
             session=session, created=created + timedelta(milliseconds=2)
         )
 
@@ -695,7 +703,7 @@ def adj_to_fail_with_tx_factory(
 def adj_to_complete_with_tx_factory(
     session_manager: SessionManager,
     wall_manager: WallManager,
-    thl_lm: ThlLedgerManager,
+    thl_ledger_manager: ThlLedgerManager,
 ) -> Callable[..., None]:
     from datetime import timedelta
 
@@ -714,7 +722,7 @@ def adj_to_complete_with_tx_factory(
             adjusted_timestamp=created,
         )
 
-        thl_lm.create_tx_task_adjustment(
+        thl_ledger_manager.create_tx_task_adjustment(
             wall=w1,
             user=session.user,
             created=created + timedelta(milliseconds=1),
@@ -723,7 +731,7 @@ def adj_to_complete_with_tx_factory(
         session.wall_events = wall_manager.get_wall_events(session_id=session.id)
         session_manager.adjust_status(session=session)
 
-        thl_lm.create_tx_bp_adjustment(
+        thl_ledger_manager.create_tx_bp_adjustment(
             session=session, created=created + timedelta(milliseconds=2)
         )
 

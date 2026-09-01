@@ -19,10 +19,6 @@ from pydantic import (
 )
 
 from generalresearch.models.definitions import Source
-from generalresearch.models.thl import (
-    decimal_to_int_cents,
-    int_cents_to_decimal,
-)
 from generalresearch.models.thl.definitions import (
     WALL_ALLOWED_STATUS_CODE_1_2,
     WALL_ALLOWED_STATUS_STATUS_CODE,
@@ -31,6 +27,10 @@ from generalresearch.models.thl.definitions import (
     StatusCode1,
     WallAdjustedStatus,
     WallStatusCode2,
+)
+from generalresearch.models.thl.utils import (
+    decimal_to_int_cents,
+    int_cents_to_decimal,
 )
 
 if TYPE_CHECKING:

@@ -311,15 +311,14 @@ class TestThlLedgerTxManager:
     def test_create_tx_bp_payout_(
         self,
         product: Product,
-        thl_lm: ThlLedgerManager,
-        ledger_manager: LedgerManager,
+        thl_ledger_manager: ThlLedgerManager,
         currency: LedgerCurrency,
     ):
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         payoutevent_uuid = uuid4().hex
 
         # Create a BP Payout for a Product without any activity.
-        tx = thl_lm.create_tx_bp_payout_(
+        tx = thl_ledger_manager.create_tx_bp_payout_(
             product=product,
             amount=rand_amount,
             payoutevent_uuid=payoutevent_uuid,

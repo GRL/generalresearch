@@ -58,7 +58,7 @@ def pop_ledger_merge(
     duration: timedelta,
 ) -> PopLedgerMerge:
 
-    from generalresearch.incite.mergers import MergeType
+    from generalresearch.incite.mergers.base import MergeType
     from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 
     return PopLedgerMerge(
@@ -88,7 +88,7 @@ def ym_survey_wall_merge(
     mnt_filepath: GRLDatasets,
     start: datetime,
 ) -> YMSurveyWallMerge:
-    from generalresearch.incite.mergers import MergeType
+    from generalresearch.incite.mergers.base import MergeType
     from generalresearch.incite.mergers.ym_survey_wall import YMSurveyWallMerge
 
     return YMSurveyWallMerge(
@@ -119,7 +119,7 @@ def ym_wall_summary_merge(
     duration: timedelta,
     start: datetime,
 ) -> YMWallSummaryMerge:
-    from generalresearch.incite.mergers import MergeType
+    from generalresearch.incite.mergers.base import MergeType
     from generalresearch.incite.mergers.ym_wall_summary import YMWallSummaryMerge
 
     return YMWallSummaryMerge(
@@ -155,7 +155,7 @@ def enriched_session_merge(
     duration: timedelta,
     start: datetime,
 ) -> EnrichedSessionMerge:
-    from generalresearch.incite.mergers import MergeType
+    from generalresearch.incite.mergers.base import MergeType
     from generalresearch.incite.mergers.foundations.enriched_session import (
         EnrichedSessionMerge,
     )
@@ -175,7 +175,7 @@ def enriched_task_adjust_merge(
     duration: timedelta,
     start: datetime,
 ) -> EnrichedTaskAdjustMerge:
-    from generalresearch.incite.mergers import MergeType
+    from generalresearch.incite.mergers.base import MergeType
     from generalresearch.incite.mergers.foundations.enriched_task_adjust import (
         EnrichedTaskAdjustMerge,
     )
@@ -197,7 +197,7 @@ def enriched_wall_merge(
     duration: timedelta,
     start: datetime,
 ) -> EnrichedWallMerge:
-    from generalresearch.incite.mergers import MergeType
+    from generalresearch.incite.mergers.base import MergeType
     from generalresearch.incite.mergers.foundations.enriched_wall import (
         EnrichedWallMerge,
     )
@@ -217,7 +217,7 @@ def user_id_product_merge(
     offset: str,
     start: datetime,
 ) -> UserIdProductMerge:
-    from generalresearch.incite.mergers import MergeType
+    from generalresearch.incite.mergers.base import MergeType
     from generalresearch.incite.mergers.foundations.user_id_product import (
         UserIdProductMerge,
     )
@@ -243,7 +243,7 @@ def merge_collection(
     duration: timedelta,
     start: datetime,
 ):
-    from generalresearch.incite.mergers import MergeCollection
+    from generalresearch.incite.mergers.base import MergeCollection
 
     return MergeCollection(
         merge_type=merge_type,

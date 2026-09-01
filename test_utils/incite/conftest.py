@@ -16,11 +16,11 @@ from faker import Faker
 if TYPE_CHECKING:
     from generalresearch.config import GRLBaseSettings
     from generalresearch.incite.base import GRLDatasets
-    from generalresearch.incite.collections import (
+    from generalresearch.incite.collections.base import (
         DFCollectionItem,
         DFCollectionType,
     )
-    from generalresearch.incite.mergers import MergeType
+    from generalresearch.incite.mergers.base import MergeType
     from generalresearch.models.admin.request import (
         ReportRequest,
     )
@@ -131,14 +131,14 @@ def duration() -> timedelta | None:
 
 @pytest.fixture
 def df_collection_data_type() -> DFCollectionType:
-    from generalresearch.incite.collections import DFCollectionType
+    from generalresearch.incite.collections.base import DFCollectionType
 
     return DFCollectionType.TEST
 
 
 @pytest.fixture
 def merge_type() -> MergeType:
-    from generalresearch.incite.mergers import MergeType
+    from generalresearch.incite.mergers.base import MergeType
 
     return MergeType.TEST
 
@@ -156,7 +156,7 @@ def incite_item_factory(
         observations: int = 3,
         user: User | None = None,
     ):
-        from generalresearch.incite.collections import (
+        from generalresearch.incite.collections.base import (
             DFCollection,
             DFCollectionType,
         )

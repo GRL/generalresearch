@@ -9,15 +9,13 @@ from uuid import UUID, uuid4
 from pydantic import NonNegativeInt
 
 from generalresearch.managers.base import PostgresManager
-from generalresearch.models.thl.wallet.cashout_method import (
-    CashoutMethod,
-)
 from generalresearch.models.thl.wallet.definitions import PayoutType
 
 if TYPE_CHECKING:
     from generalresearch.models.thl.user import User
     from generalresearch.models.thl.wallet.cashout_method import (
         CashMailCashoutMethodData,
+        CashoutMethod,
         PaypalCashoutMethodData,
     )
 
@@ -82,6 +80,7 @@ class CashoutMethodManager(PostgresManager):
         :return: the uuid of the created cashout method
         """
         # todo: validate shipping address?
+        from generalresearch.models.thl.wallet.cashout_method import CashoutMethod
 
         cm = CashoutMethod(
             name="Cash in Mail",
@@ -126,6 +125,8 @@ class CashoutMethodManager(PostgresManager):
         :param user:
         :return: the uuid of the created cashout method
         """
+        from generalresearch.models.thl.wallet.cashout_method import CashoutMethod
+
         cm = CashoutMethod(
             name="PayPal",
             description="Cashout via PayPal",
@@ -290,6 +291,8 @@ class CashoutMethodManager(PostgresManager):
         # The data column here is inconsistent. Pulling keys from the mysql 'data' col
         #   and putting them into the base level. Renamed so that we don't overwrite
         #   a col called "data" within the "_data_" field.
+        from generalresearch.models.thl.wallet.cashout_method import CashoutMethod
+
         for k in list(x["_data_"].keys()):
             if k in CashoutMethod.model_fields:
                 x[k] = x["_data_"].pop(k)
