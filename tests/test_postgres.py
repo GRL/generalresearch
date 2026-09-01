@@ -68,4 +68,15 @@ class TestPostgresDjangoCreation:
             WHERE table_schema = 'public';
         """)
         assert len(res) == 1
-        assert res[0]["count"] == 56
+        assert res[0]["count"] == 57
+
+    def test_django_tables_with_gr(
+        self, thl_web_rw: PostgresConfig, gr_db: PostgresConfig
+    ):
+        res = thl_web_rw.execute_sql_query(query="""
+            SELECT COUNT(*)
+            FROM information_schema.tables
+            WHERE table_schema = 'public';
+        """)
+        assert len(res) == 1
+        assert res[0]["count"] > 57

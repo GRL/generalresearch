@@ -449,7 +449,7 @@ class Business(BaseModel):
 
     def prebuild_pop_financial(
         self,
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
         thl_lm: ThlLedgerManager,
         ds: GRLDatasets,
         client: DaskClient,
@@ -461,7 +461,7 @@ class Business(BaseModel):
         financial activity within that time window.
         """
         if self.bp_accounts is None:
-            self.prefetch_bp_accounts(thl_lm=thl_lm, thl_pg_config=thl_pg_config)
+            self.prefetch_bp_accounts(thl_lm=thl_lm, product_manager=product_manager)
 
         from generalresearch.models.admin.request import (
             ReportRequest,

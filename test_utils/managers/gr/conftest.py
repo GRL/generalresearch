@@ -24,6 +24,8 @@ if TYPE_CHECKING:
 
 
 # === Msc ===
+
+
 @pytest.fixture(scope="session")
 def gr_redis_config_db() -> str:
     return str(randint(99, 1_023))

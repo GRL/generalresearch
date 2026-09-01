@@ -1,16 +1,14 @@
 from collections.abc import Collection
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from generalresearch.grliq.models.forensic_result import (
     GrlIqForensicCategoryResult,
     Phase,
 )
 from generalresearch.grliq.models.useragents import GrlUserAgent
+from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.user import User
 
 
 class GrlIqCategoryResultsReader:

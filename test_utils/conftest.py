@@ -225,8 +225,10 @@ def django_db_factory(
     _ran = {}
 
     import django
+    from django.apps import apps
     from django.conf import settings as django_settings
     from django.core.management import call_command
+    from django.utils.functional import empty
 
     def _inner(
         django_project: str = "generalresearch.thl_django",
@@ -242,34 +244,43 @@ def django_db_factory(
             # We need model files that are NOT in this repo.
             gr_path = gr_repo()
             sys.path.insert(0, str(gr_path))
+            print("DJANGO_PROJECT_PATH", str(gr_path), sys.path)
 
         # 1. Bootstrapping Django settings
-        if not django_settings.configured:
-            django_settings.configure(
-                DATABASES={
-                    "default": {
-                        "ENGINE": "django.db.backends.postgresql",
-                        "NAME": postgres_instance_dict["name"],
-                        "USER": postgres_instance_dict["username"],
-                        "PASSWORD": postgres_instance_dict["password"],
-                        "HOST": postgres_instance_dict["host"],
-                        "PORT": postgres_instance_dict["port"],
-                    }
-                },
-                INSTALLED_APPS=[
-                    "django.contrib.postgres",
-                    "django.contrib.contenttypes",
-                    django_project,
-                ],
-            )
+        # if not django_settings.configured:
+        # 1. Reset the lazy wrapper back to an empty state
+        # if not django_settings.configured:
+
+        django_settings._wrapped = empty
+
+        django_settings.configure(
+            DATABASES={
+                "default": {
+                    "ENGINE": "django.db.backends.postgresql",
+                    "NAME": postgres_instance_dict["name"],
+                    "USER": postgres_instance_dict["username"],
+                    "PASSWORD": postgres_instance_dict["password"],
+                    "HOST": postgres_instance_dict["host"],
+                    "PORT": postgres_instance_dict["port"],
+                }
+            },
+            INSTALLED_APPS=[
+                "django.contrib.postgres",
+                "django.contrib.contenttypes",
+                django_project,
+            ],
+        )
         django.setup()
 
-        # for model in apps.get_models():
-        # print(f"Discovered model: {model._meta.label}")
+        for model in apps.get_models():
+            print(f"Discovered model: {model._meta.label}")
 
         # 2. Run migrations directly during fixture activation
+        print("DJANGO_PROJECT", django_project)
         if "gr" in django_project:
             call_command("makemigrations", "common", interactive=False)
+        else:
+            call_command("makemigrations", interactive=False)
 
         call_command("migrate")
 

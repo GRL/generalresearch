@@ -62,12 +62,12 @@ class TestBusinessBankAccount:
     def test_init(
         self,
         gr_business: Business,
-        business_bank_account_manager: BusinessBankAccountManager,
+        gr_business_bank_account_manager: BusinessBankAccountManager,
     ):
         from generalresearch.models.gr.business import BusinessBankAccount
         from generalresearch.models.gr.definitions import TransferMethod
 
-        instance = business_bank_account_manager.create(
+        instance = gr_business_bank_account_manager.create(
             business_id=gr_business.id,
             uuid=uuid4().hex,
             transfer_method=TransferMethod.ACH,
@@ -76,20 +76,20 @@ class TestBusinessBankAccount:
 
     def test_business(
         self,
-        business_bank_account: BusinessBankAccount,
+        gr_business_bank_account: BusinessBankAccount,
         gr_business: Business,
         gr_db: PostgresConfig,
         gr_redis_config: RedisConfig,
     ):
         from generalresearch.models.gr.business import Business
 
-        assert business_bank_account.business is None
+        assert gr_business_bank_account.business is None
 
-        business_bank_account.prefetch_business(
+        gr_business_bank_account.prefetch_business(
             pg_config=gr_db, redis_config=gr_redis_config
         )
-        assert isinstance(business_bank_account.business, Business)
-        assert business_bank_account.business.uuid == gr_business.uuid
+        assert isinstance(gr_business_bank_account.business, Business)
+        assert gr_business_bank_account.business.uuid == gr_business.uuid
 
 
 class TestBusinessAddress:
@@ -264,13 +264,13 @@ class TestBusiness:
     def test_bank_accounts(
         self,
         gr_business: Business,
-        business_bank_account_manager: BusinessBankAccountManager,
+        gr_business_bank_account_manager: BusinessBankAccountManager,
     ):
         assert gr_business.products is None
 
         # It's an empty list after prefetch
         gr_business.prefetch_bank_accounts(
-            business_bank_account_manager=business_bank_account_manager
+            business_bank_account_manager=gr_business_bank_account_manager
         )
         assert isinstance(gr_business.bank_accounts, list)
         assert len(gr_business.bank_accounts) == 1
@@ -423,7 +423,7 @@ class TestBusiness:
     def test_pop_financial(
         self,
         gr_business: Business,
-        thl_web_rr: PostgresConfig,
+        product_manager: ProductManager,
         thl_ledger_manager: ThlLedgerManager,
         mnt_filepath: GRLDatasets,
         client_no_amm: DaskClient,
@@ -431,7 +431,7 @@ class TestBusiness:
     ):
         assert gr_business.pop_financial is None
         gr_business.prebuild_pop_financial(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             thl_lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -442,7 +442,6 @@ class TestBusiness:
     def test_bp_accounts(
         self,
         gr_business: Business,
-        thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
         thl_ledger_manager: ThlLedgerManager,
         product_manager: ProductManager,

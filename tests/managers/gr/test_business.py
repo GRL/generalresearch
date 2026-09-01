@@ -25,18 +25,18 @@ class TestBusinessBankAccountManager:
 
     def test_init(
         self,
-        business_bank_account_manager: BusinessBankAccountManager,
+        gr_business_bank_account_manager: BusinessBankAccountManager,
         gr_db: PostgresConfig,
     ):
-        assert business_bank_account_manager.pg_config == gr_db
+        assert gr_business_bank_account_manager.pg_config == gr_db
 
     def test_create(
         self,
         gr_business: Business,
-        business_bank_account_manager: BusinessBankAccountManager,
+        gr_business_bank_account_manager: BusinessBankAccountManager,
     ):
 
-        instance = business_bank_account_manager.create(
+        instance = gr_business_bank_account_manager.create(
             business_id=gr_business.id,
             uuid=uuid4().hex,
             transfer_method=TransferMethod.ACH,
@@ -44,7 +44,7 @@ class TestBusinessBankAccountManager:
         assert isinstance(instance, BusinessBankAccount)
         assert isinstance(instance.id, int)
 
-        res = business_bank_account_manager.get_by_business_id(
+        res = gr_business_bank_account_manager.get_by_business_id(
             business_id=instance.business_id
         )
         assert isinstance(res, list)

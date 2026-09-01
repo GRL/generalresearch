@@ -66,33 +66,56 @@ def gr_user_cache(
     return gr_user
 
 
+# --- Business Bank Account ---
+
+
 @pytest.fixture
 def gr_business_bank_account_factory(
-    gr_bbam: BusinessBankAccountManager,
+    gr_business_bank_account_manager: BusinessBankAccountManager,
 ) -> Callable[..., BusinessBankAccount]:
 
     def _inner(
         business_id: PositiveInt,
+        save: bool = True,
         uuid: UUIDStr | None = None,
         transfer_method: TransferMethod | None = None,
         account_number: str | None = None,
         routing_number: str | None = None,
         iban: str | None = None,
         swift: str | None = None,
-    ):
-        from generalresearch.models.gr.business import TransferMethod
+        **kwargs,
+    ) -> BusinessBankAccount:
 
-        return gr_bbam.create(
-            business_id=business_id,
-            uuid=uuid or uuid4().hex,
-            transfer_method=transfer_method or TransferMethod.ACH,
-            account_number=account_number or uuid4().hex[:6],
-            routing_number=routing_number or uuid4().hex[:6],
-            iban=iban or uuid4().hex[:6],
-            swift=swift or uuid4().hex[:6],
-        )
+        if save:
+            return gr_business_bank_account_manager.create(
+                business_id=business_id,
+                uuid=uuid or uuid4().hex,
+                transfer_method=transfer_method or TransferMethod.ACH,
+                account_number=account_number or uuid4().hex[:6],
+                routing_number=routing_number or uuid4().hex[:6],
+                iban=iban or uuid4().hex[:6],
+                swift=swift or uuid4().hex[:6],
+                **kwargs,
+            )
+        else:
+            raise ValueError("BusinessBankAccount Business not supported yet")
 
     return _inner
+
+
+@pytest.fixture
+def gr_business_bank_account(gr_business_factory: Callable[..., Business]) -> Business:
+    return gr_business_factory(save=True)
+
+
+@pytest.fixture
+def unsaved_gr_business_bank_account(
+    gr_business_factory: Callable[..., Business],
+) -> Business:
+    return gr_business_factory(save=False)
+
+
+# -----------------
 
 
 @pytest.fixture
@@ -202,14 +225,6 @@ def business_address(
     gr_business: Business, business_address_manager: BusinessAddressManager
 ) -> BusinessAddress:
     return business_address_manager.create_dummy(business_id=gr_business.id)
-
-
-@pytest.fixture
-def business_bank_account(
-    gr_business: Business,
-    business_bank_account_manager: BusinessBankAccountManager,
-) -> BusinessBankAccount:
-    return business_bank_account_manager.create_dummy(business_id=gr_business.id)
 
 
 @pytest.fixture()

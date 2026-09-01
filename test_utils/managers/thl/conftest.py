@@ -45,20 +45,7 @@ if TYPE_CHECKING:
         WallManager,
     )
 
-
-@pytest.fixture(scope="session")
-def thl_web_rr(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
-
-    return PostgresConfig(
-        dsn=django_db_factory("generalresearch.thl_django"),
-        connect_timeout=1,
-        statement_timeout=5,
-    )
-
-
-@pytest.fixture(scope="session")
-def thl_web_rw(thl_web_rr: PostgresConfig) -> PostgresConfig:
-    return thl_web_rr
+# === Msc ===
 
 
 @pytest.fixture(scope="session")
@@ -95,6 +82,25 @@ def thl_redis_config(
 
     r = redis.from_url(uri)
     r.flushdb()
+
+
+@pytest.fixture(scope="session")
+def thl_web_rr(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
+    _dsn = django_db_factory("generalresearch.thl_django")
+
+    return PostgresConfig(
+        dsn=_dsn,
+        connect_timeout=1,
+        statement_timeout=5,
+    )
+
+
+@pytest.fixture(scope="session")
+def thl_web_rw(thl_web_rr: PostgresConfig) -> PostgresConfig:
+    return thl_web_rr
+
+
+# === Managers ===
 
 
 @pytest.fixture(scope="session")
