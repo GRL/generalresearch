@@ -16,7 +16,7 @@ import pytest
 from _pytest.config import Config
 from dotenv import load_dotenv
 from pydantic import MariaDBDsn, PostgresDsn, TypeAdapter
-from pytest import TempPathFactory
+from pytest import FixtureRequest, TempPathFactory
 
 from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import InternalHostname, PostgresDict
@@ -216,73 +216,128 @@ def gr_repo(
 
 
 @pytest.fixture(scope="session")
-def django_db_factory(
-    postgres_instance: PostgresDsn,
+def django_settings_file(
+    tmp_path_factory: TempPathFactory,
     postgres_instance_dict: PostgresDict,
+):
+
+    def _inner(name: str, extra_installed_apps: list[str] | None = None):
+        installed_apps = [
+            "django.contrib.postgres",
+            "django.contrib.contenttypes",
+            "generalresearchutils.thl_django",
+            *(extra_installed_apps or []),
+        ]
+
+        settings_content = f"""
+DATABASES = {{
+    "default": {{
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": {postgres_instance_dict["name"]!r},
+        "USER": {postgres_instance_dict["username"]!r},
+        "PASSWORD": {postgres_instance_dict["password"]!r},
+        "HOST": {postgres_instance_dict["host"]!r},
+        "PORT": {postgres_instance_dict["port"]!r},
+    }}
+}}
+INSTALLED_APPS = {installed_apps!r}
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
+USE_I18N = True
+USE_L10N = True
+USE_TZ = True
+"""
+        settings_path = tmp_path_factory.mktemp("settings") / f"{name}.py"
+        settings_path.write_text(settings_content)
+
+        # Django settinsg require python dot syntax, and for the
+        # file to be in the path.. so we must set this.
+        sys.path.insert(0, str(tmp_path_factory))
+        print("SETTINGS_PATH: ", settings_path)
+
+        return settings_path
+
+    return _inner
+
+
+@pytest.fixture(scope="session")
+def django_db_factory(
+    request: FixtureRequest,
+    postgres_instance: PostgresDsn,
     gr_repo: Callable[..., Path],
+    django_settings_file: Callable[..., Path],
+    tmp_path_factory: TempPathFactory,
 ) -> Callable[..., PostgresDsn | None]:
 
     _ran = {}
-
-    import django
-    from django.apps import apps
-    from django.conf import settings as django_settings
-    from django.core.management import call_command
-    from django.utils.functional import empty
 
     def _inner(
         django_project: str = "generalresearch.thl_django",
     ) -> PostgresDsn | None:
 
         if _ran.get(django_project, False):
-            print(f"Already ran django_db_factory.{django_project}")
+            print(f"Already ran django_db_factory:{django_project}")
             return postgres_instance
 
         _ran[django_project] = True
-
-        if "gr" in django_project:
-            # We need model files that are NOT in this repo.
-            gr_path = gr_repo()
-            sys.path.insert(0, str(gr_path))
-            print("DJANGO_PROJECT_PATH", str(gr_path), sys.path)
-
-        # 1. Bootstrapping Django settings
-        # if not django_settings.configured:
-        # 1. Reset the lazy wrapper back to an empty state
-        # if not django_settings.configured:
-
-        django_settings._wrapped = empty
-
-        django_settings.configure(
-            DATABASES={
-                "default": {
-                    "ENGINE": "django.db.backends.postgresql",
-                    "NAME": postgres_instance_dict["name"],
-                    "USER": postgres_instance_dict["username"],
-                    "PASSWORD": postgres_instance_dict["password"],
-                    "HOST": postgres_instance_dict["host"],
-                    "PORT": postgres_instance_dict["port"],
-                }
-            },
-            INSTALLED_APPS=[
-                "django.contrib.postgres",
-                "django.contrib.contenttypes",
-                django_project,
-            ],
-        )
-        django.setup()
-
-        for model in apps.get_models():
-            print(f"Discovered model: {model._meta.label}")
-
-        # 2. Run migrations directly during fixture activation
         print("DJANGO_PROJECT", django_project)
-        if "gr" in django_project:
-            call_command("makemigrations", "common", interactive=False)
-        else:
-            call_command("makemigrations", interactive=False)
 
-        call_command("migrate")
+        _settings_name = "thl_django"
+        _project_path = "generalresearch/thl_django/"
+        if "gr" in django_project:
+            _settings_name = "gr_carer"
+            _project_path = gr_repo()
+            django_settings_file(
+                name=_settings_name, extra_installed_apps=["gr.common"]
+            )
+        else:
+            django_settings_file(name=_settings_name)
+
+        django_fp = Path(request.config.rootpath).parent / str(_project_path)
+        env = {
+            # **os.environ,
+            "DJANGO_SETTINGS_MODULE": f"settings.{_settings_name}",
+            "PYTHONPATH": str(django_fp),
+        }
+
+        if "gr" in django_project:
+            # print("ENV", env)
+            res1 = subprocess.run(
+                [sys.executable, "manage.py", "makemigrations"],
+                cwd=str(django_fp),
+                env=env,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            print("RES1:", res1)
+
+        else:
+            print("ENV", env)
+            res1 = subprocess.run(
+                [
+                    sys.executable,
+                    "manage.py",
+                    "makemigrations",
+                ],
+                cwd=str(django_fp / "app"),
+                env=env,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            print("RES1:", res1)
+
+            # res2 = subprocess.run(
+            #     [sys.executable, "-m", "django", "migrate"],
+            #     env=env,
+            #     cwd=str(_project_path),
+            #     capture_output=True,
+            #     text=True,
+            #     check=True,
+            # )
+            # print("RES2:", res2)
 
         # 3. Return the Dsn so the factory gives a way to connect
         return postgres_instance
