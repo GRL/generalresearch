@@ -428,13 +428,23 @@ class UserWalletConfig(BaseModel):
         examples=[Decimal("10.00")],
     )
 
+    failed_attempt_credit: Decimal | None = Field(
+        default=None,
+        gt=0,
+        description=(
+            "Conditional credit awarded for an eligible failed attempt. "
+            "None disables failed-attempt credits."
+        ),
+        examples=[Decimal("0.05"), None]
+    )
+
     @field_serializer("supported_payout_types", when_used="json")
     def serialize_supported_payout_types_in_order(
         self, supported_payout_types: set[PayoutType]
     ) -> set[PayoutType]:
         return set(sorted(supported_payout_types))
 
-    @field_validator("min_cashout", mode="after")
+    @field_validator("min_cashout", "failed_attempt_credit", mode="after")
     @classmethod
     def check_payout_decimal_places(cls, v: Decimal) -> Decimal:
         if v is not None:
@@ -458,6 +468,9 @@ class UserWalletConfig(BaseModel):
                 self.min_cashout = Decimal("0.01")
         return self
 
+    @property
+    def failed_attempt_credit_enabled(self) -> bool:
+        return self.failed_attempt_credit is not None
 
 class PayoutTransformationPercentArgs(BaseModel):
     pct: NonNegativeFloat = Field(

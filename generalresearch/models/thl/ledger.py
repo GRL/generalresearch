@@ -62,8 +62,10 @@ class AccountType(str, Enum, metaclass=ReprEnumMeta):
     BP_COMMISSION = "bp_commission"
     # BP wallets (owed balance)
     BP_WALLET = "bp_wallet"
-    # User's wallet
+    # User's wallet: real earnings potentially available for redemption
     USER_WALLET = "user_wallet"
+    # User's conditional credits applied against future task earnings
+    USER_ATTEMPT_CREDIT = "user_attempt_credit"
     # Cash account
     CASH = "cash"
     # Revenue (money coming in)
@@ -127,6 +129,9 @@ class TransactionType(str, Enum):
     #   such as a leaderboard award, or reward for reporting a task. (This
     #   might be called "expenses" in finance reports).
     USER_BONUS = "user_bonus"
+
+    # A user is paid conditional credits applied against future task earnings
+    USER_ATTEMPT_CREDIT = "user_attempt_credit"
 
     # A transaction is made to plug accounting imbalances
     PLUG = "plug"
