@@ -36,36 +36,6 @@ if TYPE_CHECKING:
 # --- Factory / Database ---
 
 
-@pytest.fixture
-def gr_user_factory(gr_user_manager: GRUserManager) -> Callable[..., GRUser]:
-
-    def _inner(
-        sub: str | None = None,
-        is_superuser: bool = False,
-    ) -> GRUser:
-        sub = sub or f"{uuid4().hex}-{uuid4().hex}"
-
-        return gr_user_manager.create(
-            sub=sub,
-            is_superuser=is_superuser,
-        )
-
-    return _inner
-
-
-@pytest.fixture
-def gr_user_cache(
-    gr_user: GRUser,
-    gr_db: PostgresConfig,
-    thl_web_rr: PostgresConfig,
-    gr_redis_config: RedisConfig,
-) -> GRUser:
-    gr_user.set_cache(
-        pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
-    )
-    return gr_user
-
-
 # --- Business Bank Account ---
 
 
@@ -98,7 +68,7 @@ def gr_business_bank_account_factory(
                 **kwargs,
             )
         else:
-            raise ValueError("BusinessBankAccount Business not supported yet")
+            raise ValueError("Unsaved BusinessBankAccount not supported yet")
 
     return _inner
 
@@ -115,16 +85,17 @@ def unsaved_gr_business_bank_account(
     return gr_business_factory(save=False)
 
 
-# -----------------
+# --- Business Address ---
 
 
 @pytest.fixture
 def gr_business_address_factory(
-    gr_bam: BusinessAddressManager,
+    gr_business_address_manager: BusinessAddressManager,
 ) -> Callable[..., BusinessAddress]:
 
     def _inner(
         business_id: PositiveInt,
+        save: bool = True,
         uuid: UUIDStr | None = None,
         line_1: str | None = None,
         line_2: str | None = None,
@@ -133,7 +104,7 @@ def gr_business_address_factory(
         postal_code: str | None = None,
         phone_number: PhoneNumber | None = None,
         country: str | None = None,
-    ):
+    ) -> BusinessAddress:
         uuid = uuid or uuid4().hex
         line_1 = line_1 or "abc"
         line_2 = line_2 or "bczx"
@@ -143,19 +114,46 @@ def gr_business_address_factory(
         phone_number = None
         country = country or "US"
 
-        return gr_bam.create(
-            business_id=business_id,
-            uuid=uuid,
-            line_1=line_1,
-            line_2=line_2,
-            city=city,
-            state=state,
-            postal_code=postal_code,
-            phone_number=phone_number,
-            country=country,
-        )
+        if save:
+            return gr_business_address_manager.create(
+                business_id=business_id,
+                uuid=uuid,
+                line_1=line_1,
+                line_2=line_2,
+                city=city,
+                state=state,
+                postal_code=postal_code,
+                phone_number=phone_number,
+                country=country,
+            )
+        else:
+            raise ValueError("Unsaved BusinessAddress not supported yet")
 
     return _inner
+
+
+# @pytest.fixture
+# def business_address(
+#     gr_business: Business, business_address_manager: BusinessAddressManager
+# ) -> :
+#     return business_address_manager.create_dummy(business_id=gr_business.id)
+
+
+@pytest.fixture
+def gr_business_address(
+    gr_business_address_factory: Callable[..., BusinessAddress],
+) -> BusinessAddress:
+    return gr_business_address_factory(save=True)
+
+
+@pytest.fixture
+def unsaved_gr_business_address(
+    gr_business_address_factory: Callable[..., BusinessAddress],
+) -> BusinessAddress:
+    return gr_business_address_factory(save=False)
+
+
+# --- Business ---
 
 
 @pytest.fixture
@@ -194,37 +192,127 @@ def unsaved_gr_business(gr_business_factory: Callable[..., Business]) -> Busines
     return gr_business_factory(save=False)
 
 
+# --- GR Team ---
+
+
 @pytest.fixture
-def gr_team(
-    gr_tm: TeamManager,
+def gr_team_factory(
+    gr_team_manager: TeamManager,
 ) -> Callable[..., Team]:
 
-    def _inner(uuid: UUIDStr | None = None, name: str | None = None) -> Team:
-        uuid = uuid or uuid4().hex
-        name = name or f"name-{uuid4().hex[:12]}"
+    def _inner(
+        save: bool = True,
+        uuid: UUIDStr | None = None,
+        name: str | None = None,
+        **kwargs,
+    ) -> Team:
 
-        return gr_tm.create(uuid=uuid, name=name)
+        if save:
+            return gr_team_manager.create(uuid=uuid, name=name, **kwargs)
+
+        else:
+            raise ValueError("BusinessBankAccount Business not supported yet")
 
     return _inner
 
 
-@pytest.fixture()
-def gr_user_token(
-    gr_user: GRUser, gr_tm: GRTokenManager, gr_db: PostgresConfig
-) -> GRToken:
-    gr_tm.create(user_id=gr_user.id)
-    gr_user.prefetch_token(pg_config=gr_db)
-
-    res = gr_user.token
-    assert res is not None, "GRToken should exist after creation and prefetching"
-    return res
+@pytest.fixture
+def gr_team(gr_team_factory: Callable[..., Team]) -> Team:
+    return gr_team_factory(save=True)
 
 
 @pytest.fixture
-def business_address(
-    gr_business: Business, business_address_manager: BusinessAddressManager
-) -> BusinessAddress:
-    return business_address_manager.create_dummy(business_id=gr_business.id)
+def unsaved_gr_team(
+    gr_team_factory: Callable[..., Team],
+) -> Team:
+    return gr_team_factory(save=False)
+
+
+# --- GR User ---
+
+
+@pytest.fixture
+def gr_user_factory(gr_user_manager: GRUserManager) -> Callable[..., GRUser]:
+
+    def _inner(
+        save: bool = True,
+        sub: str | None = None,
+        is_superuser: bool = False,
+    ) -> GRUser:
+        sub = sub or f"{uuid4().hex}-{uuid4().hex}"
+
+        if save:
+            return gr_user_manager.create(
+                sub=sub,
+                is_superuser=is_superuser,
+            )
+        else:
+            raise ValueError("Unsaved GR User not supported yet")
+
+    return _inner
+
+
+@pytest.fixture
+def gr_user_cache(
+    gr_user: GRUser,
+    gr_db: PostgresConfig,
+    thl_web_rr: PostgresConfig,
+    gr_redis_config: RedisConfig,
+) -> GRUser:
+    gr_user.set_cache(
+        pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
+    )
+    return gr_user
+
+
+@pytest.fixture
+def gr_user(gr_user_factory: Callable[..., GRUser]) -> GRUser:
+    return gr_user_factory(save=True)
+
+
+@pytest.fixture
+def unsaved_gr_user(
+    gr_user_factory: Callable[..., GRUser],
+) -> GRUser:
+    return gr_user_factory(save=False)
+
+
+# --- GR User Token ---
+
+
+@pytest.fixture
+def gr_user_token_factory(
+    gr_user: GRUser, gr_user_token_manager: GRUser, gr_db: PostgresConfig
+) -> Callable[..., GRToken]:
+
+    def _inner(
+        save: bool = True,
+    ) -> GRToken:
+
+        if save:
+            gr_user_token_manager.create(user_id=gr_user.id)
+            gr_user.prefetch_token(pg_config=gr_db)
+
+            res = gr_user.token
+            assert (
+                res is not None
+            ), "GRToken should exist after creation and prefetching"
+            return res
+
+        else:
+            raise ValueError("Unsaved GR User not supported yet")
+
+    return _inner
+
+
+@pytest.fixture
+def gr_user_token(gr_user_token_factory: Callable[..., GRToken]) -> GRToken:
+    return gr_user_token_factory(save=True)
+
+
+@pytest.fixture
+def unsaved_gr_user_token(gr_user_token_factory: Callable[..., GRToken]) -> GRToken:
+    return gr_user_token_factory(save=False)
 
 
 @pytest.fixture()
@@ -232,26 +320,32 @@ def gr_user_token_header(gr_user_token: GRToken) -> dict[str, str]:
     return gr_user_token.auth_header
 
 
-@pytest.fixture(scope="function")
-def membership(team: Team, gr_user: GRUser, team_manager: TeamManager) -> Membership:
-    assert team.id, "Team must be saved"
-    assert gr_user.id, "GRUser must be saved"
-    return team_manager.add_user(team=team, gr_user=gr_user)
+# --- GR Membership ---
 
 
-@pytest.fixture(scope="function")
-def membership_factory(
-    team: Team,
+@pytest.fixture()
+def gr_membership_factory(
+    gr_team: Team,
     gr_user: GRUser,
-    membership_manager: MembershipManager,
-    team_manager: TeamManager,
-    gr_um: GRUserManager,
+    gr_membership_manager: MembershipManager,
 ) -> Callable[..., Membership]:
 
-    def _inner(**kwargs) -> Membership:
-        _team = kwargs.get("team", team_manager.create_dummy())
-        _gr_user = kwargs.get("gr_user", gr_um.create_dummy())
-
-        return membership_manager.create(team=_team, gr_user=_gr_user)
+    def _inner(save: bool = True, **kwargs) -> Membership:
+        if save:
+            return gr_membership_manager.create(team=gr_team, gr_user=gr_user, **kwargs)
+        else:
+            raise ValueError("Unsaved GR Membership not supported yet")
 
     return _inner
+
+
+@pytest.fixture()
+def gr_membership(gr_membership_factory: Callable[..., Membership]) -> Membership:
+    return gr_membership_factory(save=True)
+
+
+@pytest.fixture()
+def unsaved_gr_membership(
+    gr_membership_factory: Callable[..., Membership],
+) -> Membership:
+    return gr_membership_factory(save=False)

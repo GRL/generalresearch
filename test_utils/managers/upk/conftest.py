@@ -13,11 +13,9 @@ from generalresearch.managers.thl.profiling.uqa import UQAManager
 from generalresearch.managers.thl.profiling.user_upk import (
     UserUpkManager,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.user import User
-    from generalresearch.pg_helper import PostgresConfig
-    from generalresearch.redis_helper import RedisConfig
+from generalresearch.models.thl.user import User
+from generalresearch.pg_helper import PostgresConfig
+from generalresearch.redis_helper import RedisConfig
 
 
 @pytest.fixture(scope="session")
