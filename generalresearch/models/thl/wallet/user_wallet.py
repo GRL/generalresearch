@@ -48,6 +48,10 @@ class UserWalletBalanceResponse(StatusResponse):
 class UserLedgerWallet(UserWalletBalance):
     """A user-owned ledger account exposed by the wallets endpoint."""
 
+    payout_format: PayoutFormatType | None = Field(default=None)
+    amount_string: str | None = Field(default=None)
+    redeemable_amount_string: str | None = Field(default=None)
+
     account_uuid: UUIDStr = Field(
         description="A unique identifier for this Ledger Account",
         examples=["c3c3566b5b1b4961b63a5670a2dc923d"],
@@ -63,5 +67,16 @@ class UserLedgerWallet(UserWalletBalance):
     )
 
 
+class UserDisplayedWalletBalance(BaseModel):
+    """Combined user-visible balance for one ledger currency."""
+
+    currency: str = Field(max_length=32)
+    amount: int = Field(
+        description="Displayed balance in the currency's smallest ledger unit."
+    )
+    amount_string: str | None = None
+
+
 class UserLedgerWallets(BaseModel):
     wallets: list[UserLedgerWallet] = Field(default_factory=list)
+    displayed_balances: list[UserDisplayedWalletBalance] = Field(default_factory=list)

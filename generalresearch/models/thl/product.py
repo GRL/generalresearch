@@ -413,7 +413,12 @@ class UserWalletConfig(BaseModel):
         default=False, description="If enabled, the users' wallets are managed."
     )
 
-    # This field could go in supported_payout_types ---v
+    balance_type: Literal["wallet_balance", "redeemable_balance"] = Field(
+        default="wallet_balance",
+        description="The balance used as the user's displayed balance.",
+    )
+
+    # Deprecated
     amt: bool = Field(default=False, description="Uses Amazon Mechanical Turk")
 
     supported_payout_types: set[PayoutType] = Field(

@@ -243,9 +243,6 @@ class CashoutMethodManager(PostgresManager):
         product = user.product
 
         supported_payout_types = copy(product.user_wallet_config.supported_payout_types)
-        if product.user_wallet_config.amt:
-            supported_payout_types.add(PayoutType.AMT)
-
         user_scoped_payout_types = [PayoutType.PAYPAL, PayoutType.CASH_IN_MAIL]
         params = {
             "user_scoped_payout_types": [x.value for x in user_scoped_payout_types],
@@ -268,15 +265,6 @@ class CashoutMethodManager(PostgresManager):
             raise ValueError(f"Unexpectedly large number of cashout_methods: {user=}")
 
         cms = [self.format_from_db(x, user=user) for x in res]
-
-        # Only allow AMT if the BP is marked as AMT (already should have been
-        #   filtered in query)
-        cms = [
-            x
-            for x in cms
-            if (x.type == PayoutType.AMT and product.user_wallet_config.amt)
-            or (x.type != PayoutType.AMT)
-        ]
         return cms
 
     @staticmethod

@@ -21,12 +21,18 @@ class TestProductUserWalletConfig:
 
         # Check the defaults
         assert not instance.enabled
+        assert instance.balance_type == "wallet_balance"
         assert not instance.amt
 
         assert isinstance(instance.supported_payout_types, set)
         assert len(instance.supported_payout_types) == 3
 
         assert instance.min_cashout is None
+
+    def test_redeemable_balance_type(self):
+        instance = UserWalletConfig(balance_type="redeemable_balance")
+
+        assert instance.balance_type == "redeemable_balance"
 
     def test_model_dump(self):
         instance = UserWalletConfig()

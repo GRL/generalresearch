@@ -34,19 +34,3 @@ def approve_paypal_order(
     return payout_event
 
 
-def approve_amt_cashout(
-    user: User,
-    payout_event: UserPayoutEvent,
-    ledger_manager: ThlLedgerManager,
-    payout_event_manager: PayoutEventManager,
-) -> None:
-    """
-    This is going to be paid out by the requester (the jb-lambdas) as an AMT bonus.
-    """
-    assert payout_event.status in {
-        PayoutStatus.PENDING,
-        PayoutStatus.FAILED,
-    }, "attempting to manage payout that is not pending (or you can retry a failed order)"
-
-    payout_event_manager.update(payout_event, status=PayoutStatus.APPROVED)
-    ledger_manager.create_tx_user_payout_complete(user, payout_event=payout_event)

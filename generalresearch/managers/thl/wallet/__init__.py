@@ -14,7 +14,6 @@ from generalresearch.managers.thl.user_manager.user_manager import (
 )
 from generalresearch.managers.thl.userhealth import UserIpHistoryManager
 from generalresearch.managers.thl.wallet.approve import (
-    approve_amt_cashout,
     approve_paypal_order,
 )
 from generalresearch.models.thl.definitions import PayoutStatus
@@ -32,8 +31,8 @@ def manage_pending_cashout(
     user_ip_history_manager: UserIpHistoryManager,
     user_manager: UserManager,
     ledger_manager: ThlLedgerManager,
-    order_data: Optional[Union[Dict[str, Any], CashMailOrderData]] = None,
-    tango_client: Optional[TangoClient] = None,
+    order_data: dict[str, Any] | CashMailOrderData | None = None,
+    tango_client: TangoClient | None = None,
 ) -> UserPayoutEvent:
     """
     Called by a UI actions performed by Todd. This rejects/approves/cancels
@@ -89,14 +88,6 @@ def manage_pending_cashout(
                 payout_event=pe, payout_event_manager=payout_event_manager
             )
 
-        elif pe.payout_type in {PayoutType.AMT_BONUS, PayoutType.AMT_HIT}:
-            approve_amt_cashout(
-                user=user,
-                payout_event=pe,
-                payout_event_manager=payout_event_manager,
-                ledger_manager=ledger_manager,
-            )
-
         elif pe.payout_type == PayoutType.CASH_IN_MAIL:
             assert order_data, "must pass order_data"
             payout_event_manager.update(
@@ -114,14 +105,8 @@ def manage_pending_cashout(
         return pe
 
     elif new_status == PayoutStatus.COMPLETE:
-        # Used only for AMT/dummy cashouts that are actually paid out not
-        # by us. They are informing us that the cashout was successfully
-        # sent to the user
-        if pe.payout_type in {PayoutType.AMT_BONUS, PayoutType.AMT_HIT}:
-            # We already do this under approve_amt_cashout()
-            pass
 
-        elif pe.payout_type == PayoutType.PAYPAL:
+        if pe.payout_type == PayoutType.PAYPAL:
             # This is an issue here in that we actually don't know what the
             # fee is until it is sent and we read it back from paypal's csv
             # result. We have to just run this with a custom script, which

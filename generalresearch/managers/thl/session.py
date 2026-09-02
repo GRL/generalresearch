@@ -116,7 +116,7 @@ class SessionManager(PostgresManager):
 
     def get_latest_for_user(self, user_id: int) -> Session | None:
         """Return the most recently started session for a product user."""
-        res = self.filter_paginated(user_id=user_id, order_by="-started", size=1)
+        res, _ = self.filter_paginated(user_id=user_id, order_by="-started", size=1)
         if res:
             return res[0]
 

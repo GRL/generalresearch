@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections import defaultdict
 from collections.abc import Callable, Collection
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
@@ -57,16 +58,17 @@ from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.payout_format import format_payout_format
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import Session, Status, Wall
-from generalresearch.models.thl.user import BPUIDStr, User
+from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.user_wallet import (
+    UserDisplayedWalletBalance,
     UserLedgerWallet,
     UserLedgerWallets,
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models.thl.contest.contest import ContestWinner
     from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.models.thl.contest.contest import ContestWinner
 
 
 logging.basicConfig()
@@ -1050,8 +1052,8 @@ class ThlLedgerManager(LedgerManager):
         user: User,
         payout_event: UserPayoutEvent,
         created: datetime | None = None,
-        skip_flag_check: bool | None = False,
-        skip_wallet_balance_check: bool | None = False,
+        skip_flag_check: bool = False,
+        skip_wallet_balance_check: bool = False,
     ) -> LedgerTransaction:
         """
         The funds move from the user's wallet into the BP's "pending"
@@ -1070,27 +1072,11 @@ class ThlLedgerManager(LedgerManager):
 
         amt_str = f"${int(amount) / 100:,.2f}"
         descriptions = {
-            PayoutType.AMT_HIT: f"User Payout AMT Assignment Request {amt_str}",
-            PayoutType.AMT_BONUS: f"User Payout AMT Bonus Request {amt_str}",
             PayoutType.PAYPAL: f"User Payout Paypal Request {amt_str}",
             PayoutType.CASH_IN_MAIL: f"User Payout Cash Request {amt_str}",
             PayoutType.TANGO: f"User Payout Tango Request {amt_str}",
         }
         description = descriptions[payout_event.payout_type]
-
-        if payout_event.payout_type in {
-            PayoutType.AMT_HIT,
-            PayoutType.AMT_BONUS,
-        }:
-            """
-            This is for AMT accounts only (currently JB). This is the
-            payment of a either 1) 1c or 5c (typically) assignment or 2) a
-            bonus for task complete to the user. The 20% commission will
-            be taken from the BP's wallet once the tx is completed.
-            """
-            assert user.product.user_wallet_amt, (
-                "Can only call this on an AMT-enabled BPs"
-            )
 
         f = lambda: self.create_tx_user_payout_request_(
             user=user,
@@ -1100,10 +1086,6 @@ class ThlLedgerManager(LedgerManager):
         )
 
         min_balance: int | None = int(amount)
-        if payout_event.payout_type == PayoutType.AMT_HIT:
-            # We allow the user's balance to reach up to -$1.00.
-            min_balance = -100 + amount
-
         if skip_wallet_balance_check:
             min_balance = None
 
@@ -1605,9 +1587,7 @@ class ThlLedgerManager(LedgerManager):
         and is eligible for an attempt credit, then the credit is automatically
         given."""
 
-        session = session_manager.get_latest_for_user(
-            user_id=user.user_id
-        )
+        session = session_manager.get_latest_for_user(user_id=user.user_id)
         if session is None:
             raise ValueError("User has no session to claim attempt credit for")
         if session.status is not None:
@@ -2090,6 +2070,10 @@ class ThlLedgerManager(LedgerManager):
         user.prefetch_product(self.pg_config)
         payout_format = user.product.payout_config.payout_format
         assert payout_format is not None, "Product must have a payout format"
+        user_account_types = {
+            AccountType.USER_WALLET.value,
+            AccountType.USER_ATTEMPT_CREDIT.value,
+        }
 
         rows = self.pg_config.execute_sql_query(
             query="""
@@ -2104,15 +2088,13 @@ class ThlLedgerManager(LedgerManager):
             """,
             params={
                 "reference_uuid": user.uuid,
-                "account_types": [
-                    AccountType.USER_WALLET.value,
-                    AccountType.USER_ATTEMPT_CREDIT.value,
-                ],
+                "account_types": list(user_account_types),
             },
         )
         accounts = [LedgerAccount.model_validate(row) for row in rows]
 
         wallets = []
+        displayed_amounts: dict[str, int] = defaultdict(int)
         for account in accounts:
             if (
                 user.product_id == JAMES_BILLINGS_BPID
@@ -2133,27 +2115,63 @@ class ThlLedgerManager(LedgerManager):
                     user_wallet_balance=balance,
                 )
             else:
-                # The session-based USD reserve calculation cannot be applied
-                # to another ledger currency.
+                # We don't have redeemable logic for other currencies
                 redeemable_balance = max(balance, 0)
 
-            wallets.append(
-                UserLedgerWallet(
-                    account_uuid=account.uuid,
-                    account_type=account.account_type,
-                    currency=account.currency,
-                    display_name=account.display_name,
-                    amount=balance,
-                    redeemable_amount=redeemable_balance,
-                    payout_format=payout_format,
-                    amount_string=format_payout_format(payout_format, balance),
-                    redeemable_amount_string=format_payout_format(
-                        payout_format, redeemable_balance
-                    ),
-                )
+            # A Product has only one payout_format. It is not clear which
+            #  currency it is to be applied to. If we have a non USD currency,
+            #  we'd need multiple payout formats.
+            account_payout_format = (
+                payout_format if account.currency == self.currency.value else None
             )
 
-        return UserLedgerWallets(wallets=wallets)
+            wallet = UserLedgerWallet(
+                account_uuid=account.uuid,
+                account_type=account.account_type,
+                currency=account.currency,
+                display_name=account.display_name,
+                amount=balance,
+                redeemable_amount=redeemable_balance,
+                payout_format=account_payout_format,
+                amount_string=(
+                    format_payout_format(account_payout_format, balance)
+                    if account_payout_format is not None
+                    else None
+                ),
+                redeemable_amount_string=(
+                    format_payout_format(account_payout_format, redeemable_balance)
+                    if account_payout_format is not None
+                    else None
+                ),
+            )
+            wallets.append(wallet)
+
+            if (
+                account.account_type == AccountType.USER_ATTEMPT_CREDIT
+                or user.product.user_wallet_config.balance_type == "wallet_balance"
+            ):
+                displayed_amount = wallet.amount
+            else:
+                displayed_amount = wallet.redeemable_amount
+            displayed_amounts[account.currency] += displayed_amount
+
+        displayed_balances = [
+            UserDisplayedWalletBalance(
+                currency=currency,
+                amount=amount,
+                amount_string=(
+                    format_payout_format(payout_format, amount)
+                    if currency == self.currency.value
+                    else None
+                ),
+            )
+            for currency, amount in sorted(displayed_amounts.items())
+        ]
+
+        return UserLedgerWallets(
+            wallets=wallets,
+            displayed_balances=displayed_balances,
+        )
 
     def get_user_attempt_credit_to_settle(
         self,
