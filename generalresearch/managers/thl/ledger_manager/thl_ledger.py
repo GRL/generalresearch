@@ -57,7 +57,7 @@ from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.payout_format import format_payout_format
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import Session, Status, Wall
-from generalresearch.models.thl.user import User
+from generalresearch.models.thl.user import BPUIDStr, User
 from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.user_wallet import (
     UserLedgerWallet,
@@ -66,6 +66,8 @@ from generalresearch.models.thl.wallet.user_wallet import (
 
 if TYPE_CHECKING:
     from generalresearch.models.thl.contest.contest import ContestWinner
+    from generalresearch.managers.thl.session import SessionManager
+
 
 logging.basicConfig()
 logger = logging.getLogger("LedgerManager")
@@ -1531,7 +1533,7 @@ class ThlLedgerManager(LedgerManager):
         created: datetime | None = None,
         skip_flag_check: bool = False,
     ) -> LedgerTransaction:
-        """Record conditional credit for an eligible failed session.
+        """Record conditional credit for an eligible session attempt.
 
         Eligibility is determined by the caller. This method verifies that the
         session failed and records the credit exactly once per session.
@@ -1547,8 +1549,7 @@ class ThlLedgerManager(LedgerManager):
         )
         amount = USDCent(round(config.failed_attempt_credit * 100))
 
-        assert session.status == Status.FAIL, "Attempt credit requires a failed session"
-        assert session.is_attempt_credit_eligible, (
+        assert session.is_attempt_credit_eligible(), (
             "Session is not eligible for attempt credit"
         )
 
@@ -1590,6 +1591,32 @@ class ThlLedgerManager(LedgerManager):
             flag_key=tag,
             condition=condition,
             create_tx_func=create,
+            skip_flag_check=skip_flag_check,
+        )
+
+    def claim_latest_attempt_credit(
+        self,
+        user: User,
+        session_manager: SessionManager,
+        skip_flag_check: bool = False,
+    ) -> LedgerTransaction:
+        """Claim attempt credit for a product user's most recent session.
+        This must be for an abandoned session, as when a session if finished
+        and is eligible for an attempt credit, then the credit is automatically
+        given."""
+
+        session = session_manager.get_latest_for_user(
+            user_id=user.user_id
+        )
+        if session is None:
+            raise ValueError("User has no session to claim attempt credit for")
+        if session.status is not None:
+            raise ValueError("User's latest session is already finalized")
+
+        assert user.product
+        session.user.product = user.product
+        return self.create_tx_attempt_credit(
+            session=session,
             skip_flag_check=skip_flag_check,
         )
 

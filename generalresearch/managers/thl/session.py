@@ -114,6 +114,12 @@ class SessionManager(PostgresManager):
         assert len(res) == 1
         return self.session_from_mysql(res[0])
 
+    def get_latest_for_user(self, user_id: int) -> Session | None:
+        """Return the most recently started session for a product user."""
+        res = self.filter_paginated(user_id=user_id, order_by="-started", size=1)
+        if res:
+            return res[0]
+
     def get_from_id(self, session_id: int) -> Session:
         query = """
         SELECT  
@@ -190,14 +196,12 @@ class SessionManager(PostgresManager):
         # re-run model_validate after
         finished = finished if finished else datetime.now(tz=timezone.utc)
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "status_code_2": status_code_2,
-                "finished": finished,
-                "payout": payout,
-                "user_payout": user_payout,
-            }
+            status=status,
+            status_code_1=status_code_1,
+            status_code_2=status_code_2,
+            finished=finished,
+            payout=payout,
+            user_payout=user_payout,
         )
         d = session.model_dump_mysql()
         self.pg_config.execute_write(
@@ -453,15 +457,15 @@ class SessionManager(PostgresManager):
         if started_before or started_after:
             started_after = started_after or datetime(2017, 1, 1, tzinfo=timezone.utc)
             started_before = started_before or datetime.now(tz=timezone.utc)
-            assert (
-                started_after.tzinfo == timezone.utc
-            ), "started_after must be tz-aware as UTC"
-            assert (
-                started_before.tzinfo == timezone.utc
-            ), "started_before must be tz-aware as UTC"
-            assert (
-                started_after < started_before
-            ), "started_after must be before started_before"
+            assert started_after.tzinfo == timezone.utc, (
+                "started_after must be tz-aware as UTC"
+            )
+            assert started_before.tzinfo == timezone.utc, (
+                "started_before must be tz-aware as UTC"
+            )
+            assert started_after < started_before, (
+                "started_after must be before started_before"
+            )
             filters.append("started BETWEEN %(started_after)s AND %(started_before)s")
             params["started_after"] = started_after
             params["started_before"] = started_before
@@ -469,15 +473,15 @@ class SessionManager(PostgresManager):
         if adjusted_before or adjusted_after:
             adjusted_after = adjusted_after or datetime(2017, 1, 1, tzinfo=timezone.utc)
             adjusted_before = adjusted_before or datetime.now(tz=timezone.utc)
-            assert (
-                adjusted_after.tzinfo == timezone.utc
-            ), "adjusted_after must be tz-aware as UTC"
-            assert (
-                adjusted_before.tzinfo == timezone.utc
-            ), "adjusted_before must be tz-aware as UTC"
-            assert (
-                adjusted_after < adjusted_before
-            ), "adjusted_after must be before adjusted_before"
+            assert adjusted_after.tzinfo == timezone.utc, (
+                "adjusted_after must be tz-aware as UTC"
+            )
+            assert adjusted_before.tzinfo == timezone.utc, (
+                "adjusted_before must be tz-aware as UTC"
+            )
+            assert adjusted_after < adjusted_before, (
+                "adjusted_after must be before adjusted_before"
+            )
             filters.append(
                 "adjusted_timestamp BETWEEN %(adjusted_after)s AND %(adjusted_before)s"
             )
