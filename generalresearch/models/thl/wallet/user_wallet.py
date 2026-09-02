@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import logging
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.legacy.api_status import StatusResponse
+from generalresearch.models.thl.ledger import AccountType
 from generalresearch.models.thl.payout_format import (
     PayoutFormatField,
     PayoutFormatType,
@@ -40,3 +43,25 @@ class UserWalletBalance(BaseModel):
 
 class UserWalletBalanceResponse(StatusResponse):
     wallet: UserWalletBalance = Field()
+
+
+class UserLedgerWallet(UserWalletBalance):
+    """A user-owned ledger account exposed by the wallets endpoint."""
+
+    account_uuid: UUIDStr = Field(
+        description="A unique identifier for this Ledger Account",
+        examples=["c3c3566b5b1b4961b63a5670a2dc923d"],
+    )
+    account_type: Literal[
+        AccountType.USER_WALLET,
+        AccountType.USER_ATTEMPT_CREDIT,
+    ]
+    currency: str = Field(default="USD", max_length=32)
+    display_name: str = Field(
+        max_length=64,
+        description="Human-readable description of the Ledger Account",
+    )
+
+
+class UserLedgerWallets(BaseModel):
+    wallets: list[UserLedgerWallet] = Field(default_factory=list)

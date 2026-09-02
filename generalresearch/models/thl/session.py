@@ -823,6 +823,29 @@ class Session(BaseModel):
         self.model_config["validate_assignment"] = True
         self.__class__.model_validate(self)
 
+    @property
+    def is_attempt_credit_eligible(self) -> bool:
+        """Return whether this session qualifies for attempt credit.
+        The status of the BP's user_wallet_config.failed_attempt_credit_enabled does
+        not matter here.
+        """
+        min_session_length = timedelta(minutes=1)
+
+        ineligible_status_codes = {
+            StatusCode1.SESSION_START_FAIL,
+            StatusCode1.SESSION_START_QUALITY_FAIL,
+            StatusCode1.SESSION_CONTINUE_QUALITY_FAIL,
+            StatusCode1.BUYER_QUALITY_FAIL,
+            StatusCode1.PS_BLOCKED,
+            StatusCode1.PS_QUALITY
+        }
+        return (
+            self.status == Status.FAIL
+            and self.status_code_1 not in ineligible_status_codes
+            and self.finished is not None
+            and self.elapsed >= min_session_length
+        )
+
     def model_dump_mysql(
         self, *args, **kwargs
     ) -> dict[str, str | int | datetime | float | None]:

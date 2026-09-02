@@ -54,10 +54,15 @@ from generalresearch.models.thl.ledger import (
     TransactionMetadataColumns as tmc,
 )
 from generalresearch.models.thl.payout import UserPayoutEvent
+from generalresearch.models.thl.payout_format import format_payout_format
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import Session, Status, Wall
 from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet import PayoutType
+from generalresearch.models.thl.wallet.user_wallet import (
+    UserLedgerWallet,
+    UserLedgerWallets,
+)
 
 if TYPE_CHECKING:
     from generalresearch.models.thl.contest.contest import ContestWinner
@@ -68,7 +73,6 @@ logger.setLevel(logging.INFO)
 
 
 class ThlLedgerManager(LedgerManager):
-
     def get_account_or_create_user_wallet(self, user: User) -> LedgerAccount:
         """
         TODO: In the future we could create a user wallet account with a
@@ -474,7 +478,7 @@ class ThlLedgerManager(LedgerManager):
                         amount=user_pay,
                     )
                 )
-                if user.product_id == JAMES_BILLINGS_BPID:
+                if user.product.user_wallet_config.failed_attempt_credit_enabled:
                     settlement_amount = self.get_user_attempt_credit_to_settle(
                         user=user, user_pay=user_pay
                     )
@@ -1536,9 +1540,7 @@ class ThlLedgerManager(LedgerManager):
         assert user is not None, "Session must have a user"
         product = user.product
         assert product is not None, "user.prefetch_product()"
-        assert product.user_wallet_enabled, (
-            "Product does not have user_wallet enabled"
-        )
+        assert product.user_wallet_enabled, "Product does not have user_wallet enabled"
         config = product.user_wallet_config
         assert config.failed_attempt_credit_enabled, (
             "Product does not have failed_attempt_credit enabled"
@@ -1546,6 +1548,9 @@ class ThlLedgerManager(LedgerManager):
         amount = USDCent(round(config.failed_attempt_credit * 100))
 
         assert session.status == Status.FAIL, "Attempt credit requires a failed session"
+        assert session.is_attempt_credit_eligible, (
+            "Session is not eligible for attempt credit"
+        )
 
         tag = f"{self.currency.value}:{TransactionType.USER_ATTEMPT_CREDIT.value}:{session.uuid}"
         condition = generate_condition_tag_exists(tag)
@@ -2051,6 +2056,77 @@ class ThlLedgerManager(LedgerManager):
         assert user.user_id, "User must be saved"
         account = self.get_account_or_create_user_attempt_credit(user)
         return self.get_account_balance(account)
+
+    def get_user_wallets(self, user: User) -> UserLedgerWallets:
+        """Return every ledger wallet owned by a user, across currencies."""
+        assert user.user_id, "User must be saved"
+        user.prefetch_product(self.pg_config)
+        payout_format = user.product.payout_config.payout_format
+        assert payout_format is not None, "Product must have a payout format"
+
+        rows = self.pg_config.execute_sql_query(
+            query="""
+                SELECT
+                    uuid, display_name, qualified_name, account_type,
+                    normal_balance, reference_type, reference_uuid, currency
+                FROM ledger_account
+                WHERE reference_type = 'user'
+                  AND reference_uuid = %(reference_uuid)s
+                  AND account_type = ANY(%(account_types)s)
+                ORDER BY currency, account_type, qualified_name;
+            """,
+            params={
+                "reference_uuid": user.uuid,
+                "account_types": [
+                    AccountType.USER_WALLET.value,
+                    AccountType.USER_ATTEMPT_CREDIT.value,
+                ],
+            },
+        )
+        accounts = [LedgerAccount.model_validate(row) for row in rows]
+
+        wallets = []
+        for account in accounts:
+            if (
+                user.product_id == JAMES_BILLINGS_BPID
+                and account.account_type == AccountType.USER_WALLET
+            ):
+                balance = self.get_account_balance_timerange(
+                    account=account,
+                    time_start=JAMES_BILLINGS_TX_CUTOFF,
+                )
+            else:
+                balance = self.get_account_balance(account)
+
+            if account.account_type == AccountType.USER_ATTEMPT_CREDIT:
+                redeemable_balance = 0
+            elif account.currency == self.currency.value:
+                redeemable_balance = self.get_user_redeemable_wallet_balance(
+                    user=user,
+                    user_wallet_balance=balance,
+                )
+            else:
+                # The session-based USD reserve calculation cannot be applied
+                # to another ledger currency.
+                redeemable_balance = max(balance, 0)
+
+            wallets.append(
+                UserLedgerWallet(
+                    account_uuid=account.uuid,
+                    account_type=account.account_type,
+                    currency=account.currency,
+                    display_name=account.display_name,
+                    amount=balance,
+                    redeemable_amount=redeemable_balance,
+                    payout_format=payout_format,
+                    amount_string=format_payout_format(payout_format, balance),
+                    redeemable_amount_string=format_payout_format(
+                        payout_format, redeemable_balance
+                    ),
+                )
+            )
+
+        return UserLedgerWallets(wallets=wallets)
 
     def get_user_attempt_credit_to_settle(
         self,
