@@ -217,20 +217,22 @@ def gr_repo(
 
 @pytest.fixture(scope="session")
 def django_settings_file(
-    tmp_path_factory: TempPathFactory,
     postgres_instance_dict: PostgresDict,
-):
+) -> Callable[..., Path]:
 
-    def _inner(name: str, extra_installed_apps: list[str] | None = None):
+    def _inner(
+        settings_dir: Path, extra_installed_apps: list[str] | None = None
+    ) -> Path:
         installed_apps = [
             "django.contrib.postgres",
             "django.contrib.contenttypes",
-            "generalresearchutils.thl_django",
-            *(extra_installed_apps or []),
-        ]
+        ] + (extra_installed_apps or [])
+        """
+            This returns the directory path of where the settings file is in,
+            not the path of the settings file itself
+        """
 
-        settings_content = f"""
-DATABASES = {{
+        settings_content = f"""DATABASES = {{
     "default": {{
         "ENGINE": "django.db.backends.postgresql",
         "NAME": {postgres_instance_dict["name"]!r},
@@ -248,15 +250,11 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 """
-        settings_path = tmp_path_factory.mktemp("settings") / f"{name}.py"
-        settings_path.write_text(settings_content)
+        settings_file_path = settings_dir / "test_settings.py"
+        settings_file_path.unlink(missing_ok=True)
+        settings_file_path.write_text(settings_content)
 
-        # Django settinsg require python dot syntax, and for the
-        # file to be in the path.. so we must set this.
-        sys.path.insert(0, str(tmp_path_factory))
-        print("SETTINGS_PATH: ", settings_path)
-
-        return settings_path
+        return settings_dir
 
     return _inner
 
@@ -267,6 +265,7 @@ def django_db_factory(
     postgres_instance: PostgresDsn,
     gr_repo: Callable[..., Path],
     django_settings_file: Callable[..., Path],
+    postgres_instance_dict: PostgresDict,
     tmp_path_factory: TempPathFactory,
 ) -> Callable[..., PostgresDsn | None]:
 
@@ -279,65 +278,78 @@ def django_db_factory(
         if _ran.get(django_project, False):
             print(f"Already ran django_db_factory:{django_project}")
             return postgres_instance
-
         _ran[django_project] = True
-        print("DJANGO_PROJECT", django_project)
 
-        _settings_name = "thl_django"
-        _project_path = "generalresearch/thl_django/"
-        if "gr" in django_project:
-            _settings_name = "gr_carer"
-            _project_path = gr_repo()
+        # This is the generalresearch project root path, it's
+        #   1 directory up from test_utils/, or tests/
+        base_dir = Path(request.config.rootpath).parent
+
+        if django_project == "generalresearch.thl_django":
+            _cwd = base_dir
+            _manage_path = "generalresearch.thl_django.app.manage"
+            _settings_dir = base_dir / "generalresearch/thl_django/app"
+            _settings_module = "generalresearch.thl_django.app.test_settings"
             django_settings_file(
-                name=_settings_name, extra_installed_apps=["gr.common"]
-            )
-        else:
-            django_settings_file(name=_settings_name)
-
-        django_fp = Path(request.config.rootpath).parent / str(_project_path)
-        env = {
-            # **os.environ,
-            "DJANGO_SETTINGS_MODULE": f"settings.{_settings_name}",
-            "PYTHONPATH": str(django_fp),
-        }
-
-        if "gr" in django_project:
-            # print("ENV", env)
-            res1 = subprocess.run(
-                [sys.executable, "manage.py", "makemigrations"],
-                cwd=str(django_fp),
-                env=env,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            print("RES1:", res1)
-
-        else:
-            print("ENV", env)
-            res1 = subprocess.run(
-                [
-                    sys.executable,
-                    "manage.py",
-                    "makemigrations",
+                settings_dir=_settings_dir,
+                extra_installed_apps=[
+                    "generalresearch.thl_django",
                 ],
-                cwd=str(django_fp / "app"),
-                env=env,
-                capture_output=True,
-                text=True,
-                check=True,
             )
-            print("RES1:", res1)
 
-            # res2 = subprocess.run(
-            #     [sys.executable, "-m", "django", "migrate"],
-            #     env=env,
-            #     cwd=str(_project_path),
-            #     capture_output=True,
-            #     text=True,
-            #     check=True,
-            # )
-            # print("RES2:", res2)
+        elif django_project == "gr.common":
+            _cwd = gr_repo()
+            _manage_path = "gr.app.manage"
+            _settings_dir = gr_repo() / "gr/app"
+            _settings_module = "gr.app.test_settings"
+            django_settings_file(
+                settings_dir=_settings_dir, extra_installed_apps=["gr.common"]
+            )
+
+        else:
+            raise ValueError("Not implemented yet.")
+
+        assert _settings_dir
+
+        env = {"DJANGO_SETTINGS_MODULE": str(_settings_module)}
+        res1 = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                _manage_path,
+                "makemigrations",
+                f"--settings={_settings_module}",
+            ],
+            cwd=str(_cwd),
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        if res1.returncode != 0:
+            print("STDOUT:", res1.stdout)
+            print("STDERR:", res1.stderr)
+        res1.check_returncode()
+
+        res2 = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                _manage_path,
+                "migrate",
+                f"--settings={_settings_module}",
+            ],
+            env=env,
+            cwd=str(_cwd),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        if res2.returncode != 0:
+            print("STDOUT:", res2.stdout)
+            print("STDERR:", res2.stderr)
+        res2.check_returncode()
 
         # 3. Return the Dsn so the factory gives a way to connect
         return postgres_instance
