@@ -51,112 +51,8 @@ if TYPE_CHECKING:
     )
     from generalresearch.models.thl.session import Session, Wall
     from generalresearch.models.thl.user import User
-    from generalresearch.pg_helper import PostgresConfig
 
 # === THL ===
-
-
-@pytest.fixture
-def user(
-    request: FixtureRequest,
-    user_manager: UserManager,
-    thl_web_rr: PostgresConfig,
-    product_factory: Callable[..., Product],
-) -> User:
-    product = getattr(request, "product", None)
-
-    if product is None:
-        product = product_factory()
-
-    u = user_manager.create_dummy(product_id=product.id)
-    u.prefetch_product(pg_config=thl_web_rr)
-
-    return u
-
-
-@pytest.fixture
-def user_with_wallet(
-    user_factory: Callable[..., User],
-    product_user_wallet_yes: Product,
-) -> User:
-    # A user on a product with user wallet enabled, but they have no money
-    return user_factory(product=product_user_wallet_yes)
-
-
-@pytest.fixture
-def user_with_wallet_amt(
-    user_factory: Callable[..., User], product_amt_true: Product
-) -> User:
-    # A user on a product with user wallet enabled, on AMT, but they have no money
-    return user_factory(product=product_amt_true)
-
-
-@pytest.fixture(scope="function")
-def user_factory(
-    user_manager: UserManager, thl_web_rr: PostgresConfig
-) -> Callable[..., User]:
-
-    def _inner(product: Product, created: datetime | None = None) -> User:
-        u = user_manager.create_dummy(product=product, created=created)
-        u.prefetch_product(pg_config=thl_web_rr)
-
-        return u
-
-    return _inner
-
-
-@pytest.fixture
-def wall_factory(wall_manager: WallManager) -> Callable[..., Wall]:
-
-    def _inner(
-        session: Session, wall_status: Status, req_cpi: Decimal | None = None
-    ) -> Wall:
-
-        assert session.started <= datetime.now(
-            tz=UTC
-        ), "Session can't start in the future"
-
-        if session.wall_events:
-            # Subsequent Wall events
-            wall = session.wall_events[-1]
-            assert not wall.finished, "Can't add new Walls until prior finishes"
-            # wall_started = last_wall.started + timedelta(milliseconds=1)
-        else:
-            # First Wall Event in a session
-            wall_started = session.started + timedelta(milliseconds=1)
-
-            wall = wall_manager.create_dummy(
-                session_id=session.id,
-                user_id=session.user_id,
-                started=wall_started,
-                req_cpi=req_cpi,
-            )
-            session.append_wall_event(w=wall)
-
-        options = list(WALL_ALLOWED_STATUS_STATUS_CODE.get(wall_status, {}))
-        wall.finish(
-            finished=wall.started + timedelta(seconds=randint(a=60 * 2, b=60 * 10)),
-            status=wall_status,
-            status_code_1=randchoice(options),
-        )
-
-        return wall
-
-    return _inner
-
-
-@pytest.fixture
-def wall(session: Session, user: User, wall_manager: WallManager) -> Wall | None:
-    from generalresearch.models.thl.task_status import StatusCode1
-
-    wall = wall_manager.create_dummy(session_id=session.id, user_id=user.user_id)
-    # thl_session.append_wall_event(wall)
-    wall.finish(
-        finished=wall.started + timedelta(seconds=randint(a=60 * 2, b=60 * 10)),
-        status=Status.COMPLETE,
-        status_code_1=StatusCode1.COMPLETE,
-    )
-    return wall
 
 
 @pytest.fixture
@@ -164,6 +60,8 @@ def session_factory(
     session_manager: SessionManager,
     wall_manager: WallManager,
     utc_hour_ago: datetime,
+    session_factory: Callable[..., Session],
+    wall_factory: Callable[..., Wall],
 ) -> Callable[..., Session]:
     from generalresearch.models.thl.session import Source
 
@@ -184,7 +82,7 @@ def session_factory(
         if wall_statuses:
             assert len(wall_statuses) == wall_count
 
-        s = session_manager.create_dummy(started=started, user=user, country_iso="us")
+        s = session_factory(started=started, user=user, country_iso="us")
         for idx in range(wall_count):
             if idx == 0:
                 # First Wall Event in a session
@@ -195,7 +93,7 @@ def session_factory(
                 assert last_wall.finished, "Can't add new Walls until prior finishes"
                 wall_started = last_wall.started + timedelta(milliseconds=1)
 
-            w = wall_manager.create_dummy(
+            w = wall_factory(
                 session_id=s.id,
                 source=wall_source,
                 user_id=s.user_id,
@@ -271,11 +169,15 @@ def finished_session_factory(
 
 @pytest.fixture
 def session(
-    user: User, session_manager: SessionManager, wall_manager: WallManager
+    user: User,
+    session_manager: SessionManager,
+    wall_manager: WallManager,
+    session_factory: Callable[..., Session],
+    wall_factory: Callable[..., Wall],
 ) -> Session:
 
-    session: Session = session_manager.create_dummy(user=user, country_iso="us")
-    wall: Wall = wall_manager.create_dummy(
+    session: Session = session_factory(user=user, country_iso="us")
+    wall: Wall = wall_factory(
         session_id=session.id,
         user_id=session.user_id,
         started=session.started,
@@ -340,37 +242,6 @@ def product_amt_true(
         user_wallet_config=UserWalletConfig(amt=True, enabled=True),
         payout_config=payout_config,
     )
-
-
-@pytest.fixture
-def bp_payout_factory(
-    thl_ledger_manager: ThlLedgerManager,
-    product_manager: ProductManager,
-    business_payout_event_manager: BusinessPayoutEventManager,
-) -> Callable[..., BrokerageProductPayoutEvent]:
-
-    def _inner(
-        product: Product | None = None,
-        amount: USDCent | None = None,
-        ext_ref_id: str | None = None,
-        created: AwareDatetime | None = None,
-        skip_wallet_balance_check: bool = False,
-        skip_one_per_day_check: bool = False,
-    ) -> BrokerageProductPayoutEvent:
-        from generalresearch.currency import USDCent
-
-        product = product or product_manager.create_dummy()
-        amount = amount or USDCent(randint(1, 99_99))
-
-        return business_payout_event_manager.create_bp_payout_event(
-            thl_ledger_manager=thl_ledger_manager,
-            product=product,
-            amount=amount,
-            ext_ref_id=ext_ref_id or uuid4().hex,
-            created=created,
-        )
-
-    return _inner
 
 
 @pytest.fixture(scope="session")

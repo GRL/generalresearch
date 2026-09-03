@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.user_streak import (
         UserStreakManager,
     )
+    from generalresearch.models.thl.session import Session, Wall
     from generalresearch.models.thl.user import User
 
 
@@ -106,8 +108,14 @@ def broken_active_streak(user: User) -> list[UserStreak]:
     ]
 
 
-def create_session_fail(session_manager: SessionManager, start: datetime, user: User):
-    session = session_manager.create_dummy(started=start, country_iso="us", user=user)
+def create_session_fail(
+    session_manager: SessionManager,
+    start: datetime,
+    user: User,
+    session_factory: Callable[..., Session],
+    wall_factory: Callable[..., Wall],
+):
+    session = session_factory(started=start, country_iso="us", user=user)
     session_manager.finish_with_status(
         session,
         finished=start + timedelta(minutes=1),
@@ -117,9 +125,13 @@ def create_session_fail(session_manager: SessionManager, start: datetime, user: 
 
 
 def create_session_complete(
-    session_manager: SessionManager, start: datetime, user: User
+    session_manager: SessionManager,
+    start: datetime,
+    user: User,
+    session_factory: Callable[..., Session],
+    wall_factory: Callable[..., Wall],
 ):
-    session = session_manager.create_dummy(started=start, country_iso="us", user=user)
+    session = session_factory(started=start, country_iso="us", user=user)
     session_manager.finish_with_status(
         session,
         finished=start + timedelta(minutes=1),
@@ -141,13 +153,15 @@ def test_user_streaks_active_broken(
     user: User,
     session_manager: SessionManager,
     broken_active_streak: list[UserStreak],
+    session_factory: Callable[..., Session],
+    wall_factory: Callable[..., Wall],
 ):
     # Testing active streak, but broken (not today or yesterday)
     start1 = datetime(2025, 2, 12, tzinfo=UTC)
     end1 = start1 + timedelta(minutes=1)
 
     # abandon counts as inactive
-    session = session_manager.create_dummy(started=start1, country_iso="us", user=user)
+    session = session_factory(started=start1, country_iso="us", user=user)
     streak = user_streak_manager.get_user_streaks(user_id=user.user_id)
     assert streak == []
 

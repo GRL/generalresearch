@@ -282,7 +282,9 @@ class TestBusinessPayoutEventManager:
         create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         product_factory: Callable[..., Product],
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
         gr_business: Business,
     ):
         delete_ledger_db()
@@ -295,16 +297,24 @@ class TestBusinessPayoutEventManager:
         ach_id2 = uuid4().hex
 
         # ext_ref_id is required now
-        bp_payout_factory(product=p1, amount=USDCent(1), ext_ref_id="none")
+        brokerage_product_payout_event_factory(
+            product=p1, amount=USDCent(1), ext_ref_id="none"
+        )
 
-        bp_payout_factory(product=p1, amount=USDCent(1), ext_ref_id=ach_id1)
+        brokerage_product_payout_event_factory(
+            product=p1, amount=USDCent(1), ext_ref_id=ach_id1
+        )
         with pytest.raises(
             expected_exception=ValueError,
             match="Cannot create a BusinessPayoutEvent with an existing transaction_id",
         ):
-            bp_payout_factory(product=p1, amount=USDCent(25), ext_ref_id=ach_id1)
+            brokerage_product_payout_event_factory(
+                product=p1, amount=USDCent(25), ext_ref_id=ach_id1
+            )
 
-        bp_payout_factory(product=p1, amount=USDCent(50), ext_ref_id=ach_id2)
+        brokerage_product_payout_event_factory(
+            product=p1, amount=USDCent(50), ext_ref_id=ach_id2
+        )
 
         gr_business.prebuild_payouts(
             bpem=business_payout_event_manager,
@@ -562,9 +572,9 @@ class TestBusinessPayoutEventManager:
         session_with_tx_factory: Callable[..., Session],
         pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
-        adj_to_fail_with_tx_factory: Callable[..., None],
-        thl_web_rr: PostgresConfig,
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
         ledger_manager: LedgerManager,
         product_manager: ProductManager,
     ):
@@ -593,7 +603,7 @@ class TestBusinessPayoutEventManager:
             wall_req_cpi=Decimal("5.00"),
             started=start + timedelta(days=6),
         )
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=u1.product,
             amount=USDCent(475),  # 95% of $5.00
             created=start + timedelta(days=1, minutes=1),
@@ -602,7 +612,7 @@ class TestBusinessPayoutEventManager:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -747,7 +757,9 @@ class TestBusinessPayoutEventManager:
         session_with_tx_factory: Callable[..., None],
         pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
         adj_to_fail_with_tx_factory: Callable[..., None],
         thl_web_rr: PostgresConfig,
         ledger_manager: LedgerManager,
@@ -784,7 +796,7 @@ class TestBusinessPayoutEventManager:
             wall_req_cpi=Decimal("5.00"),
             started=start + timedelta(days=1),
         )
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=u1.product,
             amount=USDCent(475),  # 95% of $5.00
             ext_ref_id=ach_id1,
@@ -815,7 +827,7 @@ class TestBusinessPayoutEventManager:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,

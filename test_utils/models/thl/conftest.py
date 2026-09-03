@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
 from random import choice as rand_choice
 from random import randint, random
@@ -13,37 +13,49 @@ import pytest
 from grip_client.enums import AccessType
 from pydantic import PositiveInt
 
+from generalresearch.managers.thl.payout import UserPayoutEventManager
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     IPvAnyAddressStr,
     UUIDStr,
 )
-from generalresearch.models.thl.definitions import PayoutStatus
+from generalresearch.models.thl.definitions import (
+    WALL_ALLOWED_STATUS_STATUS_CODE,
+    PayoutStatus,
+)
+from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.session import (
     Source,
     Status,
 )
 from generalresearch.models.thl.user import User
+from generalresearch.models.thl.user_iphistory import IPRecord
 from generalresearch.models.thl.userhealth import AuditLogLevel
 from generalresearch.models.thl.wallet.definitions import PayoutType
 
 if TYPE_CHECKING:
+    from generalresearch.currency import USDCent
     from generalresearch.managers.thl.ipinfo import (
         IPGeonameManager,
         IPInformationManager,
     )
-    from generalresearch.managers.thl.payout import UserPayoutEventManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.managers.thl.payout import (
+        BrokerageProductPayoutEventManager,
+        BusinessPayoutEventManager,
+    )
     from generalresearch.managers.thl.product import ProductManager
     from generalresearch.managers.thl.session import SessionManager
     from generalresearch.managers.thl.user_manager.user_manager import UserManager
     from generalresearch.managers.thl.userhealth import AuditLogManager, IPRecordManager
     from generalresearch.managers.thl.wall import WallManager
+    from generalresearch.models.custom_types import AwareDatetime
     from generalresearch.models.definitions import DeviceType
     from generalresearch.models.gr.business import Business
     from generalresearch.models.gr.team import Team
     from generalresearch.models.legacy.bucket import Bucket
     from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation
-    from generalresearch.models.thl.payout import UserPayoutEvent
+    from generalresearch.models.thl.payout import BrokerageProductPayoutEvent
     from generalresearch.models.thl.product import (
         PayoutConfig,
         Product,
@@ -66,19 +78,31 @@ if TYPE_CHECKING:
 
 fake = faker.Faker()
 
+# --- Wall ---
 
-@pytest.fixture
-def wall_status() -> Status:
-    return Status.COMPLETE
+
+# from generalresearch.models.thl.task_status import StatusCode1
+# # thl_session.append_wall_event(wall)
+# wall.finish(
+#     finished=wall.started + timedelta(seconds=randint(a=60 * 2, b=60 * 10)),
+#     status=Status.COMPLETE,
+#     status_code_1=StatusCode1.COMPLETE,
+# )
+# return wall
 
 
 @pytest.fixture
 def wall_factory(
-    wall_manager: WallManager, session_factory: Session
+    wall_manager: WallManager,
+    session_factory: Callable[..., Session],
+    session_manager: SessionManager,
 ) -> Callable[..., Wall]:
 
     def _inner(
-        session_id: int | None = None,
+        wall_status: Status,
+        save: bool = True,
+        session: Session | None = None,
+        session_id: PositiveInt | None = None,
         user_id: int | None = None,
         started: datetime | None = None,
         source: Source | None = None,
@@ -86,41 +110,155 @@ def wall_factory(
         req_cpi: Decimal | None = None,
         buyer_id: str | None = None,
         uuid_id: str | None = None,
-    ):
+    ) -> Wall:
         """To be used in tests, where we don't care about certain fields"""
 
-        user_id = user_id or fake.random_int(min=1, max=2_147_483_648)
-        started = started or fake.date_time_between(
-            start_date=datetime(year=1900, month=1, day=1, tzinfo=UTC),
-            end_date=datetime.now(tz=UTC),
-            tzinfo=UTC,
-        )
+        if save:
 
-        if session_id is None:
-            # session = SessionManager(pg_config=self.pg_config).create_dummy(
-            #     started=started
-            # )
-            session = session_factory()
-            session_id = session.id
+            user_id = user_id or fake.random_int(min=1, max=2_147_483_648)
+            _wall_started = started or fake.date_time_between(
+                start_date=datetime(year=1900, month=1, day=1, tzinfo=UTC),
+                end_date=datetime.now(tz=UTC),
+                tzinfo=UTC,
+            )
 
-        source = source or rand_choice(list(Source))
-        req_survey_id = req_survey_id or uuid4().hex
-        req_cpi = req_cpi or Decimal(fake.random_int(min=1, max=150) / 100).quantize(
-            Decimal(".01"), rounding=ROUND_DOWN
-        )
+            if session:
+                # If an existing Session was provided, we want to do some
+                # additional validation.
 
-        return wall_manager.create(
-            session_id=session_id,
-            user_id=user_id,
-            started=started,
-            source=source,
-            req_survey_id=req_survey_id,
-            req_cpi=req_cpi,
-            buyer_id=buyer_id,
-            uuid_id=uuid_id,
-        )
+                if session.wall_events:
+                    # Subsequent Wall events
+                    _last_wall = session.wall_events[-1]
+                    assert (
+                        not _last_wall.finished
+                    ), "Can't add new Walls until prior finishes"
+                    _wall_started = _last_wall.started + timedelta(milliseconds=1)
+                else:
+                    # First Wall Event in a session
+                    _wall_started = session.started + timedelta(milliseconds=1)
+            else:
+                # If a Session was NOT provided, either (1) try to retrieve it
+                # from an optionally provided session_id int, or (2) proceed
+                # forward and make one
+                session = (
+                    session_manager.get_from_id(session_id=session_id)
+                    if session_id
+                    else None
+                ) or session_factory(save=True, user_id=user_id)
+
+            assert session, "Wall factory requires Session"
+
+            source = source or rand_choice(list(Source))
+            req_survey_id = req_survey_id or uuid4().hex
+            req_cpi = req_cpi or Decimal(
+                fake.random_int(min=1, max=150) / 100
+            ).quantize(Decimal(".01"), rounding=ROUND_DOWN)
+
+            w = wall_manager.create(
+                session_id=session.id,
+                user_id=session.user_id,
+                started=_wall_started,
+                source=source,
+                req_survey_id=req_survey_id,
+                req_cpi=req_cpi,
+                buyer_id=buyer_id,
+                uuid_id=uuid_id,
+            )
+
+            _status_code_options = list(
+                WALL_ALLOWED_STATUS_STATUS_CODE.get(wall_status, {})
+            )
+            w.finish(
+                finished=w.started + timedelta(seconds=randint(a=60 * 2, b=60 * 10)),
+                status=wall_status,
+                status_code_1=rand_choice(_status_code_options),
+            )
+
+            session.append_wall_event(w=w)
+
+            return w
+
+        else:
+            raise ValueError("Unsaved Wall not yet supported")
 
     return _inner
+
+
+@pytest.fixture
+def wall(wall_factory: Callable[..., Wall]) -> Wall:
+    return wall_factory(save=True)
+
+
+@pytest.fixture()
+def unsaved_wall(wall_factory: Callable[..., Wall]) -> Wall:
+    return wall_factory(save=False)
+
+
+# --- Wall: Enum(s) ---
+
+
+@pytest.fixture
+def wall_status() -> Status:
+    return Status.COMPLETE
+
+
+# --- Session ---
+
+
+@pytest.fixture
+def session_factory(session_manager: SessionManager, user_factory: Callable[..., User]):
+
+    def _inner(
+        save: bool = True,
+        # -- Create Dummy "optional" -- #
+        started: datetime | None = None,
+        user: User | None = None,
+        # -- Optional -- #
+        country_iso: str | None = None,
+        device_type: DeviceType | None = None,
+        ip: str | None = None,
+        bucket: Bucket | None = None,
+        url_metadata: dict[str, str] | None = None,
+        uuid_id: str | None = None,
+    ) -> Session:
+
+        if save:
+            """To be used in tests, where we don't care about certain fields"""
+            started = started or fake.date_time_between(
+                start_date=datetime(year=1900, month=1, day=1, tzinfo=UTC),
+                end_date=datetime(year=2000, month=1, day=1, tzinfo=UTC),
+                tzinfo=UTC,
+            )
+            user = user or user_factory(save=True)
+            assert user.user_id, "Provided User must be saved to the database"
+
+            return session_manager.create(
+                started=started,
+                user=user,
+                country_iso=country_iso,
+                device_type=device_type,
+                ip=ip,
+                bucket=bucket,
+                url_metadata=url_metadata,
+                uuid_id=uuid_id,
+            )
+        else:
+            # user = User(
+            #     user_id=fake.random_int(min=1, max=2_147_483_648), uuid=uuid4().hex
+            # )
+            raise ValueError("Unsaved Session not yet supported")
+
+    return _inner
+
+
+@pytest.fixture()
+def session(session_factory: Callable[..., Session]) -> Session:
+    return session_factory(save=True)
+
+
+@pytest.fixture()
+def unsaved_session(session_factory: Callable[..., Session]) -> Session:
+    return session_factory(save=False)
 
 
 # --- Product ---
@@ -193,46 +331,7 @@ def unsaved_product(product_factory: Callable[..., Product]) -> Product:
     return product_factory(save=False)
 
 
-# --- Session ---
-
-
-@pytest.fixture
-def session_factory(session_manager: SessionManager):
-
-    def _inner(
-        # -- Create Dummy "optional" -- #
-        started: datetime | None = None,
-        user: User | None = None,
-        # -- Optional -- #
-        country_iso: str | None = None,
-        device_type: DeviceType | None = None,
-        ip: str | None = None,
-        bucket: Bucket | None = None,
-        url_metadata: dict[str, str] | None = None,
-        uuid_id: str | None = None,
-    ) -> Session:
-        """To be used in tests, where we don't care about certain fields"""
-        started = started or fake.date_time_between(
-            start_date=datetime(year=1900, month=1, day=1, tzinfo=UTC),
-            end_date=datetime(year=2000, month=1, day=1, tzinfo=UTC),
-            tzinfo=UTC,
-        )
-        user = user or User(
-            user_id=fake.random_int(min=1, max=2_147_483_648), uuid=uuid4().hex
-        )
-
-        return session_manager.create(
-            started=started,
-            user=user,
-            country_iso=country_iso,
-            device_type=device_type,
-            ip=ip,
-            bucket=bucket,
-            url_metadata=url_metadata,
-            uuid_id=uuid_id,
-        )
-
-    return _inner
+# --- IP Geoname ---
 
 
 @pytest.fixture
@@ -363,7 +462,7 @@ def ip_information(
     return ip_information_factory(save=True)
 
 
-@pytest.fixture
+@pytest.fixture()
 def unsaved_ip_information(
     ip_information_factory: Callable[..., IPInformation],
 ) -> IPInformation:
@@ -373,41 +472,36 @@ def unsaved_ip_information(
 # --- IP Record ---
 
 
-@pytest.fixture
-def ip_record_factory(
-    ip_record_manager: IPRecordManager, user: User
-) -> Callable[..., IPRecord]:
-    # return ip_record_manager.create_dummy(user_id=user.user_id)
-
-    #     def create_dummy(
-    #     self,
-    #     user_id: PositiveInt,
-    #     ip: IPvAnyAddressStr | None = None,
-    #     forwarded_ip1: IPvAnyAddressStr | None = None,
-    #     forwarded_ip2: IPvAnyAddressStr | None = None,
-    #     forwarded_ip3: IPvAnyAddressStr | None = None,
-    #     forwarded_ip4: IPvAnyAddressStr | None = None,
-    #     forwarded_ip5: IPvAnyAddressStr | None = None,
-    #     forwarded_ip6: IPvAnyAddressStr | None = None,
-    # ) -> IPRecord:
-    #     return self.create(
-    #         user_id=user_id,
-    #         ip=ip or fake.ipv4_public(),
-    #         forwarded_ip1=(forwarded_ip1 or fake.ipv4_public()),
-    #         forwarded_ip2=(forwarded_ip2 or fake.ipv6() if random() < 0.5 else None),
-    #         forwarded_ip3=(
-    #             forwarded_ip3 or fake.ipv4_public() if random() < 0.25 else None
-    #         ),
-    #         forwarded_ip4=forwarded_ip4,
-    #         forwarded_ip5=forwarded_ip5,
-    #         forwarded_ip6=forwarded_ip6,
-    #     )
+@pytest.fixture()
+def ip_record_factory(ip_record_manager: IPRecordManager) -> Callable[..., IPRecord]:
 
     def _inner(
-        user_id: PositiveInt, save: bool = True, ip: str | None = None
+        user_id: PositiveInt,
+        save: bool = True,
+        ip: IPvAnyAddressStr | None = None,
+        forwarded_ip1: IPvAnyAddressStr | None = None,
+        forwarded_ip2: IPvAnyAddressStr | None = None,
+        forwarded_ip3: IPvAnyAddressStr | None = None,
+        forwarded_ip4: IPvAnyAddressStr | None = None,
+        forwarded_ip5: IPvAnyAddressStr | None = None,
+        forwarded_ip6: IPvAnyAddressStr | None = None,
     ) -> IPRecord:
+
         if save:
-            return ip_record_manager.create_dummy(user_id=user_id, ip=ip)
+            return ip_record_manager.create(
+                user_id=user_id,
+                ip=ip or fake.ipv4_public(),
+                forwarded_ip1=(forwarded_ip1 or fake.ipv4_public()),
+                forwarded_ip2=(
+                    forwarded_ip2 or fake.ipv6() if random() < 0.5 else None
+                ),
+                forwarded_ip3=(
+                    forwarded_ip3 or fake.ipv4_public() if random() < 0.25 else None
+                ),
+                forwarded_ip4=forwarded_ip4,
+                forwarded_ip5=forwarded_ip5,
+                forwarded_ip6=forwarded_ip6,
+            )
         else:
             raise ValueError("Unsaved IP Record not supported")
 
@@ -415,9 +509,7 @@ def ip_record_factory(
 
 
 @pytest.fixture()
-def ip_record(
-    ip_record_manager: IPRecordManager, ip_geoname: IPGeoname, user: User
-) -> IPRecord:
+def ip_record(ip_record_factory: Callable[..., IPRecord]) -> IPRecord:
     return ip_record_factory(save=True)
 
 
@@ -431,7 +523,8 @@ def unsaved_ip_record(ip_record_factory: Callable[..., IPRecord]) -> IPRecord:
 
 @pytest.fixture()
 def user_factory(
-    user_manager: UserManager, thl_web_rr: PostgresConfig
+    user_manager: UserManager,
+    thl_web_rr: PostgresConfig,
 ) -> Callable[..., User]:
 
     def _inner(
@@ -455,8 +548,6 @@ def user_factory(
                 product=product,
                 created=created,
             )
-
-            u = user_manager.create_dummy(product=product, created=created)
 
             u.prefetch_product(pg_config=thl_web_rr)
             return u
@@ -498,7 +589,7 @@ def user_with_wallet_amt(
     return user_factory(save=True, product=product_amt_true)
 
 
-# --- User Payout ---
+# --- User Payout Event ---
 
 
 @pytest.fixture
@@ -555,30 +646,47 @@ def user_payout_event_factory(
     return _inner
 
 
+@pytest.fixture()
+def user_payout_event(
+    user_payout_event_factory: Callable[..., UserPayoutEvent],
+) -> UserPayoutEvent:
+    return user_payout_event_factory(save=True)
+
+
+@pytest.fixture()
+def unsaved_user_payout_event(
+    user_payout_event_factory: Callable[..., UserPayoutEvent],
+) -> UserPayoutEvent:
+    return user_payout_event_factory(save=True)
+
+
+# -- Brokerage Product Payout Event
+
+
 @pytest.fixture
-def iprecord_factory(iprecord_manager: IPRecordManager) -> Callable[..., IPRecord]:
+def brokerage_product_payout_event_factory(
+    thl_ledger_manager: ThlLedgerManager,
+    brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+    product_factory: Callable[..., Product],
+) -> Callable[..., BrokerageProductPayoutEvent]:
 
     def _inner(
-        user_id: PositiveInt,
-        ip: IPvAnyAddressStr | None = None,
-        forwarded_ip1: IPvAnyAddressStr | None = None,
-        forwarded_ip2: IPvAnyAddressStr | None = None,
-        forwarded_ip3: IPvAnyAddressStr | None = None,
-        forwarded_ip4: IPvAnyAddressStr | None = None,
-        forwarded_ip5: IPvAnyAddressStr | None = None,
-        forwarded_ip6: IPvAnyAddressStr | None = None,
-    ) -> IPRecord:
-        return iprecord_manager.create(
-            user_id=user_id,
-            ip=ip or fake.ipv4_public(),
-            forwarded_ip1=(forwarded_ip1 or fake.ipv4_public()),
-            forwarded_ip2=(forwarded_ip2 or fake.ipv6() if random() < 0.5 else None),
-            forwarded_ip3=(
-                forwarded_ip3 or fake.ipv4_public() if random() < 0.25 else None
-            ),
-            forwarded_ip4=forwarded_ip4,
-            forwarded_ip5=forwarded_ip5,
-            forwarded_ip6=forwarded_ip6,
+        product: Product | None = None,
+        amount: USDCent | None = None,
+        ext_ref_id: str | None = None,
+        created: AwareDatetime | None = None,
+    ) -> BrokerageProductPayoutEvent:
+        from generalresearch.currency import USDCent
+
+        product = product or product_factory()
+        amount = amount or USDCent(randint(1, 99_99))
+
+        return brokerage_product_payout_event_manager.create_bp_payout_event(
+            thl_ledger_manager=thl_ledger_manager,
+            product=product,
+            amount=amount,
+            ext_ref_id=ext_ref_id or uuid4().hex,
+            created=created,
         )
 
     return _inner

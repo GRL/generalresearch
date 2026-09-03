@@ -134,7 +134,9 @@ class TestBusiness:
         thl_ledger_manager: ThlLedgerManager,
         product_manager: ProductManager,
         business_payout_event_manager: BusinessPayoutEventManager,
-        bp_payout_factory: Callable[..., BusinessPayoutEventManager],
+        brokerage_product_payout_event_factory: Callable[
+            ..., BusinessPayoutEventManager
+        ],
         start: datetime,
         user_factory: Callable[..., User],
         session_with_tx_factory: Callable[..., Session],
@@ -179,7 +181,7 @@ class TestBusiness:
             wall_req_cpi=Decimal("2.50"),
             started=start + timedelta(days=5),
         )
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=p1,
             amount=USDCent(50),
             created=start + timedelta(days=4),
@@ -329,7 +331,9 @@ class TestBusiness:
         self,
         gr_business: Business,
         product_factory: Callable[..., Product],
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
         thl_ledger_manager: ThlLedgerManager,
         business_payout_event_manager: BusinessPayoutEventManager,
         create_main_accounts: Callable[..., None],
@@ -341,7 +345,7 @@ class TestBusiness:
             thl_lm=thl_ledger_manager
         )
 
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=p, amount=USDCent(123), skip_wallet_balance_check=True
         )
 
@@ -352,7 +356,7 @@ class TestBusiness:
         assert sum([p.amount for p in gr_business.payouts]) == 123
 
         # Add another!
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=p,
             amount=USDCent(123),
             skip_wallet_balance_check=True,
@@ -373,7 +377,9 @@ class TestBusiness:
         self,
         gr_business: Business,
         product_factory: Callable[..., Product],
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
         thl_ledger_manager: ThlLedgerManager,
         thl_web_rr: PostgresConfig,
         business_payout_event_manager: BusinessPayoutEventManager,
@@ -388,21 +394,21 @@ class TestBusiness:
             thl_lm=thl_ledger_manager
         )
 
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=p1,
             amount=USDCent(1),
             skip_wallet_balance_check=True,
             skip_one_per_day_check=True,
         )
 
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=p1,
             amount=USDCent(25),
             skip_wallet_balance_check=True,
             skip_one_per_day_check=True,
         )
 
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=p1,
             amount=USDCent(50),
             skip_wallet_balance_check=True,
@@ -633,7 +639,9 @@ class TestBusinessBalance:
         user_factory: Callable[..., User],
         product_manager: ProductManager,
         mnt_filepath: GRLDatasets,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         start: datetime,
@@ -668,7 +676,7 @@ class TestBusinessBalance:
 
         payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
 
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=u1.product,
             amount=USDCent(5),
             created=start + timedelta(days=4),
@@ -676,7 +684,7 @@ class TestBusinessBalance:
             skip_one_per_day_check=True,
         )
 
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=u2.product,
             amount=USDCent(50),
             created=start + timedelta(days=4),
@@ -707,7 +715,9 @@ class TestBusinessBalance:
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
         mnt_filepath: GRLDatasets,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
         ledger_manager: LedgerManager,
         thl_ledger_manager: ThlLedgerManager,
         start: datetime,
@@ -762,7 +772,7 @@ class TestBusinessBalance:
         )
         payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
 
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=u1.product,
             amount=USDCent(250),
             created=start + timedelta(days=3),
@@ -770,7 +780,7 @@ class TestBusinessBalance:
             skip_one_per_day_check=True,
         )
 
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=u2.product,
             amount=USDCent(50),
             created=start + timedelta(days=4),
@@ -846,7 +856,9 @@ class TestBusinessBalance:
         session_with_tx_factory: Callable[..., Session],
         pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
         payout_event_manager,
         product_manager: ProductManager,
         adj_to_fail_with_tx_factory: Callable[..., None],
@@ -876,7 +888,7 @@ class TestBusinessBalance:
             started=start + timedelta(days=1),
         )
         payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=u1.product,
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
@@ -958,7 +970,9 @@ class TestBusinessBalance:
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
         mnt_filepath: GRLDatasets,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         product_manager: ProductManager,
@@ -1029,7 +1043,7 @@ class TestBusinessBalance:
         )
         payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
 
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=u1.product,
             amount=USDCent(250),
             created=start + timedelta(days=3),
@@ -1037,7 +1051,7 @@ class TestBusinessBalance:
             skip_one_per_day_check=True,
         )
 
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=u2.product,
             amount=USDCent(50),
             created=start + timedelta(days=4),

@@ -31,7 +31,7 @@ except ImportError:
 
 class TestGrlIqDataManager:
 
-    def test_create_dummy(
+    def test_factory(
         self,
         grliq_data_factory: Callable[..., GrlIqData],
     ):

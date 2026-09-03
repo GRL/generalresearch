@@ -132,13 +132,6 @@ def gr_business_address_factory(
     return _inner
 
 
-# @pytest.fixture
-# def business_address(
-#     gr_business: Business, business_address_manager: BusinessAddressManager
-# ) -> :
-#     return business_address_manager.create_dummy(business_id=gr_business.id)
-
-
 @pytest.fixture
 def gr_business_address(
     gr_business_address_factory: Callable[..., BusinessAddress],

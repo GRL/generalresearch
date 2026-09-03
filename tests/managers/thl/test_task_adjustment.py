@@ -23,7 +23,7 @@ if TYPE_CHECKING:
         TaskAdjustmentManager,
     )
     from generalresearch.managers.thl.wall import WallManager
-    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.session import Session, Wall
     from generalresearch.models.thl.user import User
 
 
@@ -47,10 +47,14 @@ def session_complete_with_wallet(
 
 @pytest.fixture()
 def session_fail(
-    user: User, session_manager: SessionManager, wall_manager: WallManager
+    user: User,
+    session_manager: SessionManager,
+    wall_manager: WallManager,
+    session_factory: Callable[..., Session],
+    wall_factory: Callable[..., Wall],
 ) -> Session:
-    session = session_manager.create_dummy(started=datetime.now(UTC), user=user)
-    wall1 = wall_manager.create_dummy(
+    session = session_factory(started=datetime.now(UTC), user=user)
+    wall1 = wall_factory(
         session_id=session.id,
         user_id=user.user_id,
         source=Source.DYNATA,

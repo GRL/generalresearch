@@ -241,10 +241,9 @@ class TestIPRecordManager:
         ip_record_manager: IPRecordManager,
         user: User,
         ip_information: IPInformation,
+        ip_record_factory: Callable[..., IPRecord],
     ):
-        instance = ip_record_manager.create_dummy(
-            user_id=user.user_id, ip=ip_information.ip
-        )
+        instance = ip_record_factory(user_id=user.user_id, ip=ip_information.ip)
         assert isinstance(instance, IPRecord)
 
         assert isinstance(instance.forwarded_ips, list)

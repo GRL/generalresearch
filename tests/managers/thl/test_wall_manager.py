@@ -19,7 +19,7 @@ from generalresearch.models.thl.definitions import (
 if TYPE_CHECKING:
     from generalresearch.managers.thl.session import SessionManager
     from generalresearch.managers.thl.wall import WallCacheManager, WallManager
-    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.session import Session, Wall
     from generalresearch.models.thl.user import User
 
 
@@ -250,13 +250,15 @@ class TestWallCacheManager:
         wall_manager: WallManager,
         session_manager: SessionManager,
         user: User,
+        session_factory: Callable[..., Session],
+        wall_factory: Callable[..., Wall],
     ):
         start1 = datetime.now(UTC) - timedelta(hours=3)
         start2 = datetime.now(UTC) - timedelta(hours=2)
         start3 = datetime.now(UTC) - timedelta(hours=1)
 
-        session = session_manager.create_dummy(started=start1, user=user)
-        wall_manager.create_dummy(
+        session = session_factory(started=start1, user=user)
+        wall_factory(
             session_id=session.id,
             user_id=session.user_id,
             started=start1,
@@ -272,7 +274,7 @@ class TestWallCacheManager:
         attempts = wall_cache_manager.get_attempts(user_id=user.user_id)
         assert len(attempts) == 1
 
-        wall_manager.create_dummy(
+        wall_factory(
             session_id=session.id,
             user_id=session.user_id,
             started=start2,
@@ -298,8 +300,8 @@ class TestWallCacheManager:
         attempts10000 = [attempts[0]] * 6000
         wall_cache_manager.update_attempts_redis_(attempts10000, user_id=user.user_id)
 
-        session = session_manager.create_dummy(started=start3, user=user)
-        wall_manager.create_dummy(
+        session = session_factory(started=start3, user=user)
+        wall_factory(
             session_id=session.id,
             user_id=session.user_id,
             started=start3,

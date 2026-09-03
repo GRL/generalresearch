@@ -25,6 +25,7 @@ if TYPE_CHECKING:
         BrokerageProductPayoutEventManager,
         UserPayoutEventManager,
     )
+    from generalresearch.models.thl.payout import UserPayoutEvent
     from generalresearch.models.thl.product import Product
 
 
@@ -111,7 +112,7 @@ class TestThlPayoutEventManager:
             # We just added 5 Payouts for a specific product: Product, now go
             # ahead and query for them
             res = brokerage_product_payout_event_manager.get_bp_bp_payout_events_for_products(
-                thl_ledger_manager=thl_ledger_manager, product_uuids=[product.id]
+                product_uuids=[product.id]
             )
 
             assert len(res) == N_PAYOUT_EVENTS
@@ -120,7 +121,6 @@ class TestThlPayoutEventManager:
         #   ahead and query for them
         res = (
             brokerage_product_payout_event_manager.get_bp_bp_payout_events_for_products(
-                thl_ledger_manager=thl_ledger_manager,
                 product_uuids=[i.uuid for i in products],
             )
         )
@@ -160,11 +160,15 @@ class TestThlPayoutEventManager:
     # def test_filter_by(self):
     #     raise NotImplementedError
 
-    def test_create(self, user_payout_event_manager: UserPayoutEventManager):
+    def test_create(
+        self,
+        user_payout_event_factory: Callable[..., UserPayoutEvent],
+        user_payout_event_manager: UserPayoutEventManager,
+    ):
         from generalresearch.models.thl.payout import UserPayoutEvent
 
         # Confirm the creation method returns back an instance.
-        pe = user_payout_event_manager.create_dummy()
+        pe = user_payout_event_factory()
         assert isinstance(pe, UserPayoutEvent)
 
         # Now query the DB for that PayoutEvent to confirm it was actually
@@ -260,7 +264,7 @@ class TestBPPayoutEvent:
         #   array of BPPayoutEvents
         bp_bp_res = (
             brokerage_product_payout_event_manager.get_bp_bp_payout_events_for_products(
-                thl_ledger_manager=thl_ledger_manager, product_uuids=[product.uuid]
+                product_uuids=[product.uuid]
             )
         )
         assert isinstance(bp_bp_res, list)

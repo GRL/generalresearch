@@ -11,36 +11,29 @@ import pytest
 from pytest import FixtureRequest as Request
 
 from generalresearch.currency import USDCent
-from test_utils.models.conftest import (
-    payout_config,
-    product_amt_true,
-    product_user_wallet_no,
-    product_user_wallet_yes,
-    session,
-    session_factory,
-    user_factory,
-    wall,
-    wall_factory,
-)
+
+# from test_utils.models.conftest import (
+#     payout_config,
+#     product_amt_true,
+#     product_user_wallet_no,
+#     product_user_wallet_yes,
+# )
+
+# _ = (
+#     user_factory,
+#     product_user_wallet_no,
+#     wall,
+#     product_amt_true,
+#     product_user_wallet_yes,
+#     session_factory,
+#     session,
+#     wall_factory,
+#     payout_config,
+# )
 
 if TYPE_CHECKING:
-    from generalresearch.managers.base import PostgresManager
-
-_ = (
-    user_factory,
-    product_user_wallet_no,
-    wall,
-    product_amt_true,
-    product_user_wallet_yes,
-    session_factory,
-    session,
-    wall_factory,
-    payout_config,
-)
-
-if TYPE_CHECKING:
-
     from generalresearch.currency import LedgerCurrency
+    from generalresearch.managers.base import PostgresManager
     from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
@@ -193,16 +186,17 @@ def usd_cent(request: Request) -> USDCent:
 def bp_payout_event(
     product: Product,
     usd_cent: USDCent,
-    business_payout_event_manager: BusinessPayoutEventManager,
+    brokerage_product_payout_event_manager: BrokerageProductPayoutEvent,
     thl_ledger_manager: ThlLedgerManager,
 ) -> BrokerageProductPayoutEvent:
 
-    return business_payout_event_manager.create_bp_payout_event(
+    _ext_ref_id = f"tx-{uuid4().hex[:7]}"
+
+    return brokerage_product_payout_event_manager.create_bp_payout_event(
         thl_ledger_manager=thl_ledger_manager,
+        ext_ref_id=_ext_ref_id,
         product=product,
         amount=usd_cent,
-        skip_wallet_balance_check=True,
-        skip_one_per_day_check=True,
     )
 
 

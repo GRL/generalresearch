@@ -617,7 +617,9 @@ class TestProductFinancials:
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
         mnt_filepath: GRLDatasets,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
         thl_ledger_manager: ThlLedgerManager,
         start: datetime,
         brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
@@ -716,7 +718,7 @@ class TestProductFinancials:
 
         from generalresearch.currency import USDCent
 
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=p1,
             amount=USDCent(50),
             created=start + timedelta(days=3),
@@ -766,7 +768,7 @@ class TestProductFinancials:
 
         # -- Now pay ou another!.
 
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=p1,
             amount=USDCent(5),
             created=start + timedelta(days=4),
@@ -843,7 +845,9 @@ class TestProductBalance:
         session_with_tx_factory: Callable[..., Session],
         pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
         payout_event_manager: PayoutEventManager,
     ):
         # Now let's load it up and actually test some things
@@ -864,7 +868,7 @@ class TestProductBalance:
 
         # 2. Payout and build Parquets 2nd time
         payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=product,
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
@@ -895,7 +899,9 @@ class TestProductBalance:
         session_with_tx_factory: Callable[..., None],
         pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
         payout_event_manager: PayoutEventManager,
     ):
         # This is very similar to the test_complete_payout_pq_inconsistent
@@ -923,7 +929,7 @@ class TestProductBalance:
         # 2. Payout and build Parquets 2nd time but this payout is "now"
         #    so it hasn't already been archived
         payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=product,
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
@@ -1114,7 +1120,9 @@ class TestProductCache:
         session_with_tx_factory: Callable[..., None],
         pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
         payout_event_manager: PayoutEventManager,
         adj_to_fail_with_tx_factory: Callable[..., None],
     ):
@@ -1136,7 +1144,7 @@ class TestProductCache:
 
         # 2. Payout
         payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=product,
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,

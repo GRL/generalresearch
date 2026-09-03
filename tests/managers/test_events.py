@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 import math
-import random
 import time
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from functools import partial
-from math import floor
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -39,25 +36,8 @@ def product_id(product_manager: ProductManager) -> str:
 
 
 @pytest.fixture(scope="function")
-def user_factory(product_id: str):
-    return partial(create_dummy, product_id=product_id)
-
-
-@pytest.fixture(scope="function")
 def event_subscriber(thl_redis_config: RedisConfig, product_id: str) -> EventSubscriber:
     return EventSubscriber(redis_config=thl_redis_config, product_id=product_id)
-
-
-def create_dummy(
-    product_id: str | None = None, product_user_id: str | None = None
-) -> User:
-    return User(
-        product_id=product_id,
-        product_user_id=product_user_id or uuid4().hex,
-        uuid=uuid4().hex,
-        created=datetime.now(tz=UTC),
-        user_id=random.randint(0, floor(2**32 / 2)),
-    )
 
 
 class TestActiveUsers:
