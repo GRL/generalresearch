@@ -14,15 +14,13 @@ from generalresearch.models.thl.session import (
     Status,
     StatusCode1,
     WallAdjustedStatus,
+    Session,
+    Wall,
 )
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.session import SessionManager
     from generalresearch.managers.thl.wall import WallManager
-    from generalresearch.models.thl.session import (
-        Session,
-        Wall,
-    )
     from generalresearch.models.thl.user import User
 
 started1 = datetime(2023, 1, 1, tzinfo=UTC)
@@ -36,7 +34,6 @@ adj_ts3 = datetime(2023, 2, 4, tzinfo=UTC)
 
 
 class TestProductAdjustments:
-
     @pytest.mark.parametrize("payout", [".6", "1", "1.8", "2", "500.0000"])
     def test_determine_bp_payment_no_rounding(
         self, product_factory: Callable[..., Product], payout: str
@@ -57,7 +54,6 @@ class TestProductAdjustments:
 
 
 class TestSessionAdjustments:
-
     def test_status_complete(self, session_factory: Callable[..., Session], user: User):
         # Completed Session with 2 wall events
         s1 = session_factory(
@@ -80,7 +76,6 @@ class TestSessionAdjustments:
 
 
 class TestAdjustments:
-
     def test_finish_with_status(
         self,
         session_factory: Callable[..., Session],

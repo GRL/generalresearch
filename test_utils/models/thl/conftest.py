@@ -4,7 +4,6 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
 from random import choice as rand_choice
-from random import choice as randchoice
 from random import randint, random
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -14,29 +13,26 @@ import pytest
 from grip_client.enums import AccessType
 from pydantic import PositiveInt
 
+from generalresearch.currency import USDCent
 from generalresearch.managers.thl.payout import UserPayoutEventManager
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     IPvAnyAddressStr,
     UUIDStr,
 )
+from generalresearch.models.definitions import DeviceType, Source
 from generalresearch.models.thl.definitions import (
     WALL_ALLOWED_STATUS_STATUS_CODE,
     PayoutStatus,
-)
-from generalresearch.models.thl.payout import UserPayoutEvent
-from generalresearch.models.thl.session import (
-    Source,
     Status,
 )
+from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.user import User
-from generalresearch.models.thl.user_iphistory import IPRecord
 from generalresearch.models.thl.userhealth import AuditLogLevel
 from generalresearch.models.thl.wallet.definitions import PayoutType
 from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
-    from generalresearch.currency import USDCent
     from generalresearch.managers.thl.ipinfo import (
         IPGeonameManager,
         IPInformationManager,
@@ -51,7 +47,6 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.userhealth import AuditLogManager, IPRecordManager
     from generalresearch.managers.thl.wall import WallManager
     from generalresearch.models.custom_types import AwareDatetime
-    from generalresearch.models.definitions import DeviceType
     from generalresearch.models.gr.business import Business
     from generalresearch.models.gr.team import Team
     from generalresearch.models.legacy.bucket import Bucket
@@ -94,7 +89,7 @@ fake = faker.Faker()
 @pytest.fixture
 def wall_factory(
     wall_manager: WallManager,
-    session_factory: Callable[..., Session],
+    bare_session_factory: Callable[..., Session],
     session_manager: SessionManager,
 ) -> Callable[..., Wall]:
 
@@ -143,7 +138,7 @@ def wall_factory(
                     session_manager.get_from_id(session_id=session_id)
                     if session_id
                     else None
-                ) or session_factory(save=True, user_id=user_id)
+                ) or bare_session_factory(save=True, user_id=user_id)
 
             assert session, "Wall factory requires Session"
 
@@ -205,7 +200,10 @@ def wall_status() -> Status:
 
 
 @pytest.fixture
-def session_factory(session_manager: SessionManager, user_factory: Callable[..., User]):
+def bare_session_factory(
+    session_manager: SessionManager, user_factory: Callable[..., User]
+):
+    # Create a session with no wall events
 
     def _inner(
         save: bool = True,
@@ -251,40 +249,33 @@ def session_factory(session_manager: SessionManager, user_factory: Callable[...,
 
 
 @pytest.fixture()
-def session(session_factory: Callable[..., Session]) -> Session:
-    return session_factory(save=True)
+def bare_session(bare_session_factory: Callable[..., Session]) -> Session:
+    # A session with no wall events
+    return bare_session_factory()
 
 
 @pytest.fixture
-def session_w_wall(
-    user: User,
-    session: Session,
+def session(
+    bare_session: Session,
     wall_factory: Callable[..., Wall],
 ) -> Session:
-
+    s = bare_session.model_copy()
     wall: Wall = wall_factory(
-        session_id=session.id,
-        user_id=session.user_id,
-        started=session.started,
+        session_id=s.id,
+        user_id=s.user_id,
+        started=s.started,
     )
-    session.append_wall_event(w=wall)
-
-    return session
-
-
-@pytest.fixture()
-def unsaved_session(session_factory: Callable[..., Session]) -> Session:
-    return session_factory(save=False)
+    s.append_wall_event(w=wall)
+    return s
 
 
 @pytest.fixture
-def session_w_wall_factory(
+def session_factory(
     wall_manager: WallManager,
     utc_hour_ago: datetime,
-    session_factory: Callable[..., Session],
+    bare_session_factory: Callable[..., Session],
     wall_factory: Callable[..., Wall],
 ) -> Callable[..., Session]:
-    from generalresearch.models.thl.session import Source
 
     def _inner(
         user: User,
@@ -303,7 +294,7 @@ def session_w_wall_factory(
         if wall_statuses:
             assert len(wall_statuses) == wall_count
 
-        s = session_factory(started=started, user=user, country_iso="us")
+        s = bare_session_factory(started=started, user=user, country_iso="us")
         for idx in range(wall_count):
             if idx == 0:
                 # First Wall Event in a session
@@ -334,7 +325,7 @@ def session_w_wall_factory(
             wall_manager.finish(
                 wall=w,
                 status=_final_status,
-                status_code_1=randchoice(options),
+                status_code_1=rand_choice(options),
                 finished=w.started + timedelta(seconds=randint(a=60 * 2, b=60 * 10)),
             )
 
@@ -345,11 +336,10 @@ def session_w_wall_factory(
 
 @pytest.fixture(scope="function")
 def finished_session_factory(
-    session_w_wall_factory: Callable[..., Session],
+    session_factory: Callable[..., Session],
     session_manager: SessionManager,
     utc_hour_ago: datetime,
 ) -> Callable[..., Session]:
-    from generalresearch.models.thl.session import Source
 
     def _inner(
         user: User,
@@ -363,7 +353,7 @@ def finished_session_factory(
         final_status: Status = Status.COMPLETE,
         started: datetime = utc_hour_ago,
     ) -> Session:
-        s: Session = session_w_wall_factory(
+        s: Session = session_factory(
             user=user,
             wall_count=wall_count,
             wall_req_cpi=wall_req_cpi,
@@ -804,7 +794,6 @@ def brokerage_product_payout_event_factory(
         ext_ref_id: str | None = None,
         created: AwareDatetime | None = None,
     ) -> BrokerageProductPayoutEvent:
-        from generalresearch.currency import USDCent
 
         product = product or product_factory()
         amount = amount or USDCent(randint(1, 99_99))
