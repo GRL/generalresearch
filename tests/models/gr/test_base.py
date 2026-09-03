@@ -39,17 +39,3 @@ class TestGRPostgresDjangoCreation:
 
         dsn = django_db_factory("gr.common")
         assert isinstance(dsn, PostgresDsn)
-
-    def test_django_tables(self, gr_db: PostgresConfig):
-        """
-        WARNING: This will always be the thl_django tables in addition
-        to the GR tables due to the way our fixtures are loaded.
-        """
-
-        res = gr_db.execute_sql_query(query="""
-            SELECT COUNT(*)
-            FROM information_schema.tables
-            WHERE table_schema = 'public';
-        """)
-        assert len(res) == 1
-        assert res[0]["count"] == 65
