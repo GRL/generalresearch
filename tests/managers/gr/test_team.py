@@ -18,8 +18,10 @@ if TYPE_CHECKING:
 
 class TestMembershipManager:
 
-    def test_init(self, membership_manager: MembershipManager, gr_db: PostgresConfig):
-        assert membership_manager.pg_config == gr_db
+    def test_init(
+        self, gr_membership_manager: MembershipManager, gr_db: PostgresConfig
+    ):
+        assert gr_membership_manager.pg_config == gr_db
 
 
 class TestTeamManager:

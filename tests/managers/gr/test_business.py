@@ -111,7 +111,7 @@ class TestBusinessManager:
         gr_business_manager: BusinessManager,
         gr_user: GRUser,
         team_manager: TeamManager,
-        membership_manager: MembershipManager,
+        gr_membership_manager: MembershipManager,
         gr_business_factory: Callable[..., Business],
         gr_team_factory: Callable[..., Team],
     ):
@@ -130,7 +130,7 @@ class TestBusinessManager:
 
         # Create a Membership for the gr_user to the Team... but it doesn't
         #   matter because the Team doesn't have any Business yet
-        _ = membership_manager.create(team=t1, gr_user=gr_user)
+        _ = gr_membership_manager.create(team=t1, gr_user=gr_user)
         res = gr_business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 0
 

@@ -247,8 +247,6 @@ class TestWallCacheManager:
     def test_get_wall_events(
         self,
         wall_cache_manager: WallCacheManager,
-        wall_manager: WallManager,
-        session_manager: SessionManager,
         user: User,
         session_factory: Callable[..., Session],
         wall_factory: Callable[..., Wall],

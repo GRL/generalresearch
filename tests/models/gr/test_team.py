@@ -82,7 +82,7 @@ class TestTeam:
         self,
         gr_team: Team,
         gr_user_factory: Callable[..., GRUser],
-        membership_manager: MembershipManager,
+        gr_membership_manager: MembershipManager,
         gr_user_manager: GRUserManager,
     ):
         assert gr_team.gr_users is None
@@ -92,13 +92,13 @@ class TestTeam:
         assert len(gr_team.gr_users) == 0
 
         # Create a new Membership
-        membership_manager.create(team=gr_team, gr_user=gr_user_factory())
+        gr_membership_manager.create(team=gr_team, gr_user=gr_user_factory())
         assert len(gr_team.gr_users) == 0
         gr_team.prefetch_gr_users(gr_user_manager=gr_user_manager)
         assert len(gr_team.gr_users) == 1
 
         # Create another Membership
-        membership_manager.create(team=gr_team, gr_user=gr_user_factory())
+        gr_membership_manager.create(team=gr_team, gr_user=gr_user_factory())
         assert len(gr_team.gr_users) == 1
         gr_team.prefetch_gr_users(gr_user_manager=gr_user_manager)
         assert len(gr_team.gr_users) == 2

@@ -42,7 +42,6 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
     from generalresearch.managers.thl.payout import (
         BrokerageProductPayoutEventManager,
-        BusinessPayoutEventManager,
     )
     from generalresearch.managers.thl.product import ProductManager
     from generalresearch.managers.thl.session import SessionManager
