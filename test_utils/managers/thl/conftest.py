@@ -184,7 +184,10 @@ def product_manager(thl_web_rw: PostgresConfig) -> ProductManager:
 
 @pytest.fixture(scope="session")
 def user_manager(
-    settings: GRLBaseSettings, thl_web_rw: PostgresConfig, thl_web_rr: PostgresConfig
+    settings: GRLBaseSettings,
+    thl_web_rw: PostgresConfig,
+    thl_web_rr: PostgresConfig,
+    thl_redis_config: RedisConfig,
 ) -> UserManager:
     assert thl_web_rw.dsn
     assert thl_web_rw.dsn.path
@@ -193,15 +196,21 @@ def user_manager(
     assert "/unittest-" in thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rr.dsn.path
 
+    from generalresearch.managers.thl.user_manager.rate_limit import UserManagerLimiter
     from generalresearch.managers.thl.user_manager.user_manager import (
         UserManager,
     )
 
-    return UserManager(
+    um = UserManager(
         pg_config=thl_web_rw,
         pg_config_rr=thl_web_rr,
         redis=settings.redis,
     )
+
+    # rc = thl_redis_config.create_redis_client()
+    um.user_manager_limiter = UserManagerLimiter(redis=thl_redis_config.dsn)
+
+    return um
 
 
 @pytest.fixture(scope="session")

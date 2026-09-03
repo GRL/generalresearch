@@ -1,7 +1,7 @@
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": 'unittest-2026-09-03-7aa1e5',
+        "NAME": 'unittest-2026-09-03-728bcf',
         "USER": 'jenkins',
         "PASSWORD": '123456789',
         "HOST": 'unittest-postgresql.fmt2.grl.internal',

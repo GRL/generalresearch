@@ -194,7 +194,7 @@ class TestBusiness:
             bpem=business_payout_event_manager,
         )
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -283,12 +283,13 @@ class TestBusiness:
         thl_web_rr: PostgresConfig,
         ledger_manager: LedgerManager,
         pop_ledger_merge: PopLedgerMerge,
+        product_manager: ProductManager,
     ):
         assert gr_business.balance is None
 
         with pytest.raises(expected_exception=AssertionError) as cm:
             gr_business.prebuild_balance(
-                thl_pg_config=thl_web_rr,
+                product_manager=product_manager,
                 lm=ledger_manager,
                 ds=mnt_filepath,
                 client=client_no_amm,
@@ -409,8 +410,6 @@ class TestBusiness:
         )
 
         gr_business.prebuild_payouts(
-            thl_pg_config=thl_web_rr,
-            thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
 
@@ -495,6 +494,7 @@ class TestBusinessBalance:
         create_main_accounts: Callable[..., None],
         client_no_amm: DaskClient,
         ledger_collection,
+        product_manager: ProductManager,
         pop_ledger_merge: PopLedgerMerge,
         delete_df_collection: Callable[..., None],
     ):
@@ -522,7 +522,7 @@ class TestBusinessBalance:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -549,6 +549,7 @@ class TestBusinessBalance:
         user_factory: Callable[..., User],
         mnt_filepath: GRLDatasets,
         ledger_manager: LedgerManager,
+        product_manager: ProductManager,
         start: datetime,
         thl_web_rr: PostgresConfig,
         session_with_tx_factory: Callable[..., Session],
@@ -582,7 +583,7 @@ class TestBusinessBalance:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -631,6 +632,7 @@ class TestBusinessBalance:
         gr_business: Business,
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
+        product_manager: ProductManager,
         mnt_filepath: GRLDatasets,
         bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
         thl_ledger_manager: ThlLedgerManager,
@@ -687,7 +689,7 @@ class TestBusinessBalance:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -714,6 +716,7 @@ class TestBusinessBalance:
         payout_event_manager: PayoutEventManager,
         session_with_tx_factory: Callable[..., Session],
         delete_ledger_db: Callable[..., None],
+        product_manager: ProductManager,
         create_main_accounts: Callable[..., None],
         ledger_collection,
         task_adj_collection,
@@ -799,7 +802,7 @@ class TestBusinessBalance:
         assert df.shape == (20, 28)
 
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -846,6 +849,7 @@ class TestBusinessBalance:
         start: datetime,
         bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
         payout_event_manager,
+        product_manager: ProductManager,
         adj_to_fail_with_tx_factory: Callable[..., None],
         thl_web_rr: PostgresConfig,
         ledger_manager: LedgerManager,
@@ -903,7 +907,7 @@ class TestBusinessBalance:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -958,6 +962,7 @@ class TestBusinessBalance:
         bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
+        product_manager: ProductManager,
         start: datetime,
         thl_web_rr: PostgresConfig,
         payout_event_manager,
@@ -1065,7 +1070,7 @@ class TestBusinessBalance:
         assert df.shape == (20, 28)
 
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -1073,7 +1078,7 @@ class TestBusinessBalance:
         )
 
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -1083,7 +1088,7 @@ class TestBusinessBalance:
         day1_bal = gr_business.balance
 
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -1093,7 +1098,7 @@ class TestBusinessBalance:
         day2_bal = gr_business.balance
 
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -1103,7 +1108,7 @@ class TestBusinessBalance:
         day3_bal = gr_business.balance
 
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -1113,7 +1118,7 @@ class TestBusinessBalance:
         day4_bal = gr_business.balance
 
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -1123,7 +1128,7 @@ class TestBusinessBalance:
         day5_bal = gr_business.balance
 
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -1196,8 +1201,10 @@ class TestBusinessMethods:
         ledger_manager: LedgerManager,
         thl_ledger_manager: ThlLedgerManager,
         business_payout_event_manager,
+        gr_business_bank_account_manager: BusinessBankAccountManager,
+        product_manager: ProductManager,
         product_factory: Callable[..., Product],
-        team: Team,
+        gr_team: Team,
         session_with_tx_factory: Callable[..., Session],
         user_factory: Callable[..., User],
         ledger_collection,
@@ -1211,7 +1218,7 @@ class TestBusinessMethods:
         client = gr_redis_config.create_redis_client()
         assert client.get(name=gr_business.cache_key) is None
 
-        p1 = product_factory(team=team, business=gr_business)
+        p1 = product_factory(team=gr_team, business=gr_business)
         u1 = user_factory(product=p1)
 
         # Business needs tx & incite to build balance
@@ -1223,7 +1230,9 @@ class TestBusinessMethods:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         gr_business.set_cache(
-            pg_config=gr_db,
+            product_manager=product_manager,
+            business_bank_account_manager=gr_business_bank_account_manager,
+            pg_config=thl_web_rr,
             thl_web_rr=thl_web_rr,
             redis_config=gr_redis_config,
             client=client_no_amm,
@@ -1260,6 +1269,8 @@ class TestBusinessMethods:
         ledger_manager: LedgerManager,
         thl_ledger_manager: ThlLedgerManager,
         business_payout_event_manager,
+        product_manager: ProductManager,
+        gr_business_bank_account_manager: BusinessBankAccountManager,
         user_factory: Callable[..., User],
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
@@ -1286,6 +1297,8 @@ class TestBusinessMethods:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         gr_business.set_cache(
+            product_manager=product_manager,
+            business_bank_account_manager=gr_business_bank_account_manager,
             pg_config=gr_db,
             thl_web_rr=thl_web_rr,
             redis_config=gr_redis_config,
@@ -1351,6 +1364,7 @@ class TestBusinessMethods:
         enriched_session_merge,
         client_no_amm: DaskClient,
         wall_collection: WallDFCollection,
+        product_manager: ProductManager,
         session_collection: SessionDFCollection,
         thl_web_rr: PostgresConfig,
         user_factory: Callable[..., User],
@@ -1389,7 +1403,7 @@ class TestBusinessMethods:
         )
 
         gr_business.prebuild_enriched_session_parquet(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             mnt_gr_api=mnt_gr_api_dir,
@@ -1409,6 +1423,7 @@ class TestBusinessMethods:
         enriched_wall_merge,
         client_no_amm: DaskClient,
         wall_collection: WallDFCollection,
+        product_manager: ProductManager,
         session_collection: SessionDFCollection,
         thl_web_rr: PostgresConfig,
         user_factory: Callable[..., User],
@@ -1447,7 +1462,7 @@ class TestBusinessMethods:
         )
 
         gr_business.prebuild_enriched_wall_parquet(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             mnt_gr_api=mnt_gr_api_dir,

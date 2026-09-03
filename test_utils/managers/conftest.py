@@ -14,15 +14,6 @@ from generalresearch.managers.thl.user_streak import (
 from generalresearch.models.definitions import Source
 
 if TYPE_CHECKING:
-    from generalresearch.managers.gr.business import (
-        BusinessAddressManager,
-        BusinessBankAccountManager,
-        BusinessManager,
-    )
-    from generalresearch.managers.gr.team import (
-        MembershipManager,
-        TeamManager,
-    )
     from generalresearch.managers.spectrum.survey import SpectrumSurveyManager
     from generalresearch.managers.thl.buyer import BuyerManager
     from generalresearch.managers.thl.ipinfo import (
@@ -35,6 +26,7 @@ if TYPE_CHECKING:
         IPRecordManager,
         UserIpHistoryManager,
     )
+    from generalresearch.models.thl.user import User
     from generalresearch.models.thl.wallet.cashout_method import CashoutMethod
     from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig
@@ -100,7 +92,7 @@ def user_iphistory_manager(
 
 
 @pytest.fixture(scope="function")
-def user_iphistory_manager_clear_cache(user_iphistory_manager, user):
+def user_iphistory_manager_clear_cache(user_iphistory_manager, user: User):
     # On successive py-test/jenkins runs, the cache may contain
     #   the previous run's info (keyed under the same user_id)
     user_iphistory_manager.delete_user_ip_history_cache(user_id=user.user_id)
@@ -203,69 +195,6 @@ def spectrum_survey_manager(spectrum_rw: SqlHelper) -> SpectrumSurveyManager:
     )
 
     return SpectrumSurveyManager(sql_helper=spectrum_rw)
-
-
-# === GR ===
-@pytest.fixture(scope="session")
-def business_manager(
-    gr_db: PostgresConfig, gr_redis_config: RedisConfig
-) -> BusinessManager:
-    from generalresearch.redis_helper import RedisConfig
-
-    assert gr_db.dsn.path
-    assert "/unittest-" in gr_db.dsn.path
-    assert isinstance(gr_redis_config, RedisConfig)
-
-    from generalresearch.managers.gr.business import BusinessManager
-
-    return BusinessManager(
-        pg_config=gr_db,
-        redis_config=gr_redis_config,
-    )
-
-
-@pytest.fixture(scope="session")
-def business_address_manager(gr_db: PostgresConfig) -> BusinessAddressManager:
-    assert gr_db.dsn.path
-    assert "/unittest-" in gr_db.dsn.path
-
-    from generalresearch.managers.gr.business import BusinessAddressManager
-
-    return BusinessAddressManager(pg_config=gr_db)
-
-
-@pytest.fixture(scope="session")
-def business_bank_account_manager(
-    gr_db: PostgresConfig,
-) -> BusinessBankAccountManager:
-    assert gr_db.dsn.path
-    assert "/unittest-" in gr_db.dsn.path
-
-    from generalresearch.managers.gr.business import (
-        BusinessBankAccountManager,
-    )
-
-    return BusinessBankAccountManager(pg_config=gr_db)
-
-
-@pytest.fixture(scope="session")
-def team_manager(gr_db: PostgresConfig, gr_redis_config: RedisConfig) -> TeamManager:
-    assert gr_db.dsn.path
-    assert "/unittest-" in gr_db.dsn.path
-
-    from generalresearch.managers.gr.team import TeamManager
-
-    return TeamManager(pg_config=gr_db, redis_config=gr_redis_config)
-
-
-@pytest.fixture(scope="session")
-def membership_manager(gr_db: PostgresConfig) -> MembershipManager:
-    assert gr_db.dsn.path
-    assert "/unittest-" in gr_db.dsn.path
-
-    from generalresearch.managers.gr.team import MembershipManager
-
-    return MembershipManager(pg_config=gr_db)
 
 
 @pytest.fixture(scope="session")

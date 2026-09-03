@@ -302,7 +302,10 @@ class Business(BaseModel):
         #   of knowing if a new Product has been added since the last time it
         #   ran.
         self.prefetch_products(product_manager=product_manager)
+        assert isinstance(self.products, list)
         product_lookup = {p.uuid: p for p in self.products}
+        assert isinstance(self.product_uuids, list)
+        assert thl_lm.currency
 
         accounts = thl_lm.get_accounts_if_exists(
             qualified_names=[
@@ -339,7 +342,7 @@ class Business(BaseModel):
 
     def prebuild_balance(
         self,
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
         lm: LedgerManager,
         ds: GRLDatasets,
         client: DaskClient,
@@ -369,8 +372,9 @@ class Business(BaseModel):
         volume levels.
         """
         LOG.debug(f"Business.prebuild_balance({self.uuid=})")
+        assert lm.currency
 
-        self.prefetch_products(thl_pg_config=thl_pg_config)
+        self.prefetch_products(product_manager=product_manager)
 
         accounts: list[LedgerAccount] = lm.get_accounts_if_exists(
             qualified_names=(
@@ -425,7 +429,7 @@ class Business(BaseModel):
         df = df.groupby("account_id").sum()
 
         self.balance = BusinessBalances.from_pandas(
-            input_data=df, accounts=accounts, thl_pg_config=thl_pg_config
+            input_data=df, accounts=accounts, product_manager=product_manager
         )
 
         return
@@ -462,6 +466,7 @@ class Business(BaseModel):
         """
         if self.bp_accounts is None:
             self.prefetch_bp_accounts(thl_lm=thl_lm, product_manager=product_manager)
+        assert isinstance(self.bp_accounts, list)
 
         from generalresearch.models.admin.request import (
             ReportRequest,
@@ -504,13 +509,13 @@ class Business(BaseModel):
 
     def prebuild_enriched_session_parquet(
         self,
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
         ds: GRLDatasets,
         client: DaskClient,
         mnt_gr_api: Path,
         enriched_session: EnrichedSessionMerge | None = None,
     ) -> None:
-        self.prefetch_products(thl_pg_config=thl_pg_config)
+        self.prefetch_products(product_manager=product_manager)
 
         if enriched_session is None:
             from generalresearch.incite.defaults import (
@@ -547,13 +552,13 @@ class Business(BaseModel):
 
     def prebuild_enriched_wall_parquet(
         self,
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
         ds: GRLDatasets,
         client: DaskClient,
         mnt_gr_api: Path,
         enriched_wall: EnrichedWallMerge | None = None,
     ) -> None:
-        self.prefetch_products(thl_pg_config=thl_pg_config)
+        self.prefetch_products(product_manager=product_manager)
 
         if enriched_wall is None:
             from generalresearch.incite.defaults import (
@@ -619,6 +624,8 @@ class Business(BaseModel):
     def set_cache(
         self,
         pg_config: PostgresConfig,
+        product_manager: ProductManager,
+        business_bank_account_manager: BusinessBankAccountManager,
         thl_web_rr: PostgresConfig,
         redis_config: RedisConfig,
         client: DaskClient,
@@ -637,12 +644,14 @@ class Business(BaseModel):
 
         self.prefetch_addresses(pg_config=pg_config)
         self.prefetch_teams(pg_config=pg_config)
-        self.prefetch_products(thl_pg_config=thl_web_rr)
-        self.prefetch_bank_accounts(pg_config=pg_config)
-        self.prefetch_bp_accounts(thl_lm=thl_lm, thl_pg_config=thl_web_rr)
+        self.prefetch_products(product_manager=product_manager)
+        self.prefetch_bank_accounts(
+            business_bank_account_manager=business_bank_account_manager
+        )
+        self.prefetch_bp_accounts(thl_lm=thl_lm, product_manager=product_manager)
 
         self.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=lm,
             ds=ds,
             client=client,
@@ -650,7 +659,7 @@ class Business(BaseModel):
         )
         self.prebuild_payouts(bpem=bpem)
         self.prebuild_pop_financial(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             thl_lm=thl_lm,
             ds=ds,
             client=client,
@@ -682,7 +691,7 @@ class Business(BaseModel):
             enriched_session = es(ds=ds)
 
         self.prebuild_enriched_session_parquet(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             client=client,
             ds=ds,
             mnt_gr_api=mnt_gr_api,
@@ -695,7 +704,7 @@ class Business(BaseModel):
             enriched_wall = ew(ds=ds)
 
         self.prebuild_enriched_wall_parquet(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             client=client,
             ds=ds,
             mnt_gr_api=mnt_gr_api,

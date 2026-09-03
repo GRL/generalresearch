@@ -29,7 +29,10 @@ if TYPE_CHECKING:
     from generalresearch.incite.mergers.foundations.enriched_wall import (
         EnrichedWallMerge,
     )
+    from generalresearch.managers.gr.authentication import GRUserManager
+    from generalresearch.managers.gr.business import BusinessManager
     from generalresearch.managers.gr.team import MembershipManager, TeamManager
+    from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.gr.authentication import GRUser
     from generalresearch.models.gr.team import Membership
     from generalresearch.models.thl.session import Session
@@ -40,118 +43,118 @@ if TYPE_CHECKING:
 
 class TestTeam:
 
-    def test_init(self, team: Team):
+    def test_init(self, gr_team: Team):
 
-        assert isinstance(team, Team)
-        assert isinstance(team.id, int)
-        assert isinstance(team.uuid, str)
+        assert isinstance(gr_team, Team)
+        assert isinstance(gr_team.id, int)
+        assert isinstance(gr_team.uuid, str)
 
-    def test_memberships_none(self, team: Team, gr_db: PostgresConfig):
-        assert team.memberships is None
+    def test_memberships_none(
+        self, gr_team: Team, gr_membership_manager: MembershipManager
+    ):
+        assert gr_team.memberships is None
 
-        team.prefetch_memberships(pg_config=gr_db)
-        assert isinstance(team.memberships, list)
-        assert len(team.memberships) == 0
+        gr_team.prefetch_memberships(membership_manager=gr_membership_manager)
+        assert isinstance(gr_team.memberships, list)
+        assert len(gr_team.memberships) == 0
 
     def test_memberships(
         self,
-        team: Team,
+        gr_team: Team,
         gr_user: GRUser,
         gr_user_factory: Callable[..., GRUser],
-        membership_manager: MembershipManager,
-        gr_db: PostgresConfig,
+        gr_membership_manager: MembershipManager,
     ):
-        assert team.memberships is None
+        assert gr_team.memberships is None
 
-        team.prefetch_memberships(pg_config=gr_db)
-        assert isinstance(team.memberships, list)
-        assert len(team.memberships) == 1
-        assert team.memberships[0].user_id == gr_user.id
+        gr_team.prefetch_memberships(membership_manager=gr_membership_manager)
+        assert isinstance(gr_team.memberships, list)
+        assert len(gr_team.memberships) == 1
+        assert gr_team.memberships[0].user_id == gr_user.id
 
         # Create another new Membership
-        membership_manager.create(team=team, gr_user=gr_user_factory())
-        assert len(team.memberships) == 1
-        team.prefetch_memberships(pg_config=gr_db)
-        assert len(team.memberships) == 2
+        gr_membership_manager.create(team=gr_team, gr_user=gr_user_factory())
+        assert len(gr_team.memberships) == 1
+        gr_team.prefetch_memberships(membership_manager=gr_membership_manager)
+        assert len(gr_team.memberships) == 2
 
     def test_gr_users(
         self,
-        team: Team,
+        gr_team: Team,
         gr_user_factory: Callable[..., GRUser],
         membership_manager: MembershipManager,
-        gr_db: PostgresConfig,
-        gr_redis_config: RedisConfig,
+        gr_user_manager: GRUserManager,
     ):
-        assert team.gr_users is None
+        assert gr_team.gr_users is None
 
-        team.prefetch_gr_users(pg_config=gr_db, redis_config=gr_redis_config)
-        assert isinstance(team.gr_users, list)
-        assert len(team.gr_users) == 0
+        gr_team.prefetch_gr_users(gr_user_manager=gr_user_manager)
+        assert isinstance(gr_team.gr_users, list)
+        assert len(gr_team.gr_users) == 0
 
         # Create a new Membership
-        membership_manager.create(team=team, gr_user=gr_user_factory())
-        assert len(team.gr_users) == 0
-        team.prefetch_gr_users(pg_config=gr_db, redis_config=gr_redis_config)
-        assert len(team.gr_users) == 1
+        membership_manager.create(team=gr_team, gr_user=gr_user_factory())
+        assert len(gr_team.gr_users) == 0
+        gr_team.prefetch_gr_users(gr_user_manager=gr_user_manager)
+        assert len(gr_team.gr_users) == 1
 
         # Create another Membership
-        membership_manager.create(team=team, gr_user=gr_user_factory())
-        assert len(team.gr_users) == 1
-        team.prefetch_gr_users(pg_config=gr_db, redis_config=gr_redis_config)
-        assert len(team.gr_users) == 2
+        membership_manager.create(team=gr_team, gr_user=gr_user_factory())
+        assert len(gr_team.gr_users) == 1
+        gr_team.prefetch_gr_users(gr_user_manager=gr_user_manager)
+        assert len(gr_team.gr_users) == 2
 
     def test_businesses(
         self,
-        team: Team,
+        gr_team: Team,
         business: Business,
         team_manager: TeamManager,
-        gr_db: PostgresConfig,
-        gr_redis_config: RedisConfig,
+        gr_business_manager: BusinessManager,
     ):
 
-        assert team.businesses is None
+        assert gr_team.businesses is None
 
-        team.prefetch_businesses(pg_config=gr_db, redis_config=gr_redis_config)
-        assert isinstance(team.businesses, list)
-        assert len(team.businesses) == 0
+        gr_team.prefetch_businesses(business_manager=gr_business_manager)
+        assert isinstance(gr_team.businesses, list)
+        assert len(gr_team.businesses) == 0
 
-        team_manager.add_business(team=team, business=business)
-        assert len(team.businesses) == 0
-        team.prefetch_businesses(pg_config=gr_db, redis_config=gr_redis_config)
-        assert len(team.businesses) == 1
-        assert isinstance(team.businesses[0], Business)
-        assert team.businesses[0].uuid == business.uuid
+        team_manager.add_business(team=gr_team, business=business)
+        assert len(gr_team.businesses) == 0
+        gr_team.prefetch_businesses(business_manager=gr_business_manager)
+        assert len(gr_team.businesses) == 1
+        assert isinstance(gr_team.businesses[0], Business)
+        assert gr_team.businesses[0].uuid == business.uuid
 
     def test_products(
         self,
-        team: Team,
+        gr_team: Team,
         product_factory: Callable[..., Product],
         thl_web_rr: PostgresConfig,
+        product_manager: ProductManager,
     ):
 
-        assert team.products is None
+        assert gr_team.products is None
 
-        team.prefetch_products(thl_pg_config=thl_web_rr)
-        assert isinstance(team.products, list)
-        assert len(team.products) == 0
+        gr_team.prefetch_products(product_manager=product_manager)
+        assert isinstance(gr_team.products, list)
+        assert len(gr_team.products) == 0
 
-        product_factory(team=team)
-        assert len(team.products) == 0
-        team.prefetch_products(thl_pg_config=thl_web_rr)
-        assert len(team.products) == 1
-        assert isinstance(team.products[0], Product)
+        product_factory(team=gr_team)
+        assert len(gr_team.products) == 0
+        gr_team.prefetch_products(product_manager=product_manager)
+        assert len(gr_team.products) == 1
+        assert isinstance(gr_team.products[0], Product)
 
 
 class TestTeamMethods:
 
-    def test_cache_key(self, team: Team):
-        assert isinstance(team.cache_key, str)
-        assert ":" in team.cache_key
-        assert str(team.uuid) in team.cache_key
+    def test_cache_key(self, gr_team: Team):
+        assert isinstance(gr_team.cache_key, str)
+        assert ":" in gr_team.cache_key
+        assert str(gr_team.uuid) in gr_team.cache_key
 
     def test_set_cache(
         self,
-        team: Team,
+        gr_team: Team,
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         gr_redis_config: RedisConfig,
@@ -162,9 +165,9 @@ class TestTeamMethods:
         enriched_session_merge: EnrichedSessionMerge,
     ):
         client = gr_redis_config.create_redis_client()
-        assert client.get(name=team.cache_key) is None
+        assert client.get(name=gr_team.cache_key) is None
 
-        team.set_cache(
+        gr_team.set_cache(
             pg_config=gr_db,
             thl_web_rr=thl_web_rr,
             redis_config=gr_redis_config,
@@ -175,7 +178,7 @@ class TestTeamMethods:
             enriched_session=enriched_session_merge,
         )
 
-        assert client.hgetall(name=team.cache_key) is not None
+        assert client.hgetall(name=gr_team.cache_key) is not None
 
     def test_set_cache_team(
         self,
@@ -183,7 +186,7 @@ class TestTeamMethods:
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
-        team: Team,
+        gr_team: Team,
         membership_factory: Callable[..., Membership],
         gr_redis_config: RedisConfig,
         mnt_filepath: GRLDatasets,
@@ -193,10 +196,10 @@ class TestTeamMethods:
     ):
         from generalresearch.models.gr.team import Team
 
-        p1 = product_factory(team=team)
-        membership_factory(team=team, gr_user=gr_user)
+        p1 = product_factory(team=gr_team)
+        membership_factory(team=gr_team, gr_user=gr_user)
 
-        team.set_cache(
+        gr_team.set_cache(
             pg_config=gr_db,
             thl_web_rr=thl_web_rr,
             redis_config=gr_redis_config,
@@ -208,7 +211,7 @@ class TestTeamMethods:
         )
 
         team2 = Team.from_redis(
-            uuid=team.uuid,
+            uuid=gr_team.uuid,
             fields=["id", "memberships", "gr_users", "businesses", "products"],
             gr_redis_config=gr_redis_config,
         )
@@ -216,7 +219,7 @@ class TestTeamMethods:
         assert isinstance(team2, Team)
         assert isinstance(team2.products, list)
         assert isinstance(team2.gr_users, list)
-        assert team.model_dump_json() == team2.model_dump_json()
+        assert gr_team.model_dump_json() == team2.model_dump_json()
         assert p1.uuid in [p.uuid for p in team2.products]
         assert len(team2.gr_users) == 1
         assert gr_user.id in [gru.id for gru in team2.gr_users]
@@ -235,14 +238,14 @@ class TestTeamMethods:
         delete_df_collection: Callable[..., None],
         mnt_filepath: GRLDatasets,
         mnt_gr_api_dir: Path,
-        team: Team,
+        gr_team: Team,
     ):
 
         delete_df_collection(coll=wall_collection)
         delete_df_collection(coll=session_collection)
 
-        p1 = product_factory(team=team)
-        p2 = product_factory(team=team)
+        p1 = product_factory(team=gr_team)
+        p2 = product_factory(team=gr_team)
 
         for p in [p1, p2]:
             u = user_factory(product=p)
@@ -263,7 +266,7 @@ class TestTeamMethods:
             pg_config=thl_web_rr,
         )
 
-        team.prebuild_enriched_session_parquet(
+        gr_team.prebuild_enriched_session_parquet(
             thl_pg_config=thl_web_rr,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -273,7 +276,7 @@ class TestTeamMethods:
 
         # Now try to read from path
         df = pd.read_parquet(
-            os.path.join(mnt_gr_api_dir, "pop_session", f"{team.file_key}.parquet")
+            os.path.join(mnt_gr_api_dir, "pop_session", f"{gr_team.file_key}.parquet")
         )
         assert isinstance(df, pd.DataFrame)
 
@@ -291,14 +294,14 @@ class TestTeamMethods:
         delete_df_collection: Callable[..., None],
         mnt_filepath: GRLDatasets,
         mnt_gr_api_dir: Path,
-        team: Team,
+        gr_team: Team,
     ):
 
         delete_df_collection(coll=wall_collection)
         delete_df_collection(coll=session_collection)
 
-        p1 = product_factory(team=team)
-        p2 = product_factory(team=team)
+        p1 = product_factory(team=gr_team)
+        p2 = product_factory(team=gr_team)
 
         for p in [p1, p2]:
             u = user_factory(product=p)
@@ -319,7 +322,7 @@ class TestTeamMethods:
             pg_config=thl_web_rr,
         )
 
-        team.prebuild_enriched_wall_parquet(
+        gr_team.prebuild_enriched_wall_parquet(
             thl_pg_config=thl_web_rr,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -329,6 +332,6 @@ class TestTeamMethods:
 
         # Now try to read from path
         df = pd.read_parquet(
-            os.path.join(mnt_gr_api_dir, "pop_event", f"{team.file_key}.parquet")
+            os.path.join(mnt_gr_api_dir, "pop_event", f"{gr_team.file_key}.parquet")
         )
         assert isinstance(df, pd.DataFrame)

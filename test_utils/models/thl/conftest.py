@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.userhealth import AuditLogManager, IPRecordManager
     from generalresearch.managers.thl.wall import WallManager
     from generalresearch.models.definitions import DeviceType
+    from generalresearch.models.gr.business import Business
     from generalresearch.models.gr.team import Team
     from generalresearch.models.legacy.bucket import Bucket
     from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation
@@ -154,8 +155,7 @@ def product_factory(product_manager: ProductManager) -> Callable[..., Product]:
     def _inner(
         save: bool = True,
         team: Team | None = None,
-        # business: Business | None = None,
-        # commission_pct: Decimal = Decimal("0.05"),
+        business: Business | None = None,
         product_id: UUIDStr | None = None,
         business_id: UUIDStr | None = None,
         name: str | None = None,
@@ -171,8 +171,12 @@ def product_factory(product_manager: ProductManager) -> Callable[..., Product]:
         user_health_config: UserHealthConfig | None = None,
     ) -> Product:
         """To be used in tests, where we don't care about certain fields"""
+
         product_id = product_id if product_id else uuid4().hex
+
         team_id = team.uuid if team else uuid4().hex
+        business_id = business.uuid if business else uuid4().hex
+
         name = name if name else f"name-{product_id[:12]}"
         redirect_url = redirect_url if redirect_url else "https://www.example.com/"
 

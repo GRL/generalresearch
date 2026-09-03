@@ -142,13 +142,13 @@ class Team(BaseModel):
 
     def prebuild_enriched_session_parquet(
         self,
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
         ds: GRLDatasets,
         client: Client,
         mnt_gr_api: Path,
         enriched_session: EnrichedSessionMerge | None = None,
     ) -> None:
-        self.prefetch_products(thl_pg_config=thl_pg_config)
+        self.prefetch_products(product_manager=product_manager)
 
         if enriched_session is None:
             from generalresearch.incite.defaults import (
@@ -185,13 +185,13 @@ class Team(BaseModel):
 
     def prebuild_enriched_wall_parquet(
         self,
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
         ds: GRLDatasets,
         client: Client,
         mnt_gr_api: Path,
         enriched_wall: EnrichedWallMerge | None = None,
     ) -> None:
-        self.prefetch_products(thl_pg_config=thl_pg_config)
+        self.prefetch_products(product_manager=product_manager)
 
         if enriched_wall is None:
             from generalresearch.incite.defaults import (
@@ -259,7 +259,10 @@ class Team(BaseModel):
 
     def set_cache(
         self,
-        pg_config: PostgresConfig,
+        product_manager: ProductManager,
+        gr_user_manager: GRUserManager,
+        gr_business_manager: BusinessManager,
+        gr_membership_manager: MembershipManager,
         thl_web_rr: PostgresConfig,
         redis_config: RedisConfig,
         client: Client,
@@ -268,10 +271,10 @@ class Team(BaseModel):
         enriched_session: EnrichedSessionMerge | None = None,
         enriched_wall: EnrichedWallMerge | None = None,
     ) -> None:
-        self.prefetch_products(thl_pg_config=thl_web_rr)
-        self.prefetch_gr_users(pg_config=pg_config, redis_config=redis_config)
-        self.prefetch_businesses(pg_config=pg_config, redis_config=redis_config)
-        self.prefetch_memberships(pg_config=pg_config)
+        self.prefetch_products(product_manager=product_manager)
+        self.prefetch_gr_users(gr_user_manager=gr_user_manager)
+        self.prefetch_businesses(business_manager=gr_business_manager)
+        self.prefetch_memberships(membership_manager=gr_membership_manager)
 
         rc = redis_config.create_redis_client()
         mapping = self.model_dump(mode="json")
@@ -288,7 +291,7 @@ class Team(BaseModel):
             enriched_session = es(ds=ds)
 
         self.prebuild_enriched_session_parquet(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             client=client,
             ds=ds,
             mnt_gr_api=mnt_gr_api,
@@ -301,7 +304,7 @@ class Team(BaseModel):
             enriched_wall = ew(ds=ds)
 
         self.prebuild_enriched_wall_parquet(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             client=client,
             ds=ds,
             mnt_gr_api=mnt_gr_api,
