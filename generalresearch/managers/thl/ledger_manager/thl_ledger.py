@@ -1586,7 +1586,7 @@ class ThlLedgerManager(LedgerManager):
         This must be for an abandoned session, as when a session if finished
         and is eligible for an attempt credit, then the credit is automatically
         given."""
-
+        assert user.user_id is not None
         session = session_manager.get_latest_for_user(user_id=user.user_id)
         if session is None:
             raise ValueError("User has no session to claim attempt credit for")
@@ -1599,6 +1599,29 @@ class ThlLedgerManager(LedgerManager):
             session=session,
             skip_flag_check=skip_flag_check,
         )
+
+    def get_session_attempt_credit(
+        self,
+        session_uuid: UUIDStr,
+    ) -> int | None:
+        tag = (
+            f"{self.currency.value}:"
+            f"{TransactionType.USER_ATTEMPT_CREDIT.value}:"
+            f"{session_uuid}"
+        )
+        tx = self.get_tx_by_tag_if_exists(tag)
+        if not tx:
+            return None
+
+        credit_entries = [
+            entry for entry in tx.entries if entry.direction == Direction.CREDIT
+        ]
+        if len(credit_entries) != 1:
+            raise ValueError(
+                f"Expected one credit entry for attempt-credit transaction {tx.id}"
+            )
+
+        return credit_entries[0].amount
 
     def create_tx_user_enter_contest(
         self,

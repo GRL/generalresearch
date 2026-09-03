@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from typing import Any
 from uuid import UUID
 
 import redis
@@ -118,9 +118,9 @@ class LedgerManagerBasePostgres(PostgresManager, RedisManager):
             filters.append("key = %(metadata_key)s")
             params["metadata_key"] = metadata_key
         if metadata_value is not None:
-            assert (
-                metadata_key is not None
-            ), "cannot filter by metadata_value without metadata_key"
+            assert metadata_key is not None, (
+                "cannot filter by metadata_value without metadata_key"
+            )
             filters.append("value = %(metadata_value)s")
             params["metadata_value"] = metadata_value
 
@@ -129,7 +129,6 @@ class LedgerManagerBasePostgres(PostgresManager, RedisManager):
 
 
 class LedgerTransactionManager(LedgerManagerBasePostgres):
-
     def create_tx(
         self,
         entries: list[LedgerEntry],
@@ -145,9 +144,9 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
             lastrowid)
         """
 
-        assert (
-            Permission.CREATE in self.permissions
-        ), "LedgerTransactionManager has insufficient Permissions"
+        assert Permission.CREATE in self.permissions, (
+            "LedgerTransactionManager has insufficient Permissions"
+        )
 
         if metadata is None:
             metadata = dict()
@@ -342,7 +341,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         assert len(tag) > 6, "Please confirm the tag is valid"
 
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
                 SELECT lt.id
                 FROM ledger_transaction AS lt
                 WHERE tag = %s
@@ -354,13 +353,21 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
             raise ValueError(f"Too many txs with this tag: {tag}")
         return {x["id"] for x in res}
 
-    def get_tx_by_tag(self, tag: str) -> list[LedgerTransaction]:
+    def get_txs_by_tag(self, tag: str) -> list[LedgerTransaction]:
         tx_ids = self.get_tx_ids_by_tag(tag=tag)
         return self.get_tx_by_ids(transaction_ids=tx_ids)
 
+    def get_tx_by_tag_if_exists(self, tag: str) -> LedgerTransaction | None:
+        tx_ids = self.get_tx_ids_by_tag(tag=tag)
+        if not tx_ids:
+            return None
+        if len(tx_ids) != 1:
+            raise ValueError(f"Two transactions found for tag: {tag}!")
+        return self.get_tx_by_id(transaction_id=next(iter(tx_ids)))
+
     def get_tx_ids_by_tags(self, tags: list[str]) -> set[PositiveInt]:
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
                 SELECT lt.id, lt.tag, lt.created, lt.ext_description
                 FROM ledger_transaction AS lt
                 WHERE tag = ANY(%s)
@@ -796,7 +803,6 @@ class LedgerMetadataManager(LedgerManagerBasePostgres):
 
 
 class LedgerEntryManager(LedgerManagerBasePostgres):
-
     def get_tx_entries_by_tx(self, transaction: LedgerTransaction) -> list[LedgerEntry]:
         return self.get_tx_entries_by_txs(transactions=[transaction])
 
@@ -828,9 +834,9 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
     """
 
     def create_account(self, account: LedgerAccount) -> LedgerAccount:
-        assert (
-            Permission.CREATE in self.permissions
-        ), "LedgerManager does not have sufficient permissions"
+        assert Permission.CREATE in self.permissions, (
+            "LedgerManager does not have sufficient permissions"
+        )
 
         d = account.model_dump(mode="json")
 
@@ -868,7 +874,7 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
 
         # qualified_name has a unique index so there can only be 0 or 1 match.
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
             SELECT  
                 uuid, display_name, qualified_name, account_type, 
                 normal_balance, reference_type,  
@@ -927,7 +933,7 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
 
         # TODO: Move to RR with long timeout (2min+), it causes problems
         res = self.pg_config.execute_sql_query(
-            query=f"""
+            query="""
                 SELECT SUM(amount * direction) AS total
                 FROM ledger_entry
                 WHERE account_id = %s
@@ -1045,7 +1051,7 @@ class LedgerManager(
         """This is for testing only, as it'll take forever to run this if
         the ledger_manager is huge
         """
-        res = self.pg_config.execute_sql_query(f"""
+        res = self.pg_config.execute_sql_query("""
             SELECT
                 SUM(CASE WHEN normal_balance = -1 THEN total ELSE 0 END) AS credit_total,
                 SUM(CASE WHEN normal_balance = 1 THEN total ELSE 0 END)  AS debit_total
