@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from datetime import UTC, datetime
 from itertools import product
 from typing import TYPE_CHECKING
@@ -18,8 +19,8 @@ if TYPE_CHECKING:
     from generalresearch.pg_helper import PostgresConfig
 
 
-def combo_object():
-    for x in product(
+def combo_object() -> Generator[tuple[type, str]]:
+    yield from product(
         [
             InnovateSurveyHistoryCollection,
             MorningSurveyTimeseriesCollection,
@@ -27,8 +28,7 @@ def combo_object():
             SpectrumSurveyTimeseriesCollection,
         ],
         ["5min", "6H", "30D"],
-    ):
-        yield from x
+    )
 
 
 @pytest.mark.parametrize("df_coll, offset", combo_object())

@@ -15,8 +15,8 @@ from generalresearch.incite.collections.base import (
 )
 
 
-def combo_object() -> Generator[tuple]:
-    for x in product(
+def combo_object() -> Generator[tuple[DFCollectionType, str]]:
+    yield from product(
         [
             DFCollectionType.USER,
             DFCollectionType.WALL,
@@ -26,8 +26,7 @@ def combo_object() -> Generator[tuple]:
             DFCollectionType.LEDGER,
         ],
         ["30min", "1H"],
-    ):
-        yield from x
+    )
 
 
 @pytest.mark.parametrize(

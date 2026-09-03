@@ -34,8 +34,11 @@ class TestMergeCollection:
 
     def test_init(
         self,
-        mnt_filepath: GRLDatasets,
         merge_type: MergeType,
+        offset: str,
+        duration: timedelta,
+        start: datetime,
+        mnt_filepath: GRLDatasets,
     ):
         with pytest.raises(expected_exception=ValueError) as cm:
             MergeCollection(archive_path=mnt_filepath.data_src)
@@ -88,6 +91,9 @@ class TestMergeCollection:
 
     def test_schema(
         self,
+        offset: str,
+        duration: timedelta,
+        start: datetime,
         mnt_filepath: GRLDatasets,
         merge_type: MergeType,
     ):

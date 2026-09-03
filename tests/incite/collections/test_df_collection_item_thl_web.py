@@ -12,7 +12,8 @@ import dask.dataframe as dd
 import pandas as pd
 import pytest
 from dask.distributed import Client as DaskClient
-from distributed import Client, Scheduler, Worker
+from dask.distributed import Scheduler as DaskScheduler
+from dask.distributed import Worker as DaskWorker
 
 # noinspection PyUnresolvedReferences
 from distributed.utils_test import (
@@ -36,7 +37,6 @@ if TYPE_CHECKING:
         DFCollection,
         DFCollectionItem,
     )
-    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
     from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.user import User
 
@@ -57,12 +57,11 @@ unsupported_mock_types = {
 }
 
 
-def combo_object() -> Generator[str]:
-    for x in iter_product(
+def combo_object() -> Generator[tuple[DFCollectionType, str]]:
+    yield from iter_product(
         df_collections,
         ["15min", "45min", "1H"],
-    ):
-        yield from x
+    )
 
 
 class TestDFCollectionItemBase:
@@ -170,9 +169,12 @@ class TestDFCollectionItemMethod:
 
     def test_has_mysql(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
+        delete_df_collection: Callable[..., None],
         df_collection: DFCollection,
         thl_web_rr: PostgresConfig,
-        delete_df_collection: Callable[..., None],
     ):
         delete_df_collection(coll=df_collection)
 
@@ -197,6 +199,9 @@ class TestDFCollectionItemMethod:
     @pytest.mark.skip
     def test_update_partial_archive(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
     ):
         # for i in collection.items:
         #     assert i.update_partial_archive()
@@ -206,8 +211,11 @@ class TestDFCollectionItemMethod:
     @pytest.mark.skip
     def test_create_partial_archive(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
     ):
-        assert 1 + 1 == 2
+        pass
 
     def test_dict(
         self,
@@ -262,14 +270,14 @@ class TestDFCollectionItemMethod:
             else:
                 assert isinstance(df, pd.DataFrame)
                 assert df.empty
-                assert set(df.columns) == set(df_collection._schema.columns.keys())
+                assert set(df.columns) == set(df_collection.type_schema.columns.keys())
 
             incite_item_factory(user=u1, item=item)
 
             df = item.from_db()
             assert isinstance(df, pd.DataFrame)
             assert not df.empty
-            assert set(df.columns) == set(df_collection._schema.columns.keys())
+            assert set(df.columns) == set(df_collection.type_schema.columns.keys())
             if df_collection.data_type == DFCollectionType.LEDGER:
                 # The number of rows in this dataframe will change depending
                 #    on the mocking of data. It's because if the account has
@@ -315,32 +323,23 @@ class TestDFCollectionItemMethod:
             df = item.from_mysql_standard()
             assert isinstance(df, pd.DataFrame)
             assert df.empty
-            assert set(df.columns) == set(df_collection._schema.columns.keys())
+            assert set(df.columns) == set(df_collection.type_schema.columns.keys())
 
             incite_item_factory(user=u1, item=item)
 
             df = item.from_mysql_standard()
             assert isinstance(df, pd.DataFrame)
             assert not df.empty
-            assert set(df.columns) == set(df_collection._schema.columns.keys())
+            assert set(df.columns) == set(df_collection.type_schema.columns.keys())
             assert df.shape[0] > 0
 
     def test_from_mysql_ledger(
         self,
         df_collection: DFCollection,
-        user: User,
-        create_main_accounts: Callable[..., None],
-        offset: str,
-        duration: timedelta,
-        thl_web_rw: PostgresConfig,
-        thl_ledger_manager: ThlLedgerManager,
-        df_collection_data_type: DFCollectionType,
         user_factory: Callable[..., User],
         product: Product,
-        client_no_amm: DaskClient,
         incite_item_factory: Callable[..., None],
         delete_df_collection: Callable[..., None],
-        mnt_filepath: GRLDatasets,
     ):
 
         if df_collection.data_type != DFCollectionType.LEDGER:
@@ -382,16 +381,10 @@ class TestDFCollectionItemMethod:
     def test_to_archive(
         self,
         df_collection: DFCollection,
-        user: User,
-        offset: str,
-        duration: timedelta,
-        df_collection_data_type: DFCollectionType,
         user_factory: Callable[..., User],
         product: Product,
-        client_no_amm: DaskClient,
         incite_item_factory: Callable[..., None],
         delete_df_collection: Callable[..., None],
-        mnt_filepath: GRLDatasets,
     ):
 
         if df_collection.data_type in unsupported_mock_types:
@@ -418,14 +411,9 @@ class TestDFCollectionItemMethod:
 
     def test__to_archive(
         self,
-        df_collection_data_type: DFCollectionType,
         df_collection: DFCollection,
         user_factory: Callable[..., User],
         product: Product,
-        offset: str,
-        duration: timedelta,
-        client_no_amm: DaskClient,
-        user: User,
         incite_item_factory: Callable[..., None],
         delete_df_collection: Callable[..., None],
         mnt_filepath: GRLDatasets,
@@ -492,18 +480,27 @@ class TestDFCollectionItemMethod:
     @pytest.mark.skip
     def test_to_archive_numbered_partial(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
     ):
         pass
 
     @pytest.mark.skip
     def test_initial_load(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
     ):
         pass
 
     @pytest.mark.skip
     def test_clear_corrupt_archive(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
     ):
         pass
 
@@ -513,18 +510,6 @@ class TestDFCollectionItemMethod:
     argvalues=list(iter_product(df_collections, ["12h", "10D"], [timedelta(days=15)])),
 )
 class TestDFCollectionItemMethodBase:
-
-    @pytest.mark.skip
-    def test_path_exists(
-        self,
-    ):
-        pass
-
-    @pytest.mark.skip
-    def test_next_numbered_path(
-        self,
-    ):
-        pass
 
     @pytest.mark.skip
     def test_search_highest_numbered_path(
@@ -538,12 +523,18 @@ class TestDFCollectionItemMethodBase:
     @pytest.mark.skip
     def test_tmp_filename(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
     ):
         pass
 
     @pytest.mark.skip
     def test_tmp_path(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
     ):
         pass
 
@@ -640,7 +631,8 @@ class TestDFCollectionItemMethodBase:
         self,
         df_collection: DFCollection,
     ):
-        schema: DataFrameSchema = df_collection._schema
+        schema: DataFrameSchema = df_collection.type_schema
+        assert schema.metadata
         aa = schema.metadata[ARCHIVE_AFTER]
 
         # It shouldn't be None, it can be timedelta(seconds=0)
@@ -657,6 +649,9 @@ class TestDFCollectionItemMethodBase:
     @pytest.mark.skip
     def test_set_empty(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
     ):
         pass
 
@@ -687,17 +682,26 @@ class TestDFCollectionItemMethodBase:
     @pytest.mark.skip
     def test_validate_df(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
     ):
         pass
 
     @pytest.mark.skip
     def test_from_archive(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
     ):
         pass
 
     def test__to_dict(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
         df_collection: DFCollection,
     ):
 
@@ -718,29 +722,38 @@ class TestDFCollectionItemMethodBase:
     @pytest.mark.skip
     def test_delete_partial(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
     ):
         pass
 
     @pytest.mark.skip
     def test_cleanup_partials(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
     ):
         pass
 
     @pytest.mark.skip
     def test_delete_dangling_partials(
         self,
+        df_collection_data_type: DFCollectionType,
+        offset: str,
+        duration: timedelta,
     ):
         pass
 
 
 @gen_cluster(client=True, nthreads=[("127.0.0.1", 1)])
-async def test_client(client, s, worker):
+async def test_client(client: DaskClient, s: DaskScheduler, worker: DaskWorker):
     """c,s,a are all required - the secondary Worker (b) is not required"""
 
-    assert isinstance(client, Client)
-    assert isinstance(s, Scheduler)
-    assert isinstance(worker, Worker)
+    assert isinstance(client, DaskClient)
+    assert isinstance(s, DaskScheduler)
+    assert isinstance(worker, DaskWorker)
 
 
 @pytest.mark.parametrize(
@@ -750,13 +763,17 @@ async def test_client(client, s, worker):
 @gen_cluster(client=True, nthreads=[("127.0.0.1", 1)])
 @pytest.mark.anyio
 async def test_client_parametrize(
-    c, s, w, df_collection_data_type: DFCollectionType, offset: str
+    c: DaskClient,
+    s: DaskScheduler,
+    w: DaskWorker,
+    df_collection_data_type: DFCollectionType,
+    offset: str,
 ):
     """c,s,a are all required - the secondary Worker (b) is not required"""
 
-    assert isinstance(c, Client), f"c is not Client, it's {type(c)}"
-    assert isinstance(s, Scheduler), f"s is not Scheduler, it's {type(s)}"
-    assert isinstance(w, Worker), f"w is not Worker, it's {type(w)}"
+    assert isinstance(c, DaskClient), f"c is not Client, it's {type(c)}"
+    assert isinstance(s, DaskScheduler), f"s is not Scheduler, it's {type(s)}"
+    assert isinstance(w, DaskWorker), f"w is not Worker, it's {type(w)}"
 
     assert df_collection_data_type is not None
     assert isinstance(offset, str)
@@ -923,7 +940,8 @@ class TestDFCollectionItemFunctionalTest:
             return
         u1: User = user_factory(product=product)
 
-        schema: DataFrameSchema = df_collection._schema
+        schema: DataFrameSchema = df_collection.type_schema
+        assert schema.metadata
         aa = schema.metadata[ARCHIVE_AFTER]
         assert isinstance(aa, timedelta)
 

@@ -8,7 +8,8 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
-from generalresearch.models.definitions import Source, string_utils
+from generalresearch.models.definitions import Source
+from generalresearch.models.string_utils import remove_nbsp
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
     MarketplaceUserQuestionAnswer,
@@ -94,7 +95,7 @@ class PrecisionQuestion(MarketplaceQuestion):
 
     @field_validator("question_text", mode="after")
     def remove_nbsp(cls, s: str | None):
-        return string_utils.remove_nbsp(s)
+        return remove_nbsp(s)
 
     @model_validator(mode="after")
     def check_type_options_agreement(self):

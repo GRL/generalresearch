@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 import time
+import warnings
 from datetime import datetime
 from enum import StrEnum
 from sys import platform
@@ -644,8 +645,13 @@ class DFCollection(CollectionBase):
         return items
 
     @property
-    def _schema(self) -> DataFrameSchema:
+    def type_schema(self) -> DataFrameSchema:
         return DFCollectionTypeSchemas[self.data_type]
+
+    @property
+    def _schema(self) -> DataFrameSchema:
+        warnings.deprecated("The _schema attribute on DFCollection is Deprecated")
+        return self.type_schema
 
     # --- Methods ---
 

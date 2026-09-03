@@ -18,7 +18,8 @@ from pydantic import (
     model_validator,
 )
 
-from generalresearch.models.definitions import MAX_INT32, Source, string_utils
+from generalresearch.models.definitions import MAX_INT32, Source
+from generalresearch.models.string_utils import remove_nbsp
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
 )
@@ -91,7 +92,9 @@ class SpectrumQuestionOption(BaseModel):
 
     @field_validator("text", mode="after")
     def remove_nbsp(cls, s: str) -> str:
-        return string_utils.remove_nbsp(s)
+        res = remove_nbsp(s)
+        assert isinstance(res, str), "Spectrum Question Option text must be str"
+        return res
 
 
 class SpectrumQuestionType(StrEnum):
@@ -206,7 +209,7 @@ class SpectrumQuestion(MarketplaceQuestion):
 
     @field_validator("question_name", "question_text", "tags", mode="after")
     def remove_nbsp(cls, s: str | None):
-        return string_utils.remove_nbsp(s)
+        return remove_nbsp(s)
 
     @model_validator(mode="before")
     @classmethod

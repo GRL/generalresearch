@@ -7,6 +7,7 @@ from random import randint
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+import dask.dataframe as dd
 import pandas as pd
 import pytest
 from dask.distributed import Client as DaskClient
@@ -32,11 +33,11 @@ if TYPE_CHECKING:
     from generalresearch.incite.collections.thl_web import LedgerDFCollection
     from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
     from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.thl.ledger import LedgerAccount
     from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.session import Session
     from generalresearch.models.thl.user import User
-    from generalresearch.pg_helper import PostgresConfig
 
 fake = Faker()
 
@@ -659,10 +660,9 @@ class TestBusinessBalanceInitialize:
 
 
 @pytest.mark.parametrize(
-    argnames="offset, duration",
+    argnames="duration",
     argvalues=list(
         iter_product(
-            ["12h", "2D"],
             [timedelta(days=2), timedelta(days=5)],
         )
     ),
@@ -671,17 +671,15 @@ class TestProductFinanceData:
 
     def test_base(
         self,
+        duration: timedelta,
         product: Product,
         user_factory: Callable[..., User],
         start: datetime,
-        duration: timedelta,
         thl_ledger_manager: ThlLedgerManager,
         session_with_tx_factory: Callable[..., None],
     ):
 
         # -- Build & Setup
-        # assert ledger_collection.start is None
-        # assert ledger_collection.offset is None
         u: User = user_factory(product=product, created=ledger_collection.start)
 
         for item in ledger_collection.items:
@@ -738,15 +736,6 @@ class TestProductFinanceData:
         assert len(res) == len({i.time for i in res})
 
 
-@pytest.mark.parametrize(
-    argnames="offset, duration",
-    argvalues=list(
-        iter_product(
-            ["12h", "2D"],
-            [timedelta(days=2), timedelta(days=5)],
-        )
-    ),
-)
 class TestPOPFinancialData:
 
     def test_base(
@@ -757,7 +746,6 @@ class TestPOPFinancialData:
         user_factory: Callable[..., User],
         product: Product,
         start: datetime,
-        duration: timedelta,
         create_main_accounts: Callable[..., None],
         session_with_tx_factory: Callable[..., Session],
         thl_ledger_manager: ThlLedgerManager,
@@ -768,8 +756,6 @@ class TestPOPFinancialData:
         delete_ledger_db()
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
-        # assert ledger_collection.start is None
-        # assert ledger_collection.offset is None
 
         users = []
         for _ in range(5):
@@ -833,22 +819,10 @@ class TestPOPFinancialData:
         # 1 product: Product, multiple Users
         assert len(users) == len(accounts)
 
-        # We group on days, and duration is a parameter to parametrize
-        assert isinstance(duration, timedelta)
-
         # -- Teardown
         delete_df_collection(ledger_collection)
 
 
-@pytest.mark.parametrize(
-    argnames="offset, duration",
-    argvalues=list(
-        iter_product(
-            ["12h", "1D"],
-            [timedelta(days=2), timedelta(days=3)],
-        )
-    ),
-)
 class TestBusinessBalanceData:
     def test_from_pandas(
         self,
@@ -859,7 +833,7 @@ class TestBusinessBalanceData:
         product: Product,
         create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
-        thl_web_rr: PostgresConfig,
+        product_manager: ProductManager,
         delete_df_collection: Callable[..., None],
         delete_ledger_db: Callable[..., None],
         session_with_tx_factory: Callable[..., Session],
@@ -898,15 +872,18 @@ class TestBusinessBalanceData:
             columns=numerical_col_names + ["account_id"],
             filters=[("account_id", "in", [account.uuid])],
         )
+        assert isinstance(ddf, dd.DataFrame)
         ddf = ddf.groupby("account_id").sum()
         df: pd.DataFrame = client_no_amm.compute(collections=ddf, sync=True)
 
         assert isinstance(df, pd.DataFrame)
 
         instance = BusinessBalances.from_pandas(
-            input_data=df, accounts=[account], thl_pg_config=thl_web_rr
+            product_manager=product_manager,
+            input_data=df,
+            accounts=[account],
         )
-        balance: int = thl_lm.get_account_balance(account=account)
+        balance: int = thl_ledger_manager.get_account_balance(account=account)
 
         assert instance.balance == balance
         assert instance.net == balance
