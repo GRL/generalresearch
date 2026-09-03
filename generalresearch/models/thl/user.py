@@ -20,21 +20,23 @@ from pydantic import (
 )
 from sentry_sdk import set_tag, set_user
 
-from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    UUIDStr,
+)
 from generalresearch.models.definitions import MAX_INT32
+from generalresearch.models.thl.ipinfo import GeoIPInformation
+from generalresearch.models.thl.ledger import LedgerTransaction
+from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.userhealth import AuditLog
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
     from generalresearch.managers.thl.userhealth import AuditLogManager
-    from generalresearch.models.thl.ipinfo import GeoIPInformation
-    from generalresearch.models.thl.ledger import LedgerTransaction
-    from generalresearch.models.thl.product import Product
-    from generalresearch.models.thl.userhealth import AuditLog
     from generalresearch.pg_helper import PostgresConfig
 
-    # from generalresearch.managers.thl.userhealth import UserIpHistoryManager
 
 logger = logging.getLogger()
 
@@ -122,27 +124,24 @@ class User(BaseModel):
     # noinspection PyNestedDecoratorsk
     @field_validator("created", "last_seen")
     @classmethod
-    def check_not_in_future(cls, v: AwareDatetime | None) -> AwareDatetime:
+    def check_not_in_future(cls, v: AwareDatetime | None) -> AwareDatetime | None:
         if v is not None:
             try:
                 assert v < datetime.now(tz=UTC)
             except AssertionError:
                 raise ValueError("Input is in the future")
-
-        assert isinstance(v, AwareDatetime)
         return v
 
     # noinspection PyNestedDecorators
     @field_validator("created", "last_seen")
     @classmethod
-    def check_after_anno_domini(cls, v: AwareDatetime | None) -> AwareDatetime:
+    def check_after_anno_domini(cls, v: AwareDatetime | None) -> AwareDatetime | None:
         if v is not None:
             try:
                 assert v > datetime(year=2016, month=7, day=13, tzinfo=UTC)
             except AssertionError:
                 raise ValueError("Input is before Anno Domini")
 
-        assert isinstance(v, AwareDatetime)
         return v
 
     @model_validator(mode="after")
@@ -320,3 +319,5 @@ BPUIDStr = Annotated[
     StringConstraints(min_length=3, max_length=128),
     AfterValidator(User.check_product_user_id),
 ]
+
+User.model_rebuild()
