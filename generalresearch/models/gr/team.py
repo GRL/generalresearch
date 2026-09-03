@@ -126,8 +126,8 @@ class Team(BaseModel):
 
     # --- Prefetch Methods ---
 
-    def prefetch_memberships(self, membership_manager: MembershipManager) -> None:
-        self.memberships = membership_manager.get_by_team_id(team_id=self.id)
+    def prefetch_memberships(self, gr_membership_manager: MembershipManager) -> None:
+        self.memberships = gr_membership_manager.get_by_team_id(team_id=self.id)
 
     def prefetch_gr_users(self, gr_user_manager: GRUserManager) -> None:
         self.gr_users = gr_user_manager.get_by_team(team_id=self.id)
@@ -263,7 +263,6 @@ class Team(BaseModel):
         gr_user_manager: GRUserManager,
         gr_business_manager: BusinessManager,
         gr_membership_manager: MembershipManager,
-        thl_web_rr: PostgresConfig,
         redis_config: RedisConfig,
         client: Client,
         ds: GRLDatasets,

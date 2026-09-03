@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import json
 from functools import cached_property
-from typing import TYPE_CHECKING
 
 import tldextract
 from pydantic import BaseModel, Field, computed_field, model_validator
 
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import IPvAnyAddressStr
+from generalresearch.models.custom_types import IPvAnyAddressStr
 
 
 class RDNSResult(BaseModel):

@@ -51,6 +51,7 @@ from generalresearch.incite.schemas.thl_web import (
     UserHealthIPHistoryWSSchema,
 )
 from generalresearch.pg_helper import PostgresConfig
+from generalresearch.sql_helper import SqlHelper
 
 DT_STR = "%Y-%m-%d %H:%M:%S"
 
@@ -104,6 +105,18 @@ class DFCollectionItem(CollectionItemBase):
         )
 
     # --- Methods ---
+
+    def has_mysql(self) -> bool:
+        if self._collection.sql_helper is None:
+            return False
+
+        connected = True
+        try:
+            self._collection.sql_helper.execute_sql_query("""SELECT 1;""")
+        except:
+            connected = False
+
+        return connected
 
     def has_postgres(self) -> bool:
         if self._collection.pg_config is None:
@@ -159,15 +172,71 @@ class DFCollectionItem(CollectionItemBase):
     def to_dict(self) -> dict[str, Any]:
         return self._to_dict()
 
-    def from_db(self, since: datetime | None = None) -> pd.DataFrame | None:
+    def from_mysql(self, since: datetime | None = None) -> pd.DataFrame | None:
         if self._collection.data_type == DFCollectionType.LEDGER:
             assert since is None, "Shouldn't pass since for Ledger item"
             assert self._collection.pg_config is not None
             return self.from_postgres_ledger()
         else:
-            return self.from_db_standard(since=since)
+            if self._collection.sql_helper:
+                return self.from_mysql_standard(since=since)
+            else:
+                return self.from_postgres_standard(since=since)
 
-    def from_db_standard(self, since: datetime | None = None) -> pd.DataFrame | None:
+    def from_mysql_standard(self, since: datetime | None = None) -> pd.DataFrame | None:
+
+        assert (
+            self._collection.data_type != DFCollectionType.LEDGER
+        ), "Can't call from_mysql_standard for Ledger DFCollectionItem"
+
+        start, finish = self.start, self.finish
+        LOG.debug(
+            f"{self._collection.data_type.value}.from_mysql("
+            f"start={start.strftime(DT_STR)}, "
+            f"finish={finish.strftime(DT_STR)})"
+        )
+        coll = self._collection
+        schema = coll._schema
+        sql_helper = coll.sql_helper
+
+        start = since or start
+        order_key = schema.metadata[ORDER_KEY]
+        cols = list(schema.columns.keys()) + [schema.index.name]
+        cols_str = ",".join(map(sql_helper._quote, cols))
+        db_name = sql_helper.db
+
+        try:
+            res = sql_helper.execute_sql_query(
+                query=f"""
+                    SELECT {cols_str}
+                    FROM `{db_name}`.`{coll.data_type.value}`
+                    WHERE `{order_key}` >= %s AND `{order_key}` < %s;
+                """,
+                params=[start, finish],
+            )
+        except (Exception,) as e:
+            capture_exception(error=e)
+            LOG.error(f"_from_mysql Exception: {e}")
+            return None
+
+        if not res:
+            LOG.warning("_from_mysql query returned nothing")
+            # Return an empty df.DataFrame with the correct columns
+            return empty_dataframe_from_schema(coll._schema)
+
+        df = pd.DataFrame.from_records(res).set_index(coll._schema.index.name)
+        df = self.validate_df(df=df)
+
+        if df is None:
+            LOG.warning(f"_from_mysql query results failed validation")
+            # Schema validation can fail...
+            return None
+
+        return df
+
+    def from_postgres_standard(
+        self, since: datetime | None = None
+    ) -> pd.DataFrame | None:
         assert (
             self._collection.data_type != DFCollectionType.LEDGER
         ), "Can't call from_postgres_standard for Ledger DFCollectionItem"
@@ -181,7 +250,6 @@ class DFCollectionItem(CollectionItemBase):
         coll = self._collection
         schema = coll._schema
         pg_config = coll.pg_config
-        assert pg_config, "Must provide PostgresConfig"
 
         start = since or start
         order_key = schema.metadata[ORDER_KEY]
@@ -197,13 +265,13 @@ class DFCollectionItem(CollectionItemBase):
                 """,
                 params=[start, finish],
             )
-        except AssertionError as e:
+        except (Exception,) as e:
             capture_exception(error=e)
             LOG.error(f"_from_postgres Exception: {e}")
             return None
 
         if not res:
-            LOG.warning("_from_postgres query returned nothing")
+            LOG.warning(f"_from_postgres query returned nothing")
             # Return an empty df.DataFrame with the correct columns
             return empty_dataframe_from_schema(coll._schema)
 
@@ -211,7 +279,7 @@ class DFCollectionItem(CollectionItemBase):
         df = self.validate_df(df=df)
 
         if df is None:
-            LOG.warning("_from_postgres query results failed validation")
+            LOG.warning(f"_from_postgres query results failed validation")
             # Schema validation can fail...
             return None
 
@@ -230,14 +298,13 @@ class DFCollectionItem(CollectionItemBase):
         )
 
         coll = self._collection
-        assert coll.pg_config, "Must provide PostgresConfig"
         pg_config: PostgresConfig = coll.pg_config
 
         limit = 20000
         offset = 0
         res = []
         while True:
-            LOG.info(
+            logging.info(
                 f"{self._collection.data_type.value}.from_postgres_ledger({limit=}, {offset=})"
             )
             chunk = pg_config.execute_sql_query(
@@ -284,7 +351,7 @@ class DFCollectionItem(CollectionItemBase):
         c: Cursor = conn.cursor()
         for chunk in chunked(tx_ids, n=5_000):
             c.execute(
-                query="""
+                query=f"""
                 SELECT  ltm.transaction_id AS tx_id, 
                         ltm.id AS tx_metadata_id,
                         ltm.key, ltm.value
@@ -529,6 +596,7 @@ class DFCollection(CollectionBase):
 
     # --- Private ---
     pg_config: PostgresConfig | None = Field(default=None)
+    sql_helper: SqlHelper | None = Field(default=None)
 
     def __repr__(self):
         res = self.signature() + "\n"
