@@ -4,6 +4,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import ROUND_DOWN, Decimal
 from random import choice as rand_choice
+from random import choice as randchoice
 from random import randint, random
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
@@ -98,7 +99,7 @@ def wall_factory(
 ) -> Callable[..., Wall]:
 
     def _inner(
-        wall_status: Status,
+        wall_status: Status = Status.FAIL,
         save: bool = True,
         session: Session | None = None,
         session_id: PositiveInt | None = None,
@@ -113,7 +114,6 @@ def wall_factory(
         """To be used in tests, where we don't care about certain fields"""
 
         if save:
-
             user_id = user_id or fake.random_int(min=1, max=2_147_483_648)
             _wall_started = started or fake.date_time_between(
                 start_date=datetime(year=1900, month=1, day=1, tzinfo=UTC),
@@ -128,9 +128,9 @@ def wall_factory(
                 if session.wall_events:
                     # Subsequent Wall events
                     _last_wall = session.wall_events[-1]
-                    assert (
-                        not _last_wall.finished
-                    ), "Can't add new Walls until prior finishes"
+                    assert not _last_wall.finished, (
+                        "Can't add new Walls until prior finishes"
+                    )
                     _wall_started = _last_wall.started + timedelta(milliseconds=1)
                 else:
                     # First Wall Event in a session
@@ -255,9 +255,137 @@ def session(session_factory: Callable[..., Session]) -> Session:
     return session_factory(save=True)
 
 
+@pytest.fixture
+def session_w_wall(
+    user: User,
+    session: Session,
+    wall_factory: Callable[..., Wall],
+) -> Session:
+
+    wall: Wall = wall_factory(
+        session_id=session.id,
+        user_id=session.user_id,
+        started=session.started,
+    )
+    session.append_wall_event(w=wall)
+
+    return session
+
+
 @pytest.fixture()
 def unsaved_session(session_factory: Callable[..., Session]) -> Session:
     return session_factory(save=False)
+
+
+@pytest.fixture
+def session_w_wall_factory(
+    wall_manager: WallManager,
+    utc_hour_ago: datetime,
+    session_factory: Callable[..., Session],
+    wall_factory: Callable[..., Wall],
+) -> Callable[..., Session]:
+    from generalresearch.models.thl.session import Source
+
+    def _inner(
+        user: User,
+        # Wall details
+        wall_count: int = 5,
+        wall_req_cpi: Decimal = Decimal(".50"),
+        wall_req_cpis: list[Decimal] | None = None,
+        wall_statuses: list[Status] | None = None,
+        wall_source: Source = Source.TESTING,
+        # Session details
+        final_status: Status = Status.COMPLETE,
+        started: datetime = utc_hour_ago,
+    ) -> Session:
+        if wall_req_cpis:
+            assert len(wall_req_cpis) == wall_count
+        if wall_statuses:
+            assert len(wall_statuses) == wall_count
+
+        s = session_factory(started=started, user=user, country_iso="us")
+        for idx in range(wall_count):
+            if idx == 0:
+                # First Wall Event in a session
+                wall_started = s.started + timedelta(milliseconds=1)
+            else:
+                # Subsequent Wall events
+                last_wall = s.wall_events[-1]
+                assert last_wall.finished, "Can't add new Walls until prior finishes"
+                wall_started = last_wall.started + timedelta(milliseconds=1)
+
+            w = wall_factory(
+                session_id=s.id,
+                source=wall_source,
+                user_id=s.user_id,
+                started=wall_started,
+                req_cpi=wall_req_cpis[idx] if wall_req_cpis else wall_req_cpi,
+            )
+            s.append_wall_event(w=w)
+
+            # If it's the last wall in the session, respect the final_status
+            #   value for the Session
+            if wall_statuses:
+                _final_status = wall_statuses[idx]
+            else:
+                _final_status = final_status if idx == wall_count - 1 else Status.FAIL
+
+            options = list(WALL_ALLOWED_STATUS_STATUS_CODE.get(_final_status, {}))
+            wall_manager.finish(
+                wall=w,
+                status=_final_status,
+                status_code_1=randchoice(options),
+                finished=w.started + timedelta(seconds=randint(a=60 * 2, b=60 * 10)),
+            )
+
+        return s
+
+    return _inner
+
+
+@pytest.fixture(scope="function")
+def finished_session_factory(
+    session_w_wall_factory: Callable[..., Session],
+    session_manager: SessionManager,
+    utc_hour_ago: datetime,
+) -> Callable[..., Session]:
+    from generalresearch.models.thl.session import Source
+
+    def _inner(
+        user: User,
+        # Wall details
+        wall_count: int = 5,
+        wall_req_cpi: Decimal = Decimal(".50"),
+        wall_req_cpis: list[Decimal] | None = None,
+        wall_statuses: list[Status] | None = None,
+        wall_source: Source = Source.TESTING,
+        # Session details
+        final_status: Status = Status.COMPLETE,
+        started: datetime = utc_hour_ago,
+    ) -> Session:
+        s: Session = session_w_wall_factory(
+            user=user,
+            wall_count=wall_count,
+            wall_req_cpi=wall_req_cpi,
+            wall_req_cpis=wall_req_cpis,
+            wall_statuses=wall_statuses,
+            wall_source=wall_source,
+            final_status=final_status,
+            started=started,
+        )
+        status, status_code_1 = s.determine_session_status()
+        _, _, bp_pay, user_pay = s.determine_payments()
+        session_manager.finish_with_status(
+            s,
+            finished=s.wall_events[-1].finished,
+            payout=bp_pay,
+            user_payout=user_pay,
+            status=status,
+            status_code_1=status_code_1,
+        )
+        return s
+
+    return _inner
 
 
 # --- Product ---
@@ -524,6 +652,7 @@ def unsaved_ip_record(ip_record_factory: Callable[..., IPRecord]) -> IPRecord:
 def user_factory(
     user_manager: UserManager,
     thl_web_rr: PostgresConfig,
+    product_factory: Callable[..., Product],
 ) -> Callable[..., User]:
 
     def _inner(
