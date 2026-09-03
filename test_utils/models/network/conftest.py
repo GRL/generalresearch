@@ -24,9 +24,7 @@ from generalresearch.models.network.tool_run_command import (
     RDNSRunCommand,
     RDNSRunCommandOptions,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.pg_helper import PostgresConfig
+from generalresearch.pg_helper import PostgresConfig
 
 
 @pytest.fixture(scope="session")

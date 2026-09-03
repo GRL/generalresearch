@@ -32,6 +32,7 @@ from generalresearch.models.thl.user import User
 from generalresearch.models.thl.user_iphistory import IPRecord
 from generalresearch.models.thl.userhealth import AuditLogLevel
 from generalresearch.models.thl.wallet.definitions import PayoutType
+from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.currency import USDCent
@@ -73,7 +74,6 @@ if TYPE_CHECKING:
     from generalresearch.models.thl.user_iphistory import IPRecord
     from generalresearch.models.thl.userhealth import AuditLog
     from generalresearch.models.thl.wallet.cashout_method import CashMailOrderData
-    from generalresearch.pg_helper import PostgresConfig
 
 fake = faker.Faker()
 

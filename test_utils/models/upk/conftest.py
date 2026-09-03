@@ -3,15 +3,13 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import Callable
-from typing import TYPE_CHECKING
 from uuid import UUID
 
 import pandas as pd
 import pytest
 
-if TYPE_CHECKING:
-    from generalresearch.managers.thl.category import CategoryManager
-    from generalresearch.pg_helper import PostgresConfig
+from generalresearch.managers.thl.category import CategoryManager
+from generalresearch.pg_helper import PostgresConfig
 
 
 def insert_data_from_csv(
