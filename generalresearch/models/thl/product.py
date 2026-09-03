@@ -437,9 +437,9 @@ class UserWalletConfig(BaseModel):
     @classmethod
     def check_payout_decimal_places(cls, v: Decimal) -> Decimal:
         if v is not None:
-            assert (
-                v.as_tuple().exponent >= -2
-            ), "Must have 2 or fewer decimal places ('XXX.YY')"
+            assert v.as_tuple().exponent >= -2, (
+                "Must have 2 or fewer decimal places ('XXX.YY')"
+            )
             # explicitly make sure it is 2 decimal places, after checking that it is
             # already 2 or less.
             v = v.quantize(Decimal("0.00"))
@@ -449,9 +449,9 @@ class UserWalletConfig(BaseModel):
     def check_enabled(self):
         if self.enabled is False:
             assert self.amt is False, "amt can't be set if enabled is False"
-            assert (
-                self.min_cashout is None
-            ), "min_cashout can't be set if enabled is False"
+            assert self.min_cashout is None, (
+                "min_cashout can't be set if enabled is False"
+            )
         else:
             if self.min_cashout is None:
                 self.min_cashout = Decimal("0.01")
@@ -482,9 +482,9 @@ class PayoutTransformationPercentArgs(BaseModel):
     @classmethod
     def check_payout_decimal_places(cls, v: Decimal) -> Decimal:
         if v is not None:
-            assert (
-                v.as_tuple().exponent >= -2
-            ), "Must have 2 or fewer decimal places ('XXX.YY')"
+            assert v.as_tuple().exponent >= -2, (
+                "Must have 2 or fewer decimal places ('XXX.YY')"
+            )
             # explicitly make sure it is 2 decimal places, after checking that it is
             # already 2 or less.
             v = v.quantize(Decimal("0.00"))
@@ -543,8 +543,8 @@ class PayoutTransformation(BaseModel):
     def payout_transformation_percent(
         self,
         payout: Decimal,
-        pct: Decimal = 1,
-        min_payout: Decimal | None = 0,
+        pct: Decimal = Decimal(1),
+        min_payout: Decimal | None = None,
         max_payout: Decimal | None = None,
     ) -> Decimal:
         """Payout transformation for user displayed values"""
@@ -556,9 +556,9 @@ class PayoutTransformation(BaseModel):
         min_payout = Decimal(min_payout)
         max_payout = Decimal(max_payout) if max_payout else None
 
-        _payout: Decimal = _payout * pct
-        _payout: Decimal = max([_payout, min_payout])
-        _payout: Decimal = min([_payout, max_payout]) if max_payout else payout
+        _payout = _payout * pct
+        _payout = max(_payout, min_payout)
+        _payout = min(_payout, max_payout) if max_payout is not None else _payout
         return _payout
 
     def payout_transformation_amt(
@@ -666,9 +666,9 @@ class SupplyConfig(BaseModel):
             if c.scope == Scope.TEAM
             for team_id in c.team_ids
         ]
-        assert len(team_names) == len(
-            set(team_names)
-        ), "Can only have one TEAM policy per Source per Team"
+        assert len(team_names) == len(set(team_names)), (
+            "Can only have one TEAM policy per Source per Team"
+        )
         return self
 
     @model_validator(mode="after")
@@ -679,9 +679,9 @@ class SupplyConfig(BaseModel):
             if c.scope == Scope.PRODUCT
             for product_id in c.product_ids
         ]
-        assert len(bp_names) == len(
-            set(bp_names)
-        ), "Can only have one PRODUCT policy per Source per BP"
+        assert len(bp_names) == len(set(bp_names)), (
+            "Can only have one PRODUCT policy per Source per BP"
+        )
         return self
 
     @property
@@ -971,15 +971,15 @@ class Product(BaseModel, validate_assignment=True):
     def harmonizer_domain_only(cls, s: str):
         # maks sure there is no path
         url_split = urlsplit(s)
-        assert (
-            url_split.path == "/"
-        ), f"harmonizer_domain should be a schema+domain only: {url_split.path}"
-        assert (
-            url_split.query == ""
-        ), f"harmonizer_domain should be a schema+domain only: {url_split.query}"
-        assert (
-            url_split.fragment == ""
-        ), f"harmonizer_domain should be a schema+domain only: {url_split.fragment}"
+        assert url_split.path == "/", (
+            f"harmonizer_domain should be a schema+domain only: {url_split.path}"
+        )
+        assert url_split.query == "", (
+            f"harmonizer_domain should be a schema+domain only: {url_split.query}"
+        )
+        assert url_split.fragment == "", (
+            f"harmonizer_domain should be a schema+domain only: {url_split.fragment}"
+        )
         return s
 
     @field_validator("redirect_url", mode="after")
@@ -1357,9 +1357,7 @@ class Product(BaseModel, validate_assignment=True):
         if self.payout_config.payout_transformation is None:
             return lambda x: x
         else:
-            return (
-                self.payout_config.payout_transformation.get_payout_transformation_func()
-            )
+            return self.payout_config.payout_transformation.get_payout_transformation_func()
 
     def calculate_user_payment(
         self, bp_payout: Decimal, user_wallet_balance: Decimal | None = None
