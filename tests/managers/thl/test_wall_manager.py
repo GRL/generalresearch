@@ -10,7 +10,7 @@ import pytest
 from pydantic import PositiveInt
 
 from generalresearch.models.definitions import Source
-from generalresearch.models.thl.session import (
+from generalresearch.models.thl.definitions import (
     ReportValue,
     Status,
     StatusCode1,

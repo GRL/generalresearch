@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
     from generalresearch.managers.thl.userhealth import AuditLogManager
     from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.userhealth import AuditLog
 
 
 class TestUserUserID:
@@ -621,12 +622,17 @@ class TestUserSerialization:
 
 class TestUserMethods:
 
-    def test_audit_log(self, user: User, audit_log_manager: AuditLogManager):
+    def test_audit_log(
+        self,
+        audit_log_factory: Callable[..., AuditLog],
+        user: User,
+        audit_log_manager: AuditLogManager,
+    ):
         assert user.audit_log is None
         user.prefetch_audit_log(audit_log_manager=audit_log_manager)
         assert user.audit_log == []
 
-        audit_log_manager.create_dummy(user_id=user.user_id)
+        audit_log_factory(user_id=user.user_id)
         user.prefetch_audit_log(audit_log_manager=audit_log_manager)
         assert len(user.audit_log) == 1
 

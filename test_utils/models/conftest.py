@@ -10,6 +10,7 @@ from uuid import uuid4
 
 import pytest
 from pydantic import AwareDatetime, PositiveInt
+from pytest import FixtureRequest
 from pytest import FixtureRequest as Request
 
 from generalresearch.models.definitions import Source
@@ -50,8 +51,6 @@ if TYPE_CHECKING:
     )
     from generalresearch.models.thl.session import Session, Wall
     from generalresearch.models.thl.user import User
-    from generalresearch.models.thl.user_iphistory import IPRecord
-    from generalresearch.models.thl.userhealth import AuditLog, AuditLogLevel
     from generalresearch.pg_helper import PostgresConfig
 
 # === THL ===
@@ -59,15 +58,15 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def user(
-    request,
-    product_manager: ProductManager,
+    request: FixtureRequest,
     user_manager: UserManager,
     thl_web_rr: PostgresConfig,
+    product_factory: Callable[..., Product],
 ) -> User:
     product = getattr(request, "product", None)
 
     if product is None:
-        product = product_manager.create_dummy()
+        product = product_factory()
 
     u = user_manager.create_dummy(product_id=product.id)
     u.prefetch_product(pg_config=thl_web_rr)
@@ -309,31 +308,35 @@ def payout_config(request: Request) -> PayoutConfig:
 
 @pytest.fixture
 def product_user_wallet_yes(
-    payout_config: PayoutConfig, product_manager: ProductManager
+    product_factory: Callable[..., Product],
+    payout_config: PayoutConfig,
+    product_manager: ProductManager,
 ) -> Product:
     from generalresearch.models.thl.product import UserWalletConfig
 
-    return product_manager.create_dummy(
+    return product_factory(
         payout_config=payout_config, user_wallet_config=UserWalletConfig(enabled=True)
     )
 
 
 @pytest.fixture
-def product_user_wallet_no(product_manager: ProductManager) -> Product:
+def product_user_wallet_no(
+    product_factory: Callable[..., Product], product_manager: ProductManager
+) -> Product:
     from generalresearch.models.thl.product import UserWalletConfig
 
-    return product_manager.create_dummy(
-        user_wallet_config=UserWalletConfig(enabled=False)
-    )
+    return product_factory(user_wallet_config=UserWalletConfig(enabled=False))
 
 
 @pytest.fixture
 def product_amt_true(
-    product_manager: ProductManager, payout_config: PayoutConfig
+    product_factory: Callable[..., Product],
+    product_manager: ProductManager,
+    payout_config: PayoutConfig,
 ) -> Product:
     from generalresearch.models.thl.product import UserWalletConfig
 
-    return product_manager.create_dummy(
+    return product_factory(
         user_wallet_config=UserWalletConfig(amt=True, enabled=True),
         payout_config=payout_config,
     )
@@ -366,84 +369,6 @@ def bp_payout_factory(
             ext_ref_id=ext_ref_id or uuid4().hex,
             created=created,
         )
-
-    return _inner
-
-
-@pytest.fixture
-def audit_log(audit_log_manager: AuditLogManager, user: User) -> AuditLog:
-
-    return audit_log_manager.create_dummy(user_id=user.user_id)
-
-
-@pytest.fixture
-def audit_log_factory(
-    audit_log_manager: AuditLogManager,
-) -> Callable[..., AuditLog]:
-
-    def _inner(
-        user_id: PositiveInt,
-        level: AuditLogLevel | None = None,
-        event_type: str | None = None,
-        event_msg: str | None = None,
-        event_value: float | None = None,
-    ) -> AuditLog:
-        return audit_log_manager.create_dummy(
-            user_id=user_id,
-            level=level,
-            event_type=event_type,
-            event_msg=event_msg,
-            event_value=event_value,
-        )
-
-    return _inner
-
-
-@pytest.fixture
-def ip_geoname(ip_geoname_manager: IPGeonameManager) -> IPGeoname:
-    return ip_geoname_manager.create_dummy()
-
-
-@pytest.fixture
-def ip_information(
-    ip_information_manager: IPInformationManager, ip_geoname: IPGeoname
-) -> IPInformation:
-    return ip_information_manager.create_dummy(
-        geoname_id=ip_geoname.geoname_id, country_iso=ip_geoname.country_iso
-    )
-
-
-@pytest.fixture
-def ip_information_factory(
-    ip_information_manager: IPInformationManager,
-) -> Callable[..., IPInformation]:
-
-    def _inner(ip: str, geoname: IPGeoname, **kwargs) -> IPInformation:
-        return ip_information_manager.create_dummy(
-            ip=ip,
-            geoname_id=geoname.geoname_id,
-            country_iso=geoname.country_iso,
-            **kwargs,
-        )
-
-    return _inner
-
-
-@pytest.fixture
-def ip_record(
-    ip_record_manager: IPRecordManager, ip_geoname: IPGeoname, user: User
-) -> IPRecord:
-
-    return ip_record_manager.create_dummy(user_id=user.user_id)
-
-
-@pytest.fixture
-def ip_record_factory(
-    ip_record_manager: IPRecordManager, user: User
-) -> Callable[..., IPRecord]:
-
-    def _inner(user_id: PositiveInt, ip: str | None = None) -> IPRecord:
-        return ip_record_manager.create_dummy(user_id=user_id, ip=ip)
 
     return _inner
 

@@ -31,14 +31,16 @@ class TestIPGeonameManager:
         assert isinstance(instance, IPGeonameManager)
         assert isinstance(ip_geoname_manager, IPGeonameManager)
 
-    def test_create(self, ip_geoname_manager: IPGeonameManager):
+    def test_create(
+        self,
+        ip_geoname_factory: Callable[..., IPGeoname],
+        ip_geoname_manager: IPGeonameManager,
+    ):
 
-        instance = ip_geoname_manager.create_dummy()
-
+        instance = ip_geoname_factory()
         assert isinstance(instance, IPGeoname)
 
         res = ip_geoname_manager.fetch_geoname_ids(filter_ids=[instance.geoname_id])
-
         assert res[0].model_dump_json() == instance.model_dump_json()
 
 
@@ -51,13 +53,15 @@ class TestIPInformationManager:
         assert isinstance(instance, IPInformationManager)
         assert isinstance(ip_information_manager, IPInformationManager)
 
-    def test_create(self, ip_information_manager: IPInformationManager):
-        instance = ip_information_manager.create_dummy()
-
+    def test_create(
+        self,
+        ip_geoname_factory: Callable[..., IPGeoname],
+        ip_information_manager: IPInformationManager,
+    ):
+        instance = ip_geoname_factory()
         assert isinstance(instance, IPInformation)
 
         res = ip_information_manager.fetch_ip_information(filter_ips=[instance.ip])
-
         assert res[0].model_dump_json() == instance.model_dump_json()
 
     def test_prefetch_geoname(

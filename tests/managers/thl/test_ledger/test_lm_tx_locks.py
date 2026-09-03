@@ -4,10 +4,10 @@ import logging
 from collections.abc import Callable, Generator
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from logging import LogCaptureFixture
 from typing import TYPE_CHECKING
 
 import pytest
+from pytest import LogCaptureFixture
 
 from generalresearch.managers.thl.ledger_manager.conditions import (
     generate_condition_mp_payment,

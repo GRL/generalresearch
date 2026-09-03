@@ -23,6 +23,10 @@ if TYPE_CHECKING:
     from generalresearch.config import GRLBaseSettings
     from generalresearch.managers.thl.buyer import BuyerManager
     from generalresearch.managers.thl.category import CategoryManager
+    from generalresearch.managers.thl.ipinfo import (
+        IPGeonameManager,
+        IPInformationManager,
+    )
     from generalresearch.managers.thl.payout import (
         BrokerageProductPayoutEventManager,
         BusinessPayoutEventManager,
@@ -39,6 +43,10 @@ if TYPE_CHECKING:
     )
     from generalresearch.managers.thl.user_manager.user_metadata_manager import (
         UserMetadataManager,
+    )
+    from generalresearch.managers.thl.userhealth import (
+        AuditLogManager,
+        IPRecordManager,
     )
     from generalresearch.managers.thl.wall import (
         WallCacheManager,
@@ -151,6 +159,13 @@ def brokerage_product_payout_event_manager(
         permissions=[Permission.CREATE, Permission.READ],
         redis_config=thl_redis_config,
     )
+
+
+@pytest.fixture()
+def audit_log_manager(thl_web_rw: PostgresConfig) -> AuditLogManager:
+    from generalresearch.managers.thl.userhealth import AuditLogManager
+
+    return AuditLogManager(pg_config=thl_web_rw)
 
 
 @pytest.fixture(scope="session")
@@ -319,3 +334,41 @@ def surveypenalty_manager(thl_redis_config: RedisConfig):
     from generalresearch.managers.thl.survey_penalty import SurveyPenaltyManager
 
     return SurveyPenaltyManager(redis_config=thl_redis_config)
+
+
+# --- IP Geolocation ---
+
+
+@pytest.fixture
+def ip_geoname_manager(thl_web_rw: PostgresConfig) -> IPGeonameManager:
+    from generalresearch.managers.thl.ipinfo import IPGeonameManager
+
+    return IPGeonameManager(pg_config=thl_web_rw)
+
+
+# --- IP Information ---
+
+
+@pytest.fixture(scope="session")
+def ip_information_manager(thl_web_rw: PostgresConfig) -> IPInformationManager:
+    assert thl_web_rw.dsn.path
+    assert "/unittest-" in thl_web_rw.dsn.path
+
+    from generalresearch.managers.thl.ipinfo import IPInformationManager
+
+    return IPInformationManager(pg_config=thl_web_rw)
+
+
+# --- IP Record ---
+
+
+@pytest.fixture(scope="session")
+def ip_record_manager(
+    thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
+) -> IPRecordManager:
+    assert thl_web_rw.dsn.path
+    assert "/unittest-" in thl_web_rw.dsn.path
+
+    from generalresearch.managers.thl.userhealth import IPRecordManager
+
+    return IPRecordManager(pg_config=thl_web_rw, redis_config=thl_redis_config)

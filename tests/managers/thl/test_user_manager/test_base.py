@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
 from random import randint
 from typing import TYPE_CHECKING
@@ -7,8 +8,10 @@ from uuid import uuid4
 import pytest
 
 from generalresearch.managers.thl.user_manager import (
-    UserCreateNotAllowedError,
     get_bp_user_create_limit_hourly,
+)
+from generalresearch.managers.thl.user_manager.exceptions import (
+    UserCreateNotAllowedError,
 )
 from generalresearch.managers.thl.user_manager.mysql_user_manager import (
     MysqlUserManager,
@@ -152,11 +155,11 @@ class TestCreateUserManager:
 
     def test_create_user(
         self,
-        product_manager: ProductManager,
+        product_factory: Callable[..., Product],
         thl_web_rw: PostgresConfig,
         user_manager: UserManager,
     ):
-        product: Product = product_manager.create_dummy(
+        product: Product = product_factory(
             user_create_config=UserCreateConfig(
                 min_hourly_create_limit=10, max_hourly_create_limit=69
             ),
@@ -195,11 +198,11 @@ class TestCreateUserManager:
 
     def test_create_user_integrity_error(
         self,
-        product_manager: ProductManager,
         user_manager: UserManager,
+        product_factory: Callable[..., Product],
         caplog,
     ):
-        product: Product = product_manager.create_dummy(
+        product: Product = product_factory(
             product_id=uuid4().hex,
             team_id=uuid4().hex,
             name=f"Test Product ID #{uuid4().hex[:6]}",
@@ -241,10 +244,13 @@ class TestCreateUserManager:
         assert user1 == user2
 
     def test_raise_allow_user_create(
-        self, product_manager: ProductManager, user_manager: UserManager
+        self,
+        product_manager: ProductManager,
+        user_manager: UserManager,
+        product_factory: Callable[..., Product],
     ):
         rand_num = randint(25, 200)
-        product: Product = product_manager.create_dummy(
+        product: Product = product_factory(
             product_id=uuid4().hex,
             team_id=uuid4().hex,
             name=f"Test Product ID #{uuid4().hex[:6]}",

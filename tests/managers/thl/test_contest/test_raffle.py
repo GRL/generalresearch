@@ -17,17 +17,17 @@ from generalresearch.models.thl.contest import (
     ContestEntryRule,
     ContestPrize,
 )
+from generalresearch.models.thl.contest.contest_entry import (
+    ContestEntry,
+    ContestEntryType,
+)
 from generalresearch.models.thl.contest.definitions import (
     ContestEndReason,
     ContestPrizeKind,
     ContestStatus,
 )
 from generalresearch.models.thl.contest.exceptions import ContestError
-from generalresearch.models.thl.contest.raffle import (
-    ContestEntry,
-    ContestEntryType,
-    RaffleContest,
-)
+from generalresearch.models.thl.contest.raffle import RaffleContest
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.contest_manager import ContestManager

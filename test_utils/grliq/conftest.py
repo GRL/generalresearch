@@ -27,7 +27,8 @@ if TYPE_CHECKING:
         GrlIqEventManager,
     )
 
-# === Miscellaneous ===
+
+# --- Assets ---
 
 
 @pytest.fixture(scope="function")
@@ -48,18 +49,98 @@ def grliq_db(postgres_instance: PostgresDsn) -> PostgresConfig:
     )
 
 
-# === Managers ===
+# --- GRLIQ Data ---
 
 
 @pytest.fixture(scope="session")
-def grliq_dm(grliq_db: PostgresConfig) -> GrlIqDataManager:
+def grliq_data_manager(grliq_db: PostgresConfig) -> GrlIqDataManager:
     assert grliq_db.dsn.path
     assert "/unittest-" in grliq_db.dsn.path
     return GrlIqDataManager(postgres_config=grliq_db)
 
 
 @pytest.fixture(scope="session")
-def grliq_em(grliq_db: PostgresConfig) -> GrlIqEventManager:
+def grliq_dm(grliq_data_manager: GrlIqDataManager) -> GrlIqDataManager:
+    return grliq_data_manager
+
+
+@pytest.fixture
+def grliq_data_factory(
+    grliq_data_manager: GrlIqDataManager, grliq_data_list: list[dict[str, Any]]
+) -> Callable[..., GrlIqData]:
+
+    def _inner(
+        save: bool = True,
+        is_attempt_allowed: bool = True,
+        product_id: str | None = None,
+        product_user_id: str | None = None,
+        uuid: str | None = None,
+        mid: str | None = None,
+        created_at: datetime | None = None,
+    ) -> GrlIqData:
+        """
+        Creates a dummy record in the db with a GrlIqData (data), GrlIqCheckerResults (result_data),
+            and GrlIqForensicCategoryResult (category_results)
+        :param is_attempt_allowed: Whether the attempt is allowed.
+        :param product_id: product_id of user
+        :param product_user_id:  product_user_id of user
+        :param uuid: uuid for the grliq data record
+        :param mid: the thl_session:uuid / mid for the attempt.
+        :return:
+        """
+
+        if save:
+            res: GrlIqData = grliq_data_list[int(is_attempt_allowed)]["data"]
+
+            product_id = product_id or uuid4().hex
+            product_user_id = product_user_id or uuid4().hex
+            uuid = uuid or uuid4().hex
+            mid = mid or uuid4().hex
+            created_at = created_at or datetime.now(tz=UTC)
+
+            res["data"].product_id = product_id
+            res["data"].product_user_id = product_user_id
+            res["data"].uuid = uuid
+            res["data"].mid = mid
+            res["data"].created_at = created_at
+            res["result_data"].uuid = uuid
+            res["category_result"].uuid = uuid
+
+            return grliq_data_manager.create(
+                iq_data=res["data"],
+                result_data=res["result_data"],
+                category_result=res["category_result"],
+                fraud_score=res["category_result"].fraud_score,
+                is_attempt_allowed=res["category_result"].is_attempt_allowed(),
+            )
+        else:
+            raise ValueError("Unsaved GRLIQ Data not supported yet")
+
+    return _inner
+
+
+@pytest.fixture(scope="function")
+def grliq_data(grliq_data_list: list[dict[str, Any]]) -> GrlIqData:
+
+    g: GrlIqData = grliq_data_list[1]["data"]
+
+    g.id = None
+    g.uuid = uuid4().hex
+    g.created_at = datetime.now(tz=UTC)
+    g.timestamp = g.created_at - timedelta(seconds=10)
+    return g
+
+
+@pytest.fixture(scope="function")
+def unsaved_grliq_data(grliq_data_list: list[dict[str, Any]]) -> GrlIqData:
+    raise ValueError("Not supported")
+
+
+# --- GRLIQ Event ---
+
+
+@pytest.fixture(scope="session")
+def grliq_event_manager(grliq_db: PostgresConfig) -> GrlIqEventManager:
     assert grliq_db.dsn.path
     assert "/unittest-" in grliq_db.dsn.path
 
@@ -71,14 +152,34 @@ def grliq_em(grliq_db: PostgresConfig) -> GrlIqEventManager:
 
 
 @pytest.fixture(scope="session")
-def grliq_crr(grliq_db: PostgresConfig) -> GrlIqCategoryResultsReader:
+def grliq_em(grliq_event_manager: GrlIqEventManager) -> GrlIqEventManager:
+    return grliq_event_manager
+
+
+# --- GRLIQ Category Results Reader ---
+
+
+@pytest.fixture(scope="session")
+def grliq_category_results_reader(
+    grliq_db: PostgresConfig,
+) -> GrlIqCategoryResultsReader:
     assert grliq_db.dsn.path
     assert "/unittest-" in grliq_db.dsn.path
 
     return GrlIqCategoryResultsReader(postgres_config=grliq_db)
 
 
+@pytest.fixture(scope="session")
+def grliq_crr(
+    grliq_category_results_reader: GrlIqCategoryResultsReader,
+) -> GrlIqCategoryResultsReader:
+    return grliq_category_results_reader
+
+
 # === Models ===
+
+
+# === Miscellaneous ===
 
 
 @pytest.fixture(scope="session")
@@ -111,66 +212,3 @@ def grliq_data_list() -> list[dict[str, Any]]:
             "is_attempt_allowed": True,
         },
     ]
-
-
-@pytest.fixture(scope="function")
-def grliq_data(grliq_data_list: list[dict[str, Any]]) -> GrlIqData:
-
-    g: GrlIqData = grliq_data_list[1]["data"]
-
-    g.id = None
-    g.uuid = uuid4().hex
-    g.created_at = datetime.now(tz=UTC)
-    g.timestamp = g.created_at - timedelta(seconds=10)
-    return g
-
-
-@pytest.fixture
-def grliq_data_factory(
-    grliq_dm: GrlIqDataManager, grliq_data_list: list[dict[str, Any]]
-) -> Callable[..., GrlIqData]:
-
-    def _inner(
-        is_attempt_allowed: bool = True,
-        product_id: str | None = None,
-        product_user_id: str | None = None,
-        uuid: str | None = None,
-        mid: str | None = None,
-        created_at: datetime | None = None,
-    ) -> GrlIqData:
-        """
-        Creates a dummy record in the db with a GrlIqData (data), GrlIqCheckerResults (result_data),
-            and GrlIqForensicCategoryResult (category_results)
-        :param is_attempt_allowed: Whether the attempt is allowed.
-        :param product_id: product_id of user
-        :param product_user_id:  product_user_id of user
-        :param uuid: uuid for the grliq data record
-        :param mid: the thl_session:uuid / mid for the attempt.
-        :return:
-        """
-
-        res: GrlIqData = grliq_data_list[int(is_attempt_allowed)]["data"]
-
-        product_id = product_id or uuid4().hex
-        product_user_id = product_user_id or uuid4().hex
-        uuid = uuid or uuid4().hex
-        mid = mid or uuid4().hex
-        created_at = created_at or datetime.now(tz=UTC)
-
-        res["data"].product_id = product_id
-        res["data"].product_user_id = product_user_id
-        res["data"].uuid = uuid
-        res["data"].mid = mid
-        res["data"].created_at = created_at
-        res["result_data"].uuid = uuid
-        res["category_result"].uuid = uuid
-
-        return grliq_dm.create(
-            iq_data=res["data"],
-            result_data=res["result_data"],
-            category_result=res["category_result"],
-            fraud_score=res["category_result"].fraud_score,
-            is_attempt_allowed=res["category_result"].is_attempt_allowed(),
-        )
-
-    return _inner

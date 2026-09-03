@@ -64,9 +64,11 @@ class TestProduct:
         # We're not excluding anything here, only in the "*Out" variants
         assert "id_int" in res
 
-    def test_init_db(self, product_manager: ProductManager):
+    def test_init_db(
+        self, product_factory: Callable[..., Product], product_manager: ProductManager
+    ):
         # By default, just a Pydantic instance doesn't have an id_int
-        instance = product_manager.create_dummy()
+        instance = product_factory()
         assert isinstance(instance.id_int, int)
 
         res = instance.model_dump_json()

@@ -132,8 +132,8 @@ class Team(BaseModel):
     def prefetch_gr_users(self, gr_user_manager: GRUserManager) -> None:
         self.gr_users = gr_user_manager.get_by_team(team_id=self.id)
 
-    def prefetch_businesses(self, business_manager: BusinessManager) -> None:
-        self.businesses = business_manager.get_by_team(team_id=self.id)
+    def prefetch_businesses(self, gr_business_manager: BusinessManager) -> None:
+        self.businesses = gr_business_manager.get_by_team(team_id=self.id)
 
     def prefetch_products(self, product_manager: ProductManager) -> None:
         self.products = product_manager.fetch_uuids(team_uuids=[self.uuid])
@@ -273,7 +273,7 @@ class Team(BaseModel):
     ) -> None:
         self.prefetch_products(product_manager=product_manager)
         self.prefetch_gr_users(gr_user_manager=gr_user_manager)
-        self.prefetch_businesses(business_manager=gr_business_manager)
+        self.prefetch_businesses(gr_business_manager=gr_business_manager)
         self.prefetch_memberships(membership_manager=gr_membership_manager)
 
         rc = redis_config.create_redis_client()

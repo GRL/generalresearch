@@ -56,16 +56,6 @@ def ip_geoname_manager(thl_web_rw: PostgresConfig) -> IPGeonameManager:
 
 
 @pytest.fixture(scope="session")
-def ip_information_manager(thl_web_rw: PostgresConfig) -> IPInformationManager:
-    assert thl_web_rw.dsn.path
-    assert "/unittest-" in thl_web_rw.dsn.path
-
-    from generalresearch.managers.thl.ipinfo import IPInformationManager
-
-    return IPInformationManager(pg_config=thl_web_rw)
-
-
-@pytest.fixture(scope="session")
 def ip_record_manager(
     thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
 ) -> IPRecordManager:

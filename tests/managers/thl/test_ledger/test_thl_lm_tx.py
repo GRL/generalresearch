@@ -128,10 +128,11 @@ class TestThlLedgerTxManager:
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         session_manager: SessionManager,
+        product_factory: Callable[..., Product],
     ):
         delete_ledger_db()
         create_main_accounts()
-        product = product_manager.create_dummy(
+        product = product_factory(
             payout_config=PayoutConfig(
                 payout_transformation=PayoutTransformation(
                     f="payout_transformation_amt"

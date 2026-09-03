@@ -551,7 +551,6 @@ class TestBusinessBalance:
         ledger_manager: LedgerManager,
         product_manager: ProductManager,
         start: datetime,
-        thl_web_rr: PostgresConfig,
         session_with_tx_factory: Callable[..., Session],
         delete_ledger_db: Callable[..., None],
         create_main_accounts: Callable[..., None],
@@ -964,7 +963,6 @@ class TestBusinessBalance:
         ledger_manager: LedgerManager,
         product_manager: ProductManager,
         start: datetime,
-        thl_web_rr: PostgresConfig,
         payout_event_manager,
         session_with_tx_factory: Callable[..., None],
         delete_ledger_db: Callable[..., None],
@@ -1194,7 +1192,6 @@ class TestBusinessMethods:
     def test_set_cache(
         self,
         gr_business: Business,
-        gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         client_no_amm: DaskClient,
         mnt_filepath: GRLDatasets,

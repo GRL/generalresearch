@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 
 from generalresearch.models.thl.contest.definitions import (
     ContestEndReason,
+    ContestEntryTrigger,
     ContestStatus,
 )
 from generalresearch.models.thl.contest.milestone import (
-    ContestEntryTrigger,
     MilestoneContest,
     MilestoneUserView,
 )

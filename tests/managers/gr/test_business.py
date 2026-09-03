@@ -76,30 +76,30 @@ class TestBusinessManager:
         assert isinstance(instance, Business)
         assert isinstance(instance.id, int)
 
-    def test_get_or_create(self, business_manager: BusinessManager):
+    def test_get_or_create(self, gr_business_manager: BusinessManager):
         uuid_key = uuid4().hex
 
-        assert business_manager.get_by_uuid(business_uuid=uuid_key) is None
+        assert gr_business_manager.get_by_uuid(business_uuid=uuid_key) is None
 
-        instance = business_manager.get_or_create(
+        instance = gr_business_manager.get_or_create(
             uuid=uuid_key,
             name=f"name-{uuid4().hex[:6]}",
         )
 
-        res = business_manager.get_by_uuid(business_uuid=uuid_key)
+        res = gr_business_manager.get_by_uuid(business_uuid=uuid_key)
         assert isinstance(res, Business)
         assert res.id == instance.id
 
     def test_get_all(
         self,
-        business_manager: BusinessManager,
+        gr_business_manager: BusinessManager,
         gr_business_factory: Callable[..., Business],
     ):
-        res1 = business_manager.get_all()
+        res1 = gr_business_manager.get_all()
         assert isinstance(res1, list)
 
         gr_business_factory()
-        res2 = business_manager.get_all()
+        res2 = gr_business_manager.get_all()
         assert len(res1) == len(res2) - 1
 
     @pytest.mark.skip(reason="TODO")
@@ -108,42 +108,42 @@ class TestBusinessManager:
 
     def test_get_by_user_id(
         self,
-        business_manager: BusinessManager,
+        gr_business_manager: BusinessManager,
         gr_user: GRUser,
         team_manager: TeamManager,
         membership_manager: MembershipManager,
         gr_business_factory: Callable[..., Business],
         gr_team_factory: Callable[..., Team],
     ):
-        res = business_manager.get_by_user_id(user_id=gr_user.id)
+        res = gr_business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 0
 
         # Create a business: Business, but don't add it to anything
         b1 = gr_business_factory()
-        res = business_manager.get_by_user_id(user_id=gr_user.id)
+        res = gr_business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 0
 
         # Create a Team, but don't create any Memberships
         t1 = gr_team_factory()
-        res = business_manager.get_by_user_id(user_id=gr_user.id)
+        res = gr_business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 0
 
         # Create a Membership for the gr_user to the Team... but it doesn't
         #   matter because the Team doesn't have any Business yet
         _ = membership_manager.create(team=t1, gr_user=gr_user)
-        res = business_manager.get_by_user_id(user_id=gr_user.id)
+        res = gr_business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 0
 
         # Add the Business to the Team... now the Business should be available
         # to the gr_user
         team_manager.add_business(team=t1, business=b1)
-        res = business_manager.get_by_user_id(user_id=gr_user.id)
+        res = gr_business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 1
 
         # Add another Business to the Team!
         b2 = gr_business_factory()
         team_manager.add_business(team=t1, business=b2)
-        res = business_manager.get_by_user_id(user_id=gr_user.id)
+        res = gr_business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 2
 
     @pytest.mark.skip(reason="TODO")
@@ -151,14 +151,16 @@ class TestBusinessManager:
         pass
 
     def test_get_by_uuid(
-        self, gr_business: Business, business_manager: BusinessManager
+        self, gr_business: Business, gr_business_manager: BusinessManager
     ):
-        instance = business_manager.get_by_uuid(business_uuid=gr_business.uuid)
+        instance = gr_business_manager.get_by_uuid(business_uuid=gr_business.uuid)
         assert isinstance(instance, Business)
         assert gr_business.id == instance.id
 
-    def test_get_by_id(self, gr_business: Business, business_manager: BusinessManager):
-        instance = business_manager.get_by_id(business_id=gr_business.id)
+    def test_get_by_id(
+        self, gr_business: Business, gr_business_manager: BusinessManager
+    ):
+        instance = gr_business_manager.get_by_id(business_id=gr_business.id)
         assert isinstance(instance, Business)
         assert gr_business.uuid == instance.uuid
 

@@ -62,6 +62,7 @@ if TYPE_CHECKING:
     from generalresearch.models.thl.user_iphistory import IPRecord
     from generalresearch.models.thl.userhealth import AuditLog
     from generalresearch.models.thl.wallet.cashout_method import CashMailOrderData
+    from generalresearch.pg_helper import PostgresConfig
 
 fake = faker.Faker()
 
@@ -69,30 +70,6 @@ fake = faker.Faker()
 @pytest.fixture
 def wall_status() -> Status:
     return Status.COMPLETE
-
-
-@pytest.fixture
-def user_factory(user_manager: UserManager) -> Callable[..., User]:
-
-    def _inner(
-        # --- Create dummy "optional" --- #
-        product_user_id: str | None = None,
-        # --- Optional --- #
-        product_id: UUIDStr | None = None,
-        product: Product | None = None,
-        created: datetime | None = None,
-    ) -> User:
-
-        product_user_id = product_user_id or uuid4().hex
-
-        return user_manager.create_user(
-            product_user_id=product_user_id,
-            product_id=product_id,
-            product=product,
-            created=created,
-        )
-
-    return _inner
 
 
 @pytest.fixture
@@ -155,9 +132,10 @@ def product_factory(product_manager: ProductManager) -> Callable[..., Product]:
     def _inner(
         save: bool = True,
         team: Team | None = None,
+        team_id: UUIDStr | None = None,
         business: Business | None = None,
-        product_id: UUIDStr | None = None,
         business_id: UUIDStr | None = None,
+        product_id: UUIDStr | None = None,
         name: str | None = None,
         redirect_url: str | None = None,
         harmonizer_domain: str | None = None,
@@ -174,8 +152,10 @@ def product_factory(product_manager: ProductManager) -> Callable[..., Product]:
 
         product_id = product_id if product_id else uuid4().hex
 
-        team_id = team.uuid if team else uuid4().hex
-        business_id = business.uuid if business else uuid4().hex
+        team_id = (team.uuid if team else None) or team_id or uuid4().hex
+        business_id = (
+            (business.uuid if business else None) or business_id or uuid4().hex
+        )
 
         name = name if name else f"name-{product_id[:12]}"
         redirect_url = redirect_url if redirect_url else "https://www.example.com/"
@@ -256,9 +236,12 @@ def session_factory(session_manager: SessionManager):
 
 
 @pytest.fixture
-def ipgeoname_factory(ipgeoname_manager: IPGeonameManager) -> Callable[..., IPGeoname]:
+def ip_geoname_factory(
+    ip_geoname_manager: IPGeonameManager,
+) -> Callable[..., IPGeoname]:
 
     def _inner(
+        save: bool,
         geoname_id: PositiveInt | None = None,
         continent_code: str | None = None,
         continent_name: str | None = None,
@@ -273,31 +256,47 @@ def ipgeoname_factory(ipgeoname_manager: IPGeonameManager) -> Callable[..., IPGe
         time_zone: str | None = None,
         is_in_european_union: bool | None = None,
     ) -> IPGeoname:
-
-        return ipgeoname_manager.create(
-            geoname_id=geoname_id or randint(1, 999_999_999),
-            continent_code=continent_code or "na",
-            continent_name=continent_name or "North America",
-            country_iso=country_iso or "us",
-            country_name=country_name or "United States",
-            subdivision_1_iso=subdivision_1_iso or "fl",
-            subdivision_1_name=subdivision_1_name or "Florida",
-            subdivision_2_iso=subdivision_2_iso,
-            subdivision_2_name=subdivision_2_name,
-            city_name=city_name,
-            metro_code=metro_code,
-            time_zone=time_zone,
-            is_in_european_union=is_in_european_union,
-        )
+        if save:
+            return ip_geoname_manager.create(
+                geoname_id=geoname_id or randint(1, 999_999_999),
+                continent_code=continent_code or "na",
+                continent_name=continent_name or "North America",
+                country_iso=country_iso or "us",
+                country_name=country_name or "United States",
+                subdivision_1_iso=subdivision_1_iso or "fl",
+                subdivision_1_name=subdivision_1_name or "Florida",
+                subdivision_2_iso=subdivision_2_iso,
+                subdivision_2_name=subdivision_2_name,
+                city_name=city_name,
+                metro_code=metro_code,
+                time_zone=time_zone,
+                is_in_european_union=is_in_european_union,
+            )
+        else:
+            raise ValueError("Unsaved IPGeoname not yet supported")
 
     return _inner
 
 
-def ipinformation_factory(
+@pytest.fixture()
+def ip_geoname(ip_geoname_factory: Callable[..., IPGeoname]) -> IPGeoname:
+    return ip_geoname_factory(save=True)
+
+
+@pytest.fixture()
+def unsaved_ip_geoname(ip_geoname_factory: Callable[..., IPGeoname]) -> IPGeoname:
+    return ip_geoname_factory(save=True)
+
+
+# --- IP Information ---
+
+
+def ip_information_factory(
     ipinformation_manager: IPInformationManager,
 ) -> Callable[..., IPInformation]:
 
     def _inner(
+        save: bool = True,
         ip: IPvAnyAddressStr | None = None,
         geoname_id: PositiveInt | None = None,
         country_iso: str | None = None,
@@ -324,34 +323,182 @@ def ipinformation_factory(
         accuracy_radius: int | None = None,
     ) -> IPInformation:
 
-        return ipinformation_manager.create(
-            ip=ip or fake.ipv4_public(),
-            geoname_id=geoname_id,
-            country_iso=country_iso or fake.country_code(),
-            registered_country_iso=registered_country_iso,
-            is_anonymous=is_anonymous,
-            is_anonymous_vpn=is_anonymous_vpn,
-            is_hosting_provider=is_hosting_provider,
-            is_public_proxy=is_public_proxy,
-            is_tor_exit_node=is_tor_exit_node,
-            is_residential_proxy=is_residential_proxy,
-            autonomous_system_number=autonomous_system_number,
-            autonomous_system_organization=autonomous_system_organization,
-            domain=domain,
-            isp=isp,
-            mobile_country_code=mobile_country_code,
-            mobile_network_code=mobile_network_code,
-            network=network,
-            organization=organization,
-            static_ip_score=static_ip_score,
-            user_type=user_type,
-            postal_code=postal_code,
-            latitude=latitude,
-            longitude=longitude,
-            accuracy_radius=accuracy_radius,
-        )
+        if save:
+            return ipinformation_manager.create(
+                ip=ip or fake.ipv4_public(),
+                geoname_id=geoname_id,
+                country_iso=country_iso or fake.country_code(),
+                registered_country_iso=registered_country_iso,
+                is_anonymous=is_anonymous,
+                is_anonymous_vpn=is_anonymous_vpn,
+                is_hosting_provider=is_hosting_provider,
+                is_public_proxy=is_public_proxy,
+                is_tor_exit_node=is_tor_exit_node,
+                is_residential_proxy=is_residential_proxy,
+                autonomous_system_number=autonomous_system_number,
+                autonomous_system_organization=autonomous_system_organization,
+                domain=domain,
+                isp=isp,
+                mobile_country_code=mobile_country_code,
+                mobile_network_code=mobile_network_code,
+                network=network,
+                organization=organization,
+                static_ip_score=static_ip_score,
+                user_type=user_type,
+                postal_code=postal_code,
+                latitude=latitude,
+                longitude=longitude,
+                accuracy_radius=accuracy_radius,
+            )
+        else:
+            raise ValueError("Unsaved IP Information not supported yet")
 
     return _inner
+
+
+@pytest.fixture
+def ip_information(
+    ip_information_factory: Callable[..., IPInformation],
+) -> IPInformation:
+    return ip_information_factory(save=True)
+
+
+@pytest.fixture
+def unsaved_ip_information(
+    ip_information_factory: Callable[..., IPInformation],
+) -> IPInformation:
+    return ip_information_factory(save=False)
+
+
+# --- IP Record ---
+
+
+@pytest.fixture
+def ip_record_factory(
+    ip_record_manager: IPRecordManager, user: User
+) -> Callable[..., IPRecord]:
+    # return ip_record_manager.create_dummy(user_id=user.user_id)
+
+    #     def create_dummy(
+    #     self,
+    #     user_id: PositiveInt,
+    #     ip: IPvAnyAddressStr | None = None,
+    #     forwarded_ip1: IPvAnyAddressStr | None = None,
+    #     forwarded_ip2: IPvAnyAddressStr | None = None,
+    #     forwarded_ip3: IPvAnyAddressStr | None = None,
+    #     forwarded_ip4: IPvAnyAddressStr | None = None,
+    #     forwarded_ip5: IPvAnyAddressStr | None = None,
+    #     forwarded_ip6: IPvAnyAddressStr | None = None,
+    # ) -> IPRecord:
+    #     return self.create(
+    #         user_id=user_id,
+    #         ip=ip or fake.ipv4_public(),
+    #         forwarded_ip1=(forwarded_ip1 or fake.ipv4_public()),
+    #         forwarded_ip2=(forwarded_ip2 or fake.ipv6() if random() < 0.5 else None),
+    #         forwarded_ip3=(
+    #             forwarded_ip3 or fake.ipv4_public() if random() < 0.25 else None
+    #         ),
+    #         forwarded_ip4=forwarded_ip4,
+    #         forwarded_ip5=forwarded_ip5,
+    #         forwarded_ip6=forwarded_ip6,
+    #     )
+
+    def _inner(
+        user_id: PositiveInt, save: bool = True, ip: str | None = None
+    ) -> IPRecord:
+        if save:
+            return ip_record_manager.create_dummy(user_id=user_id, ip=ip)
+        else:
+            raise ValueError("Unsaved IP Record not supported")
+
+    return _inner
+
+
+@pytest.fixture()
+def ip_record(
+    ip_record_manager: IPRecordManager, ip_geoname: IPGeoname, user: User
+) -> IPRecord:
+    return ip_record_factory(save=True)
+
+
+@pytest.fixture()
+def unsaved_ip_record(ip_record_factory: Callable[..., IPRecord]) -> IPRecord:
+    return ip_record_factory(save=False)
+
+
+# --- User ---
+
+
+@pytest.fixture()
+def user_factory(
+    user_manager: UserManager, thl_web_rr: PostgresConfig
+) -> Callable[..., User]:
+
+    def _inner(
+        save: bool = True,
+        # --- Create dummy "optional" --- #
+        product_user_id: str | None = None,
+        # --- Optional --- #
+        product_id: UUIDStr | None = None,
+        product: Product | None = None,
+        created: datetime | None = None,
+    ) -> User:
+        if save:
+            if product is None:
+                product = product_factory()
+
+            product_user_id = product_user_id or uuid4().hex
+
+            u = user_manager.create_user(
+                product_user_id=product_user_id,
+                product_id=product_id,
+                product=product,
+                created=created,
+            )
+
+            u = user_manager.create_dummy(product=product, created=created)
+
+            u.prefetch_product(pg_config=thl_web_rr)
+            return u
+
+        else:
+            raise ValueError("Unsaved User not supported")
+
+    return _inner
+
+
+@pytest.fixture()
+def user(
+    user_factory: Callable[..., User],
+) -> User:
+    return user_factory(save=True)
+
+
+@pytest.fixture()
+def unsaved_user(
+    user_factory: Callable[..., User],
+) -> User:
+    return user_factory(save=False)
+
+
+@pytest.fixture
+def user_with_wallet(
+    user_factory: Callable[..., User],
+    product_user_wallet_yes: Product,
+) -> User:
+    # A user on a product with user wallet enabled, but they have no money
+    return user_factory(save=True, product=product_user_wallet_yes)
+
+
+@pytest.fixture
+def user_with_wallet_amt(
+    user_factory: Callable[..., User], product_amt_true: Product
+) -> User:
+    # A user on a product with user wallet enabled, on AMT, but they have no money
+    return user_factory(save=True, product=product_amt_true)
+
+
+# --- User Payout ---
 
 
 @pytest.fixture
@@ -437,11 +584,11 @@ def iprecord_factory(iprecord_manager: IPRecordManager) -> Callable[..., IPRecor
     return _inner
 
 
-# class AuditLogManager(PostgresManager):
+# --- Audit Log Manager ---
 
 
-@pytest.fixture
-def auditlog_factory(audit_log_manager: AuditLogManager):
+@pytest.fixture()
+def audit_log_factory(audit_log_manager: AuditLogManager) -> Callable[..., AuditLog]:
 
     def _inner(
         user_id: PositiveInt,
@@ -466,6 +613,19 @@ def auditlog_factory(audit_log_manager: AuditLogManager):
         )
 
     return _inner
+
+
+@pytest.fixture()
+def audit_log(auditlog_factory: Callable[..., AuditLog]) -> AuditLog:
+    return auditlog_factory(save=True)
+
+
+@pytest.fixture()
+def unsaved_audit_log(auditlog_factory: Callable[..., AuditLog]) -> AuditLog:
+    return auditlog_factory(save=False)
+
+
+# --- ---
 
 
 @pytest.fixture(scope="session")

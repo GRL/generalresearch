@@ -14,8 +14,10 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerAccountDoesntExistError,
 )
 from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
-from generalresearch.models.custom_types import AccountType, Direction, UUIDStr
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.ledger import (
+    AccountType,
+    Direction,
     LedgerAccount,
     LedgerEntry,
 )

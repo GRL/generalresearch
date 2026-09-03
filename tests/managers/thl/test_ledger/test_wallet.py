@@ -22,8 +22,10 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture()
-def schrute_product(product_manager: ProductManager) -> Product:
-    return product_manager.create_dummy(
+def schrute_product(
+    product_factory: Callable[..., Product], product_manager: ProductManager
+) -> Product:
+    return product_factory(
         user_wallet_config=UserWalletConfig(enabled=True, amt=False),
         payout_config=PayoutConfig(
             payout_transformation=PayoutTransformation(

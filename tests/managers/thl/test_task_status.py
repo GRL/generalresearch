@@ -40,18 +40,22 @@ finish3 = start3 + timedelta(minutes=5)
 
 
 @pytest.fixture(scope="session")
-def bp1(product_manager: ProductManager) -> Product:
+def bp1(
+    product_factory: Callable[..., Product], product_manager: ProductManager
+) -> Product:
     # user wallet disabled, payout xform NULL
-    return product_manager.create_dummy(
+    return product_factory(
         user_wallet_config=UserWalletConfig(enabled=False),
         payout_config=PayoutConfig(),
     )
 
 
 @pytest.fixture(scope="session")
-def bp2(product_manager: ProductManager) -> Product:
+def bp2(
+    product_factory: Callable[..., Product], product_manager: ProductManager
+) -> Product:
     # user wallet disabled, payout xform 40%
-    return product_manager.create_dummy(
+    return product_factory(
         user_wallet_config=UserWalletConfig(enabled=False),
         payout_config=PayoutConfig(
             payout_transformation=PayoutTransformation(
@@ -63,9 +67,11 @@ def bp2(product_manager: ProductManager) -> Product:
 
 
 @pytest.fixture(scope="session")
-def bp3(product_manager: ProductManager) -> Product:
+def bp3(
+    product_factory: Callable[..., Product], product_manager: ProductManager
+) -> Product:
     # user wallet enabled, payout xform 50%
-    return product_manager.create_dummy(
+    return product_factory(
         user_wallet_config=UserWalletConfig(enabled=True),
         payout_config=PayoutConfig(
             payout_transformation=PayoutTransformation(

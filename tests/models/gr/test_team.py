@@ -113,13 +113,13 @@ class TestTeam:
 
         assert gr_team.businesses is None
 
-        gr_team.prefetch_businesses(business_manager=gr_business_manager)
+        gr_team.prefetch_businesses(gr_business_manager=gr_business_manager)
         assert isinstance(gr_team.businesses, list)
         assert len(gr_team.businesses) == 0
 
         team_manager.add_business(team=gr_team, business=business)
         assert len(gr_team.businesses) == 0
-        gr_team.prefetch_businesses(business_manager=gr_business_manager)
+        gr_team.prefetch_businesses(gr_business_manager=gr_business_manager)
         assert len(gr_team.businesses) == 1
         assert isinstance(gr_team.businesses[0], Business)
         assert gr_team.businesses[0].uuid == business.uuid
@@ -163,12 +163,19 @@ class TestTeamMethods:
         mnt_gr_api_dir: Path,
         enriched_wall_merge: EnrichedWallMerge,
         enriched_session_merge: EnrichedSessionMerge,
+        product_manager: ProductManager,
+        gr_user_manager: GRUserManager,
+        gr_business_manager: BusinessManager,
+        gr_membership_manager: MembershipManager,
     ):
         client = gr_redis_config.create_redis_client()
         assert client.get(name=gr_team.cache_key) is None
 
         gr_team.set_cache(
-            pg_config=gr_db,
+            product_manager=product_manager,
+            gr_user_manager=gr_user_manager,
+            gr_business_manager=gr_business_manager,
+            gr_membership_manager=gr_membership_manager,
             thl_web_rr=thl_web_rr,
             redis_config=gr_redis_config,
             client=client_no_amm,
@@ -193,6 +200,10 @@ class TestTeamMethods:
         mnt_gr_api_dir: Path,
         enriched_wall_merge: EnrichedWallMerge,
         enriched_session_merge: EnrichedSessionMerge,
+        product_manager: ProductManager,
+        gr_user_manager: GRUserManager,
+        gr_business_manager: BusinessManager,
+        gr_membership_manager: MembershipManager,
     ):
         from generalresearch.models.gr.team import Team
 
@@ -200,7 +211,10 @@ class TestTeamMethods:
         membership_factory(team=gr_team, gr_user=gr_user)
 
         gr_team.set_cache(
-            pg_config=gr_db,
+            product_manager=product_manager,
+            gr_user_manager=gr_user_manager,
+            gr_business_manager=gr_business_manager,
+            gr_membership_manager=gr_membership_manager,
             thl_web_rr=thl_web_rr,
             redis_config=gr_redis_config,
             client=client_no_amm,
@@ -239,6 +253,7 @@ class TestTeamMethods:
         mnt_filepath: GRLDatasets,
         mnt_gr_api_dir: Path,
         gr_team: Team,
+        product_manager: ProductManager,
     ):
 
         delete_df_collection(coll=wall_collection)
@@ -267,7 +282,7 @@ class TestTeamMethods:
         )
 
         gr_team.prebuild_enriched_session_parquet(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             mnt_gr_api=mnt_gr_api_dir,
@@ -295,6 +310,7 @@ class TestTeamMethods:
         mnt_filepath: GRLDatasets,
         mnt_gr_api_dir: Path,
         gr_team: Team,
+        product_manager: ProductManager,
     ):
 
         delete_df_collection(coll=wall_collection)
@@ -323,7 +339,7 @@ class TestTeamMethods:
         )
 
         gr_team.prebuild_enriched_wall_parquet(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             mnt_gr_api=mnt_gr_api_dir,
