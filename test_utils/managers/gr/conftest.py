@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 import redis
-import redis.asyncio as redis_async
 from pydantic import PostgresDsn
 
 from generalresearch.managers.gr.business import (
@@ -15,12 +14,14 @@ from generalresearch.managers.gr.business import (
     BusinessBankAccountManager,
     BusinessManager,
 )
+from generalresearch.managers.gr.team import MembershipManager
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
 
 if TYPE_CHECKING:
     from generalresearch.config import GRLBaseSettings
     from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
+    from generalresearch.managers.gr.team import TeamManager
 
 
 # === Msc ===
@@ -89,7 +90,17 @@ def gr_user_manager(
 
 
 @pytest.fixture(scope="session")
-def gr_team_manager(gr_db: PostgresConfig) -> GRTokenManager:
+def gr_team_manager(gr_db: PostgresConfig, gr_redis_config: RedisConfig) -> TeamManager:
+    assert gr_db.dsn.path
+    assert "/unittest-" in gr_db.dsn.path
+
+    from generalresearch.managers.gr.team import TeamManager
+
+    return TeamManager(pg_config=gr_db, redis_config=gr_redis_config)
+
+
+@pytest.fixture(scope="session")
+def gr_token_manager(gr_db: PostgresConfig) -> GRTokenManager:
     assert gr_db.dsn.path
     assert "/unittest-" in gr_db.dsn.path
 
@@ -117,3 +128,10 @@ def gr_business_address_manager(
     gr_db: PostgresConfig,
 ) -> BusinessAddressManager:
     return BusinessAddressManager(pg_config=gr_db)
+
+
+@pytest.fixture(scope="session")
+def gr_membership_manager(
+    gr_db: PostgresConfig,
+) -> MembershipManager:
+    return MembershipManager(pg_config=gr_db)

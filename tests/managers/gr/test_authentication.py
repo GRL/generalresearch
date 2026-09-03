@@ -84,29 +84,32 @@ class TestGRUserManager:
 
 class TestGRTokenManager:
 
-    def test_create(self, gr_user: GRUser, gr_team_manager: TeamManager):
-        assert gr_team_manager.create(user_id=gr_user.id) is None
+    def test_create(self, gr_user: GRUser, gr_token_manager: GRTokenManager):
+        assert gr_token_manager.create(user_id=gr_user.id) is None
 
-        token = gr_team_manager.get_by_user_id(user_id=gr_user.id)
+        token = gr_token_manager.get_by_user_id(user_id=gr_user.id)
+        assert isinstance(token, GRToken)
         assert gr_user.id == token.user_id
 
-    def test_get_by_user_id(self, gr_user: GRUser, gr_team_manager: TeamManager):
-        assert gr_team_manager.create(user_id=gr_user.id) is None
+    def test_get_by_user_id(self, gr_user: GRUser, gr_token_manager: GRTokenManager):
+        assert gr_token_manager.create(user_id=gr_user.id) is None
 
-        token = gr_team_manager.get_by_user_id(user_id=gr_user.id)
+        token = gr_token_manager.get_by_user_id(user_id=gr_user.id)
+        assert isinstance(token, GRToken)
         assert gr_user.id == token.user_id
 
     def test_prefetch_user(
         self,
         gr_user: GRUser,
-        gr_team_manager: TeamManager,
+        gr_token_manager: GRTokenManager,
         gr_db: PostgresConfig,
         gr_redis_config: RedisConfig,
     ):
 
-        gr_team_manager.create(user_id=gr_user.id)
+        gr_token_manager.create(user_id=gr_user.id)
 
-        token: GRToken = gr_team_manager.get_by_user_id(user_id=gr_user.id)
+        token: GRToken | None = gr_token_manager.get_by_user_id(user_id=gr_user.id)
+        assert isinstance(token, GRToken)
         assert token.user is None
 
         token.prefetch_user(pg_config=gr_db, redis_config=gr_redis_config)
@@ -115,17 +118,18 @@ class TestGRTokenManager:
     def test_get_by_key(
         self,
         gr_user: GRUser,
-        gr_team_manager: TeamManager,
+        gr_token_manager: GRTokenManager,
     ):
-        gr_team_manager.create(user_id=gr_user.id)
-        token = gr_team_manager.get_by_user_id(user_id=gr_user.id)
+        gr_token_manager.create(user_id=gr_user.id)
+        token = gr_token_manager.get_by_user_id(user_id=gr_user.id)
+        assert isinstance(token, GRToken)
 
-        instance = gr_team_manager.get_by_key(api_key=token.key)
+        instance = gr_token_manager.get_by_key(api_key=token.key)
         assert token.created == instance.created
 
         # Search for non-existent key
         with pytest.raises(expected_exception=Exception) as cm:
-            gr_team_manager.get_by_key(api_key=uuid4().hex)
+            gr_token_manager.get_by_key(api_key=uuid4().hex)
         assert "No GRUser with token of " in str(cm.value)
 
     @pytest.mark.skip(reason="no idea how to actually test this...")

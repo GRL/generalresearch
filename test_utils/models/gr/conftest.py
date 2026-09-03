@@ -207,8 +207,10 @@ def gr_team_factory(
         **kwargs,
     ) -> Team:
 
+        name = name or f"<Team ({uuid4().hex[:6]})>"
+
         if save:
-            return gr_team_manager.create(uuid=uuid, name=name, **kwargs)
+            return gr_team_manager.create(name=name, uuid=uuid, **kwargs)
 
         else:
             raise ValueError("BusinessBankAccount Business not supported yet")
@@ -325,12 +327,12 @@ def gr_user_token_header(gr_user_token: GRToken) -> dict[str, str]:
 
 @pytest.fixture()
 def gr_membership_factory(
-    gr_team: Team,
-    gr_user: GRUser,
     gr_membership_manager: MembershipManager,
 ) -> Callable[..., Membership]:
 
-    def _inner(save: bool = True, **kwargs) -> Membership:
+    def _inner(
+        gr_team: Team, gr_user: GRUser, save: bool = True, **kwargs
+    ) -> Membership:
         if save:
             return gr_membership_manager.create(team=gr_team, gr_user=gr_user, **kwargs)
         else:

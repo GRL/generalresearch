@@ -62,7 +62,23 @@ pipeline {
                     stage('base') {
                         steps {
                             dir("generalresearch-${VER}") {
+                                sh "${VENV}-${VER}/bin/pytest tests/test_postgres.py -vs"
+                            }
+                        }
+                    }
+
+                    stage('models') {
+                        steps {
+                            dir("generalresearch-${VER}") {
                                 sh "${VENV}-${VER}/bin/pytest tests/models/gr/test_base.py -vs"
+                            }
+                        }
+                    }
+
+                    stage('managers') {
+                        steps {
+                            dir("generalresearch-${VER}") {
+                                sh "${VENV}-${VER}/bin/pytest tests/managers/gr/ -vs"
                             }
                         }
                     }

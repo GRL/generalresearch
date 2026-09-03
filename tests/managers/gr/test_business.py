@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -9,6 +10,7 @@ from generalresearch.models.gr.business import (
     BusinessBankAccount,
 )
 from generalresearch.models.gr.definitions import TransferMethod
+from generalresearch.models.gr.team import Team
 
 if TYPE_CHECKING:
     from generalresearch.managers.gr.business import (
@@ -68,9 +70,9 @@ class TestBusinessAddressManager:
 
 class TestBusinessManager:
 
-    def test_create(self, business_manager: BusinessManager):
+    def test_create(self, gr_business_factory: Callable[..., Business]):
 
-        instance = business_manager.create_dummy()
+        instance = gr_business_factory()
         assert isinstance(instance, Business)
         assert isinstance(instance.id, int)
 
@@ -88,11 +90,15 @@ class TestBusinessManager:
         assert isinstance(res, Business)
         assert res.id == instance.id
 
-    def test_get_all(self, business_manager: BusinessManager):
+    def test_get_all(
+        self,
+        business_manager: BusinessManager,
+        gr_business_factory: Callable[..., Business],
+    ):
         res1 = business_manager.get_all()
         assert isinstance(res1, list)
 
-        business_manager.create_dummy()
+        gr_business_factory()
         res2 = business_manager.get_all()
         assert len(res1) == len(res2) - 1
 
@@ -106,17 +112,19 @@ class TestBusinessManager:
         gr_user: GRUser,
         team_manager: TeamManager,
         membership_manager: MembershipManager,
+        gr_business_factory: Callable[..., Business],
+        gr_team_factory: Callable[..., Team],
     ):
         res = business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 0
 
         # Create a business: Business, but don't add it to anything
-        b1 = business_manager.create_dummy()
+        b1 = gr_business_factory()
         res = business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 0
 
         # Create a Team, but don't create any Memberships
-        t1 = team_manager.create_dummy()
+        t1 = gr_team_factory()
         res = business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 0
 
@@ -133,7 +141,7 @@ class TestBusinessManager:
         assert len(res) == 1
 
         # Add another Business to the Team!
-        b2 = business_manager.create_dummy()
+        b2 = gr_business_factory()
         team_manager.add_business(team=t1, business=b2)
         res = business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 2

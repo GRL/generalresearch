@@ -11,6 +11,7 @@ from generalresearch.managers.base import (
     PostgresManager,
     PostgresManagerWithRedis,
 )
+from generalresearch.managers.gr.authentication import GRUserManager
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.gr.team import (
     Membership,
@@ -187,10 +188,12 @@ class TeamManager(PostgresManagerWithRedis):
 
         return team
 
-    def add_user(self, team: Team, gr_user: GRUser) -> Membership:
+    def add_user(
+        self, team: Team, gr_user: GRUser, gr_user_manager: GRUserManager
+    ) -> Membership:
         """Create a Membership between a GRUser and a Team"""
 
-        team.prefetch_gr_users(pg_config=self.pg_config, redis_config=self.redis_config)
+        team.prefetch_gr_users(gr_user_manager=gr_user_manager)
 
         assert gr_user not in team.gr_users, (
             "Can't create multiple Memberships for " "the same User to the same Team"

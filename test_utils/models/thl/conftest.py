@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.userhealth import AuditLogManager, IPRecordManager
     from generalresearch.managers.thl.wall import WallManager
     from generalresearch.models.definitions import DeviceType
+    from generalresearch.models.gr.team import Team
     from generalresearch.models.legacy.bucket import Bucket
     from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation
     from generalresearch.models.thl.payout import UserPayoutEvent
@@ -144,12 +145,18 @@ def wall_factory(
     return _inner
 
 
-@pytest.fixture
+# --- Product ---
+
+
+@pytest.fixture()
 def product_factory(product_manager: ProductManager) -> Callable[..., Product]:
 
     def _inner(
+        save: bool = True,
+        team: Team | None = None,
+        # business: Business | None = None,
+        # commission_pct: Decimal = Decimal("0.05"),
         product_id: UUIDStr | None = None,
-        team_id: UUIDStr | None = None,
         business_id: UUIDStr | None = None,
         name: str | None = None,
         redirect_url: str | None = None,
@@ -165,28 +172,44 @@ def product_factory(product_manager: ProductManager) -> Callable[..., Product]:
     ) -> Product:
         """To be used in tests, where we don't care about certain fields"""
         product_id = product_id if product_id else uuid4().hex
-        team_id = team_id if team_id else uuid4().hex
+        team_id = team.uuid if team else uuid4().hex
         name = name if name else f"name-{product_id[:12]}"
         redirect_url = redirect_url if redirect_url else "https://www.example.com/"
 
-        return product_manager.create(
-            product_id=product_id,
-            team_id=team_id,
-            business_id=business_id,
-            name=name,
-            redirect_url=redirect_url,
-            harmonizer_domain=harmonizer_domain,
-            commission_pct=commission_pct,
-            sources_config=sources_config,
-            payout_config=payout_config,
-            session_config=session_config,
-            profiling_config=profiling_config,
-            user_wallet_config=user_wallet_config,
-            user_create_config=user_create_config,
-            user_health_config=user_health_config,
-        )
+        if save:
+            return product_manager.create(
+                product_id=product_id,
+                team_id=team_id,
+                business_id=business_id,
+                name=name,
+                redirect_url=redirect_url,
+                harmonizer_domain=harmonizer_domain,
+                commission_pct=commission_pct,
+                sources_config=sources_config,
+                payout_config=payout_config,
+                session_config=session_config,
+                profiling_config=profiling_config,
+                user_wallet_config=user_wallet_config,
+                user_create_config=user_create_config,
+                user_health_config=user_health_config,
+            )
+        else:
+            raise ValueError("Unsaved Product not yet supported")
 
     return _inner
+
+
+@pytest.fixture()
+def product(product_factory: Callable[..., Product]) -> Product:
+    return product_factory(save=True)
+
+
+@pytest.fixture()
+def unsaved_product(product_factory: Callable[..., Product]) -> Product:
+    return product_factory(save=False)
+
+
+# --- Session ---
 
 
 @pytest.fixture

@@ -286,36 +286,7 @@ def session(
     return session
 
 
-@pytest.fixture
-def product(request: Request, product_manager: ProductManager) -> Product:
-
-    team = getattr(request, "team", None)
-    business = getattr(request, "business", None)
-
-    return product_manager.create_dummy(
-        team_id=team.uuid if team else None,
-        business_id=business.uuid if business else None,
-    )
-
-
-@pytest.fixture
-def product_factory(product_manager: ProductManager) -> Callable[..., Product]:
-
-    def _inner(
-        team: Team | None = None,
-        business: Business | None = None,
-        commission_pct: Decimal = Decimal("0.05"),
-    ) -> Product:
-        return product_manager.create_dummy(
-            team_id=team.uuid if team else None,
-            business_id=business.uuid if business else None,
-            commission_pct=commission_pct,
-        )
-
-    return _inner
-
-
-@pytest.fixture
+@pytest.fixture()
 def payout_config(request: Request) -> PayoutConfig:
     from generalresearch.models.thl.product import (
         PayoutConfig,

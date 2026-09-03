@@ -1396,8 +1396,8 @@ class Product(BaseModel, validate_assignment=True):
 
     # --- ORM ---
 
-    def model_dump_mysql(self) -> dict[str, Any]:
-        d = self.model_dump(mode="json")
+    def model_dump_mysql(self, *args, **kwargs) -> dict[str, Any]:
+        d = self.model_dump(mode="json", *args, **kwargs)
         assert self.created
 
         if "created" in d:
