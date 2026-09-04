@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import time
@@ -94,9 +95,18 @@ DFCollectionTypeSchemas = {
     DFCollectionType.SPECTRUM_SURVEY_TIMESERIES: SpectrumSurveyTimeseriesSchema,
 }
 
+# This is not a technical limitation, it is just a double check
+#  since this should never happen since thl is now and forever
+#  forward on postgres
+MYSQL_ALLOWED_COLL_TYPES = {
+    DFCollectionType.INNOVATE_SURVEY_HISTORY,
+    DFCollectionType.MORNING_SURVEY_TIMESERIES,
+    DFCollectionType.SAGO_SURVEY_HISTORY,
+    DFCollectionType.SPECTRUM_SURVEY_TIMESERIES,
+}
+
 
 class DFCollectionItem(CollectionItemBase):
-
     # --- Properties ---
     @property
     def filename(self) -> str:
@@ -126,7 +136,7 @@ class DFCollectionItem(CollectionItemBase):
         connected = True
         try:
             self._collection.pg_config.execute_sql_query("""SELECT 1;""")
-        except AssertionError:
+        except Exception:
             connected = False
 
         return connected
@@ -173,7 +183,7 @@ class DFCollectionItem(CollectionItemBase):
     def to_dict(self) -> dict[str, Any]:
         return self._to_dict()
 
-    def from_mysql(self, since: datetime | None = None) -> pd.DataFrame | None:
+    def from_db(self, since: datetime | None = None) -> pd.DataFrame | None:
         if self._collection.data_type == DFCollectionType.LEDGER:
             assert since is None, "Shouldn't pass since for Ledger item"
             assert self._collection.pg_config is not None
@@ -185,14 +195,14 @@ class DFCollectionItem(CollectionItemBase):
                 return self.from_postgres_standard(since=since)
 
     def from_mysql_standard(self, since: datetime | None = None) -> pd.DataFrame | None:
-
-        assert (
-            self._collection.data_type != DFCollectionType.LEDGER
-        ), "Can't call from_mysql_standard for Ledger DFCollectionItem"
+        data_type = self._collection.data_type
+        assert data_type in MYSQL_ALLOWED_COLL_TYPES, (
+            f"Unsupported {data_type=} for mysql"
+        )
 
         start, finish = self.start, self.finish
         LOG.debug(
-            f"{self._collection.data_type.value}.from_mysql("
+            f"{data_type.value}.from_mysql("
             f"start={start.strftime(DT_STR)}, "
             f"finish={finish.strftime(DT_STR)})"
         )
@@ -215,7 +225,7 @@ class DFCollectionItem(CollectionItemBase):
                 """,
                 params=[start, finish],
             )
-        except (Exception,) as e:
+        except Exception as e:
             capture_exception(error=e)
             LOG.error(f"_from_mysql Exception: {e}")
             return None
@@ -229,7 +239,7 @@ class DFCollectionItem(CollectionItemBase):
         df = self.validate_df(df=df)
 
         if df is None:
-            LOG.warning(f"_from_mysql query results failed validation")
+            LOG.warning("_from_mysql query results failed validation")
             # Schema validation can fail...
             return None
 
@@ -238,13 +248,14 @@ class DFCollectionItem(CollectionItemBase):
     def from_postgres_standard(
         self, since: datetime | None = None
     ) -> pd.DataFrame | None:
-        assert (
-            self._collection.data_type != DFCollectionType.LEDGER
-        ), "Can't call from_postgres_standard for Ledger DFCollectionItem"
+        data_type = self._collection.data_type
+        assert data_type != DFCollectionType.LEDGER, (
+            "Can't call from_postgres_standard for Ledger DFCollectionItem"
+        )
 
         start, finish = self.start, self.finish
         LOG.debug(
-            f"{self._collection.data_type.value}.from_postgres("
+            f"{data_type.value}.from_postgres("
             f"start={start.strftime(DT_STR)}, "
             f"finish={finish.strftime(DT_STR)})"
         )
@@ -261,18 +272,18 @@ class DFCollectionItem(CollectionItemBase):
             res = pg_config.execute_sql_query(
                 query=f"""
                     SELECT {cols_str}
-                    FROM {coll.data_type.value}
+                    FROM {data_type.value}
                     WHERE {order_key} >= %s AND {order_key} < %s;
                 """,
                 params=[start, finish],
             )
-        except (Exception,) as e:
+        except Exception as e:
             capture_exception(error=e)
             LOG.error(f"_from_postgres Exception: {e}")
             return None
 
         if not res:
-            LOG.warning(f"_from_postgres query returned nothing")
+            LOG.warning("_from_postgres query returned nothing")
             # Return an empty df.DataFrame with the correct columns
             return empty_dataframe_from_schema(coll._schema)
 
@@ -280,20 +291,21 @@ class DFCollectionItem(CollectionItemBase):
         df = self.validate_df(df=df)
 
         if df is None:
-            LOG.warning(f"_from_postgres query results failed validation")
+            LOG.warning("_from_postgres query results failed validation")
             # Schema validation can fail...
             return None
 
         return df
 
     def from_postgres_ledger(self) -> pd.DataFrame | None:
-        assert (
-            self._collection.data_type == DFCollectionType.LEDGER
-        ), "Can only call from_postgres_ledger on Ledger DFCollectionItem"
+        data_type = self._collection.data_type
+        assert data_type == DFCollectionType.LEDGER, (
+            "Can only call from_postgres_ledger on Ledger DFCollectionItem"
+        )
 
         start, finish = self.start, self.finish
         LOG.info(
-            f"{self._collection.data_type.value}.from_postgres_ledger("
+            f"{data_type.value}.from_postgres_ledger("
             f"start={start.strftime(DT_STR)}, "
             f"finish={finish.strftime(DT_STR)})"
         )
@@ -305,9 +317,7 @@ class DFCollectionItem(CollectionItemBase):
         offset = 0
         res = []
         while True:
-            logging.info(
-                f"{self._collection.data_type.value}.from_postgres_ledger({limit=}, {offset=})"
-            )
+            logging.info(f"{data_type.value}.from_postgres_ledger({limit=}, {offset=})")
             chunk = pg_config.execute_sql_query(
                 query=f"""
                 SELECT  lt.id AS tx_id, lt.created, lt.ext_description, lt.tag,
@@ -352,7 +362,7 @@ class DFCollectionItem(CollectionItemBase):
         c: Cursor = conn.cursor()
         for chunk in chunked(tx_ids, n=5_000):
             c.execute(
-                query=f"""
+                query="""
                 SELECT  ltm.transaction_id AS tx_id, 
                         ltm.id AS tx_metadata_id,
                         ltm.key, ltm.value
@@ -528,9 +538,9 @@ class DFCollectionItem(CollectionItemBase):
 
         # Make sure these are in the same dir. b/c the symlink has to be
         # relative, not an absolute path
-        assert (
-            partial_path.parent == next_numbered_path.parent
-        ), "Can't have numbered_path in a different directory"
+        assert partial_path.parent == next_numbered_path.parent, (
+            "Can't have numbered_path in a different directory"
+        )
         target = (
             next_numbered_path.name
         )  # this is the symlink's target. it is a relative path (only the name)

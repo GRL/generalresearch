@@ -65,7 +65,6 @@ MergeTypeSchemas = {
 
 
 class MergeCollectionItem(CollectionItemBase):
-
     # --- Properties ---
 
     @property
@@ -141,9 +140,9 @@ class MergeCollectionItem(CollectionItemBase):
             compression="brotli",
         )
         client.compute(f, sync=True, priority=2, resources=client_resources)
-        assert not os.path.exists(
-            self.path.as_posix()
-        ), f"already exits!: {self.path.as_posix()}"
+        assert not os.path.exists(self.path.as_posix()), (
+            f"already exits!: {self.path.as_posix()}"
+        )
 
         if platform == "darwin":
             subprocess.call(["mv", tmp_path.as_posix(), self.path.as_posix()])
@@ -244,6 +243,19 @@ class MergeCollection(CollectionBase):
     group_by: str | None = Field(default=None)
     grouped_key: str | None = Field(default=None)
     collection_item_class: type[MergeCollectionItem] = MergeCollectionItem
+
+    @model_validator(mode="after")
+    def check_model_after(self) -> Self:
+        if self.offset is None or self.start is None:
+            return self
+
+        offset_total_sec = pd.Timedelta(self.offset).total_seconds()
+        start_total_sec = (datetime.now(tz=UTC) - self.start).total_seconds()
+
+        if offset_total_sec > start_total_sec:
+            raise ValueError("Offset must be equal to, or smaller the start timestamp")
+
+        return self
 
     @model_validator(mode="after")
     def check_start_and_offset_nullable(self) -> Self:

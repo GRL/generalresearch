@@ -67,7 +67,6 @@ Items = Sequence[Item]
 DT_STR = "%Y-%m-%d %H:%M:%S"
 
 _dir_adapter = TypeAdapter(DirectoryPath)
-_filepath_adapter = TypeAdapter(FilePath)
 
 
 class NFSMount(BaseModel):
@@ -704,20 +703,20 @@ class CollectionItemBase(BaseModel):
         return f"{self.filename}.empty"
 
     @property
-    def path(self) -> FilePath:
-        return _filepath_adapter.validate_python(
+    def path(self) -> Path:
+        return Path(
             os.path.join(self._collection.archive_path, self.filename)
         )
 
     @property
-    def partial_path(self) -> FilePath:
-        return FilePath(
+    def partial_path(self) -> Path:
+        return Path(
             os.path.join(self._collection.archive_path, self.partial_filename)
         )
 
     @property
-    def empty_path(self) -> FilePath:
-        return FilePath(
+    def empty_path(self) -> Path:
+        return Path(
             os.path.join(self._collection.archive_path, self.empty_filename)
         )
 
@@ -782,8 +781,8 @@ class CollectionItemBase(BaseModel):
         # up as always returning the same tmp filename
         return f"{self.filename}.{uuid4().hex}"
 
-    def tmp_path(self) -> FilePath:
-        return FilePath(
+    def tmp_path(self) -> Path:
+        return Path(
             os.path.join(self._collection.archive_path, self.tmp_filename())
         )
 
