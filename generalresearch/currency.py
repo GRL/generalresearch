@@ -29,12 +29,12 @@ class USDCent(int):
 
         if isinstance(value, float):
             warnings.warn(
-                "USDCent init with a float. Rounding behavior may " "be unexpected"
+                "USDCent init with a float. Rounding behavior may be unexpected"
             )
 
         if isinstance(value, Decimal):
             warnings.warn(
-                "USDCent init with a Decimal. Rounding behavior may " "be unexpected"
+                "USDCent init with a Decimal. Rounding behavior may be unexpected"
             )
 
         if value < 0:
@@ -61,7 +61,7 @@ class USDCent(int):
         res = super().__abs__()
         return self.__class__(res)
 
-    def __truediv__(self):
+    def __truediv__(self, value):
         raise ValueError("Division not allowed for USDCent")
 
     def __str__(self):
@@ -97,12 +97,12 @@ class USDMill(int):
 
         if isinstance(value, float):
             warnings.warn(
-                "USDMill init with a float. Rounding behavior " "may be unexpected"
+                "USDMill init with a float. Rounding behavior may be unexpected"
             )
 
         if isinstance(value, Decimal):
             warnings.warn(
-                "USDMill init with a Decimal. Rounding behavior " "may be unexpected"
+                "USDMill init with a Decimal. Rounding behavior may be unexpected"
             )
 
         if value < 0:
@@ -129,7 +129,7 @@ class USDMill(int):
         res = super().__abs__()
         return self.__class__(res)
 
-    def __truediv__(self):
+    def __truediv__(self, value):
         raise ValueError("Division not allowed for USDMill")
 
     def __str__(self):

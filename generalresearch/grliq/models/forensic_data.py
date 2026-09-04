@@ -53,9 +53,9 @@ from generalresearch.models.custom_types import (
     IPvAnyAddressStr,
     UUIDStr,
 )
+from generalresearch.models.thl.ipinfo import GeoIPInformation
 
 if TYPE_CHECKING:
-    from generalresearch.models.thl.ipinfo import GeoIPInformation
     from generalresearch.models.thl.session import Session
 
 fake = Faker()
@@ -776,14 +776,14 @@ class GrlIqData(BaseModel):
         # product_id and product_user_id are parsed from the post body. make sure
         #   they match the session whose mid was specified
         assert self.product_id == session.user.product_id, "product_id mismatch"
-        assert (
-            self.product_user_id == session.user.product_user_id
-        ), "product_user_id mismatch"
+        assert self.product_user_id == session.user.product_user_id, (
+            "product_user_id mismatch"
+        )
 
         # validate the Session's mid is "recent"
-        assert (datetime.now(tz=UTC) - session.started) < timedelta(
-            minutes=90
-        ), "expired session"
+        assert (datetime.now(tz=UTC) - session.started) < timedelta(minutes=90), (
+            "expired session"
+        )
 
     def model_dump_sql(self, **kwargs) -> dict[str, Any]:
         d = {}

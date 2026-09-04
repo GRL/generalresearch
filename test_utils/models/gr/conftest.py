@@ -12,7 +12,7 @@ from pydantic_extra_types.phone_numbers import PhoneNumber
 from generalresearch.models.custom_types import UUIDStr
 
 if TYPE_CHECKING:
-    from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
+    from generalresearch.managers.gr.authentication import GRUserManager
     from generalresearch.managers.gr.business import (
         BusinessAddressManager,
         BusinessBankAccountManager,
@@ -289,9 +289,9 @@ def gr_user_token_factory(
             gr_user.prefetch_token(pg_config=gr_db)
 
             res = gr_user.token
-            assert (
-                res is not None
-            ), "GRToken should exist after creation and prefetching"
+            assert res is not None, (
+                "GRToken should exist after creation and prefetching"
+            )
             return res
 
         else:
@@ -335,8 +335,10 @@ def gr_membership_factory(
 
 
 @pytest.fixture()
-def gr_membership(gr_membership_factory: Callable[..., Membership]) -> Membership:
-    return gr_membership_factory(save=True)
+def gr_membership(
+    gr_membership_factory: Callable[..., Membership], gr_team: Team, gr_user: GRUser
+) -> Membership:
+    return gr_membership_factory(gr_team=gr_team, gr_user=gr_user, save=True)
 
 
 @pytest.fixture()

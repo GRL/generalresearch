@@ -40,7 +40,6 @@ class EnrichedWallMergeItem(MergeCollectionItem):
         session_coll: SessionDFCollection,
         pg_config: PostgresConfig,
         client: Client | None = None,
-        client_resources: dict[str, Any] | None = None,
     ) -> None:
 
         ir: pd.Interval = self.interval
@@ -160,7 +159,6 @@ class EnrichedWallMergeItem(MergeCollectionItem):
                 ddf=ddf,
                 is_partial=True,
                 validate_after=False,
-                client_resources=client_resources,
             )
         else:
             df = self.validate_df(df=df)
@@ -169,7 +167,6 @@ class EnrichedWallMergeItem(MergeCollectionItem):
                 client,
                 ddf=ddf,
                 is_partial=False,
-                client_resources=client_resources,
             )
 
 

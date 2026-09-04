@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
-from redis import Redis
 
 from generalresearch.models.gr.authentication import Claims, GRToken, GRUser
 from generalresearch.models.gr.team import Team
@@ -26,7 +25,6 @@ SSO_ISSUER = ""
 
 
 class TestGRUser:
-
     def test_init(self, gr_user: GRUser):
 
         assert isinstance(gr_user, GRUser)
@@ -43,7 +41,7 @@ class TestGRUser:
     def test_teams(
         self,
         gr_user: GRUser,
-        membership: Membership,
+        gr_membership: Membership,
         gr_db: PostgresConfig,
         gr_redis_config: RedisConfig,
     ):
@@ -60,16 +58,16 @@ class TestGRUser:
         self,
         gr_user_token: GRToken,
         gr_user: GRUser,
-        membership: Membership,
+        gr_membership: Membership,
         product_factory: Callable[..., Product],
-        membership_factory: Callable[..., Membership],
-        team: Team,
+        gr_membership_factory: Callable[..., Membership],
+        gr_team: Team,
         thl_web_rr: PostgresConfig,
         gr_redis_config: RedisConfig,
         gr_db: PostgresConfig,
     ):
-        product_factory(team=team)
-        membership_factory(team=team, gr_user=gr_user)
+        product_factory(team=gr_team)
+        gr_membership_factory(team=gr_team, gr_user=gr_user)
 
         gr_user.prefetch_teams(
             pg_config=gr_db,
@@ -82,8 +80,8 @@ class TestGRUser:
         self,
         gr_user: GRUser,
         product_factory: Callable[..., Product],
-        team: Team,
-        membership: Membership,
+        gr_team: Team,
+        gr_membership: Membership,
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         gr_redis_config: RedisConfig,
@@ -94,15 +92,15 @@ class TestGRUser:
 
         # Create a new Team membership, and then create a Product that
         #    is  part of that team
-        membership.prefetch_team(pg_config=gr_db, redis_config=gr_redis_config)
-        assert isinstance(membership.team, Team)
+        gr_membership.prefetch_team(pg_config=gr_db, redis_config=gr_redis_config)
+        assert isinstance(gr_membership.team, Team)
 
-        p: Product = product_factory(team=team)
+        p: Product = product_factory(team=gr_team)
         assert p.id_int
-        assert team.uuid == membership.team.uuid
-        assert p.team_id == team.uuid
-        assert p.team_uuid == membership.team.uuid
-        assert gr_user.id == membership.user_id
+        assert gr_team.uuid == gr_membership.team.uuid
+        assert p.team_id == gr_team.uuid
+        assert p.team_uuid == gr_membership.team.uuid
+        assert gr_user.id == gr_membership.user_id
 
         gr_user.prefetch_products(
             pg_config=gr_db,
@@ -115,7 +113,6 @@ class TestGRUser:
 
 
 class TestGRUserMethods:
-
     def test_cache_key(self, gr_user: GRUser):
         assert isinstance(gr_user.cache_key, str)
         assert ":" in gr_user.cache_key
@@ -124,13 +121,13 @@ class TestGRUserMethods:
     def test_to_redis(
         self,
         gr_user: GRUser,
-        team: Team,
+        gr_team: Team,
         gr_business: Business,
         product_factory: Callable[..., Product],
-        membership_factory: Callable[..., Membership],
+        gr_membership_factory: Callable[..., Membership],
     ):
-        product_factory(team=team, business=gr_business)
-        membership_factory(team=team, gr_user=gr_user)
+        product_factory(team=gr_team, business=gr_business)
+        gr_membership_factory(team=gr_team, gr_user=gr_user)
 
         res = gr_user.to_redis()
         assert isinstance(res, str)
@@ -171,16 +168,16 @@ class TestGRUserMethods:
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
-        team: Team,
-        membership_factory: Callable[..., Membership],
+        gr_team: Team,
+        gr_membership_factory: Callable[..., Membership],
         thl_redis_config: RedisConfig,
     ):
         from generalresearch.models.gr.authentication import GRUser
 
         client = gr_redis_config.create_redis_client()
 
-        p1 = product_factory(team=team)
-        membership_factory(team=team, gr_user=gr_user)
+        p1 = product_factory(team=gr_team)
+        gr_membership_factory(team=gr_team, gr_user=gr_user)
 
         gr_user.set_cache(
             pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
@@ -206,10 +203,10 @@ class TestGRUserMethods:
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
-        team: Team,
+        gr_team: Team,
         gr_redis_config: RedisConfig,
     ):
-        product_factory(team=team)
+        product_factory(team=gr_team)
         client = gr_redis_config.create_redis_client()
 
         gr_user.set_cache(
@@ -227,10 +224,10 @@ class TestGRUserMethods:
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
         gr_business: Business,
-        team: Team,
+        gr_team: Team,
         gr_redis_config: RedisConfig,
     ):
-        product_factory(team=team, business=gr_business)
+        product_factory(team=gr_team, business=gr_business)
 
         gr_user.set_cache(
             pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
@@ -247,10 +244,10 @@ class TestGRUserMethods:
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
-        team: Team,
+        gr_team: Team,
         gr_redis_config: RedisConfig,
     ):
-        product_factory(team=team)
+        product_factory(team=gr_team)
 
         gr_user.set_cache(
             pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
@@ -262,7 +259,6 @@ class TestGRUserMethods:
 
 
 class TestGRToken:
-
     @pytest.fixture
     def gr_token(self, gr_user: GRUser):
         now = datetime.now(tz=UTC)
@@ -290,7 +286,6 @@ class TestGRToken:
 
 
 class TestClaims:
-
     def test_init(self):
 
         d = {

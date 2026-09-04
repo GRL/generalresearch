@@ -29,6 +29,8 @@ if TYPE_CHECKING:
 
 @pytest.fixture(scope="session")
 def gr_redis_config_db() -> str:
+    # need to update 'databases' in /etc/redis/redis.conf
+    #   or this won't work and you'll have no indication why ...
     return str(randint(99, 1_023))
 
 

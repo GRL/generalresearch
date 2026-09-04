@@ -42,7 +42,6 @@ if TYPE_CHECKING:
 
 
 class TestTeam:
-
     def test_init(self, gr_team: Team):
 
         assert isinstance(gr_team, Team)
@@ -54,7 +53,7 @@ class TestTeam:
     ):
         assert gr_team.memberships is None
 
-        gr_team.prefetch_memberships(membership_manager=gr_membership_manager)
+        gr_team.prefetch_memberships(gr_membership_manager=gr_membership_manager)
         assert isinstance(gr_team.memberships, list)
         assert len(gr_team.memberships) == 0
 
@@ -67,7 +66,7 @@ class TestTeam:
     ):
         assert gr_team.memberships is None
 
-        gr_team.prefetch_memberships(membership_manager=gr_membership_manager)
+        gr_team.prefetch_memberships(gr_membership_manager=gr_membership_manager)
         assert isinstance(gr_team.memberships, list)
         assert len(gr_team.memberships) == 1
         assert gr_team.memberships[0].user_id == gr_user.id
@@ -75,7 +74,7 @@ class TestTeam:
         # Create another new Membership
         gr_membership_manager.create(team=gr_team, gr_user=gr_user_factory())
         assert len(gr_team.memberships) == 1
-        gr_team.prefetch_memberships(membership_manager=gr_membership_manager)
+        gr_team.prefetch_memberships(gr_membership_manager=gr_membership_manager)
         assert len(gr_team.memberships) == 2
 
     def test_gr_users(
@@ -146,7 +145,6 @@ class TestTeam:
 
 
 class TestTeamMethods:
-
     def test_cache_key(self, gr_team: Team):
         assert isinstance(gr_team.cache_key, str)
         assert ":" in gr_team.cache_key

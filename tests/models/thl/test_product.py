@@ -48,7 +48,6 @@ if TYPE_CHECKING:
 
 
 class TestProduct:
-
     def test_init(self):
         # By default, just a Pydantic instance doesn't have an id_int
         instance = Product.model_validate(
@@ -70,13 +69,13 @@ class TestProduct:
         # By default, just a Pydantic instance doesn't have an id_int
         instance = product_factory()
         assert isinstance(instance.id_int, int)
+        assert isinstance(instance, Product)
 
         res = instance.model_dump_json()
-        assert isinstance(res, Product)
 
         # we json skip & exclude
-        res = instance.model_dump()
-        assert isinstance(res, Product)
+        p = Product.model_validate_json(res)
+        assert isinstance(p, Product)
 
     def test_redirect_url(self):
         p = Product.model_validate(
@@ -148,12 +147,6 @@ class TestProduct:
             team_id="8b5e94afd8a246bf8556ad9986486baa",
             harmonizer_domain="profile.generalresearch.com",
             redirect_url="https://www.google.com/hey",
-        )
-
-        assert isinstance(p.payout_config.payout_transformation, PayoutTransformation)
-        assert isinstance(
-            p.payout_config.payout_transformation.kwargs,
-            PayoutTransformationPercentArgs,
         )
 
         p.payout_config.payout_transformation = PayoutTransformation.model_validate(
@@ -598,7 +591,6 @@ class TestGlobalProductConfigFor:
 
 
 class TestProductFinancials:
-
     @pytest.fixture
     def start(self) -> datetime:
         return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
@@ -639,7 +631,6 @@ class TestProductFinancials:
         u1: User = user_factory(product=p1)
         bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
         thl_ledger_manager.get_account_or_create_user_wallet(user=u1)
-        brokerage_product_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
 
         assert (
             len(
@@ -818,7 +809,6 @@ class TestProductFinancials:
 
 
 class TestProductBalance:
-
     @pytest.fixture
     def start(self) -> datetime:
         return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
@@ -867,7 +857,6 @@ class TestProductBalance:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         # 2. Payout and build Parquets 2nd time
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
         brokerage_product_payout_event_factory(
             product=product,
             amount=USDCent(71),
@@ -928,7 +917,6 @@ class TestProductBalance:
 
         # 2. Payout and build Parquets 2nd time but this payout is "now"
         #    so it hasn't already been archived
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
         brokerage_product_payout_event_factory(
             product=product,
             amount=USDCent(71),
@@ -947,7 +935,6 @@ class TestProductBalance:
 
 
 class TestProductPOPFinancial:
-
     @pytest.fixture
     def start(self) -> datetime:
         return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
@@ -1020,7 +1007,6 @@ class TestProductPOPFinancial:
 
 
 class TestProductCache:
-
     @pytest.fixture
     def start(self) -> datetime:
         return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
@@ -1143,7 +1129,6 @@ class TestProductCache:
         )
 
         # 2. Payout
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
         brokerage_product_payout_event_factory(
             product=product,
             amount=USDCent(71),

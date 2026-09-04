@@ -119,11 +119,11 @@ class TestBusiness:
     def duration(self) -> timedelta | None:
         return None
 
-    def test_init(self, business: Business):
+    def test_init(self, gr_business: Business):
 
-        assert isinstance(business, Business)
-        assert isinstance(business.id, int)
-        assert isinstance(business.uuid, str)
+        assert isinstance(gr_business, Business)
+        assert isinstance(gr_business.id, int)
+        assert isinstance(gr_business.uuid, str)
 
     def test_str_and_repr(
         self,
@@ -208,17 +208,17 @@ class TestBusiness:
 
     def test_addresses(
         self,
-        business: Business,
+        gr_business: Business,
         gr_db: PostgresConfig,
     ):
         from generalresearch.models.gr.business import BusinessAddress
 
-        assert business.addresses is None
+        assert gr_business.addresses is None
 
-        business.prefetch_addresses(pg_config=gr_db)
-        assert isinstance(business.addresses, list)
-        assert len(business.addresses) == 1
-        assert isinstance(business.addresses[0], BusinessAddress)
+        gr_business.prefetch_addresses(pg_config=gr_db)
+        assert isinstance(gr_business.addresses, list)
+        assert len(gr_business.addresses) == 1
+        assert isinstance(gr_business.addresses[0], BusinessAddress)
 
     def test_teams(
         self,
@@ -674,8 +674,6 @@ class TestBusinessBalance:
             started=start + timedelta(days=2),
         )
 
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
-
         brokerage_product_payout_event_factory(
             product=u1.product,
             amount=USDCent(5),
@@ -770,7 +768,6 @@ class TestBusinessBalance:
             wall_req_cpi=Decimal("2.50"),
             started=start + timedelta(days=2),
         )
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
 
         brokerage_product_payout_event_factory(
             product=u1.product,
@@ -887,7 +884,6 @@ class TestBusinessBalance:
             wall_req_cpi=Decimal(".75"),
             started=start + timedelta(days=1),
         )
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
         brokerage_product_payout_event_factory(
             product=u1.product,
             amount=USDCent(71),
@@ -1041,7 +1037,6 @@ class TestBusinessBalance:
             wall_req_cpi=Decimal("2.50"),
             started=start + timedelta(days=2),
         )
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
 
         brokerage_product_payout_event_factory(
             product=u1.product,

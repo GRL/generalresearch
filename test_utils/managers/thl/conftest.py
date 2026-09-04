@@ -93,6 +93,11 @@ def thl_redis_config(
 
 
 @pytest.fixture(scope="session")
+def thl_redis_client(thl_redis_config):
+    return thl_redis_config.create_redis_client()
+
+
+@pytest.fixture(scope="session")
 def thl_web_rr(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
     _dsn = django_db_factory("generalresearch.thl_django")
 

@@ -13,9 +13,6 @@ import pytest
 from dask.distributed import Client as DaskClient
 
 # noinspection PyUnresolvedReferences
-from distributed.utils_test import (
-    client_no_amm,
-)
 from faker import Faker
 
 from generalresearch.incite.schemas.mergers.pop_ledger import (
@@ -26,8 +23,6 @@ from generalresearch.models.thl.finance import (
     POPFinancial,
     ProductBalances,
 )
-from test_utils.incite.collections.conftest import ledger_collection
-from test_utils.incite.mergers.conftest import pop_ledger_merge
 
 if TYPE_CHECKING:
     from generalresearch.incite.collections.thl_web import LedgerDFCollection
@@ -43,7 +38,6 @@ fake = Faker()
 
 
 class TestProductBalanceInitialize:
-
     def test_unknown_fields(self):
         with pytest.raises(expected_exception=ValueError):
             ProductBalances.model_validate(
@@ -251,7 +245,6 @@ class TestProductBalanceInitialize:
 
 
 class TestBusinessBalanceInitialize:
-
     def test_validate_product_ids(self):
         instance1 = ProductBalances.model_validate(
             {"bp_payment.CREDIT": 500, "bp_adjustment.DEBIT": 40}
@@ -668,9 +661,11 @@ class TestBusinessBalanceInitialize:
     ),
 )
 class TestProductFinanceData:
-
     def test_base(
         self,
+        ledger_collection: LedgerDFCollection,
+        pop_ledger_merge,
+        client_no_amm,
         duration: timedelta,
         product: Product,
         user_factory: Callable[..., User],
@@ -681,9 +676,9 @@ class TestProductFinanceData:
 
         # -- Build & Setup
         u: User = user_factory(product=product, created=ledger_collection.start)
+        assert u.product
 
         for item in ledger_collection.items:
-
             for _ in range(3):
                 rand_item_time = fake.date_time_between(
                     start_date=item.start,
@@ -737,7 +732,6 @@ class TestProductFinanceData:
 
 
 class TestPOPFinancialData:
-
     def test_base(
         self,
         client_no_amm: DaskClient,

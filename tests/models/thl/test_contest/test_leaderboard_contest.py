@@ -33,7 +33,7 @@ class TestLeaderboardContest(TestContest):
 
     @pytest.fixture
     def leaderboard_contest(
-        self, product: Product, thl_redis: Redis, user_manager: UserManager
+        self, product: Product, thl_redis_client: Redis, user_manager: UserManager
     ) -> LeaderboardContest:
         board_key = f"leaderboard:{product.uuid}:us:weekly:2025-05-26:complete_count"
 
@@ -67,14 +67,14 @@ class TestLeaderboardContest(TestContest):
                 ),
             ],
         )
-        c._redis_client = thl_redis
+        c._redis_client = thl_redis_client
         c._user_manager = user_manager
         return c
 
     def test_init(
         self,
         leaderboard_contest: LeaderboardContest,
-        thl_redis: Redis,
+        thl_redis_client: Redis,
         user_1: User,
         user_2: User,
     ):
@@ -82,7 +82,7 @@ class TestLeaderboardContest(TestContest):
         assert leaderboard_contest.end_condition.ends_at is not None
 
         lbm = LeaderboardManager(
-            redis_client=thl_redis,
+            redis_client=thl_redis_client,
             board_code=model.board_code,
             country_iso=model.country_iso,
             freq=model.freq,

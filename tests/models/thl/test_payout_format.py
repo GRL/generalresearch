@@ -1,19 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pytest
 from pydantic import BaseModel
 
 from generalresearch.models.thl.payout_format import (
     PayoutFormatField,
+    PayoutFormatType,
     format_payout_format,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.payout_format import (
-        PayoutFormatType,
-    )
 
 
 class PayoutFormatTestClass(BaseModel):

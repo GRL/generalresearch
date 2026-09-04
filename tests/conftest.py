@@ -12,7 +12,6 @@ pytest_plugins = [
     "test_utils.managers.contest.conftest",
     "test_utils.managers.gr.conftest",
     "test_utils.managers.ledger.conftest",
-    "test_utils.managers.network.conftest",
     "test_utils.managers.thl.conftest",
     "test_utils.managers.upk.conftest",
     # -- Models
@@ -20,7 +19,6 @@ pytest_plugins = [
     "test_utils.models.contest.conftest",
     "test_utils.models.gr.conftest",
     "test_utils.models.ledger.conftest",
-    "test_utils.models.network.conftest",
     "test_utils.models.thl.conftest",
     "test_utils.models.upk.conftest",
     # -- Marketplaces
