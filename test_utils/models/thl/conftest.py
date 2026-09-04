@@ -239,9 +239,9 @@ def bare_session_factory(
 
 
 @pytest.fixture()
-def bare_session(bare_session_factory: Callable[..., Session]) -> Session:
+def bare_session(bare_session_factory: Callable[..., Session], user) -> Session:
     # A session with no wall events
-    return bare_session_factory()
+    return bare_session_factory(user=user)
 
 
 @pytest.fixture
@@ -447,7 +447,7 @@ def ip_geoname_factory(
 ) -> Callable[..., IPGeoname]:
 
     def _inner(
-        save: bool,
+        save: bool = True,
         geoname_id: PositiveInt | None = None,
         continent_code: str | None = None,
         continent_name: str | None = None,
@@ -496,7 +496,7 @@ def unsaved_ip_geoname(ip_geoname_factory: Callable[..., IPGeoname]) -> IPGeonam
 
 # --- IP Information ---
 
-
+@pytest.fixture
 def ip_information_factory(
     ipinformation_manager: IPInformationManager,
 ) -> Callable[..., IPInformation]:
