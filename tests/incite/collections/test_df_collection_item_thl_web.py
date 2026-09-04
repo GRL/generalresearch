@@ -75,7 +75,6 @@ class TestDFCollectionItemBase:
     argnames="df_collection_data_type, offset", argvalues=combo_object()
 )
 class TestDFCollectionItemProperties:
-
     def test_filename(
         self,
         df_collection_data_type: DFCollectionType,
@@ -97,7 +96,6 @@ class TestDFCollectionItemProperties:
     argnames="df_collection_data_type, offset", argvalues=combo_object()
 )
 class TestDFCollectionItemPropertiesBase:
-
     def test_name(
         self,
         df_collection: DFCollection,
@@ -166,7 +164,6 @@ class TestDFCollectionItemPropertiesBase:
     ),
 )
 class TestDFCollectionItemMethod:
-
     def test_has_postgres(
         self,
         df_collection_data_type: DFCollectionType,
@@ -278,7 +275,6 @@ class TestDFCollectionItemMethod:
             assert not df.empty
             assert set(df.columns) == set(df_collection.type_schema.columns.keys())
 
-
     def test_from_postgres_standard(
         self,
         df_collection_data_type: DFCollectionType,
@@ -301,27 +297,18 @@ class TestDFCollectionItemMethod:
             item: DFCollectionItem
 
             if df_collection.data_type == DFCollectionType.LEDGER:
-                # We're using parametrize, so this If statement is just to
-                #   confirm other Item Types will always raise an assertion
-                with pytest.raises(expected_exception=AssertionError) as cm:
-                    _ = item.from_mysql_standard()
-                assert (
-                    "Can't call from_mysql_standard for Ledger DFCollectionItem"
-                    in str(cm.value)
-                )
-
                 continue
 
             # Unlike .from_mysql_ledger(), .from_mysql_standard() will return
             #   back and empty df with the correct columns in place
-            df = item.from_mysql_standard()
+            df = item.from_postgres_standard()
             assert isinstance(df, pd.DataFrame)
             assert df.empty
             assert set(df.columns) == set(df_collection.type_schema.columns.keys())
 
             incite_item_factory(user=u1, item=item)
 
-            df = item.from_mysql_standard()
+            df = item.from_postgres_standard()
             assert isinstance(df, pd.DataFrame)
             assert not df.empty
             assert set(df.columns) == set(df_collection.type_schema.columns.keys())
@@ -504,7 +491,6 @@ class TestDFCollectionItemMethod:
     argvalues=list(iter_product(df_collections, ["12h", "10D"], [timedelta(days=15)])),
 )
 class TestDFCollectionItemMethodBase:
-
     @pytest.mark.skip
     def test_search_highest_numbered_path(
         self,
@@ -783,7 +769,6 @@ async def test_client_parametrize(
     argvalues=list(iter_product(df_collections, ["12h", "10D"], [timedelta(days=15)])),
 )
 class TestDFCollectionItemFunctionalTest:
-
     def test_to_archive_and_ddf(
         self,
         client_no_amm: DaskClient,
