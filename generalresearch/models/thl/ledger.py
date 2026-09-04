@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import IntEnum, StrEnum
-from typing import TYPE_CHECKING, Annotated, Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 from uuid import uuid4
 
 from pydantic import (
@@ -28,11 +28,6 @@ from generalresearch.models.thl.payout_format import (
     format_payout_format,
 )
 from generalresearch.utils.enum import ReprEnumMeta
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.payout_format import (
-        PayoutFormatType,
-    )
 
 
 def _example_user_tx_payout(schema: dict[str, Any]) -> None:
@@ -340,13 +335,13 @@ class LedgerTransaction(BaseModel):
         """
         if entries:
             assert len(entries) >= 2, "ledger transaction must have 2 or more entries"
-            assert (
-                sum(x.amount * x.direction for x in entries) == 0
-            ), "ledger entries must balance"
+            assert sum(x.amount * x.direction for x in entries) == 0, (
+                "ledger entries must balance"
+            )
         return entries
 
-    def model_dump_mysql(self) -> dict[str, Any]:
-        d = self.model_dump(mode="json")
+    def model_dump_mysql(self, **kwargs) -> dict[str, Any]:
+        d = self.model_dump(mode="json", **kwargs)
         if "created" in d:
             d["created"] = self.created.replace(tzinfo=None)
         return d
