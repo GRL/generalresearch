@@ -54,19 +54,17 @@ def broken_release(self, *args, **kwargs):
 
 
 class TestThlLedgerManagerBPPayout:
+    @pytest.fixture(autouse=True)
+    def setup(self, create_main_accounts):
+        create_main_accounts()
 
     def test_create_tx_with_bp_payment(
         self,
         user_factory: Callable[..., User],
         product_user_wallet_no: Product,
-        create_main_accounts: Callable[..., None],
         caplog,
         thl_ledger_manager: ThlLedgerManager,
-        delete_ledger_db: Callable[..., None],
     ):
-        delete_ledger_db()
-        create_main_accounts()
-
         now = datetime.now(UTC) - timedelta(hours=1)
         user: User = user_factory(product=product_user_wallet_no)
 
@@ -137,8 +135,9 @@ class TestThlLedgerManagerBPPayout:
             )
 
         payoutevent_uuid = uuid4().hex
-        with caplog.at_level(logging.INFO), pytest.raises(
-            LedgerTransactionConditionFailedError
+        with (
+            caplog.at_level(logging.INFO),
+            pytest.raises(LedgerTransactionConditionFailedError),
         ):
             thl_ledger_manager.create_tx_bp_payout(
                 user.product,
@@ -202,8 +201,9 @@ class TestThlLedgerManagerBPPayout:
         assert balance == int(rand_amount) * -1
 
         # Test some basic assertions
-        with caplog.at_level(logging.INFO), pytest.raises(
-            expected_exception=LedgerTransactionConditionFailedError
+        with (
+            caplog.at_level(logging.INFO),
+            pytest.raises(expected_exception=LedgerTransactionConditionFailedError),
         ):
             thl_ledger_manager.create_tx_bp_payout(
                 product=product,
@@ -316,7 +316,10 @@ class TestThlLedgerManagerBPPayout:
         )
 
     def test_create_tx_redis_lock_release_error(
-        self, product: Product, thl_ledger_manager: ThlLedgerManager
+        self,
+        product: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        monkeypatch: pytest.MonkeyPatch,
     ):
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         payoutevent_uuid = uuid4().hex
@@ -329,18 +332,16 @@ class TestThlLedgerManagerBPPayout:
             product, rand_amount * USDCent(2), now, direction=Direction.CREDIT
         )
 
-        original_acquire = Lock.acquire
-        original_release = Lock.release
-        Lock.acquire = broken_acquire
-
         # Create TX will fail on lock enter, no tx will actually get created
-        with pytest.raises(expected_exception=Exception) as e:
-            thl_ledger_manager.create_tx_bp_payout(
-                product=product,
-                amount=rand_amount,
-                payoutevent_uuid=payoutevent_uuid,
-                created=datetime.now(tz=UTC),
-            )
+        with monkeypatch.context() as m:
+            m.setattr(Lock, "acquire", broken_acquire)
+            with pytest.raises(expected_exception=Exception) as e:
+                thl_ledger_manager.create_tx_bp_payout(
+                    product=product,
+                    amount=rand_amount,
+                    payoutevent_uuid=payoutevent_uuid,
+                    created=datetime.now(tz=UTC),
+                )
         assert e.type is LedgerTransactionCreateError
         assert str(e.value) == "Redis error: Simulated timeout during acquire"
         txs = thl_ledger_manager.get_tx_filtered_by_account(
@@ -349,17 +350,16 @@ class TestThlLedgerManagerBPPayout:
         txs = [tx for tx in txs if tx.metadata["tx_type"] != "plug"]
         assert len(txs) == 0
 
-        Lock.acquire = original_acquire
-        Lock.release = broken_release
-
         # Create TX will fail on lock exit, after the tx was created!
-        with pytest.raises(expected_exception=Exception) as e:
-            thl_ledger_manager.create_tx_bp_payout(
-                product=product,
-                amount=rand_amount,
-                payoutevent_uuid=payoutevent_uuid,
-                created=datetime.now(tz=UTC),
-            )
+        with monkeypatch.context() as m:
+            m.setattr(Lock, "release", broken_release)
+            with pytest.raises(expected_exception=Exception) as e:
+                thl_ledger_manager.create_tx_bp_payout(
+                    product=product,
+                    amount=rand_amount,
+                    payoutevent_uuid=payoutevent_uuid,
+                    created=datetime.now(tz=UTC),
+                )
         assert e.type is LedgerTransactionReleaseLockError
         assert str(e.value) == "Redis error: Simulated timeout during release"
 
@@ -369,11 +369,9 @@ class TestThlLedgerManagerBPPayout:
         )
         txs = [tx for tx in txs if tx.metadata["tx_type"] != "plug"]
         assert len(txs) == 1
-        Lock.release = original_release
 
 
 class TestPayoutEventManagerBPPayout:
-
     def test_create(
         self,
         product: Product,

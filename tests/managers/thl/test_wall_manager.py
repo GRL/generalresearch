@@ -248,17 +248,17 @@ class TestWallCacheManager:
         self,
         wall_cache_manager: WallCacheManager,
         user: User,
-        session_factory: Callable[..., Session],
+        bare_session_factory: Callable[..., Session],
         wall_factory: Callable[..., Wall],
     ):
         start1 = datetime.now(UTC) - timedelta(hours=3)
         start2 = datetime.now(UTC) - timedelta(hours=2)
         start3 = datetime.now(UTC) - timedelta(hours=1)
 
-        session = session_factory(started=start1, user=user)
+        session = bare_session_factory(started=start1, user=user)
         wall_factory(
             session_id=session.id,
-            user_id=session.user_id,
+            user=session.user,
             started=start1,
             req_cpi=Decimal("1.23"),
             req_survey_id="11111",
@@ -274,7 +274,7 @@ class TestWallCacheManager:
 
         wall_factory(
             session_id=session.id,
-            user_id=session.user_id,
+            user=session.user,
             started=start2,
             req_cpi=Decimal("1.23"),
             req_survey_id="22222",
@@ -298,10 +298,10 @@ class TestWallCacheManager:
         attempts10000 = [attempts[0]] * 6000
         wall_cache_manager.update_attempts_redis_(attempts10000, user_id=user.user_id)
 
-        session = session_factory(started=start3, user=user)
+        session = bare_session_factory(started=start3, user=user)
         wall_factory(
             session_id=session.id,
-            user_id=session.user_id,
+            user=session.user,
             started=start3,
             req_cpi=Decimal("1.23"),
             req_survey_id="33333",

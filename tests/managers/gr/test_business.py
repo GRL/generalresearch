@@ -58,10 +58,10 @@ class TestBusinessBankAccountManager:
 class TestBusinessAddressManager:
 
     def test_create(
-        self, gr_business: Business, business_address_manager: BusinessAddressManager
+        self, gr_business: Business, gr_business_address_manager: BusinessAddressManager
     ):
-
-        res = business_address_manager.create(
+        assert gr_business.id
+        res = gr_business_address_manager.create(
             uuid=uuid4().hex, business_id=gr_business.id
         )
         assert isinstance(res, BusinessAddress)
@@ -110,7 +110,7 @@ class TestBusinessManager:
         self,
         gr_business_manager: BusinessManager,
         gr_user: GRUser,
-        team_manager: TeamManager,
+        gr_team_manager: TeamManager,
         gr_membership_manager: MembershipManager,
         gr_business_factory: Callable[..., Business],
         gr_team_factory: Callable[..., Team],
@@ -136,13 +136,13 @@ class TestBusinessManager:
 
         # Add the Business to the Team... now the Business should be available
         # to the gr_user
-        team_manager.add_business(team=t1, business=b1)
+        gr_team_manager.add_business(team=t1, business=b1)
         res = gr_business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 1
 
         # Add another Business to the Team!
         b2 = gr_business_factory()
-        team_manager.add_business(team=t1, business=b2)
+        gr_team_manager.add_business(team=t1, business=b2)
         res = gr_business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 2
 
