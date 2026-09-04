@@ -830,12 +830,13 @@ class ThlLedgerManager(LedgerManager):
         created: datetime,
     ) -> LedgerTransaction:
 
+        tx_type = TransactionType.BP_PAYOUT
         metadata = {
-            tmc.TX_TYPE: TransactionType.BP_PAYOUT,
+            tmc.TX_TYPE: tx_type,
             tmc.EVENT: payoutevent_uuid,
         }
         # This tag will uniquely identify this tx
-        tag = f"{self.currency.value}:bp_payout:{payoutevent_uuid}"
+        tag = f"{self.currency.value}:{tx_type.value}:{payoutevent_uuid}"
         cash_account = self.get_account_cash()
         bp_wallet_account = self.get_account_or_create_bp_wallet(product)
 
