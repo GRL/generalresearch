@@ -646,6 +646,8 @@ def user_factory(
     ) -> User:
         if save:
             if product is None:
+                if product_id:
+                    raise ValueError("this is broken")
                 product = product_factory()
 
             product_user_id = product_user_id or uuid4().hex
