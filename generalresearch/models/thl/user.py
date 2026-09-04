@@ -28,6 +28,7 @@ from generalresearch.models.definitions import MAX_INT32
 from generalresearch.models.thl.ipinfo import GeoIPInformation
 from generalresearch.models.thl.ledger import LedgerTransaction
 from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.user_identifiers import BPUIDStr
 from generalresearch.models.thl.userhealth import AuditLog
 
 if TYPE_CHECKING:
@@ -39,8 +40,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger()
-
-BPUID_ALLOWED = r"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&()*+,-.:;<=>?@[\]^_{|}~"
 
 
 class User(BaseModel):
@@ -105,21 +104,6 @@ class User(BaseModel):
         )
 
     # --- Validation ---
-    @field_validator("product_user_id")
-    def check_product_user_id(cls, v: str | None) -> str:
-        if v is not None:
-            if " " in v:
-                raise ValueError("String cannot contain spaces")
-            if "\\" in v:
-                raise ValueError("String cannot contain backslash")
-            if "/" in v:
-                raise ValueError("String cannot contain slash")
-            # I think the * on the regex messes up value matches that are
-            # the same length as the
-            rex = re.fullmatch("[" + BPUID_ALLOWED + "]*", v)
-            if not bool(rex):
-                raise ValueError("String is not valid regex")
-        return v
 
     # noinspection PyNestedDecoratorsk
     @field_validator("created", "last_seen")
@@ -312,12 +296,6 @@ class User(BaseModel):
         )
 
 
-# Used in other places where the bpuid is part of a model that's used in
-# the API (separate from a User)
-BPUIDStr = Annotated[
-    str,
-    StringConstraints(min_length=3, max_length=128),
-    AfterValidator(User.check_product_user_id),
-]
+
 
 User.model_rebuild()

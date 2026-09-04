@@ -4,7 +4,7 @@ import hashlib
 import logging
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -25,14 +25,11 @@ from generalresearch.models.custom_types import (
 )
 from generalresearch.models.legacy.api_status import StatusResponse
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.wallet.definitions import PayoutType
+from generalresearch.models.thl.locales import CountryISO
+from generalresearch.models.thl.user_identifiers import BPUIDStr
+from generalresearch.models.thl.user_ref import UserRef
+from generalresearch.models.thl.wallet.definitions import Currency, PayoutType
 from generalresearch.utils.enum import ReprEnumMeta
-
-if TYPE_CHECKING:
-
-    from generalresearch.models.thl.locales import CountryISO
-    from generalresearch.models.thl.user import BPUIDStr, User
-    from generalresearch.models.thl.wallet.definitions import Currency
 
 logger = logging.getLogger()
 
@@ -140,7 +137,7 @@ class CashoutMethodBase(BaseModel):
 
 
 class CashoutMethod(CashoutMethodBase):
-    user: User | None = Field(
+    user: UserRef | None = Field(
         default=None,
         description="If set, this cashout method is custom for this user. For example"
         "a user may have a paypal cashout method with their paypal"
@@ -152,13 +149,13 @@ class CashoutMethod(CashoutMethodBase):
     @model_validator(mode="after")
     def validate_user(self) -> Self:
         if self.type in {PayoutType.PAYPAL, PayoutType.CASH_IN_MAIL}:
-            assert (
-                self.user is not None
-            ), "user_id must be set for this cashout method type"
+            assert self.user is not None, (
+                "user_id must be set for this cashout method type"
+            )
         else:
-            assert (
-                self.user is None
-            ), "user_id must NOT be set for this cashout method type"
+            assert self.user is None, (
+                "user_id must NOT be set for this cashout method type"
+            )
         return self
 
 
@@ -306,8 +303,7 @@ class CashMailOrderData(BaseModel):
         default=None,
         min_length=1,
         max_length=50,
-        description="Current status of delivery, e.g., pending, in "
-        "transit, delivered",
+        description="Current status of delivery, e.g., pending, in transit, delivered",
     )
     last_updated: AwareDatetimeISO | None = Field(
         default=None,

@@ -9,15 +9,9 @@ from generalresearch.models.thl.payout import (
 )
 from generalresearch.models.thl.product import Product
 
-_ = (
-    Product,
-    PayoutEvent,
-    BrokerageProductPayoutEvent,
-    ProductBalances,
-    POPFinancial,
-)
-
 Product.model_rebuild()
-LedgerAccount.model_rebuild()
 PayoutEvent.model_rebuild()
 BrokerageProductPayoutEvent.model_rebuild()
+ProductBalances.model_rebuild()
+POPFinancial.model_rebuild()
+LedgerAccount.model_rebuild()

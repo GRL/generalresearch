@@ -1,19 +1,11 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
 from generalresearch.models.legacy.api_status import StatusResponse
-from generalresearch.models.thl.payout_format import (
-    PayoutFormatField,
-)
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.payout_format import (
-        PayoutFormatType,
-    )
+from generalresearch.models.thl.payout_format import PayoutFormatField, PayoutFormatType
 
 logger = logging.getLogger()
 
