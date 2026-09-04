@@ -25,7 +25,7 @@ def combo_object() -> Generator[tuple[DFCollectionType, str]]:
             DFCollectionType.AUDIT_LOG,
             DFCollectionType.LEDGER,
         ],
-        ["30min", "1H"],
+        ["30min", "1h"],
     )
 
 

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from generalresearch.incite.collections.base import (
+    MYSQL_ALLOWED_COLL_TYPES,
     DFCollection,
     DFCollectionItem,
     DFCollectionType,
@@ -16,12 +17,8 @@ if TYPE_CHECKING:
     from generalresearch.pg_helper import PostgresConfig
 
 
-df_collection_types = [e for e in DFCollectionType if e is not DFCollectionType.TEST]
-
-
-@pytest.mark.parametrize("df_coll_type", df_collection_types)
+@pytest.mark.parametrize("df_coll_type", MYSQL_ALLOWED_COLL_TYPES)
 class TestDFCollectionItemBase:
-
     def test_init(self, mnt_filepath: GRLDatasets, df_coll_type: DFCollectionType):
         collection = DFCollection(
             data_type=df_coll_type,
@@ -37,17 +34,15 @@ class TestDFCollectionItemBase:
         assert isinstance(item, DFCollectionItem)
 
 
-@pytest.mark.parametrize("df_coll_type", df_collection_types)
+@pytest.mark.parametrize("df_coll_type", MYSQL_ALLOWED_COLL_TYPES)
 class TestDFCollectionItemProperties:
-
     @pytest.mark.skip
     def test_filename(self, df_coll_type: DFCollectionType):
         pass
 
 
-@pytest.mark.parametrize("df_coll_type", df_collection_types)
+@pytest.mark.parametrize("df_coll_type", MYSQL_ALLOWED_COLL_TYPES)
 class TestDFCollectionItemMethods:
-
     def test_has_mysql_false(
         self, mnt_filepath: GRLDatasets, df_coll_type: DFCollectionType
     ):

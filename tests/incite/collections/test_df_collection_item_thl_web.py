@@ -60,7 +60,7 @@ unsupported_mock_types = {
 def combo_object() -> Generator[tuple[DFCollectionType, str]]:
     yield from iter_product(
         df_collections,
-        ["15min", "45min", "1H"],
+        ["15min", "45min", "1h"],
     )
 
 
@@ -167,7 +167,7 @@ class TestDFCollectionItemPropertiesBase:
 )
 class TestDFCollectionItemMethod:
 
-    def test_has_mysql(
+    def test_has_postgres(
         self,
         df_collection_data_type: DFCollectionType,
         offset: str,
@@ -180,12 +180,12 @@ class TestDFCollectionItemMethod:
 
         df_collection.pg_config = None
         for i in df_collection.items:
-            assert not i.has_mysql()
+            assert not i.has_postgres()
 
         # Confirm that the regular connection should work as expected
         df_collection.pg_config = thl_web_rr
         for i in df_collection.items:
-            assert i.has_mysql()
+            assert i.has_postgres()
 
         # Make a fake connection and confirm it does NOT work
         df_collection.pg_config = PostgresConfig(
@@ -194,7 +194,7 @@ class TestDFCollectionItemMethod:
             statement_timeout=1,
         )
         for i in df_collection.items:
-            assert not i.has_mysql()
+            assert not i.has_postgres()
 
     @pytest.mark.skip
     def test_update_partial_archive(
@@ -263,29 +263,23 @@ class TestDFCollectionItemMethod:
         for item in df_collection.items:
             # Unlike .from_mysql_ledger(), .from_mysql_standard() will return
             #   back and empty df with the correct columns in place
-            delete_df_collection(coll=df_collection)
-            df = item.from_db()
             if df_collection.data_type == DFCollectionType.LEDGER:
-                assert df is None
-            else:
-                assert isinstance(df, pd.DataFrame)
-                assert df.empty
-                assert set(df.columns) == set(df_collection.type_schema.columns.keys())
+                continue
+            delete_df_collection(coll=df_collection)
+            df = item.from_postgres_standard()
+            assert isinstance(df, pd.DataFrame)
+            assert df.empty
+            assert set(df.columns) == set(df_collection.type_schema.columns.keys())
 
             incite_item_factory(user=u1, item=item)
 
-            df = item.from_db()
+            df = item.from_postgres_standard()
             assert isinstance(df, pd.DataFrame)
             assert not df.empty
             assert set(df.columns) == set(df_collection.type_schema.columns.keys())
-            if df_collection.data_type == DFCollectionType.LEDGER:
-                # The number of rows in this dataframe will change depending
-                #    on the mocking of data. It's because if the account has
-                #   user wallet on, then there will be more transactions for
-                #   example.
-                assert df.shape[0] > 0
 
-    def test_from_mysql_standard(
+
+    def test_from_postgres_standard(
         self,
         df_collection_data_type: DFCollectionType,
         df_collection: DFCollection,
@@ -333,7 +327,7 @@ class TestDFCollectionItemMethod:
             assert set(df.columns) == set(df_collection.type_schema.columns.keys())
             assert df.shape[0] > 0
 
-    def test_from_mysql_ledger(
+    def test_from_postgres_ledger(
         self,
         df_collection: DFCollection,
         user_factory: Callable[..., User],
@@ -355,14 +349,14 @@ class TestDFCollectionItemMethod:
             # Okay, now continue with the actual Ledger Item tests... we need
             #   to ensure that this item.start - item.finish range hasn't had
             #   any prior transactions created within that range.
-            assert item.from_mysql_ledger() is None
+            assert item.from_postgres_ledger() is None
 
             # Create main accounts doesn't matter because it doesn't
             # add any transactions to the db
-            assert item.from_mysql_ledger() is None
+            assert item.from_postgres_ledger() is None
 
             incite_item_factory(user=u1, item=item)
-            df = item.from_mysql_ledger()
+            df = item.from_postgres_ledger()
             assert isinstance(df, pd.DataFrame)
 
             # Not only is this a np.int64 to int comparison, but I also know it
@@ -400,7 +394,7 @@ class TestDFCollectionItemMethod:
 
             # Load up the data that we'll be using for various to_archive
             #   methods.
-            df = item.from_db()
+            df = item.from_postgres_standard()
             ddf = dd.from_pandas(df, npartitions=1)
 
             # (1) Write the basic archive, the issue is that because it's
