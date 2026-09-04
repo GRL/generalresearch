@@ -172,13 +172,14 @@ class TestThlLedgerManagerAccounts:
             thl_ledger_manager.get_account_task_complete_revenue()
 
     def test_get_account_task_complete_revenue(
-        self,
-        thl_ledger_manager: ThlLedgerManager,
+        self, thl_ledger_manager: ThlLedgerManager, create_main_accounts
     ):
         from generalresearch.models.thl.ledger import (
             AccountType,
             LedgerAccount,
         )
+
+        create_main_accounts()
 
         res = thl_ledger_manager.get_account_task_complete_revenue()
         assert isinstance(res, LedgerAccount)
@@ -201,7 +202,9 @@ class TestThlLedgerManagerAccounts:
     def test_get_account_cash(
         self,
         thl_ledger_manager: ThlLedgerManager,
+            create_main_accounts
     ):
+        create_main_accounts()
         from generalresearch.models.thl.ledger import (
             AccountType,
             LedgerAccount,

@@ -52,7 +52,7 @@ def test_user_txs(
     s: Session = session_with_tx_factory(user=user, wall_req_cpi=Decimal("1.00"))
 
     user_compensate(
-        ledger_manager=ledger_manager,
+        ledger_manager=thl_ledger_manager,
         user=user,
         amount_int=100,
     )
@@ -156,7 +156,7 @@ def test_user_txs_pagination(
 
     for _ in range(12):
         user_compensate(
-            ledger_manager=ledger_manager,
+            ledger_manager=thl_ledger_manager,
             user=user,
             amount_int=100,
             skip_flag_check=True,
@@ -189,7 +189,7 @@ def test_user_txs_pagination(
     # Test filtering. We should pull back only this one
     now = datetime.now(tz=UTC)
     user_compensate(
-        ledger_manager=ledger_manager,
+        ledger_manager=thl_ledger_manager,
         user=user,
         amount_int=100,
         skip_flag_check=True,

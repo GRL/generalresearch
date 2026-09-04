@@ -114,8 +114,8 @@ class GRLBaseSettings(BaseSettings):
     tango_customer_id: str | None = Field(default=None)
 
     # --- Keeping this here as we use these ids regardless of the AMT account
-    amt_bonus_cashout_method_id: str | None = Field(default=None)
-    amt_assignment_cashout_method_id: str | None = Field(default=None)
+    amt_bonus_cashout_method_id: str | None = Field(default="1951a47541fb46519827b8783e2a53ab")
+    amt_assignment_cashout_method_id: str | None = Field(default="5b23e4df3e2c40609ca8edf40b13237f")
 
     # --- GRIP Configuration ---
     grip_token: str | None = Field(default=None)

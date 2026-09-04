@@ -61,9 +61,6 @@ class TestThlPayoutEventManager:
             product: Product = product_factory()
             thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
             products.append(product)
-            brokerage_product_payout_event_manager.set_account_lookup_table(
-                thl_lm=thl_ledger_manager
-            )
 
             for _ in range(N_PAYOUT_EVENTS):
                 pe = bp_payout_event_factory(product=product, usd_cent=usd_cent)
@@ -100,9 +97,6 @@ class TestThlPayoutEventManager:
             product: Product = product_factory()
             products.append(product)
             thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
-            brokerage_product_payout_event_manager.set_account_lookup_table(
-                thl_lm=thl_ledger_manager
-            )
 
             for _ in range(N_PAYOUT_EVENTS):
                 pe = bp_payout_event_factory(product=product, usd_cent=usd_cent)
@@ -200,10 +194,6 @@ class TestThlPayoutEventManager:
         account_bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet(
             product=product
         )
-        brokerage_product_payout_event_manager.set_account_lookup_table(
-            thl_lm=thl_ledger_manager
-        )
-
         rand_amount = randint(a=99, b=999)
 
         # Save a Brokerage Product Payout, so we have something in the
@@ -252,9 +242,6 @@ class TestBPPayoutEvent:
 
         product: Product = product_factory()
         thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
-        brokerage_product_payout_event_manager.set_account_lookup_table(
-            thl_lm=thl_ledger_manager
-        )
 
         for _ in range(N_PAYOUT_EVENTS):
             bp_payout_event_factory(product=product, usd_cent=usd_cent)

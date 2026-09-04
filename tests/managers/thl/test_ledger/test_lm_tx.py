@@ -117,7 +117,7 @@ class TestLedgerManagerCreateTx:
 
         tx = ledger_manager.create_tx(entries=entries)
         res = ledger_manager.get_tx_by_id(transaction_id=tx.id)
-        assert ledger_manager.id == tx.id
+        assert res.id == tx.id
 
         assert ledger_manager.get_account_balance(account=ledger_account_credit) == 100
         assert ledger_manager.get_account_balance(account=ledger_account_debit) == 100

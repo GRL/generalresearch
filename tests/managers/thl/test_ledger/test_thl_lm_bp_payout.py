@@ -203,7 +203,7 @@ class TestThlLedgerManagerBPPayout:
 
         # Test some basic assertions
         with caplog.at_level(logging.INFO), pytest.raises(
-            expected_exception=ValueError
+            expected_exception=LedgerTransactionConditionFailedError
         ):
             thl_ledger_manager.create_tx_bp_payout(
                 product=product,
@@ -390,9 +390,6 @@ class TestPayoutEventManagerBPPayout:
             product, rand_amount, now, direction=Direction.CREDIT
         )
         assert thl_ledger_manager.get_account_balance(bp_wallet_account) == rand_amount
-        brokerage_product_payout_event_manager.set_account_lookup_table(
-            thl_lm=thl_ledger_manager
-        )
 
         pe = brokerage_product_payout_event_manager.create_bp_payout_event(
             thl_ledger_manager=thl_ledger_manager,
@@ -427,12 +424,9 @@ class TestPayoutEventManagerBPPayout:
         )
         assert thl_ledger_manager.get_account_balance(bp_wallet_account) == 0
         thl_ledger_manager.create_tx_plug_bp_wallet(
-            product=product, amount=rand_amount, now=now, direction=Direction.CREDIT
+            product=product, amount=rand_amount, created=now, direction=Direction.CREDIT
         )
         assert thl_ledger_manager.get_account_balance(bp_wallet_account) == rand_amount
-        brokerage_product_payout_event_manager.set_account_lookup_table(
-            thl_lm=thl_ledger_manager
-        )
 
         # Will fail on lock enter, no tx will actually get created
         Lock.acquire = broken_acquire
@@ -551,9 +545,6 @@ class TestPayoutEventManagerBPPayout:
         now = datetime.now(tz=UTC)
         bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
             product=product
-        )
-        brokerage_product_payout_event_manager.set_account_lookup_table(
-            thl_lm=thl_ledger_manager
         )
 
         assert thl_ledger_manager.get_account_balance(bp_wallet_account) == 0

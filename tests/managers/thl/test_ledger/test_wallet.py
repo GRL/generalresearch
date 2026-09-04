@@ -56,7 +56,7 @@ class TestGetUserWalletBalance:
         assert (
             schrute_product.payout_config.payout_format == "{payout:,.0f} Schrute Bucks"
         )
-        user: User = user_factory(schrute_product)
+        user: User = user_factory(product=schrute_product)
         balance = thl_ledger_manager.get_user_wallet_balance(user=user)
         assert balance == 0
         assert isinstance(user.product, Product)
@@ -78,7 +78,7 @@ class TestGetUserWalletBalance:
         thl_ledger_manager: ThlLedgerManager,
         session_with_tx_factory: Callable[..., None],
     ):
-        user: User = user_factory(schrute_product)
+        user: User = user_factory(product=schrute_product)
         thl_ledger_manager.create_tx_user_bonus(
             user=user,
             amount=Decimal(1),
