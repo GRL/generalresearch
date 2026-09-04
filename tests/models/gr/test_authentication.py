@@ -67,7 +67,7 @@ class TestGRUser:
         gr_db: PostgresConfig,
     ):
         product_factory(team=gr_team)
-        gr_membership_factory(team=gr_team, gr_user=gr_user)
+        gr_membership_factory(gr_team=gr_team, gr_user=gr_user)
 
         gr_user.prefetch_teams(
             pg_config=gr_db,
@@ -127,7 +127,7 @@ class TestGRUserMethods:
         gr_membership_factory: Callable[..., Membership],
     ):
         product_factory(team=gr_team, business=gr_business)
-        gr_membership_factory(team=gr_team, gr_user=gr_user)
+        gr_membership_factory(gr_team=gr_team, gr_user=gr_user)
 
         res = gr_user.to_redis()
         assert isinstance(res, str)
@@ -177,7 +177,7 @@ class TestGRUserMethods:
         client = gr_redis_config.create_redis_client()
 
         p1 = product_factory(team=gr_team)
-        gr_membership_factory(team=gr_team, gr_user=gr_user)
+        gr_membership_factory(gr_team=gr_team, gr_user=gr_user)
 
         gr_user.set_cache(
             pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config

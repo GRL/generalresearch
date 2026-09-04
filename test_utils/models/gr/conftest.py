@@ -10,9 +10,10 @@ from pydantic import PositiveInt
 from pydantic_extra_types.phone_numbers import PhoneNumber
 
 from generalresearch.models.custom_types import UUIDStr
+from generalresearch.models.gr.definitions import TransferMethod
 
 if TYPE_CHECKING:
-    from generalresearch.managers.gr.authentication import GRUserManager
+    from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
     from generalresearch.managers.gr.business import (
         BusinessAddressManager,
         BusinessBankAccountManager,
@@ -25,7 +26,6 @@ if TYPE_CHECKING:
         BusinessAddress,
         BusinessBankAccount,
     )
-    from generalresearch.models.gr.definitions import TransferMethod
     from generalresearch.models.gr.team import Membership, Team
     from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig
@@ -74,15 +74,11 @@ def gr_business_bank_account_factory(
 
 
 @pytest.fixture
-def gr_business_bank_account(gr_business_factory: Callable[..., Business]) -> Business:
-    return gr_business_factory(save=True)
-
-
-@pytest.fixture
-def unsaved_gr_business_bank_account(
-    gr_business_factory: Callable[..., Business],
-) -> Business:
-    return gr_business_factory(save=False)
+def gr_business_bank_account(
+    gr_business_bank_account_factory: Callable[..., BusinessBankAccount],
+    gr_business: Business,
+) -> BusinessBankAccount:
+    return gr_business_bank_account_factory(save=True, business_id=gr_business.id)
 
 
 # --- Business Address ---
@@ -277,7 +273,7 @@ def unsaved_gr_user(
 
 @pytest.fixture
 def gr_user_token_factory(
-    gr_user: GRUser, gr_user_token_manager: GRUser, gr_db: PostgresConfig
+    gr_user: GRUser, gr_token_manager: GRTokenManager, gr_db: PostgresConfig
 ) -> Callable[..., GRToken]:
 
     def _inner(
@@ -285,7 +281,8 @@ def gr_user_token_factory(
     ) -> GRToken:
 
         if save:
-            gr_user_token_manager.create(user_id=gr_user.id)
+            assert gr_user.id
+            gr_token_manager.create(user_id=gr_user.id)
             gr_user.prefetch_token(pg_config=gr_db)
 
             res = gr_user.token
