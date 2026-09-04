@@ -6,7 +6,7 @@ import json
 import logging
 from enum import StrEnum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -18,15 +18,13 @@ from pydantic import (
     model_validator,
 )
 
+from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.models.string_utils import remove_nbsp
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
-
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import AwareDatetimeISO
-    from generalresearch.models.thl.profiling.upk_question import (
-        UpkQuestion,
-    )
+from generalresearch.models.thl.profiling.upk_question import (
+    UpkQuestion,
+)
 
 logging.basicConfig()
 logger = logging.getLogger()

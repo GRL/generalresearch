@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import Any, Literal, Self
 
 from pydantic import (
     ConfigDict,
@@ -16,6 +16,9 @@ from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
 from generalresearch.managers.leaderboard import country_timezone
 from generalresearch.managers.leaderboard.manager import LeaderboardManager
+from generalresearch.managers.thl.user_manager.user_manager import (
+    UserManager,
+)
 from generalresearch.models.thl.contest import (
     ContestEndCondition,
     ContestPrize,
@@ -38,11 +41,6 @@ from generalresearch.models.thl.leaderboard import (
     LeaderboardCode,
     LeaderboardFrequency,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.managers.thl.user_manager.user_manager import (
-        UserManager,
-    )
 
 
 class LeaderboardContestCreate(ContestBase):
@@ -75,9 +73,9 @@ class LeaderboardContestCreate(ContestBase):
         ranks = {x.leaderboard_rank for x in self.prizes}
         assert None not in ranks, "Must have leaderboard_rank defined"
         assert min(ranks) == 1, "Must start with rank 1"
-        assert ranks == set(
-            range(min(ranks), max(ranks) + 1)
-        ), "cannot skip prize leaderboard_ranks"
+        assert ranks == set(range(min(ranks), max(ranks) + 1)), (
+            "cannot skip prize leaderboard_ranks"
+        )
         return self
 
     @model_validator(mode="after")
@@ -88,9 +86,9 @@ class LeaderboardContestCreate(ContestBase):
 
     @model_validator(mode="after")
     def check_end_condition(self) -> Self:
-        assert (
-            not self.end_condition.target_entry_amount
-        ), "target_entry_amount not valid in leaderboard contest"
+        assert not self.end_condition.target_entry_amount, (
+            "target_entry_amount not valid in leaderboard contest"
+        )
         # the ends_at will get set automatically from the leaderboard_key
         return self
 
@@ -174,13 +172,13 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
 
     @model_validator(mode="after")
     def validate_product_lb_key(self) -> Self:
-        assert (
-            self.product_id == self.leaderboard_key_parts["product_id"]
-        ), "leaderboard_key product_id is invalid"
+        assert self.product_id == self.leaderboard_key_parts["product_id"], (
+            "leaderboard_key product_id is invalid"
+        )
         if self.country_isos:
-            assert (
-                len(self.country_isos) == 1
-            ), "Can only set 1 country_iso in a leaderboard contest"
+            assert len(self.country_isos) == 1, (
+                "Can only set 1 country_iso in a leaderboard contest"
+            )
             assert (
                 next(iter(self.country_isos))
                 == self.leaderboard_key_parts["country_iso"]
@@ -192,9 +190,9 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
     @model_validator(mode="after")
     def validate_tie_break(self) -> Self:
         if self.tie_break_strategy == LeaderboardTieBreakStrategy.SPLIT_PRIZE_POOL:
-            assert all(
-                p.kind == ContestPrizeKind.CASH for p in self.prizes
-            ), "All prizes must be cash due to the tie-break strategy"
+            assert all(p.kind == ContestPrizeKind.CASH for p in self.prizes), (
+                "All prizes must be cash due to the tie-break strategy"
+            )
         return self
 
     @model_validator(mode="after")

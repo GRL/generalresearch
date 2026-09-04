@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Annotated, Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from more_itertools import flatten
 from pydantic import (
@@ -18,6 +18,7 @@ from pydantic import (
 )
 
 from generalresearch.locales import Localelator
+from generalresearch.models.cint import CintQuestionIdType
 from generalresearch.models.custom_types import (
     AlphaNumStr,
     AwareDatetimeISO,
@@ -30,10 +31,6 @@ from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
     MarketplaceCondition,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.cint import CintQuestionIdType
-
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -76,9 +73,9 @@ class CintQuota(BaseModel):
     @model_validator(mode="after")
     def validate_condition_len(self) -> Self:
         if self.quota_type == "total":
-            assert (
-                self.condition_hashes is None
-            ), "total quota should not have conditions"
+            assert self.condition_hashes is None, (
+                "total quota should not have conditions"
+            )
         elif self.quota_type == "client":
             assert len(self.condition_hashes) > 0, "quota must have conditions"
         return self

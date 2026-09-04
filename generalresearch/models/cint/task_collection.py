@@ -1,18 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import pandas as pd
 from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
+from generalresearch.models.cint.survey import CintSurvey
 from generalresearch.models.thl.survey.task_collection import (
     TaskCollection,
     create_empty_df_from_schema,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.cint.survey import CintSurvey
 
 COUNTRY_ISOS: set[str] = Localelator().get_all_countries()
 LANGUAGE_ISOS: set[str] = Localelator().get_all_languages()

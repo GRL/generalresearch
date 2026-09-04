@@ -5,7 +5,7 @@ import logging
 from datetime import UTC
 from decimal import Decimal
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import Any, Literal, Self
 
 from more_itertools import flatten
 from pydantic import (
@@ -26,7 +26,7 @@ from generalresearch.models.custom_types import (
     CoercedStr,
     DeviceTypes,
 )
-from generalresearch.models.definitions import Source
+from generalresearch.models.definitions import Source, TaskCalculationType
 from generalresearch.models.dynata import DynataStatus
 from generalresearch.models.thl.demographics import (
     Gender,
@@ -36,10 +36,6 @@ from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
     MarketplaceCondition,
 )
-
-if TYPE_CHECKING:
-
-    from generalresearch.models.definitions import TaskCalculationType
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -136,7 +132,7 @@ class DynataCondition(MarketplaceCondition):
 
         if cell["kind"] == "RANGE":
             d["values"] = [
-                f"{cell["range"]["from"] or "inf"}-{cell["range"]["to"] or "inf"}"
+                f"{cell['range']['from'] or 'inf'}-{cell['range']['to'] or 'inf'}"
             ]
             d["value_type"] = ConditionValueType.RANGE
             return cls.model_validate(d)

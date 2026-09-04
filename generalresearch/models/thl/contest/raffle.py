@@ -4,7 +4,7 @@ import logging
 import random
 from collections import defaultdict
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import Any, Literal, Self
 
 from pydantic import (
     ConfigDict,
@@ -20,11 +20,15 @@ from generalresearch.models.thl.contest import (
     ContestEndCondition,
     ContestEntryRule,
     ContestPrize,
+    ContestWinner,
 )
 from generalresearch.models.thl.contest.contest import (
     Contest,
     ContestBase,
     ContestUserView,
+)
+from generalresearch.models.thl.contest.contest_entry import (
+    ContestEntry,
 )
 from generalresearch.models.thl.contest.definitions import (
     ContestEndReason,
@@ -33,14 +37,6 @@ from generalresearch.models.thl.contest.definitions import (
     ContestStatus,
     ContestType,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.contest import (
-        ContestWinner,
-    )
-    from generalresearch.models.thl.contest.contest_entry import (
-        ContestEntry,
-    )
 
 logging.basicConfig()
 LOG = logging.getLogger()
@@ -114,9 +110,9 @@ class RaffleContest(RaffleContestCreate, Contest):
 
     @model_validator(mode="after")
     def validate_entry_type(self):
-        assert all(
-            entry.entry_type == self.entry_type for entry in self.entries
-        ), f"all entries must be of type {self.entry_type}"
+        assert all(entry.entry_type == self.entry_type for entry in self.entries), (
+            f"all entries must be of type {self.entry_type}"
+        )
         return self
 
     @field_validator("current_amount", mode="before")

@@ -3,11 +3,12 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import Any, Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from generalresearch.models.cint import CintQuestionIdType
 from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.definitions import Source
 from generalresearch.models.string_utils import remove_nbsp
@@ -15,12 +16,9 @@ from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
     MarketplaceUserQuestionAnswer,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.cint import CintQuestionIdType
-    from generalresearch.models.thl.profiling.upk_question import (
-        UpkQuestion,
-    )
+from generalresearch.models.thl.profiling.upk_question import (
+    UpkQuestion,
+)
 
 
 class CintQuestionType(StrEnum):

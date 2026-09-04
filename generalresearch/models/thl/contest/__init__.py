@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Self
+from typing import Any, Self
 from uuid import uuid4
 
 from pydantic import (
@@ -12,12 +12,10 @@ from pydantic import (
     model_validator,
 )
 
+from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.contest.definitions import ContestPrizeKind
-
-if TYPE_CHECKING:
-    from generalresearch.currency import USDCent
-    from generalresearch.models.thl.user import User
+from generalresearch.models.thl.user import User
 
 
 class ContestEntryRule(BaseModel):
@@ -88,9 +86,9 @@ class ContestPrize(BaseModel):
     @model_validator(mode="after")
     def validate_cash_value(self) -> Self:
         if self.kind == ContestPrizeKind.CASH:
-            assert (
-                self.estimated_cash_value == self.cash_amount
-            ), "if kind is CASH, cash_amount must equal estimated_cash_value"
+            assert self.estimated_cash_value == self.cash_amount, (
+                "if kind is CASH, cash_amount must equal estimated_cash_value"
+            )
         return self
 
 

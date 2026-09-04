@@ -1,17 +1,15 @@
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pandas as pd
 from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
 from generalresearch.models.precision import PrecisionStatus
+from generalresearch.models.precision.survey import PrecisionSurvey
 from generalresearch.models.thl.survey.task_collection import (
     TaskCollection,
     create_empty_df_from_schema,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.precision.survey import PrecisionSurvey
 
 COUNTRY_ISOS = Localelator().get_all_countries()
 LANGUAGE_ISOS = Localelator().get_all_languages()

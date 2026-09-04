@@ -17,17 +17,15 @@ from sentry_sdk import capture_exception
 
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.legacy.api_status import StatusResponse
+from generalresearch.models.thl.profiling.upk_question import (
+    UpkQuestionOut,
+)
+from generalresearch.models.thl.session import Wall
+from generalresearch.models.thl.user import User
 
 if TYPE_CHECKING:
-    from generalresearch.managers.thl.user_manager.user_manager import (
-        UserManager,
-    )
+    from generalresearch.managers.thl.user_manager.user_manager import UserManager
     from generalresearch.managers.thl.wall import WallManager
-    from generalresearch.models.thl.profiling.upk_question import (
-        UpkQuestionOut,
-    )
-    from generalresearch.models.thl.session import Wall
-    from generalresearch.models.thl.user import User
 
 
 class UpkQuestionResponse(StatusResponse):

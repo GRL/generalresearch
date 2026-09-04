@@ -6,7 +6,6 @@ from datetime import UTC
 from decimal import Decimal
 from functools import cached_property
 from typing import (
-    TYPE_CHECKING,
     Annotated,
     Any,
     Literal,
@@ -30,23 +29,19 @@ from generalresearch.models.custom_types import (
     UUIDStrCoerce,
 )
 from generalresearch.models.definitions import Source
-from generalresearch.models.morning import MorningStatus
+from generalresearch.models.morning import MorningQuestionID, MorningStatus
+from generalresearch.models.morning.question import MorningQuestion
 from generalresearch.models.thl.demographics import Gender
+from generalresearch.models.thl.locales import (
+    CountryISO,
+    CountryISOs,
+    LanguageISOs,
+)
 from generalresearch.models.thl.survey import MarketplaceTask
 from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
     MarketplaceCondition,
 )
-
-if TYPE_CHECKING:
-
-    from generalresearch.models.morning import MorningQuestionID
-    from generalresearch.models.morning.question import MorningQuestion
-    from generalresearch.models.thl.locales import (
-        CountryISO,
-        CountryISOs,
-        LanguageISOs,
-    )
 
 logging.basicConfig()
 logger = logging.getLogger()

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Self
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
@@ -11,13 +11,11 @@ from generalresearch.models.custom_types import (
     UUIDStr,
 )
 from generalresearch.models.definitions import Source
+from generalresearch.models.thl.locales import CountryISO, LanguageISO
 from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
     MarketplaceCondition,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.locales import CountryISO, LanguageISO
 
 
 class LucidCondition(MarketplaceCondition):

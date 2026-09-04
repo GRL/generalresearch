@@ -5,7 +5,7 @@ import logging
 from datetime import UTC
 from decimal import Decimal
 from functools import cached_property
-from typing import TYPE_CHECKING, Annotated, Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from more_itertools import flatten
 from pydantic import (
@@ -18,6 +18,14 @@ from pydantic import (
 )
 
 from generalresearch.locales import Localelator
+from generalresearch.models.custom_types import (
+    AlphaNumStr,
+    AlphaNumStrSet,
+    AwareDatetimeISO,
+    CoercedStr,
+    DeviceTypes,
+    IPLikeStrSet,
+)
 from generalresearch.models.definitions import LogicalOperator, Source
 from generalresearch.models.sago import SagoStatus
 from generalresearch.models.thl.demographics import Gender
@@ -26,16 +34,6 @@ from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
     MarketplaceCondition,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import (
-        AlphaNumStr,
-        AlphaNumStrSet,
-        AwareDatetimeISO,
-        CoercedStr,
-        DeviceTypes,
-        IPLikeStrSet,
-    )
 
 logging.basicConfig()
 logger = logging.getLogger()

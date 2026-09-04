@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Self
+from typing import Any, Self
 from uuid import uuid4
 
 from pydantic import (
@@ -19,18 +19,14 @@ from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.contest import (
     ContestEndCondition,
     ContestPrize,
+    ContestWinner,
 )
 from generalresearch.models.thl.contest.definitions import (
     ContestEndReason,
     ContestStatus,
     ContestType,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.contest import (
-        ContestWinner,
-    )
-    from generalresearch.models.thl.locales import CountryISOs
+from generalresearch.models.thl.locales import CountryISOs
 
 
 class ContestBase(BaseModel, ABC):

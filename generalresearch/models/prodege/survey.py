@@ -7,7 +7,7 @@ from collections import defaultdict
 from datetime import UTC, datetime
 from decimal import Decimal
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -34,7 +34,9 @@ from generalresearch.models.definitions import (
 )
 from generalresearch.models.prodege import (
     ProdegePastParticipationType,
+    ProdegeQuestionIdType,
     ProdegeStatus,
+    ProdgeRedirectStatus,
 )
 from generalresearch.models.prodege.definitions import PG_COUNTRY_TO_ISO
 from generalresearch.models.thl.demographics import Gender
@@ -43,13 +45,6 @@ from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
     MarketplaceCondition,
 )
-
-if TYPE_CHECKING:
-
-    from generalresearch.models.prodege import (
-        ProdegeQuestionIdType,
-        ProdgeRedirectStatus,
-    )
 
 logging.basicConfig()
 logger = logging.getLogger()

@@ -6,7 +6,7 @@ import logging
 from datetime import UTC, datetime
 from enum import IntEnum, StrEnum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import Any, Literal, Self
 from uuid import UUID
 
 from pydantic import (
@@ -18,18 +18,16 @@ from pydantic import (
     model_validator,
 )
 
+from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.definitions import MAX_INT32, Source
+from generalresearch.models.spectrum import SpectrumQuestionIdType
 from generalresearch.models.string_utils import remove_nbsp
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import AwareDatetimeISO
-    from generalresearch.models.spectrum import SpectrumQuestionIdType
-    from generalresearch.models.thl.profiling.upk_question import (
-        UpkQuestion,
-    )
+from generalresearch.models.thl.profiling.upk_question import (
+    UpkQuestion,
+)
 
 logging.basicConfig()
 logger = logging.getLogger()

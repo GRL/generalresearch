@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 from uuid import uuid4
 
 from pydantic import (
@@ -16,9 +16,7 @@ from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.contest.definitions import (
     ContestEntryType,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.user import User
+from generalresearch.models.thl.user import User
 
 
 class ContestEntryCreate(BaseModel):

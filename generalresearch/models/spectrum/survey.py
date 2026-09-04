@@ -55,7 +55,7 @@ class SpectrumCondition(MarketplaceCondition):
             try:
                 values = [tuple(map(int, v.split("-"))) for v in self.values]
                 assert all(len(x) == 2 for x in values)
-            except (ValueError, AssertionError):
+            except ValueError, AssertionError:
                 return self
             self.values = sorted(
                 {str(val) for tupl in values for val in range(tupl[0], tupl[1] + 1)}
@@ -75,7 +75,7 @@ class SpectrumCondition(MarketplaceCondition):
                     rs["from"] = round(rs["from"] / 12)
                     rs["to"] = round(rs["to"] / 12)
             d["values"] = [
-                f"{rs["from"] or "inf"}-{rs["to"] or "inf"}" for rs in d["range_sets"]
+                f"{rs['from'] or 'inf'}-{rs['to'] or 'inf'}" for rs in d["range_sets"]
             ]
             d["value_type"] = ConditionValueType.RANGE
             return cls.model_validate(d)
