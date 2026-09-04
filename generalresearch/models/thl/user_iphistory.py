@@ -13,18 +13,17 @@ from pydantic import (
     field_validator,
 )
 
-from generalresearch.models.thl.ipinfo import normalize_ip
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    CountryISOLike,
+    IPvAnyAddressStr,
+)
+from generalresearch.models.thl.ipinfo import GeoIPInformation, normalize_ip
+from generalresearch.models.thl.user import User
 
 if TYPE_CHECKING:
     from grip_client.enums import AccessType
 
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        CountryISOLike,
-        IPvAnyAddressStr,
-    )
-    from generalresearch.models.thl.ipinfo import GeoIPInformation
-    from generalresearch.models.thl.user import User
     from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig
 

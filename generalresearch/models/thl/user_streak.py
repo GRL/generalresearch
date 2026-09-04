@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 from enum import StrEnum
-from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -20,9 +19,7 @@ from pydantic.json_schema import SkipJsonSchema
 
 from generalresearch.managers.leaderboard import country_timezone
 from generalresearch.models.definitions import MAX_INT32
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.locales import CountryISO
+from generalresearch.models.thl.locales import CountryISO
 
 
 class StreakPeriod(StrEnum):

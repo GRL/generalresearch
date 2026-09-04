@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Self
+from typing import Any, Self
 
 from pydantic import BaseModel, Field, NonNegativeFloat, PositiveInt
 
-if TYPE_CHECKING:
-    from generalresearch.models.custom_types import AwareDatetimeISO
+from generalresearch.models.custom_types import AwareDatetimeISO
 
 
 class AuditLogLevel(int, Enum):

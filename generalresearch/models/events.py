@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import Annotated, Literal
 from uuid import uuid4
 
 from pydantic import (
@@ -18,16 +18,13 @@ from generalresearch.models.custom_types import (
     CountryISOLike,
     UUIDStr,
 )
-
-if TYPE_CHECKING:
-
-    from generalresearch.models.definitions import Source
-    from generalresearch.models.thl.definitions import (
-        SessionStatusCode2,
-        Status,
-        StatusCode1,
-        WallStatusCode2,
-    )
+from generalresearch.models.definitions import Source
+from generalresearch.models.thl.definitions import (
+    SessionStatusCode2,
+    Status,
+    StatusCode1,
+    WallStatusCode2,
+)
 
 
 class MessageKind(StrEnum):

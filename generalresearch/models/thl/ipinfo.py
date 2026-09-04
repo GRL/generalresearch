@@ -15,13 +15,14 @@ from pydantic import (
     field_validator,
 )
 
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    CountryISOLike,
+    IPvAnyAddressStr,
+)
+
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ipinfo import IPGeonameManager
-    from generalresearch.models.custom_types import (
-        AwareDatetimeISO,
-        CountryISOLike,
-        IPvAnyAddressStr,
-    )
 
 fake = Faker()
 
