@@ -866,8 +866,8 @@ class CollectionItemBase(BaseModel):
                 raise ValueError("Unknown path type.")
 
             df = parquet.read().to_pandas()
-        except (pa.ArrowInvalid, pa.ArrowIOError, OSError):
-            LOG.warning(f"Invalid archive {path=}")
+        except Exception as e:
+            LOG.warning(f"Invalid archive {path=} {e=}")
             df = None
 
         # Check if it's None or a totally empty pd.DataFrame before we waste
