@@ -11,6 +11,9 @@ from uuid import uuid4
 import pytest
 
 from generalresearch.currency import USDCent
+from generalresearch.managers.thl.ledger_manager.exceptions import (
+    LedgerTransactionConditionFailedError,
+)
 from generalresearch.managers.thl.ledger_manager.ledger import (
     LedgerTransaction,
 )
@@ -56,17 +59,19 @@ logger = logging.getLogger("LedgerManager")
 
 
 class TestThlLedgerTxManager:
+    @pytest.fixture(autouse=True)
+    def setup(self, delete_ledger_db, create_main_accounts):
+        delete_ledger_db()
+        create_main_accounts()
 
     def test_create_tx_task_complete(
         self,
         wall: Wall,
         user: User,
         account_revenue_task_complete: LedgerAccount,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
     ):
-        create_main_accounts()
         tx = thl_ledger_manager.create_tx_task_complete(wall=wall, user=user)
         assert isinstance(tx, LedgerTransaction)
 
@@ -91,14 +96,11 @@ class TestThlLedgerTxManager:
         self,
         session_factory: Callable[..., Session],
         user: User,
-        create_main_accounts: Callable[..., None],
-        delete_ledger_db: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         session_manager: SessionManager,
     ):
-        delete_ledger_db()
-        create_main_accounts()
+
         s1 = session_factory(user=user)
 
         _, status_code_1 = s1.determine_session_status()
@@ -123,15 +125,12 @@ class TestThlLedgerTxManager:
         session_factory: Callable[..., Session],
         user_factory: Callable[..., User],
         product_manager: ProductManager,
-        create_main_accounts: Callable[..., None],
-        delete_ledger_db: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         session_manager: SessionManager,
         product_factory: Callable[..., Product],
     ):
-        delete_ledger_db()
-        create_main_accounts()
+
         product = product_factory(
             payout_config=PayoutConfig(
                 payout_transformation=PayoutTransformation(
@@ -168,7 +167,6 @@ class TestThlLedgerTxManager:
         self,
         session_factory: Callable[..., Session],
         user: User,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         session_manager: SessionManager,
@@ -196,9 +194,8 @@ class TestThlLedgerTxManager:
     def test_create_tx_task_adjustment(
         self,
         wall_factory: Callable[..., Wall],
-        session: Session,
+        bare_session: Session,
         user: User,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
     ):
@@ -208,9 +205,8 @@ class TestThlLedgerTxManager:
             the transaction comes back with balanced amounts, and that
             the name of the Source is in the Tx description
         """
-
         wall_status = Status.COMPLETE
-        wall: Wall = wall_factory(session=session, wall_status=wall_status)
+        wall: Wall = wall_factory(session=bare_session, wall_status=wall_status)
 
         tx = thl_ledger_manager.create_tx_task_adjustment(wall=wall, user=user)
         assert isinstance(tx, LedgerTransaction)
@@ -232,12 +228,11 @@ class TestThlLedgerTxManager:
         status, status_code_1 = session.determine_session_status()
         thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
 
-        # The default session fixture is just an unfinished wall event
         assert len(session.wall_events) == 1
         assert session.finished is None
-        assert status == Status.TIMEOUT
+        assert status == Status.FAIL
         assert status_code_1 in list(
-            WALL_ALLOWED_STATUS_STATUS_CODE.get(Status.TIMEOUT, {})
+            WALL_ALLOWED_STATUS_STATUS_CODE.get(Status.FAIL, {})
         )
         assert thl_net == Decimal(0)
         assert commission_amount == Decimal(0)
@@ -246,7 +241,9 @@ class TestThlLedgerTxManager:
 
         # Update the finished timestamp, but nothing else. This means that
         #   there is no financial changes needed
-        session.update(finished=datetime.now(tz=UTC) + timedelta(minutes=10))
+        session.update(
+            finished=datetime.now(tz=UTC) + timedelta(minutes=10), status=Status.FAIL
+        )
         assert session.finished
         with caplog.at_level(logging.INFO):
             tx = thl_ledger_manager.create_tx_bp_adjustment(session=session)
@@ -295,8 +292,9 @@ class TestThlLedgerTxManager:
         assert balance == int(rand_amount) * -1
 
         # Test some basic assertions
-        with caplog.at_level(logging.INFO), pytest.raises(
-            expected_exception=ValueError
+        with (
+            caplog.at_level(logging.INFO),
+            pytest.raises(expected_exception=LedgerTransactionConditionFailedError),
         ):
             thl_ledger_manager.create_tx_bp_payout(
                 product=product,
@@ -339,7 +337,6 @@ class TestThlLedgerTxManager:
     def test_create_tx_plug_bp_wallet(
         self,
         product: Product,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
@@ -369,7 +366,6 @@ class TestThlLedgerTxManager:
     def test_create_tx_plug_bp_wallet_(
         self,
         product: Product,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
@@ -478,11 +474,9 @@ class TestThlLedgerTxManager:
         user: User,
         product_user_wallet_yes: Product,
         user_factory: Callable[..., User],
-        delete_ledger_db: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
     ):
-        delete_ledger_db()
 
         pe = UserPayoutEvent(
             uuid=uuid4().hex,
@@ -508,14 +502,10 @@ class TestThlLedgerTxManager:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_yes: Product,
-        create_main_accounts: Callable[..., None],
-        delete_ledger_db: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         user: User = user_factory(product=product_user_wallet_yes)
         user_account = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
@@ -575,7 +565,6 @@ class TestThlLedgerTxManager:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_yes: Product,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
     ):
@@ -626,7 +615,6 @@ class TestThlLedgerTxManager:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_yes: Product,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
@@ -673,7 +661,6 @@ class TestThlLedgerTxManager:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_yes: Product,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
@@ -715,7 +702,6 @@ class TestThlLedgerTxManager:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_yes: Product,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
@@ -750,7 +736,6 @@ class TestThlLedgerTxManager:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_yes: Product,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
@@ -786,17 +771,18 @@ class TestThlLedgerTxManagerFlows:
     examples
     """
 
+    @pytest.fixture(autouse=True)
+    def setup(self, delete_ledger_db, create_main_accounts):
+        delete_ledger_db()
+        create_main_accounts()
+
     def test_create_tx_task_complete(
         self,
         user: User,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
-        delete_ledger_db: Callable[..., None],
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         wall1 = Wall(
             user_id=1,
@@ -868,7 +854,6 @@ class TestThlLedgerTxManagerFlows:
     def test_create_transaction_task_complete_1_cent(
         self,
         user: User,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
@@ -893,16 +878,12 @@ class TestThlLedgerTxManagerFlows:
     def test_create_transaction_bp_payment(
         self,
         user: User,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
-        delete_ledger_db: Callable[..., None],
         session_factory: Callable[..., Session],
         utc_hour_ago: datetime,
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         s1: Session = session_factory(
             user=user,
@@ -956,7 +937,6 @@ class TestThlLedgerTxManagerFlows:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_no: Product,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
@@ -1000,15 +980,12 @@ class TestThlLedgerTxManagerFlows:
 
     def test_create_transaction_bp_payment_round2(
         self,
-        delete_ledger_db: Callable[..., None],
         user: User,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
     ):
-        delete_ledger_db()
-        create_main_accounts()
+
         # user must be no user wallet
         # e.g. session 869b5bfa47f44b4f81cd095ed01df2ff this fails if you dont round properly
 
@@ -1044,7 +1021,6 @@ class TestThlLedgerTxManagerFlows:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_yes: Product,
-        create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
@@ -1086,8 +1062,6 @@ class TestThlLedgerTxManagerFlows:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_yes: Product,
-        create_main_accounts: Callable[..., None],
-        delete_ledger_db: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         session_manager: SessionManager,
         wall_manager: WallManager,
@@ -1096,8 +1070,6 @@ class TestThlLedgerTxManagerFlows:
         currency: LedgerCurrency,
         utc_hour_ago: datetime,
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         user: User = user_factory(product=product_user_wallet_yes)
         assert isinstance(user.product, Product)
@@ -1165,20 +1137,20 @@ class TestThlLedgerTxManagerFlows:
 
 
 class TestThlLedgerManagerAdj:
+    @pytest.fixture(autouse=True)
+    def setup(self, delete_ledger_db, create_main_accounts):
+        delete_ledger_db()
+        create_main_accounts()
 
     def test_create_tx_task_adjustment(
         self,
         user_factory: Callable[..., User],
         product_user_wallet_no: Product,
-        create_main_accounts: Callable[..., None],
-        delete_ledger_db: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         utc_hour_ago: datetime,
         currency: LedgerCurrency,
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         user: User = user_factory(product=product_user_wallet_no)
 
@@ -1272,7 +1244,6 @@ class TestThlLedgerManagerAdj:
         self,
         user: User,
         product_user_wallet_no: Product,
-        create_main_accounts: Callable[..., None],
         caplog,
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
@@ -1281,10 +1252,7 @@ class TestThlLedgerManagerAdj:
         wall_manager: WallManager,
         session_factory: Callable[..., Session],
         utc_hour_ago: datetime,
-        delete_ledger_db: Callable[..., None],
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         s1 = session_factory(
             user=user,
@@ -1391,15 +1359,11 @@ class TestThlLedgerManagerAdj:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_no: Product,
-        create_main_accounts: Callable[..., None],
-        delete_ledger_db: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         utc_hour_ago: datetime,
         currency: LedgerCurrency,
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         # This failed when I didn't check that `change_commission` > 0 in
         #   create_transaction_bp_adjustment
@@ -1447,9 +1411,7 @@ class TestThlLedgerManagerAdj:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_no: Product,
-        delete_ledger_db: Callable[..., None],
         session_factory: Callable[..., Session],
-        create_main_accounts: Callable[..., None],
         caplog,
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
@@ -1458,8 +1420,7 @@ class TestThlLedgerManagerAdj:
         session_manager: SessionManager,
         wall_manager: WallManager,
     ):
-        delete_ledger_db()
-        create_main_accounts()
+
         user: User = user_factory(product=product_user_wallet_no)
         s1: Session = session_factory(
             user=user, final_status=Status.ABANDON, wall_req_cpi=Decimal(1)
@@ -1521,15 +1482,11 @@ class TestThlLedgerManagerAdj:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_yes: Product,
-        create_main_accounts: Callable[..., None],
-        delete_ledger_db: Callable[..., None],
         caplog,
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         currency: LedgerCurrency,
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         now = datetime.now(UTC) - timedelta(days=1)
         user: User = user_factory(product=product_user_wallet_yes)
@@ -1746,16 +1703,13 @@ class TestThlLedgerManagerAdj:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_no: Product,
-        create_main_accounts: Callable[..., None],
-        delete_ledger_db: Callable[..., None],
         caplog,
         thl_ledger_manager: ThlLedgerManager,
         ledger_manager: LedgerManager,
         utc_hour_ago: datetime,
         currency: LedgerCurrency,
     ):
-        delete_ledger_db()
-        create_main_accounts()
+
         user: User = user_factory(product=product_user_wallet_no)
 
         wall1 = Wall(

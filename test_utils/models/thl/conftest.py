@@ -76,21 +76,12 @@ fake = faker.Faker()
 # --- Wall ---
 
 
-# from generalresearch.models.thl.task_status import StatusCode1
-# # thl_session.append_wall_event(wall)
-# wall.finish(
-#     finished=wall.started + timedelta(seconds=randint(a=60 * 2, b=60 * 10)),
-#     status=Status.COMPLETE,
-#     status_code_1=StatusCode1.COMPLETE,
-# )
-# return wall
-
-
 @pytest.fixture
 def wall_factory(
     wall_manager: WallManager,
     bare_session_factory: Callable[..., Session],
     session_manager: SessionManager,
+    user_factory: Callable[..., User],
 ) -> Callable[..., Wall]:
 
     def _inner(
@@ -98,7 +89,7 @@ def wall_factory(
         save: bool = True,
         session: Session | None = None,
         session_id: PositiveInt | None = None,
-        user_id: int | None = None,
+        user: User | None = None,
         started: datetime | None = None,
         source: Source | None = None,
         req_survey_id: str | None = None,
@@ -107,9 +98,8 @@ def wall_factory(
         uuid_id: str | None = None,
     ) -> Wall:
         """To be used in tests, where we don't care about certain fields"""
-
+        user = user or user_factory()
         if save:
-            user_id = user_id or fake.random_int(min=1, max=2_147_483_648)
             _wall_started = started or fake.date_time_between(
                 start_date=datetime(year=1900, month=1, day=1, tzinfo=UTC),
                 end_date=datetime.now(tz=UTC),
@@ -138,7 +128,7 @@ def wall_factory(
                     session_manager.get_from_id(session_id=session_id)
                     if session_id
                     else None
-                ) or bare_session_factory(save=True, user_id=user_id)
+                ) or bare_session_factory(save=True, user=user)
 
             assert session, "Wall factory requires Session"
 
@@ -262,7 +252,7 @@ def session(
     s = bare_session.model_copy()
     wall: Wall = wall_factory(
         session_id=s.id,
-        user_id=s.user_id,
+        user=s.user,
         started=s.started,
     )
     s.append_wall_event(w=wall)
@@ -308,7 +298,7 @@ def session_factory(
             w = wall_factory(
                 session_id=s.id,
                 source=wall_source,
-                user_id=s.user_id,
+                user=s.user,
                 started=wall_started,
                 req_cpi=wall_req_cpis[idx] if wall_req_cpis else wall_req_cpi,
             )

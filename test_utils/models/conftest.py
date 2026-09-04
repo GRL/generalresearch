@@ -12,7 +12,6 @@ from generalresearch.models.thl.survey.model import Buyer, Survey
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.buyer import BuyerManager
-    from generalresearch.managers.thl.product import ProductManager
     from generalresearch.managers.thl.survey import SurveyManager
     from generalresearch.models.thl.product import (
         PayoutConfig,
@@ -47,7 +46,6 @@ def payout_config(request: Request) -> PayoutConfig:
 def product_user_wallet_yes(
     product_factory: Callable[..., Product],
     payout_config: PayoutConfig,
-    product_manager: ProductManager,
 ) -> Product:
     from generalresearch.models.thl.product import UserWalletConfig
 
@@ -58,7 +56,7 @@ def product_user_wallet_yes(
 
 @pytest.fixture
 def product_user_wallet_no(
-    product_factory: Callable[..., Product], product_manager: ProductManager
+    product_factory: Callable[..., Product],
 ) -> Product:
     from generalresearch.models.thl.product import UserWalletConfig
 
@@ -68,7 +66,6 @@ def product_user_wallet_no(
 @pytest.fixture
 def product_amt_true(
     product_factory: Callable[..., Product],
-    product_manager: ProductManager,
     payout_config: PayoutConfig,
 ) -> Product:
     from generalresearch.models.thl.product import UserWalletConfig

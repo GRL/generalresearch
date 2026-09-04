@@ -56,7 +56,7 @@ def session_fail(
     session = session_factory(started=datetime.now(UTC), user=user)
     wall1 = wall_factory(
         session_id=session.id,
-        user_id=user.user_id,
+        user=user,
         source=Source.DYNATA,
         req_survey_id="72723",
         req_cpi=Decimal("3.22"),
