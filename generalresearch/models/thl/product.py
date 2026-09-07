@@ -20,7 +20,6 @@ from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
 
 import pandas as pd
-from dask.distributed import Client
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -68,6 +67,8 @@ from generalresearch.models.utils import decimal_to_usd_cents
 from generalresearch.redis_helper import RedisConfig
 
 if TYPE_CHECKING:
+    from dask.distributed import Client
+
     from generalresearch.incite.base import GRLDatasets
     from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
@@ -439,7 +440,7 @@ class UserWalletConfig(BaseModel):
             "Conditional credit awarded for an eligible failed attempt. "
             "None disables failed-attempt credits."
         ),
-        examples=[Decimal("0.05"), None]
+        examples=[Decimal("0.05"), None],
     )
 
     @field_serializer("supported_payout_types", when_used="json")
@@ -475,6 +476,7 @@ class UserWalletConfig(BaseModel):
     @property
     def failed_attempt_credit_enabled(self) -> bool:
         return self.failed_attempt_credit is not None
+
 
 class PayoutTransformationPercentArgs(BaseModel):
     pct: NonNegativeFloat = Field(
