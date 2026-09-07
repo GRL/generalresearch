@@ -1064,11 +1064,27 @@ class ThlLedgerManager(LedgerManager):
 
         amt_str = f"${int(amount) / 100:,.2f}"
         descriptions = {
+            PayoutType.AMT_HIT: f"User Payout AMT Assignment Request {amt_str}",
+            PayoutType.AMT_BONUS: f"User Payout AMT Bonus Request {amt_str}",
             PayoutType.PAYPAL: f"User Payout Paypal Request {amt_str}",
             PayoutType.CASH_IN_MAIL: f"User Payout Cash Request {amt_str}",
             PayoutType.TANGO: f"User Payout Tango Request {amt_str}",
         }
         description = descriptions[payout_event.payout_type]
+
+        if payout_event.payout_type in {
+            PayoutType.AMT_HIT,
+            PayoutType.AMT_BONUS,
+        }:
+            """
+            This is for AMT accounts only (currently JB). This is the
+            payment of a either 1) 1c or 5c (typically) assignment or 2) a
+            bonus for task complete to the user. The 20% commission will
+            be taken from the BP's wallet once the tx is completed.
+            """
+            assert user.product.user_wallet_amt, (
+                "Can only call this on an AMT-enabled BPs"
+            )
 
         f = lambda: self.create_tx_user_payout_request_(
             user=user,
@@ -1078,6 +1094,9 @@ class ThlLedgerManager(LedgerManager):
         )
 
         min_balance: int | None = int(amount)
+        if payout_event.payout_type == PayoutType.AMT_HIT:
+            # We allow the user's balance to reach up to -$1.00.
+            min_balance = -100 + amount
         if skip_wallet_balance_check:
             min_balance = None
 

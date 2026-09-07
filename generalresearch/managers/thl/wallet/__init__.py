@@ -2,6 +2,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from generalresearch.managers.thl.wallet.approve import (
+    approve_amt_cashout,
     approve_paypal_order,
 )
 from generalresearch.models.thl.definitions import PayoutStatus
@@ -58,13 +59,13 @@ def manage_pending_cashout(
     user = user_manager.get_user(user_uuid=pe.account_reference_uuid)
     user.prefetch_product(user_manager.mysql_user_manager.pg_config)
 
-    assert (
-        user.product.user_wallet_enabled
-    ), "manage_pending_cashout called on user without managed wallet"
+    assert user.product.user_wallet_enabled, (
+        "manage_pending_cashout called on user without managed wallet"
+    )
     assert not user.blocked, "manage_pending_cashout: Blocked user"
-    assert not user_ip_history_manager.is_user_anonymous(
-        user
-    ), "manage_pending_cashout: Anonymous user"
+    assert not user_ip_history_manager.is_user_anonymous(user), (
+        "manage_pending_cashout: Anonymous user"
+    )
 
     # Just assign it with direct casting/type annotation
     payout_event_manager: PayoutEventManager = user_payout_event_manager
@@ -90,6 +91,14 @@ def manage_pending_cashout(
                 payout_event=pe, payout_event_manager=payout_event_manager
             )
 
+        elif pe.payout_type in {PayoutType.AMT_BONUS, PayoutType.AMT_HIT}:
+            approve_amt_cashout(
+                user=user,
+                payout_event=pe,
+                payout_event_manager=payout_event_manager,
+                ledger_manager=ledger_manager,
+            )
+
         elif pe.payout_type == PayoutType.CASH_IN_MAIL:
             assert order_data, "must pass order_data"
             payout_event_manager.update(
@@ -107,8 +116,14 @@ def manage_pending_cashout(
         return pe
 
     elif new_status == PayoutStatus.COMPLETE:
+        # Used only for AMT/dummy cashouts that are actually paid out not
+        # by us. They are informing us that the cashout was successfully
+        # sent to the user
+        if pe.payout_type in {PayoutType.AMT_BONUS, PayoutType.AMT_HIT}:
+            # We already do this under approve_amt_cashout()
+            pass
 
-        if pe.payout_type == PayoutType.PAYPAL:
+        elif pe.payout_type == PayoutType.PAYPAL:
             # This is an issue here in that we actually don't know what the
             # fee is until it is sent and we read it back from paypal's csv
             # result. We have to just run this with a custom script, which
