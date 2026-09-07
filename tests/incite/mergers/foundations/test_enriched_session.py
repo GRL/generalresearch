@@ -1,20 +1,35 @@
-from datetime import datetime, timedelta, timezone
+from __future__ import annotations
+
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from itertools import product
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 import pandas as pd
 import pytest
+from dask.distributed import Client as DaskClient
 
 from generalresearch.incite.schemas.admin_responses import (
     AdminPOPSessionSchema,
 )
-from generalresearch.pg_helper import PostgresConfig
-from test_utils.incite.collections.conftest import (
-    session_collection,
-    wall_collection,
-)
+
+if TYPE_CHECKING:
+    from generalresearch.incite.collections.thl_web import (
+        SessionDFCollection,
+        WallDFCollection,
+    )
+    from generalresearch.incite.mergers.foundations.enriched_session import (
+        EnrichedSessionMerge,
+    )
+    from generalresearch.models.admin.request import (
+        ReportRequest,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
 
 
 @pytest.mark.parametrize(
@@ -30,17 +45,16 @@ class TestEnrichedSession:
 
     def test_base(
         self,
-        client_no_amm,
-        product,
-        user_factory,
-        wall_collection,
-        session_collection,
-        enriched_session_merge,
+        client_no_amm: DaskClient,
+        product: Product,
+        user_factory: Callable[..., User],
+        wall_collection: WallDFCollection,
+        session_collection: SessionDFCollection,
+        enriched_session_merge: EnrichedSessionMerge,
         thl_web_rr: PostgresConfig,
-        delete_df_collection,
-        incite_item_factory,
+        delete_df_collection: Callable[..., None],
+        incite_item_factory: Callable[..., None],
     ):
-        from generalresearch.models.thl.user import User
 
         delete_df_collection(coll=session_collection)
 
@@ -77,31 +91,31 @@ class TestEnrichedSession:
 class TestEnrichedSessionAdmin:
 
     @pytest.fixture
-    def start(self) -> "datetime":
-        return datetime(year=2020, month=3, day=14, tzinfo=timezone.utc)
+    def start(self) -> datetime:
+        return datetime(year=2020, month=3, day=14, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:
         return "1d"
 
     @pytest.fixture
-    def duration(self) -> Optional["timedelta"]:
+    def duration(self) -> timedelta | None:
         return timedelta(days=5)
 
     def test_to_admin_response(
         self,
-        event_report_request,
-        enriched_session_merge,
-        client_no_amm,
-        wall_collection,
-        session_collection,
+        event_report_request: ReportRequest,
+        enriched_session_merge: EnrichedSessionMerge,
+        client_no_amm: DaskClient,
+        wall_collection: WallDFCollection,
+        session_collection: SessionDFCollection,
         thl_web_rr: PostgresConfig,
-        session_report_request,
-        user_factory,
-        start,
-        session_factory,
-        product_factory,
-        delete_df_collection,
+        session_report_request: ReportRequest,
+        user_factory: Callable[..., User],
+        start: datetime,
+        session_factory: Callable[..., Session],
+        product_factory: Callable[..., Product],
+        delete_df_collection: Callable[..., None],
     ):
         delete_df_collection(coll=wall_collection)
         delete_df_collection(coll=session_collection)
@@ -112,7 +126,7 @@ class TestEnrichedSessionAdmin:
         for p in [p1, p2]:
             u = user_factory(product=p)
             for i in range(50):
-                s = session_factory(
+                _ = session_factory(
                     user=u,
                     wall_count=1,
                     wall_req_cpi=Decimal("1.00"),

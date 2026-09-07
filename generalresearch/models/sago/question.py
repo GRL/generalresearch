@@ -4,27 +4,27 @@ from __future__ import annotations
 # -answers-lanaguge-languageid
 import json
 import logging
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
     PositiveInt,
+    ValidationError,
     field_validator,
     model_validator,
 )
 
-from generalresearch.models import MAX_INT32, Source, string_utils
 from generalresearch.models.custom_types import AwareDatetimeISO
+from generalresearch.models.definitions import MAX_INT32, Source
+from generalresearch.models.string_utils import remove_nbsp
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.profiling.upk_question import (
-        UpkQuestion,
-    )
+from generalresearch.models.thl.profiling.upk_question import (
+    UpkQuestion,
+)
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -54,10 +54,10 @@ class SagoQuestionOption(BaseModel):
 
     @field_validator("text", mode="after")
     def remove_nbsp(cls, s: str):
-        return string_utils.remove_nbsp(s)
+        return remove_nbsp(s)
 
 
-class SagoQuestionType(str, Enum):
+class SagoQuestionType(StrEnum):
     """
     From the API:
         {1: 'Single Punch', 2: 'Multi Punch', 3: 'Open Ended', 4: 'Dummy',
@@ -86,7 +86,7 @@ class SagoQuestionType(str, Enum):
             6: SagoQuestionType.TEXT_ENTRY,
             7: SagoQuestionType.TEXT_ENTRY,
         }
-        return API_TYPE_MAP[a] if a in API_TYPE_MAP else None
+        return API_TYPE_MAP.get(a, None)
 
 
 class SagoUserQuestionAnswer(BaseModel):
@@ -168,7 +168,7 @@ class SagoQuestion(MarketplaceQuestion):
 
     @field_validator("question_name", "question_text", "tags", mode="after")
     def remove_nbsp(cls, s: str | None):
-        return string_utils.remove_nbsp(s)
+        return remove_nbsp(s)
 
     @classmethod
     def from_api(
@@ -182,7 +182,7 @@ class SagoQuestion(MarketplaceQuestion):
         """
         try:
             return cls._from_api(d, country_iso, language_iso)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse question: {d}. {e}")
             return None
 

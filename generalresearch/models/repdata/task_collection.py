@@ -6,7 +6,7 @@ import pandas as pd
 from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.locales import Localelator
-from generalresearch.models import TaskCalculationType
+from generalresearch.models.definitions import TaskCalculationType
 from generalresearch.models.repdata import RepDataStatus
 from generalresearch.models.repdata.survey import RepDataSurveyHashed
 from generalresearch.models.thl.survey.task_collection import (
@@ -110,7 +110,7 @@ class RepDataTaskCollection(TaskCollection):
             "remaining_count",
         ]
         rows = []
-        d = dict()
+        d = {}
         for k in survey_fields:
             d[k] = getattr(s, k)
         d["allowed_devices"] = s.allowed_devices_str

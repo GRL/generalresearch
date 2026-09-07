@@ -3,17 +3,20 @@ from __future__ import annotations
 import logging
 import operator
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from threading import Lock
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from cachetools import LRUCache, cachedmethod
 import psycopg
+from cachetools import LRUCache, cachedmethod
 from psycopg import sql
 
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.user import User
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.pg_helper import PostgresConfig
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -30,7 +33,7 @@ class MysqlUserManager:
     def _set_last_seen(self, user: User) -> None:
         # Don't call this directly. Use UserManager.set_last_seen()
         assert not self.is_read_replica
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         self.pg_config.execute_write(
             """
             UPDATE thl_user
@@ -40,19 +43,16 @@ class MysqlUserManager:
             params=[now, user.user_id],
         )
 
-    def _change_product_user_id(
-        self, *, user: User, new_product_user_id: str
-    ) -> User:
+    def _change_product_user_id(self, *, user: User, new_product_user_id: str) -> User:
         """Change a user's supplier-provided ID in the primary database."""
         assert not self.is_read_replica
         assert user.user_id is not None
         assert user.product_id is not None
         assert user.product_user_id is not None
 
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(
-                    query="""
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(
+                query="""
                     UPDATE thl_user
                     SET product_user_id = %(new_product_user_id)s
                     WHERE id = %(user_id)s
@@ -61,14 +61,14 @@ class MysqlUserManager:
                     RETURNING id AS user_id, product_id, product_user_id,
                               uuid, blocked, created, last_seen
                     """,
-                    params={
-                        "new_product_user_id": new_product_user_id,
-                        "user_id": user.user_id,
-                        "product_id": user.product_id,
-                        "old_product_user_id": user.product_user_id,
-                    },
-                )
-                row = c.fetchone()
+                params={
+                    "new_product_user_id": new_product_user_id,
+                    "user_id": user.user_id,
+                    "product_id": user.product_id,
+                    "old_product_user_id": user.product_user_id,
+                },
+            )
+            row = c.fetchone()
 
         if row is None:
             raise RuntimeError(
@@ -89,16 +89,16 @@ class MysqlUserManager:
         logger.info(
             f"get_user_from_mysql: {product_id}, {product_user_id}, {user_id}, {user_uuid}"
         )
-        assert (
-            (product_id and product_user_id) or user_id or user_uuid
-        ), "Must pass either (product_id, product_user_id), or user_id, or uuid"
+        assert (product_id and product_user_id) or user_id or user_uuid, (
+            "Must pass either (product_id, product_user_id), or user_id, or uuid"
+        )
         if product_id or product_user_id:
-            assert (
-                product_id and product_user_id
-            ), "Must pass both product_id and product_user_id"
-        assert (
-            sum(map(bool, [product_id or product_id, user_id, user_uuid])) == 1
-        ), "Must pass only 1 of (product_id, product_user_id), or user_id, or uuid"
+            assert product_id and product_user_id, (
+                "Must pass both product_id and product_user_id"
+            )
+        assert sum(map(bool, [product_id or product_id, user_id, user_uuid])) == 1, (
+            "Must pass only 1 of (product_id, product_user_id), or user_id, or uuid"
+        )
 
         # Using RR: Assume we check redis first for newly created users
         if can_use_read_replica is False:
@@ -158,7 +158,7 @@ class MysqlUserManager:
         if not self.product_id_exists(product_id=product_id):
             raise ValueError(f"userprofile_brokerageproduct not found: {product_id}")
 
-        now = created or datetime.now(tz=timezone.utc)
+        now = created or datetime.now(tz=UTC)
         user_uuid = uuid4().hex
         params = {
             "user_uuid": user_uuid,
@@ -179,10 +179,9 @@ class MysqlUserManager:
         """)
 
         try:
-            with self.pg_config.make_connection() as conn:
-                with conn.cursor() as c:
-                    c.execute(query=query, params=params)
-                    user_id = c.fetchone()["id"]
+            with self.pg_config.make_connection() as conn, conn.cursor() as c:
+                c.execute(query=query, params=params)
+                user_id = c.fetchone()["id"]
         except psycopg.IntegrityError:
             # Two machines/processes are trying to create this same (product_id, product_user_id)
             #   at the same time. There's a unique index, so mysql will not let two be created.
@@ -268,9 +267,9 @@ class MysqlUserManager:
         assert product_id, "must pass product_id"
         assert len(product_user_ids) > 0, "must pass 1 or more product_user_ids"
         assert len(product_user_ids) <= 500, "limit 500 product_user_ids"
-        assert isinstance(
-            product_user_ids, (list, set)
-        ), "must pass a collection of product_user_ids"
+        assert isinstance(product_user_ids, (list, set)), (
+            "must pass a collection of product_user_ids"
+        )
         res = self.pg_config.execute_sql_query(
             query="""
             SELECT id AS user_id, product_id, product_user_id, 
@@ -293,13 +292,13 @@ class MysqlUserManager:
         user_ids: Collection[int] | None = None,
         user_uuids: Collection[str] | None = None,
     ) -> list[User]:
-        assert (user_ids or user_uuids) and not (
-            user_ids and user_uuids
-        ), "Must pass ONE of user_ids, user_uuids"
+        assert (user_ids or user_uuids) and not (user_ids and user_uuids), (
+            "Must pass ONE of user_ids, user_uuids"
+        )
         if user_ids:
-            assert isinstance(
-                user_ids, (list, set)
-            ), "must pass a collection of user_ids"
+            assert isinstance(user_ids, (list, set)), (
+                "must pass a collection of user_ids"
+            )
             assert len(user_ids) <= 500, "limit 500 user_ids"
 
             res = self.pg_config.execute_sql_query(
@@ -313,9 +312,9 @@ class MysqlUserManager:
                 params={"user_ids": user_ids},
             )
         else:
-            assert isinstance(
-                user_uuids, (list, set)
-            ), "must pass a collection of user_uuids"
+            assert isinstance(user_uuids, (list, set)), (
+                "must pass a collection of user_uuids"
+            )
             assert len(user_uuids) <= 500, "limit 500 user_uuids"
             res = self.pg_config.execute_sql_query(
                 query="""

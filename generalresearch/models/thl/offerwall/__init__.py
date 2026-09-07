@@ -3,8 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 from decimal import Decimal
-from enum import Enum
-from typing import Any, Literal
+from enum import StrEnum
+from typing import Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -13,10 +13,9 @@ from pydantic import (
     computed_field,
     model_validator,
 )
-from typing_extensions import Self
 
-from generalresearch.models import Source
 from generalresearch.models.custom_types import IPvAnyAddressStr
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.locales import (
     CountryISO,
     LanguageISO,
@@ -32,7 +31,7 @@ from generalresearch.models.thl.product import (
 from generalresearch.models.thl.user import User
 
 
-class OfferWallType(str, Enum):
+class OfferWallType(StrEnum):
     """
     The specific offerwall type
     """
@@ -57,7 +56,7 @@ class OfferWallType(str, Enum):
     STARWALL = "b59a2d2b"
 
 
-class OfferWallTypeClass(str, Enum):
+class OfferWallTypeClass(StrEnum):
     """
     A higher level "class" to organize similar offerwall types.
     For e.g. STARWALL_PLUS_BLOCK, STARWALL_PLUS, STARWALL all use the same
@@ -268,7 +267,7 @@ class OfferWallRequest(BaseModel):
         # We need this so thl-core can refresh an offerwall in order to continue
         #   a session
         d = self.model_dump(mode="json")
-        kwargs = dict()
+        kwargs = {}
         keys = [
             "n_bins",
             "min_bin_size",

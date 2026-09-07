@@ -1,13 +1,38 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pymysql
 
 from generalresearch.managers.criteria import CriteriaManager
 from generalresearch.managers.survey import SurveyManager
 from generalresearch.models.prodege.survey import ProdegeCondition, ProdegeSurvey
+
+SURVEY_FIELDS = [
+    "survey_id",
+    "survey_name",
+    "status",
+    "country_iso",
+    "language_iso",
+    "cpi",
+    "desired_count",
+    "remaining_count",
+    "achieved_completes",
+    "bid_loi",
+    "bid_ir",
+    "actual_loi",
+    "actual_ir",
+    "conversion_rate",
+    "entrance_url",
+    "max_clicks_settings",
+    "past_participation",
+    "include_psids",
+    "exclude_psids",
+    "quotas",
+    "used_question_ids",
+    "is_live",
+]
 
 
 class ProdegeCriteriaManager(CriteriaManager):
@@ -16,30 +41,6 @@ class ProdegeCriteriaManager(CriteriaManager):
 
 
 class ProdegeSurveyManager(SurveyManager):
-    SURVEY_FIELDS = [
-        "survey_id",
-        "survey_name",
-        "status",
-        "country_iso",
-        "language_iso",
-        "cpi",
-        "desired_count",
-        "remaining_count",
-        "achieved_completes",
-        "bid_loi",
-        "bid_ir",
-        "actual_loi",
-        "actual_ir",
-        "conversion_rate",
-        "entrance_url",
-        "max_clicks_settings",
-        "past_participation",
-        "include_psids",
-        "exclude_psids",
-        "quotas",
-        "used_question_ids",
-        "is_live",
-    ]
 
     def get_survey_library(
         self,
@@ -93,12 +94,12 @@ class ProdegeSurveyManager(SurveyManager):
         return surveys
 
     def create(self, survey: ProdegeSurvey) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         d = survey.to_mysql()
         conn: pymysql.Connection = self.sql_helper.make_connection()
         conn.autocommit(True)
         c = conn.cursor()
-        create_fields = self.SURVEY_FIELDS + ["created", "updated"]
+        create_fields = SURVEY_FIELDS + ["created", "updated"]
 
         fields_str = ", ".join([f"`{x}`" for x in create_fields])
         values_str = ", ".join([f"%({x})s" for x in create_fields])
@@ -114,7 +115,7 @@ class ProdegeSurveyManager(SurveyManager):
         return True
 
     def update(self, surveys: list[ProdegeSurvey]) -> None:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         # Do to stupidity with bid/actual loi/ir values (see ProdegeSurvey.to_mysql), we now
         #   can't do a bulk update b/c the fields may be different in different rows. Just do
@@ -124,7 +125,7 @@ class ProdegeSurveyManager(SurveyManager):
 
     def update_one(self, survey: ProdegeSurvey, now=None) -> bool:
         if now is None:
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=UTC)
         d = survey.to_mysql()
         # We have to have special logic for bid/actual loi/ir here. The api is
         #   stupid and only returns one set of them. If we just do the db

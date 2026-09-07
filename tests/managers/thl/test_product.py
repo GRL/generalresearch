@@ -1,24 +1,35 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.product import (
     Product,
-    SourceConfig,
-    UserCreateConfig,
-    SourcesConfig,
-    UserHealthConfig,
     ProfilingConfig,
-    SupplyPolicy,
+    SourceConfig,
+    SourcesConfig,
     SupplyConfig,
+    SupplyPolicy,
+    UserCreateConfig,
+    UserHealthConfig,
 )
-from test_utils.models.conftest import product_factory
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.gr.team import Team
 
 
 class TestProductManagerGetMethods:
-    def test_get_by_uuid(self, product_manager):
-        product: Product = product_manager.create_dummy(
+    def test_get_by_uuid(
+        self,
+        product_manager: ProductManager,
+        product_factory: Callable[..., Product],
+    ):
+        product: Product = product_factory(
             product_id=uuid4().hex,
             team_id=uuid4().hex,
             name=f"Test Product ID #{uuid4().hex[:6]}",
@@ -37,12 +48,14 @@ class TestProductManagerGetMethods:
             product_manager.get_by_uuid(product_uuid=uuid4().hex)
         assert "product not found" in str(cm.value)
 
-    def test_get_by_uuids(self, product_manager):
+    def test_get_by_uuids(
+        self, product_factory: Callable[..., Product], product_manager: ProductManager
+    ):
         cnt = 5
 
-        product_uuids = [uuid4().hex for idx in range(cnt)]
+        product_uuids = [uuid4().hex for _ in range(cnt)]
         for product_id in product_uuids:
-            product_manager.create_dummy(
+            product_factory(
                 product_id=product_id,
                 team_id=uuid4().hex,
                 name=f"Test Product ID #{uuid4().hex[:6]}",
@@ -62,8 +75,10 @@ class TestProductManagerGetMethods:
             product_manager.get_by_uuids(product_uuids=product_uuids + ["abc123"])
         assert "invalid uuid" in str(cm.value)
 
-    def test_get_by_uuid_if_exists(self, product_manager):
-        product: Product = product_manager.create_dummy(
+    def test_get_by_uuid_if_exists(
+        self, product_factory: Callable[..., Product], product_manager: ProductManager
+    ):
+        product: Product = product_factory(
             product_id=uuid4().hex,
             team_id=uuid4().hex,
             name=f"Test Product ID #{uuid4().hex[:6]}",
@@ -74,10 +89,12 @@ class TestProductManagerGetMethods:
         instance = product_manager.get_by_uuid_if_exists(product_uuid="abc123")
         assert instance == None
 
-    def test_get_by_uuids_if_exists(self, product_manager):
+    def test_get_by_uuids_if_exists(
+        self, product_factory: Callable[..., Product], product_manager: ProductManager
+    ):
         product_uuids = [uuid4().hex for _ in range(2)]
         for product_id in product_uuids:
-            product_manager.create_dummy(
+            product_factory(
                 product_id=product_id,
                 team_id=uuid4().hex,
                 name=f"Test Product ID #{uuid4().hex[:6]}",
@@ -106,13 +123,15 @@ class TestProductManagerGetMethods:
         # for instance in res:
         #     assert isinstance(instance, Product)
 
-    def test_get_by_business_ids(self, product_manager):
-        business_ids = [uuid4().hex for i in range(5)]
+    def test_get_by_business_ids(
+        self, product_factory: Callable[..., Product], product_manager: ProductManager
+    ):
+        business_ids = [uuid4().hex for _ in range(5)]
 
         product_manager.fetch_uuids(business_uuids=business_ids)
 
         for business_id in business_ids:
-            product_manager.create(
+            product_factory(
                 product_id=uuid4().hex,
                 team_id=None,
                 business_id=business_id,
@@ -124,8 +143,10 @@ class TestProductManagerGetMethods:
 
 class TestProductManagerCreation:
 
-    def test_base(self, product_manager):
-        instance = product_manager.create_dummy(
+    def test_base(
+        self, product_factory: Callable[..., Product], product_manager: ProductManager
+    ):
+        instance = product_factory(
             product_id=uuid4().hex,
             team_id=uuid4().hex,
             name=f"New Test Product {uuid4().hex[:6]}",
@@ -136,7 +157,7 @@ class TestProductManagerCreation:
 
 class TestProductManagerCreate:
 
-    def test_create_simple(self, product_manager):
+    def test_create_simple(self, product_manager: ProductManager):
         # Always required: product_id, team_id, name, redirect_url
         # Required internally - if not passed use default: harmonizer_domain,
         #   commission_pct, sources
@@ -179,20 +200,26 @@ class TestProductManager:
         ]
     ]
 
-    def test_get_by_uuid1(self, product_manager, team, product, product_factory):
-        p1 = product_factory(team=team)
+    def test_get_by_uuid1(
+        self,
+        product_manager: ProductManager,
+        gr_team: Team,
+        product: Product,
+        product_factory: Callable[..., Product],
+    ):
+        p1 = product_factory(team=gr_team)
         instance = product_manager.get_by_uuid(product_uuid=p1.uuid)
         assert instance.id == p1.id
 
         # No Team and no user_create_config
-        assert instance.team_id == team.uuid
+        assert instance.team_id == gr_team.uuid
 
         # user_create_config can't be None, so ensure the default was set.
         assert isinstance(instance.user_create_config, UserCreateConfig)
         assert 0 == instance.user_create_config.min_hourly_create_limit
         assert instance.user_create_config.max_hourly_create_limit is None
 
-    def test_get_by_uuid2(self, product_manager, product_factory):
+    def test_get_by_uuid2(self, product_manager: ProductManager, product_factory):
         p2 = product_factory()
         instance = product_manager.get_by_uuid(p2.id)
         assert instance.id, p2.id
@@ -204,7 +231,9 @@ class TestProductManager:
         assert 0 == instance.user_create_config.min_hourly_create_limit
         assert instance.user_create_config.max_hourly_create_limit is None
 
-    def test_get_by_uuid3(self, product_manager, product_factory):
+    def test_get_by_uuid3(
+        self, product_manager: ProductManager, product_factory: Callable[..., Product]
+    ):
         p3 = product_factory()
         instance = product_manager.get_by_uuid(p3.id)
         assert instance.id == p3.id
@@ -220,10 +249,12 @@ class TestProductManager:
         assert instance.user_create_config.max_hourly_create_limit is None
         assert not instance.user_wallet_config.enabled
 
-    def test_sources(self, product_manager):
+    def test_sources(
+        self, product_factory: Callable[..., Product], product_manager: ProductManager
+    ):
         user_defined = [SourceConfig(name=Source.DYNATA, active=False)]
         sources_config = SourcesConfig(user_defined=user_defined)
-        p = product_manager.create_dummy(sources_config=sources_config)
+        p = product_factory(sources_config=sources_config)
 
         p2 = product_manager.get_by_uuid(p.id)
 
@@ -235,7 +266,9 @@ class TestProductManager:
         assert not dynata.active
         assert all(x.active is True for x in p2.sources if x.name != Source.DYNATA)
 
-    def test_global_sources(self, product_manager):
+    def test_global_sources(
+        self, product_factory: Callable[..., Product], product_manager: ProductManager
+    ):
         sources_config = SupplyConfig(
             policies=[
                 SupplyPolicy(
@@ -246,7 +279,7 @@ class TestProductManager:
                 )
             ]
         )
-        p1 = product_manager.create_dummy(sources_config=sources_config)
+        p1 = product_factory(sources_config=sources_config)
         p2 = product_manager.get_by_uuid(p1.id)
         assert p1 == p2
 
@@ -262,8 +295,10 @@ class TestProductManager:
         p2 = product_manager.get_by_uuid(p1.id)
         assert p1 == p2
 
-    def test_user_health_config(self, product_manager):
-        p = product_manager.create_dummy(
+    def test_user_health_config(
+        self, product_factory: Callable[..., Product], product_manager: ProductManager
+    ):
+        p = product_factory(
             user_health_config=UserHealthConfig(banned_countries=["ng", "in"])
         )
 
@@ -273,10 +308,10 @@ class TestProductManager:
         assert p2.user_health_config.banned_countries == ["in", "ng"]
         assert p2.user_health_config.allow_ban_iphist
 
-    def test_profiling_config(self, product_manager):
-        p = product_manager.create_dummy(
-            profiling_config=ProfilingConfig(max_questions=1)
-        )
+    def test_profiling_config(
+        self, product_factory: Callable[..., Product], product_manager: ProductManager
+    ):
+        p = product_factory(profiling_config=ProfilingConfig(max_questions=1))
         p2 = product_manager.get_by_uuid(p.id)
 
         assert p == p2
@@ -320,8 +355,10 @@ class TestProductManager:
 
 class TestProductManagerUpdate:
 
-    def test_update(self, product_manager):
-        p = product_manager.create_dummy()
+    def test_update(
+        self, product_factory: Callable[..., Product], product_manager: ProductManager
+    ):
+        p = product_factory()
         p.name = "new name"
         p.enabled = False
         p.user_create_config = UserCreateConfig(min_hourly_create_limit=200)
@@ -341,8 +378,10 @@ class TestProductManagerUpdate:
 
 class TestProductManagerCacheClear:
 
-    def test_cache_clear(self, product_manager):
-        p = product_manager.create_dummy()
+    def test_cache_clear(
+        self, product_factory: Callable[..., Product], product_manager: ProductManager
+    ):
+        p = product_factory()
         product_manager.get_by_uuid(product_uuid=p.id)
         product_manager.get_by_uuid(product_uuid=p.id)
         product_manager.pg_config.execute_write(

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pydantic import DirectoryPath, Field, MariaDBDsn, PostgresDsn, RedisDsn
@@ -16,9 +16,9 @@ def is_debug() -> bool:
     import os
 
     is_developer: bool = os.getenv("USER") in {"nanis", "gstupp"}
-    is_pytest1: bool = bool(os.getenv("PYTEST_TEST", False))
-    is_pytest2: bool = bool(os.getenv("PYTEST_CURRENT_TEST", False))
-    is_pytest3: bool = bool(os.getenv("PYTEST_VERSION", False))
+    is_pytest1: bool = bool(os.getenv("PYTEST_TEST"))
+    is_pytest2: bool = bool(os.getenv("PYTEST_CURRENT_TEST"))
+    is_pytest3: bool = bool(os.getenv("PYTEST_VERSION"))
     is_debugging1: bool = os.getenv("DEBUG", "").lower() in ("1", "true", "yes")
     is_debugging2: bool = os.getenv("PYTHON_DEBUG", "").lower() in ("1", "true", "yes")
     is_jenkins: bool = bool(os.getenv("JENKINS_HOME")) or bool(os.getenv("JENKINS_URL"))
@@ -52,6 +52,8 @@ class GRLBaseSettings(BaseSettings):
     testing_postgres: InternalHostname | None = Field(default=None)
     testing_postgres_user: str | None = Field(default=None)
     testing_postgres_pass: str | None = Field(default=None)
+
+    testing_redis: InternalHostname | None = Field(default=None)
 
     git_creds: str | None = Field(default=None)
 
@@ -112,12 +114,11 @@ class GRLBaseSettings(BaseSettings):
     tango_customer_id: str | None = Field(default=None)
 
     # --- Keeping this here as we use these ids regardless of the AMT account
-    amt_bonus_cashout_method_id: str | None = Field(default=None)
-    amt_assignment_cashout_method_id: str | None = Field(default=None)
+    amt_bonus_cashout_method_id: str | None = Field(default="1951a47541fb46519827b8783e2a53ab")
+    amt_assignment_cashout_method_id: str | None = Field(default="5b23e4df3e2c40609ca8edf40b13237f")
 
-    # --- Maxmind Configuration ---
-    maxmind_account_id: str | None = Field(default=None)
-    maxmind_license_key: str | None = Field(default=None)
+    # --- GRIP Configuration ---
+    grip_token: str | None = Field(default=None)
 
 
 EXAMPLE_PRODUCT_ID = "1108d053e4fa47c5b0dbdcd03a7981e7"
@@ -125,4 +126,4 @@ EXAMPLE_PRODUCT_ID = "1108d053e4fa47c5b0dbdcd03a7981e7"
 # AMT accounting was changed many times and txs before this date
 # are either missing AMT bonuses, or not accounting for hit rewards.
 JAMES_BILLINGS_BPID = "888dbc589987425fa846d6e2a8daed04"
-JAMES_BILLINGS_TX_CUTOFF = datetime(2026, 1, 1, tzinfo=timezone.utc)
+JAMES_BILLINGS_TX_CUTOFF = datetime(2026, 1, 1, tzinfo=UTC)

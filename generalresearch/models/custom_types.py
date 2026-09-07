@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import json
 import re
-import sys as _sys
-from datetime import datetime, timedelta, timezone
-from typing import Any, Literal
+from datetime import UTC, datetime, timedelta
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import (
@@ -20,9 +19,8 @@ from pydantic.functional_serializers import PlainSerializer
 from pydantic.functional_validators import AfterValidator, BeforeValidator
 from pydantic.networks import IPvAnyNetwork, UrlConstraints
 from pydantic_core import MultiHostHost, Url
-from typing_extensions import Annotated
 
-from generalresearch.models import DeviceType, Source
+from generalresearch.models.definitions import DeviceType, Source
 
 HOSTNAME_REGEX = re.compile(
     r"^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
@@ -57,19 +55,17 @@ def convert_str_dt(v: Any) -> AwareDatetime | None:
     # to parse a str that was dumped using the iso8601 format with Z suffix.
     if v is not None and type(v) is str:
         assert v.endswith("Z") and "T" in v, "invalid format"
-        return datetime.strptime(v, "%Y-%m-%dT%H:%M:%S.%fZ").replace(
-            tzinfo=timezone.utc
-        )
+        return datetime.strptime(v, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=UTC)
     return v
 
 
 def assert_utc(v: AwareDatetime) -> AwareDatetime:
     if isinstance(v, datetime):
         # We need utcoffset b/c FastAPI parses datetimes using FixedTimezone
-        assert v.tzinfo == timezone.utc or v.tzinfo.utcoffset(v) == timedelta(
+        assert v.tzinfo == UTC or v.tzinfo.utcoffset(v) == timedelta(
             0
         ), "Timezone is not UTC"
-        v = v.astimezone(timezone.utc)
+        v = v.astimezone(UTC)
     return v
 
 
@@ -102,7 +98,7 @@ LanguageISOLike = Annotated[
 def check_valid_uuid(v: str) -> str:
     try:
         assert UUID(v).hex == v
-    except Exception:
+    except (ValueError, AssertionError):
         raise ValueError("Invalid UUID")
     return v
 
@@ -110,7 +106,7 @@ def check_valid_uuid(v: str) -> str:
 def is_valid_uuid(v: str) -> bool:
     try:
         assert UUID(v).hex == v
-    except Exception:
+    except (ValueError, AssertionError):
         return False
     return True
 
@@ -169,7 +165,7 @@ CoercedStr = Annotated[str, BeforeValidator(coerce_int_to_str)]
 
 # Serializers that can transform a collection of str into a comma separated
 # str bidirectionally
-to_comma_sep_str = PlainSerializer(lambda x: ",".join(sorted(list(x))), return_type=str)
+to_comma_sep_str = PlainSerializer(lambda x: ",".join(sorted(x)), return_type=str)
 enum_to_comma_sep_str = PlainSerializer(
     lambda x: ",".join(sorted([str(y.value) for y in x])), return_type=str
 )
@@ -309,4 +305,4 @@ PropertyCode = Annotated[
 
 
 def now_utc_factory():
-    return datetime.now(tz=timezone.utc)
+    return datetime.now(tz=UTC)

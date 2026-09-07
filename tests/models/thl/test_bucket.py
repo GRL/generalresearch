@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 from datetime import timedelta
 from decimal import Decimal
 
 import pytest
 from pydantic import ValidationError
 
+from generalresearch.models.legacy.bucket import Bucket
+
 
 class TestBucket:
 
     def test_raises_payout(self):
-        from generalresearch.models.legacy.bucket import Bucket
 
         with pytest.raises(expected_exception=ValidationError) as e:
             Bucket(user_payout_min=123)
@@ -27,7 +30,6 @@ class TestBucket:
         assert "user_payout_min should be <= user_payout_max" in str(e.value)
 
     def test_raises_loi(self):
-        from generalresearch.models.legacy.bucket import Bucket
 
         with pytest.raises(expected_exception=ValidationError) as e:
             Bucket(loi_min=123)
@@ -63,7 +65,6 @@ class TestBucket:
         assert "loi_q1 should be <= loi_q2" in str(e.value)
 
     def test_parse_1(self):
-        from generalresearch.models.legacy.bucket import Bucket
 
         b1 = Bucket.parse_from_offerwall({"payout": {"min": 123}})
         b_exp = Bucket(
@@ -180,7 +181,6 @@ class TestBucket:
         assert b_exp == b4
 
     def test_parse_3(self):
-        from generalresearch.models.legacy.bucket import Bucket
 
         b1 = Bucket.parse_from_offerwall({"payout": 123})
         b_exp = Bucket(

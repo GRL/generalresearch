@@ -1,4 +1,5 @@
-from typing import Callable, Generator
+from collections.abc import Callable, Generator
+from typing import TYPE_CHECKING
 
 import pytest
 

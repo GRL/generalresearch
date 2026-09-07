@@ -1,4 +1,8 @@
-from datetime import datetime, timezone
+from __future__ import annotations
+
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import pytest
 from pydantic import ValidationError
@@ -9,44 +13,49 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionConditionFailedError,
 )
 from generalresearch.models.thl.contest import (
-    ContestPrize,
-    ContestEntryRule,
     ContestEndCondition,
+    ContestEntryRule,
+    ContestPrize,
 )
-from generalresearch.models.thl.contest.definitions import (
-    ContestStatus,
-    ContestPrizeKind,
-    ContestEndReason,
-)
-from generalresearch.models.thl.contest.exceptions import ContestError
-from generalresearch.models.thl.contest.raffle import (
+from generalresearch.models.thl.contest.contest_entry import (
     ContestEntry,
     ContestEntryType,
 )
-from generalresearch.models.thl.contest.raffle import (
-    RaffleContest,
-    RaffleContestCreate,
-    RaffleUserView,
+from generalresearch.models.thl.contest.definitions import (
+    ContestEndReason,
+    ContestPrizeKind,
+    ContestStatus,
 )
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
-from test_utils.managers.contest.conftest import (
-    raffle_contest as contest,
-    raffle_contest_in_db as contest_in_db,
-    raffle_contest_create as contest_create,
-    raffle_contest_factory as contest_factory,
-)
+from generalresearch.models.thl.contest.exceptions import ContestError
+from generalresearch.models.thl.contest.raffle import RaffleContest
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.contest_manager import ContestManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.models.thl.contest import (
+        Contest,
+    )
+    from generalresearch.models.thl.contest.raffle import (
+        RaffleContestCreate,
+        RaffleUserView,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
 
 
 class TestRaffleContest:
 
-    def test_should_end(self, contest: RaffleContest, thl_lm, contest_manager):
+    def test_should_end(
+        self,
+        raffle_contest: RaffleContest,
+    ):
+        contest = raffle_contest
         # contest is active and has no entries
         should, msg = contest.should_end()
         assert not should, msg
 
         # Change so that the contest ends now
-        contest.end_condition.ends_at = datetime.now(tz=timezone.utc)
+        contest.end_condition.ends_at = datetime.now(tz=UTC)
         should, msg = contest.should_end()
         assert should
         assert msg == ContestEndReason.ENDS_AT
@@ -63,13 +72,12 @@ class TestRaffleContestCRUD:
 
     def test_create(
         self,
-        contest_create: RaffleContestCreate,
+        raffle_contest_create: RaffleContestCreate,
         product_user_wallet_yes: Product,
-        thl_lm,
-        contest_manager,
+        contest_manager: ContestManager,
     ):
         c = contest_manager.create(
-            product_id=product_user_wallet_yes.uuid, contest_create=contest_create
+            product_id=product_user_wallet_yes.uuid, contest_create=raffle_contest_create
         )
         c_out = contest_manager.get(c.uuid)
         assert c == c_out
@@ -85,18 +93,20 @@ class TestRaffleContestCRUD:
     def test_enter(
         self,
         user_with_money: User,
-        contest_in_db: RaffleContest,
-        thl_lm,
-        contest_manager,
+        raffle_contest_in_db: RaffleContest,
+        thl_ledger_manager: ThlLedgerManager,
+        contest_manager: ContestManager,
     ):
         # Raffle ends at $1.00. User enters for $0.60
         print(user_with_money.product_id)
-        print(contest_in_db.product_id)
-        print(contest_in_db.uuid)
-        contest = contest_in_db
+        print(raffle_contest_in_db.product_id)
+        print(raffle_contest_in_db.uuid)
+        contest = raffle_contest_in_db
 
-        user_wallet = thl_lm.get_account_or_create_user_wallet(user=user_with_money)
-        user_balance = thl_lm.get_account_balance(account=user_wallet)
+        user_wallet = thl_ledger_manager.get_account_or_create_user_wallet(
+            user=user_with_money
+        )
+        user_balance = thl_ledger_manager.get_account_balance(account=user_wallet)
 
         entry = ContestEntry(
             entry_type=ContestEntryType.CASH, user=user_with_money, amount=USDCent(60)
@@ -105,7 +115,7 @@ class TestRaffleContestCRUD:
             contest_uuid=contest.uuid,
             entry=entry,
             country_iso="us",
-            ledger_manager=thl_lm,
+            ledger_manager=thl_ledger_manager,
         )
         c: RaffleContest = contest_manager.get(contest_uuid=contest.uuid)
         assert c.current_amount == USDCent(60)
@@ -120,30 +130,35 @@ class TestRaffleContestCRUD:
         assert c.projected_win_probability == approx(60 / 100, rel=0.01)
 
         # Contest wallet should have $0.60
-        contest_wallet = thl_lm.get_account_or_create_contest_wallet_by_uuid(
-            contest_uuid=contest.uuid
+        contest_wallet = (
+            thl_ledger_manager.get_account_or_create_contest_wallet_by_uuid(
+                contest_uuid=contest.uuid
+            )
         )
-        assert thl_lm.get_account_balance(account=contest_wallet) == 60
+        assert thl_ledger_manager.get_account_balance(account=contest_wallet) == 60
         # User spent 60c
-        assert user_balance - thl_lm.get_account_balance(account=user_wallet) == 60
+        assert (
+            user_balance - thl_ledger_manager.get_account_balance(account=user_wallet)
+            == 60
+        )
 
     @pytest.mark.parametrize("user_with_money", [{"min_balance": 120}], indirect=True)
     def test_enter_ends(
         self,
         user_with_money: User,
-        contest_in_db: RaffleContest,
-        thl_lm,
-        contest_manager,
+        raffle_contest_in_db: RaffleContest,
+        thl_ledger_manager: ThlLedgerManager,
+        contest_manager: ContestManager,
     ):
         # User enters contest, which brings the total amount above the limit,
         #   and the contest should end, with a winner selected
-        contest = contest_in_db
+        contest = raffle_contest_in_db
 
-        bp_wallet = thl_lm.get_account_or_create_bp_wallet_by_uuid(
+        bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet_by_uuid(
             user_with_money.product_id
         )
         # I bribed the user, so the balance is not 0
-        bp_wallet_balance = thl_lm.get_account_balance(account=bp_wallet)
+        bp_wallet_balance = thl_ledger_manager.get_account_balance(account=bp_wallet)
 
         for _ in range(2):
             entry = ContestEntry(
@@ -155,7 +170,7 @@ class TestRaffleContestCRUD:
                 contest_uuid=contest.uuid,
                 entry=entry,
                 country_iso="us",
-                ledger_manager=thl_lm,
+                ledger_manager=thl_ledger_manager,
             )
         c: RaffleContest = contest_manager.get(contest_uuid=contest.uuid)
         assert c.status == ContestStatus.COMPLETED
@@ -175,25 +190,33 @@ class TestRaffleContestCRUD:
         assert win.product_user_id == user_with_money.product_user_id
 
         # Contest wallet should have gotten zeroed out
-        contest_wallet = thl_lm.get_account_or_create_contest_wallet_by_uuid(
-            contest_uuid=contest.uuid
+        contest_wallet = (
+            thl_ledger_manager.get_account_or_create_contest_wallet_by_uuid(
+                contest_uuid=contest.uuid
+            )
         )
-        assert thl_lm.get_account_balance(contest_wallet) == 0
+        assert thl_ledger_manager.get_account_balance(contest_wallet) == 0
         # Expense wallet gets the $1.00 expense
-        expense_wallet = thl_lm.get_account_or_create_bp_expense_by_uuid(
+        expense_wallet = thl_ledger_manager.get_account_or_create_bp_expense_by_uuid(
             product_uuid=user_with_money.product_id, expense_name="Prize"
         )
-        assert thl_lm.get_account_balance(expense_wallet) == -100
+        assert thl_ledger_manager.get_account_balance(expense_wallet) == -100
         # And the BP gets 20c
-        assert thl_lm.get_account_balance(bp_wallet) - bp_wallet_balance == 20
+        assert (
+            thl_ledger_manager.get_account_balance(bp_wallet) - bp_wallet_balance == 20
+        )
 
     @pytest.mark.parametrize("user_with_money", [{"min_balance": 120}], indirect=True)
     def test_enter_ends_cash_prize(
-        self, user_with_money: User, contest_factory, thl_lm, contest_manager
+        self,
+        user_with_money: User,
+        raffle_contest_factory: Callable[..., Contest],
+        thl_ledger_manager: ThlLedgerManager,
+        contest_manager: ContestManager,
     ):
         # Same as test_enter_ends, but the prize is cash. Just
         #   testing the ledger methods
-        c = contest_factory(
+        c = raffle_contest_factory(
             prizes=[
                 ContestPrize(
                     name="$1.00 bonus",
@@ -205,12 +228,14 @@ class TestRaffleContestCRUD:
         )
         assert c.prizes[0].kind == ContestPrizeKind.CASH
 
-        user_wallet = thl_lm.get_account_or_create_user_wallet(user=user_with_money)
-        user_balance = thl_lm.get_account_balance(user_wallet)
-        bp_wallet = thl_lm.get_account_or_create_bp_wallet_by_uuid(
+        user_wallet = thl_ledger_manager.get_account_or_create_user_wallet(
+            user=user_with_money
+        )
+        user_balance = thl_ledger_manager.get_account_balance(user_wallet)
+        bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet_by_uuid(
             user_with_money.product_id
         )
-        bp_wallet_balance = thl_lm.get_account_balance(bp_wallet)
+        bp_wallet_balance = thl_ledger_manager.get_account_balance(bp_wallet)
 
         ## Enter Contest
         entry = ContestEntry(
@@ -220,28 +245,35 @@ class TestRaffleContestCRUD:
             contest_uuid=c.uuid,
             entry=entry,
             country_iso="us",
-            ledger_manager=thl_lm,
+            ledger_manager=thl_ledger_manager,
         )
 
         # The prize is $1.00, so the user spent $1.20 entering, won, then got $1.00 back
         assert (
-            thl_lm.get_account_balance(account=user_wallet) == user_balance + 100 - 120
+            thl_ledger_manager.get_account_balance(account=user_wallet)
+            == user_balance + 100 - 120
         )
         # contest wallet is 0, and the BP gets 20c
-        contest_wallet = thl_lm.get_account_or_create_contest_wallet_by_uuid(
-            contest_uuid=c.uuid
+        contest_wallet = (
+            thl_ledger_manager.get_account_or_create_contest_wallet_by_uuid(
+                contest_uuid=c.uuid
+            )
         )
-        assert thl_lm.get_account_balance(account=contest_wallet) == 0
-        assert thl_lm.get_account_balance(account=bp_wallet) - bp_wallet_balance == 20
+        assert thl_ledger_manager.get_account_balance(account=contest_wallet) == 0
+        assert (
+            thl_ledger_manager.get_account_balance(account=bp_wallet)
+            - bp_wallet_balance
+            == 20
+        )
 
     def test_enter_failure(
         self,
         user_with_wallet: User,
-        contest_in_db: RaffleContest,
-        thl_lm,
-        contest_manager,
+        raffle_contest_in_db: RaffleContest,
+        thl_ledger_manager: ThlLedgerManager,
+        contest_manager: ContestManager,
     ):
-        c = contest_in_db
+        c = raffle_contest_in_db
         user = user_with_wallet
 
         # Tries to enter $0
@@ -260,7 +292,7 @@ class TestRaffleContestCRUD:
                 contest_uuid=c.uuid,
                 entry=entry,
                 country_iso="us",
-                ledger_manager=thl_lm,
+                ledger_manager=thl_ledger_manager,
             )
         assert e.value.args[0] == "insufficient balance"
 
@@ -271,16 +303,20 @@ class TestRaffleContestCRUD:
                 contest_uuid=c.uuid,
                 entry=entry,
                 country_iso="us",
-                ledger_manager=thl_lm,
+                ledger_manager=thl_ledger_manager,
             )
         assert "incompatible entry type" in str(e.value)
 
     @pytest.mark.parametrize("user_with_money", [{"min_balance": 100}], indirect=True)
     def test_enter_not_eligible(
-        self, user_with_money: User, contest_factory, thl_lm, contest_manager
+        self,
+        user_with_money: User,
+        raffle_contest_factory: Callable[..., Contest],
+        thl_ledger_manager: ThlLedgerManager,
+        contest_manager: ContestManager,
     ):
         # Max entry amount per user $0.10. Contest still ends at $1.00
-        c = contest_factory(
+        c = raffle_contest_factory(
             entry_rule=ContestEntryRule(
                 max_entry_amount_per_user=USDCent(10),
                 max_daily_entries_per_user=USDCent(8),
@@ -299,7 +335,7 @@ class TestRaffleContestCRUD:
                 contest_uuid=c.uuid,
                 entry=entry,
                 country_iso="us",
-                ledger_manager=thl_lm,
+                ledger_manager=thl_ledger_manager,
             )
         assert "Entry would exceed max amount per user." in str(e.value)
 
@@ -312,7 +348,7 @@ class TestRaffleContestCRUD:
                 contest_uuid=c.uuid,
                 entry=entry,
                 country_iso="us",
-                ledger_manager=thl_lm,
+                ledger_manager=thl_ledger_manager,
             )
         assert "Entry would exceed max amount per user per day." in str(e.value)
 
@@ -324,7 +360,7 @@ class TestRaffleContestCRUD:
             contest_uuid=c.uuid,
             entry=entry,
             country_iso="us",
-            ledger_manager=thl_lm,
+            ledger_manager=thl_ledger_manager,
         )
 
         # Then can't anymore
@@ -336,14 +372,18 @@ class TestRaffleContestCRUD:
                 contest_uuid=c.uuid,
                 entry=entry,
                 country_iso="us",
-                ledger_manager=thl_lm,
+                ledger_manager=thl_ledger_manager,
             )
         assert "Entry would exceed max amount per user per day." in str(e.value)
 
 
 class TestRaffleContestUserViews:
     def test_list_user_eligible_country(
-        self, user_with_wallet: User, contest_factory, thl_lm, contest_manager
+        self,
+        user_with_wallet: User,
+        raffle_contest_factory: Callable[..., Contest],
+        thl_ledger_manager: ThlLedgerManager,
+        contest_manager: ContestManager,
     ):
         # No contests exists
         cs = contest_manager.get_many_by_user_eligible(
@@ -352,7 +392,7 @@ class TestRaffleContestUserViews:
         assert len(cs) == 0
 
         # Create a contest. It'll be in the US/CA
-        contest_factory(country_isos={"us", "ca"})
+        raffle_contest_factory(country_isos={"us", "ca"})
 
         # Not eligible in mexico
         cs = contest_manager.get_many_by_user_eligible(
@@ -365,7 +405,7 @@ class TestRaffleContestUserViews:
         assert len(cs) == 1
 
         # Create another, any country
-        contest_factory(country_isos=None)
+        raffle_contest_factory(country_isos=None)
         cs = contest_manager.get_many_by_user_eligible(
             user=user_with_wallet, country_iso="mx"
         )
@@ -376,9 +416,13 @@ class TestRaffleContestUserViews:
         assert len(cs) == 2
 
     def test_list_user_eligible(
-        self, user_with_money: User, contest_factory, thl_lm, contest_manager
+        self,
+        user_with_money: User,
+        raffle_contest_factory: Callable[..., Contest],
+        thl_ledger_manager: ThlLedgerManager,
+        contest_manager: ContestManager,
     ):
-        c = contest_factory(
+        c = raffle_contest_factory(
             end_condition=ContestEndCondition(target_entry_amount=USDCent(10)),
             entry_rule=ContestEntryRule(
                 max_entry_amount_per_user=USDCent(1),
@@ -398,7 +442,7 @@ class TestRaffleContestUserViews:
             contest_uuid=c.uuid,
             entry=entry,
             country_iso="us",
-            ledger_manager=thl_lm,
+            ledger_manager=thl_ledger_manager,
         )
 
         # User isn't eligible anymore
@@ -422,9 +466,13 @@ class TestRaffleContestUserViews:
         assert len(contest_manager.get_winnings_by_user(user_with_money)) == 0
 
     def test_list_user_winnings(
-        self, user_with_money: User, contest_factory, thl_lm, contest_manager
+        self,
+        user_with_money: User,
+        raffle_contest_factory: Callable[..., Contest],
+        thl_ledger_manager: ThlLedgerManager,
+        contest_manager: ContestManager,
     ):
-        c = contest_factory(
+        c = raffle_contest_factory(
             end_condition=ContestEndCondition(target_entry_amount=USDCent(100)),
         )
         entry = ContestEntry(
@@ -436,7 +484,7 @@ class TestRaffleContestUserViews:
             contest_uuid=c.uuid,
             entry=entry,
             country_iso="us",
-            ledger_manager=thl_lm,
+            ledger_manager=thl_ledger_manager,
         )
         # Contest ends after 100 entry, user enters 100 entry, user wins!
         ws = contest_manager.get_winnings_by_user(user_with_money)
@@ -458,9 +506,13 @@ class TestRaffleContestCRUDCount:
     # This is a COUNT contest. No cash moves. Not really fleshed out what we'd do with this.
     @pytest.mark.skip
     def test_enter(
-        self, user_with_wallet: User, contest_factory, thl_lm, contest_manager
+        self,
+        user_with_wallet: User,
+        raffle_contest_factory: Callable[..., Contest],
+        thl_ledger_manager: ThlLedgerManager,
+        contest_manager: ContestManager,
     ):
-        c = contest_factory(entry_type=ContestEntryType.COUNT)
+        c = raffle_contest_factory(entry_type=ContestEntryType.COUNT)
         entry = ContestEntry(
             entry_type=ContestEntryType.COUNT,
             user=user_with_wallet,
@@ -470,5 +522,5 @@ class TestRaffleContestCRUDCount:
             contest_uuid=c.uuid,
             entry=entry,
             country_iso="us",
-            ledger_manager=thl_lm,
+            ledger_manager=thl_ledger_manager,
         )

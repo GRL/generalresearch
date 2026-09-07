@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import MariaDBDsn, MySQLDsn, PostgresDsn
@@ -13,6 +13,9 @@ ListOrTupleOfListOrTuple = (
 )
 
 DataBaseDsn = MySQLDsn | MariaDBDsn | PostgresDsn | None
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
 
 
 class MultipleObjectsReturned(Exception):
@@ -39,14 +42,7 @@ class SqlConnector:
 
         # I'm intentionally doing a match case here so that we'll make sure
         # we can NOT use this on old versions of python 😈
-        if "mysql" in self.dsn.scheme:
-            import pymysql as engine_module
-
-            self.engine_module = engine_module
-            self.cursor_class = engine_module.cursors.DictCursor
-            self.quote_char = "`"
-
-        elif "maria" in self.dsn.scheme:
+        if "mysql" in self.dsn.scheme or "maria" in self.dsn.scheme:
             import pymysql as engine_module
 
             self.engine_module = engine_module
@@ -130,7 +126,7 @@ def decode_uuids(row: dict[str, Any]) -> dict[str, Any]:
 
 class SqlHelper(SqlConnector):
 
-    def __init__(self, dsn: Optional[DataBaseDsn] = None, **kwargs):
+    def __init__(self, dsn: DataBaseDsn | None = None, **kwargs):
         super().__init__(dsn, **kwargs)
 
     def execute_sql_query(
@@ -138,7 +134,7 @@ class SqlHelper(SqlConnector):
     ) -> list[dict[str, Any]]:
         for param in params if params else []:
             if isinstance(param, (tuple, list, set)) and len(param) == 0:
-                logging.warning("param is empty. not executing query")
+                logger.warning("param is empty. not executing query")
                 return []
         connection = self.make_connection()
         c = connection.cursor()
@@ -173,7 +169,7 @@ class SqlHelper(SqlConnector):
         :param cursor: If cursor is passed, the insert is NOT committed!
         :param ignore_existing: adds 'ON CONFLICT DO NOTHING' to SQL statement.
         """
-        assert len(set([len(x) for x in values_to_insert])) == 1
+        assert len({len(x) for x in values_to_insert}) == 1
         if cursor is None:
             connection = self.make_connection()
             c = connection.cursor()
@@ -199,8 +195,6 @@ class SqlHelper(SqlConnector):
         if cursor is None:
             c.connection.commit()
 
-        return None
-
     def bulk_update(
         self,
         table_name: str,
@@ -211,7 +205,7 @@ class SqlHelper(SqlConnector):
         if len(values_to_insert) == 0:
             return
 
-        assert len(set([len(x) for x in values_to_insert])) == 1
+        assert len({len(x) for x in values_to_insert}) == 1
         if cursor is None:
             connection = self.make_connection()
             c = connection.cursor()
@@ -233,7 +227,7 @@ class SqlHelper(SqlConnector):
         if cursor is None:
             c.connection.commit()
 
-        return None
+        return
 
     def get_or_create(
         self,
@@ -253,7 +247,7 @@ class SqlHelper(SqlConnector):
         lookup_fns = ",".join(
             ["`" + x + "`" for x in set(lookup_dict.keys()) | {primary_key}]
         )
-        lookup_vals = " AND ".join([f"`{fn}`=%({fn})s" for fn in lookup_dict.keys()])
+        lookup_vals = " AND ".join([f"`{fn}`=%({fn})s" for fn in lookup_dict])
         table_name_str = self._quote(table_name)
         query = f"SELECT {lookup_fns} FROM {table_name_str} WHERE {lookup_vals} LIMIT 2"
         if cursor is None:
@@ -281,7 +275,7 @@ class SqlHelper(SqlConnector):
         cursor=None,
         commit=True,
         primary_key=None,
-    ) -> Optional[int]:
+    ) -> int | None:
         """
         Create the item in table `table_name`.
         In postgresql, `primary_key` needs to be given in order to return the
@@ -293,7 +287,7 @@ class SqlHelper(SqlConnector):
         else:
             c = cursor
         field_names = ",".join(map(self._quote, create_dict))
-        vals = ",".join([f"%({fn})s" for fn in create_dict.keys()])
+        vals = ",".join([f"%({fn})s" for fn in create_dict])
         table_name_str = self._quote(table_name)
         query = f"INSERT INTO {table_name_str} ({field_names}) VALUES ({vals})"
         c.execute(query, create_dict)
@@ -324,7 +318,7 @@ class SqlHelper(SqlConnector):
         field_names = ["`" + x + "`" for x in field_names]
         field_name_str = ",".join(field_names)
         if filter_d:
-            lookup_vals = " AND ".join([f"`{fn}`=%({fn})s" for fn in filter_d.keys()])
+            lookup_vals = " AND ".join([f"`{fn}`=%({fn})s" for fn in filter_d])
             lookup_str = f" WHERE {lookup_vals}"
         else:
             lookup_str = ""
@@ -351,5 +345,3 @@ class SqlHelper(SqlConnector):
         c.execute(query)
         if cursor is None:
             c.connection.commit()
-
-        return None

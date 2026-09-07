@@ -1,8 +1,24 @@
+from __future__ import annotations
+
 import json
+from collections.abc import Callable
+from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
+
+from generalresearch.models.definitions import Source
+from generalresearch.models.legacy.questions import (
+    UserQuestionAnswers,
+)
+from generalresearch.models.thl.session import Session, Wall
+from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.user_manager.user_manager import UserManager
+    from generalresearch.models.thl.product import Product
 
 
 class TestUserQuestionAnswers:
@@ -15,21 +31,11 @@ class TestUserQuestionAnswers:
 
     def test_json_init(
         self,
-        product_manager,
-        user_manager,
-        session_manager,
-        wall_manager,
-        user_factory,
-        product,
-        session_factory,
-        utc_hour_ago,
+        user_factory: Callable[..., User],
+        product: Product,
+        session_factory: Callable[..., Session],
+        utc_hour_ago: datetime,
     ):
-        from generalresearch.models import Source
-        from generalresearch.models.legacy.questions import (
-            UserQuestionAnswers,
-        )
-        from generalresearch.models.thl.session import Session, Wall
-        from generalresearch.models.thl.user import User
 
         u: User = user_factory(product=product)
 
@@ -60,11 +66,8 @@ class TestUserQuestionAnswers:
         assert isinstance(instance, UserQuestionAnswers)
 
     def test_simple_validation_errors(
-        self, product_manager, user_manager, session_manager, wall_manager
+        self,
     ):
-        from generalresearch.models.legacy.questions import (
-            UserQuestionAnswers,
-        )
 
         with pytest.raises(ValueError):
             UserQuestionAnswers.model_validate(
@@ -114,7 +117,7 @@ class TestUserQuestionAnswers:
 
         with pytest.raises(ValueError):
             answers = [
-                {"question_id": uuid4().hex, "answer": ["a"]} for i in range(101)
+                {"question_id": uuid4().hex, "answer": ["a"]} for _ in range(101)
             ]
             UserQuestionAnswers.model_validate(
                 {
@@ -139,9 +142,6 @@ class TestUserQuestionAnswers:
         # TODO: depending on if or how many of these types of errors actually
         #   occur, we could get fancy and just drop one of them. I don't
         #   think this is worth exploring yet unless we see if it's a problem.
-        from generalresearch.models.legacy.questions import (
-            UserQuestionAnswers,
-        )
 
         consistent_qid = uuid4().hex
         with pytest.raises(ValueError) as cm:
@@ -161,11 +161,11 @@ class TestUserQuestionAnswers:
 
     def test_allow_answer_failures_silent(
         self,
-        user_manager,
-        product,
-        user_factory,
-        utc_hour_ago,
-        session_factory,
+        user_manager: UserManager,
+        product: Product,
+        user_factory: Callable[..., User],
+        utc_hour_ago: datetime,
+        session_factory: Callable[..., Session],
     ):
         """
         There are many instances where suppliers may be submitting answers
@@ -173,11 +173,6 @@ class TestUserQuestionAnswers:
         that one QuestionAnswerIn without "loosing" any of the other
         QuestionAnswerIn items that they provided.
         """
-        from generalresearch.models.legacy.questions import (
-            UserQuestionAnswers,
-        )
-        from generalresearch.models.thl.session import Session, Wall
-        from generalresearch.models.thl.user import User
 
         u: User = user_factory(product=product)
 
@@ -263,12 +258,12 @@ class TestUserQuestionAnswerIn:
             UserQuestionAnswerIn,
         )
 
-        for qid in {
+        for qid in (
             "2fbedb2b9f7647b09ff5e52fa119cc5e",
             "4030c52371b04e80b64e058d9c5b82e9",
             "a91cb1dea814480dba12d9b7b48696dd",
             "1d1e2e8380ac474b87fb4e4c569b48df",
-        }:
+        ):
             # This is the UserAgent question which only allows a single answer
             with pytest.raises(ValueError) as cm:
                 UserQuestionAnswerIn.model_validate(
@@ -282,7 +277,7 @@ class TestUserQuestionAnswerIn:
             UserQuestionAnswerIn,
         )
 
-        answer = [uuid4().hex[:6] for i in range(11)]
+        answer = [uuid4().hex[:6] for _ in range(11)]
         with pytest.raises(ValueError) as cm:
             UserQuestionAnswerIn.model_validate(
                 {"question_id": uuid4().hex, "answer": answer}
@@ -294,8 +289,8 @@ class TestUserQuestionAnswerIn:
             UserQuestionAnswerIn,
         )
 
-        answer = ["aaa" for i in range(5)]
-        with pytest.raises(ValueError) as cm:
+        answer = ["aaa" for _ in range(5)]
+        with pytest.raises(ValueError):
             UserQuestionAnswerIn.model_validate(
                 {"question_id": uuid4().hex, "answer": answer}
             )

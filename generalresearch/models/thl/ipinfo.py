@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import ipaddress
-from datetime import datetime, timezone
-from typing import Any, Literal
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 from faker import Faker
+from grip_client.enums import AccessType
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -13,15 +14,15 @@ from pydantic import (
     PrivateAttr,
     field_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     CountryISOLike,
     IPvAnyAddressStr,
 )
-from generalresearch.models.thl.maxmind.definitions import UserType
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ipinfo import IPGeonameManager
 
 fake = Faker()
 
@@ -95,7 +96,7 @@ class IPGeoname(BaseModel):
     is_in_european_union: bool | None = Field(default=None)
 
     updated: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
     )
 
     @field_validator(
@@ -119,7 +120,7 @@ class IPGeoname(BaseModel):
 
     @classmethod
     def from_mysql(cls, d: dict[str, Any]) -> Self:
-        d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
+        d["updated"] = d["updated"].replace(tzinfo=UTC)
 
         return cls.model_validate(d)
 
@@ -138,8 +139,7 @@ class IPInformation(BaseModel):
 
     registered_country_iso: CountryISOLike | None = Field(
         default=None,
-        description="The ISO code of the country where the IP address is "
-        "registered.",
+        description="The ISO code of the country where the IP address is registered.",
         examples=[fake.country_code().lower()],
     )
     is_anonymous: bool | None = Field(
@@ -160,7 +160,7 @@ class IPInformation(BaseModel):
     domain: str | None = Field(default=None, max_length=255)
     isp: str | None = Field(
         default=None,
-        description="The Internet Service Provider associated with the " "IP address.",
+        description="The Internet Service Provider associated with the IP address.",
         examples=["Comcast"],
     )
 
@@ -174,11 +174,11 @@ class IPInformation(BaseModel):
         default=None,
         description="A score indicating the likelihood that the IP address is static.",
     )
-    user_type: UserType | None = Field(
+    user_type: AccessType | None = Field(
         default=None,
         description="The type of user associated with the IP address "
         "(e.g., 'residential', 'business').",
-        examples=[UserType.SCHOOL],
+        examples=[AccessType.RESIDENTIAL],
     )
     postal_code: str | None = Field(
         default=None,
@@ -205,7 +205,7 @@ class IPInformation(BaseModel):
     )
 
     updated: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
     )
 
     _geoname: IPGeoname | None = PrivateAttr(default=None)
@@ -219,8 +219,8 @@ class IPInformation(BaseModel):
 
     @property
     def basic(self) -> bool:
-        # This could be almost any field, but we're checking here if maxmind
-        #   insights was run on this record. If not, then most of the optional
+        # This could be almost any field, but we're checking here if GRIP
+        #   was run on this record. If not, then most of the optional
         #   fields will be None
         return self.is_anonymous is None
 
@@ -236,26 +236,25 @@ class IPInformation(BaseModel):
     # --- prefetch_* ---
     def prefetch_geoname(
         self,
-        pg_config: PostgresConfig,
+        ip_gm: IPGeonameManager,
     ) -> None:
         if self.geoname_id is None:
             raise ValueError("Must provide geoname_id")
 
-        from generalresearch.managers.thl.ipinfo import IPGeonameManager
-
-        ip_gm = IPGeonameManager(pg_config=pg_config)
+        # from generalresearch.managers.thl.ipinfo import IPGeonameManager
+        # ip_gm = IPGeonameManager(pg_config=pg_config)
 
         self._geoname = ip_gm.get_by_id(geoname_id=self.geoname_id)
 
     # --- ORM ---
     def model_dump_mysql(self):
-        d = self.model_dump(mode="json", exclude={"geoname"})
+        d = self.model_dump(mode="json")
         d["updated"] = self.updated
         return d
 
     @classmethod
-    def from_mysql(cls, d: dict) -> Self:
-        d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
+    def from_mysql(cls, d: dict[str, Any]) -> Self:
+        d["updated"] = d["updated"].replace(tzinfo=UTC)
 
         return cls.model_validate(d)
 

@@ -1,6 +1,6 @@
 from typing import Literal
 
-from generalresearch.incite.collections import DFCollection, DFCollectionType
+from generalresearch.incite.collections.base import DFCollection, DFCollectionType
 
 
 class UserDFCollection(DFCollection):

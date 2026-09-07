@@ -1,21 +1,39 @@
-import uuid
+from __future__ import annotations
+
+from collections.abc import Callable
 from random import randint
-from uuid import uuid4, UUID
+from typing import TYPE_CHECKING
+from uuid import UUID, uuid4
 
 import pytest
 
 from generalresearch.currency import USDCent
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.payout import BrokerageProductPayoutEvent
-from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.payout import (
+    BrokerageProductPayoutEvent,
+)
 from generalresearch.models.thl.wallet.cashout_method import (
     CashoutRequestInfo,
 )
 
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.managers.thl.payout import (
+        BrokerageProductPayoutEventManager,
+        UserPayoutEventManager,
+    )
+    from generalresearch.models.thl.payout import UserPayoutEvent
+    from generalresearch.models.thl.product import Product
+
 
 class TestThlPayoutEventManager:
 
-    def test_get_by_uuid(self, brokerage_product_payout_event_manager, thl_lm):
+    def test_get_by_uuid(
+        self, brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager
+    ):
         """This validates that the method raises an exception if it
         fails. There are plenty of other tests that use this method so
         it seems silly to duplicate it here again
@@ -27,35 +45,31 @@ class TestThlPayoutEventManager:
 
     def test_filter_by(
         self,
-        product_factory,
-        usd_cent,
-        bp_payout_event_factory,
-        thl_lm,
-        brokerage_product_payout_event_manager,
+        product_factory: Callable[..., Product],
+        usd_cent: USDCent,
+        bp_payout_event_factory: Callable[..., BrokerageProductPayoutEvent],
+        thl_ledger_manager: ThlLedgerManager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
     ):
-        from generalresearch.models.thl.payout import UserPayoutEvent
 
         N_PRODUCTS = randint(3, 10)
         N_PAYOUT_EVENTS = randint(3, 10)
         amounts = []
         products = []
 
-        for x_idx in range(N_PRODUCTS):
+        for _ in range(N_PRODUCTS):
             product: Product = product_factory()
-            thl_lm.get_account_or_create_bp_wallet(product=product)
+            thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
             products.append(product)
-            brokerage_product_payout_event_manager.set_account_lookup_table(
-                thl_lm=thl_lm
-            )
 
-            for y_idx in range(N_PAYOUT_EVENTS):
+            for _ in range(N_PAYOUT_EVENTS):
                 pe = bp_payout_event_factory(product=product, usd_cent=usd_cent)
                 amounts.append(int(usd_cent))
                 assert isinstance(pe, BrokerageProductPayoutEvent)
 
         # We just added Payout Events for Products, now go ahead and
         #   query for them
-        accounts = thl_lm.get_accounts_bp_wallet_for_products(
+        accounts = thl_ledger_manager.get_accounts_bp_wallet_for_products(
             product_uuids=[i.uuid for i in products]
         )
         res = brokerage_product_payout_event_manager.filter_by(
@@ -67,36 +81,32 @@ class TestThlPayoutEventManager:
 
     def test_get_bp_payout_events_for_product(
         self,
-        product_factory,
-        usd_cent,
-        bp_payout_event_factory,
-        brokerage_product_payout_event_manager,
-        thl_lm,
+        product_factory: Callable[..., Product],
+        usd_cent: USDCent,
+        bp_payout_event_factory: Callable[..., BrokerageProductPayoutEvent],
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        thl_ledger_manager: ThlLedgerManager,
     ):
-        from generalresearch.models.thl.payout import UserPayoutEvent
 
         N_PRODUCTS = randint(3, 10)
         N_PAYOUT_EVENTS = randint(3, 10)
         amounts = []
         products = []
 
-        for x_idx in range(N_PRODUCTS):
+        for _ in range(N_PRODUCTS):
             product: Product = product_factory()
             products.append(product)
-            thl_lm.get_account_or_create_bp_wallet(product=product)
-            brokerage_product_payout_event_manager.set_account_lookup_table(
-                thl_lm=thl_lm
-            )
+            thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
 
-            for y_idx in range(N_PAYOUT_EVENTS):
+            for _ in range(N_PAYOUT_EVENTS):
                 pe = bp_payout_event_factory(product=product, usd_cent=usd_cent)
                 amounts.append(usd_cent)
                 assert isinstance(pe, BrokerageProductPayoutEvent)
 
-            # We just added 5 Payouts for a specific Product, now go
+            # We just added 5 Payouts for a specific product: Product, now go
             # ahead and query for them
             res = brokerage_product_payout_event_manager.get_bp_bp_payout_events_for_products(
-                thl_ledger_manager=thl_lm, product_uuids=[product.id]
+                product_uuids=[product.id]
             )
 
             assert len(res) == N_PAYOUT_EVENTS
@@ -105,7 +115,7 @@ class TestThlPayoutEventManager:
         #   ahead and query for them
         res = (
             brokerage_product_payout_event_manager.get_bp_bp_payout_events_for_products(
-                thl_ledger_manager=thl_lm, product_uuids=[i.uuid for i in products]
+                product_uuids=[i.uuid for i in products],
             )
         )
 
@@ -113,13 +123,12 @@ class TestThlPayoutEventManager:
         assert sum([i.amount for i in res]) == sum(amounts)
 
     @pytest.mark.skip
-    def test_get_payout_detail(self, user_payout_event_manager):
+    def test_get_payout_detail(self, user_payout_event_manager: UserPayoutEventManager):
         """This fails because the description coming back is None, but then
         it tries to return a PayoutEvent which validates that the
         description can't be None
         """
         from generalresearch.models.thl.payout import (
-            UserPayoutEvent,
             PayoutType,
         )
 
@@ -145,11 +154,15 @@ class TestThlPayoutEventManager:
     # def test_filter_by(self):
     #     raise NotImplementedError
 
-    def test_create(self, user_payout_event_manager):
+    def test_create(
+        self,
+        user_payout_event_factory: Callable[..., UserPayoutEvent],
+        user_payout_event_manager: UserPayoutEventManager,
+    ):
         from generalresearch.models.thl.payout import UserPayoutEvent
 
         # Confirm the creation method returns back an instance.
-        pe = user_payout_event_manager.create_dummy()
+        pe = user_payout_event_factory()
         assert isinstance(pe, UserPayoutEvent)
 
         # Now query the DB for that PayoutEvent to confirm it was actually
@@ -167,27 +180,26 @@ class TestThlPayoutEventManager:
 
     def test_create_bp_payout(
         self,
-        product,
-        delete_ledger_db,
-        create_main_accounts,
-        thl_lm,
-        brokerage_product_payout_event_manager,
-        lm,
+        product: Product,
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
+        thl_ledger_manager: ThlLedgerManager,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        ledger_manager: LedgerManager,
     ):
-        from generalresearch.models.thl.payout import UserPayoutEvent
 
         delete_ledger_db()
         create_main_accounts()
 
-        account_bp_wallet = thl_lm.get_account_or_create_bp_wallet(product=product)
-        brokerage_product_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
-
+        account_bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet(
+            product=product
+        )
         rand_amount = randint(a=99, b=999)
 
         # Save a Brokerage Product Payout, so we have something in the
         # Payout Event table and the respective ledger TX and Entry rows for it
         pe = brokerage_product_payout_event_manager.create_bp_payout_event(
-            thl_ledger_manager=thl_lm,
+            thl_ledger_manager=thl_ledger_manager,
             product=product,
             amount=USDCent(rand_amount),
             skip_wallet_balance_check=True,
@@ -196,15 +208,17 @@ class TestThlPayoutEventManager:
         assert isinstance(pe, BrokerageProductPayoutEvent)
 
         # Now try to query for it!
-        res = thl_lm.get_tx_bp_payouts(account_uuids=[account_bp_wallet.uuid])
+        res = thl_ledger_manager.get_tx_bp_payouts(
+            account_uuids=[account_bp_wallet.uuid]
+        )
         assert len(res) == 1
-        res = thl_lm.get_tx_bp_payouts(account_uuids=[uuid4().hex])
+        res = thl_ledger_manager.get_tx_bp_payouts(account_uuids=[uuid4().hex])
         assert len(res) == 0
 
         # Confirm it added to the users balance. The amount is negative because
-        #   money was sent to the Brokerage Product, but they didn't have
+        #   money was sent to the Brokerage product: Product, but they didn't have
         #   any activity that earned them money
-        bal = lm.get_account_balance(account=account_bp_wallet)
+        bal = ledger_manager.get_account_balance(account=account_bp_wallet)
         assert rand_amount == bal * -1
 
 
@@ -212,13 +226,13 @@ class TestBPPayoutEvent:
 
     def test_get_bp_bp_payout_events_for_products(
         self,
-        product_factory,
-        bp_payout_event_factory,
-        usd_cent,
-        delete_ledger_db,
-        create_main_accounts,
-        brokerage_product_payout_event_manager,
-        thl_lm,
+        product_factory: Callable[..., Product],
+        bp_payout_event_factory: Callable[..., BrokerageProductPayoutEvent],
+        usd_cent: USDCent,
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        thl_ledger_manager: ThlLedgerManager,
     ):
         delete_ledger_db()
         create_main_accounts()
@@ -227,10 +241,9 @@ class TestBPPayoutEvent:
         amounts = []
 
         product: Product = product_factory()
-        thl_lm.get_account_or_create_bp_wallet(product=product)
-        brokerage_product_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
 
-        for y_idx in range(N_PAYOUT_EVENTS):
+        for _ in range(N_PAYOUT_EVENTS):
             bp_payout_event_factory(product=product, usd_cent=usd_cent)
             amounts.append(usd_cent)
 
@@ -238,7 +251,7 @@ class TestBPPayoutEvent:
         #   array of BPPayoutEvents
         bp_bp_res = (
             brokerage_product_payout_event_manager.get_bp_bp_payout_events_for_products(
-                thl_ledger_manager=thl_lm, product_uuids=[product.uuid]
+                product_uuids=[product.uuid]
             )
         )
         assert isinstance(bp_bp_res, list)

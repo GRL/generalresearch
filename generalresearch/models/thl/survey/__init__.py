@@ -3,12 +3,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from decimal import Decimal
 from itertools import product
-from typing import Type
 
 from more_itertools import flatten
 from pydantic import BaseModel, Field
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.demographics import (
     AgeGroup,
     DemographicTarget,
@@ -108,11 +107,10 @@ class MarketplaceTask(BaseModel, ABC):
 
     @property
     @abstractmethod
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         """
         The Condition Model for this survey class
         """
-        pass
 
     @property
     @abstractmethod
@@ -120,7 +118,6 @@ class MarketplaceTask(BaseModel, ABC):
         """
         The age question ID
         """
-        pass
 
     @property
     @abstractmethod
@@ -130,7 +127,6 @@ class MarketplaceTask(BaseModel, ABC):
         """
         Mapping of generic Gender to the marketplace condition for that gender
         """
-        pass
 
     @property
     def marketplace_age_groups(

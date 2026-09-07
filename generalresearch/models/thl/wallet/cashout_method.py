@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Literal
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -16,7 +16,6 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import (
@@ -27,8 +26,9 @@ from generalresearch.models.custom_types import (
 from generalresearch.models.legacy.api_status import StatusResponse
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.locales import CountryISO
-from generalresearch.models.thl.user import BPUIDStr, User
-from generalresearch.models.thl.wallet import Currency, PayoutType
+from generalresearch.models.thl.user_identifiers import BPUIDStr
+from generalresearch.models.thl.user_ref import UserRef
+from generalresearch.models.thl.wallet.definitions import Currency, PayoutType
 from generalresearch.utils.enum import ReprEnumMeta
 
 logger = logging.getLogger()
@@ -131,34 +131,31 @@ class CashoutMethodBase(BaseModel):
                 f"Invalid amount requested: ${amount / 100:.2f}. Must be between"
                 f" ${int(self.min_value) / 100:.2f} and ${int(self.max_value) / 100:.2f}"
             )
-        if self.type == PayoutType.CASH_IN_MAIL:
-            if amount % 500 != 0:
-                raise ValueError("Amount must be in increments of $5.00")
+        if self.type == PayoutType.CASH_IN_MAIL and amount % 500 != 0:
+            raise ValueError("Amount must be in increments of $5.00")
         return True
 
 
 class CashoutMethod(CashoutMethodBase):
-    user: User | None = Field(
+    user: UserRef | None = Field(
         default=None,
         description="If set, this cashout method is custom for this user. For example"
         "a user may have a paypal cashout method with their paypal"
         "email associated.",
     )
-    last_updated: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    last_updated: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
     is_live: bool = Field(default=True)
 
     @model_validator(mode="after")
     def validate_user(self) -> Self:
         if self.type in {PayoutType.PAYPAL, PayoutType.CASH_IN_MAIL}:
-            assert (
-                self.user is not None
-            ), "user_id must be set for this cashout method type"
+            assert self.user is not None, (
+                "user_id must be set for this cashout method type"
+            )
         else:
-            assert (
-                self.user is None
-            ), "user_id must NOT be set for this cashout method type"
+            assert self.user is None, (
+                "user_id must NOT be set for this cashout method type"
+            )
         return self
 
 
@@ -249,7 +246,7 @@ class CashoutMethodsResponse(StatusResponse):
     cashout_methods: list[CashoutMethodOut] = Field()
 
 
-class DeliveryStatus(str, Enum):
+class DeliveryStatus(StrEnum):
     PENDING = "Pending"
     SHIPPED = "Shipped"
     IN_TRANSIT = "In Transit"
@@ -261,14 +258,14 @@ class DeliveryStatus(str, Enum):
     LOST = "Lost"
 
 
-class ShippingCarrier(str, Enum):
+class ShippingCarrier(StrEnum):
     USPS = "USPS"
     FEDEX = "FedEx"
     UPS = "UPS"
     DHL = "DHL"
 
 
-class ShippingMethod(str, Enum):
+class ShippingMethod(StrEnum):
     STANDARD = "Standard"
     EXPRESS = "Express"
     TWO_DAY = "Two-Day"
@@ -306,8 +303,7 @@ class CashMailOrderData(BaseModel):
         default=None,
         min_length=1,
         max_length=50,
-        description="Current status of delivery, e.g., pending, in "
-        "transit, delivered",
+        description="Current status of delivery, e.g., pending, in transit, delivered",
     )
     last_updated: AwareDatetimeISO | None = Field(
         default=None,
@@ -394,7 +390,7 @@ example_foreign_value = {
 }
 
 
-class RedemptionCurrency(str, Enum, metaclass=ReprEnumMeta):
+class RedemptionCurrency(StrEnum, metaclass=ReprEnumMeta):
     """
     Supported Currencies for Foreign Redemptions
     """

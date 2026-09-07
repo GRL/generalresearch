@@ -4,7 +4,7 @@ import statistics
 from datetime import timedelta
 from decimal import Decimal
 from string import Formatter
-from typing import Any
+from typing import TYPE_CHECKING, Annotated, Any, Self
 from uuid import uuid4
 
 import numpy as np
@@ -18,10 +18,9 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Annotated, Self
 
-from generalresearch.models import Source
 from generalresearch.models.custom_types import HttpsUrl, UUIDStr
+from generalresearch.models.definitions import Source
 from generalresearch.models.legacy.bucket import (
     Bucket as LegacyBucket,
 )
@@ -45,7 +44,9 @@ from generalresearch.models.thl.offerwall.bucket import (
 )
 from generalresearch.models.thl.profiling.upk_question import UpkQuestion
 from generalresearch.models.thl.soft_pair import SoftPairResultType
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.user import User
 
 
 class MergeTableFeatures(BaseModel):
@@ -272,9 +273,9 @@ class TaskResult(BaseModel):
                         if fname
                     ]
                 )
-                assert all(
-                    x in {"domain", "mid"} for x in fmt_str
-                ), "unrecognized format variable"
+                assert all(x in {"domain", "mid"} for x in fmt_str), (
+                    "unrecognized format variable"
+                )
         else:
             assert self.entry_link is None, f"entry link not allowed for {self.source}"
         return self
@@ -399,8 +400,10 @@ class OfferwallBucket(BaseModel):
     )
     uri: HttpsUrl | None = Field(
         examples=[
-            "https://task.generalresearch.com/api/v1/52d3f63b2709/797df4136c604a6c8599818296aae6d1/?i"
-            "=5ba2fe5010cc4d078fc3cc0b0cc264c3&b=test&66482fb=e7baf5e"
+            (
+                "https://task.generalresearch.com/api/v1/52d3f63b2709/797df4136c604a6c8599818296aae6d1/?i"
+                "=5ba2fe5010cc4d078fc3cc0b0cc264c3&b=test&66482fb=e7baf5e"
+            )
         ],
         description="The URL to send a respondent into. Must not edit this URL in any way",
         default=None,

@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
+from typing import Annotated
 
 from pydantic import StringConstraints
-from typing_extensions import Annotated
 
 # This is text-based, in lowercase. e.g. 'age', 'household_income'
 MorningQuestionID = Annotated[
@@ -9,7 +9,7 @@ MorningQuestionID = Annotated[
 ]
 
 
-class MorningStatus(str, Enum):
+class MorningStatus(StrEnum):
     DRAFT = "draft"
     ACTIVE = "active"  # aka LIVE
     PAUSED = "paused"

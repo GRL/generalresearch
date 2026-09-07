@@ -1,5 +1,6 @@
-from django.db import models
 import ipaddress
+
+from django.db import models
 
 
 class CIDRField(models.Field):

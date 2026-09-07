@@ -85,7 +85,7 @@ class QuestionManager(PostgresManager):
     def lookup_by_property(
         self, property_code: str, country_iso: str, language_iso: str
     ) -> UpkQuestion:
-        query = f"""
+        query = """
         SELECT data, property_code, explanation_template, explanation_fragment_template
         FROM marketplace_question
         WHERE property_code = %(property_code)s

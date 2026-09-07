@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List
-
 import pandas as pd
 from pandera.pandas import Check, Column, DataFrameSchema, Index
 
@@ -35,8 +33,8 @@ CintTaskCollectionSchema = DataFrameSchema(
         "bid_ir": Column(float, Check.between(0, 1), nullable=True),
         "created_at": Column(dtype=pd.DatetimeTZDtype(tz="UTC")),
         "last_updated": Column(dtype=pd.DatetimeTZDtype(tz="UTC")),
-        "used_question_ids": Column(List[str]),
-        "all_hashes": Column(List[str]),  # set >> list for column support
+        "used_question_ids": Column(list[str]),
+        "all_hashes": Column(list[str]),  # set >> list for column support
     },
     checks=[],
     index=Index(

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -13,7 +13,9 @@ from pydantic import (
 
 from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
-from generalresearch.models.thl.contest.definitions import ContestEntryType
+from generalresearch.models.thl.contest.definitions import (
+    ContestEntryType,
+)
 from generalresearch.models.thl.user import User
 
 
@@ -40,12 +42,8 @@ class ContestEntryCreate(BaseModel):
 
 class ContestEntry(BaseModel):
     uuid: UUIDStr = Field(default_factory=lambda: uuid4().hex)
-    created_at: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
-    updated_at: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    created_at: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(UTC))
 
     # entry_type and amount are the same as on ContestEntryCreate
     entry_type: ContestEntryType = Field()
@@ -57,22 +55,21 @@ class ContestEntry(BaseModel):
     )
 
     # user_id used internally, for DB joins/index
+    # todo: this should be a UserRef
     user: User = Field(exclude=True)
 
     @model_validator(mode="before")
     @classmethod
-    def validate_amount_type(cls, data: dict) -> dict:
-        from generalresearch.models.thl.contest.definitions import (
-            ContestEntryType,
-        )
+    def validate_amount_type(cls, data: dict[str, Any]) -> dict[str, Any]:
 
         amount = data.get("amount")
         entry_type = data.get("entry_type")
 
         if entry_type == ContestEntryType.COUNT:
-            assert isinstance(amount, int) and not isinstance(
-                amount, USDCent
-            ), "amount must be int in ContestEntryType.COUNT"
+            assert isinstance(amount, int) and not isinstance(amount, USDCent), (
+                "amount must be int in ContestEntryType.COUNT"
+            )
+
         elif entry_type == ContestEntryType.CASH:
             # This may be coming from the DB, in which case it is an int.
             data["amount"] = USDCent(data["amount"])
@@ -81,9 +78,6 @@ class ContestEntry(BaseModel):
 
     @computed_field()
     def amount_str(self) -> str:
-        from generalresearch.models.thl.contest.definitions import (
-            ContestEntryType,
-        )
 
         if self.entry_type == ContestEntryType.COUNT:
             return str(self.amount)

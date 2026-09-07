@@ -3,18 +3,16 @@ from __future__ import annotations
 # https://wss.pollfish.com/mediation/documentation
 import json
 import logging
-from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal, Self
+from enum import StrEnum
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, Field, model_validator
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.profiling.upk_question import (
-        UpkQuestion,
-    )
+from generalresearch.models.thl.profiling.upk_question import (
+    UpkQuestion,
+)
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -39,7 +37,7 @@ class PollfishQuestionOption(BaseModel):
     order: int = Field()
 
 
-class PollfishQuestionType(str, Enum):
+class PollfishQuestionType(StrEnum):
     """
     From the API: {'single_punch', 'multi_punch', 'open_ended'}
     """

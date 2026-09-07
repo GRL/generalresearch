@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-import logging
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
 import dask.dataframe as dd
 import pandas as pd
+from dask.distributed import Client as DaskClient
 from dask.distributed import as_completed
-from distributed import Client
 from more_itertools import chunked, flatten
 
+from generalresearch.incite import LOG
 from generalresearch.incite.collections.thl_web import (
     SessionDFCollection,
     WallDFCollection,
 )
-from generalresearch.incite.mergers import (
+from generalresearch.incite.mergers.base import (
     MergeCollection,
     MergeCollectionItem,
     MergeType,
@@ -30,13 +30,11 @@ from generalresearch.incite.schemas.mergers.foundations.enriched_session import 
     EnrichedSessionSchema,
 )
 from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.models.admin.request import ReportRequest
-
-LOG = logging.getLogger("incite")
+    from generalresearch.models.thl.user import User
 
 
 class EnrichedSessionMergeItem(MergeCollectionItem):
@@ -46,7 +44,7 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
         session_coll: SessionDFCollection,
         wall_coll: WallDFCollection,
         pg_config: PostgresConfig,
-        client: Client | None = None,
+        client: DaskClient | None = None,
         client_resources: dict[str, Any] | None = None,
     ) -> None:
 
@@ -60,17 +58,17 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
             return
 
         # --- Session ---
-        LOG.warning(f"EnrichedSessionMergeItem: get session_collection")
+        LOG.warning("EnrichedSessionMergeItem: get session_collection")
         session_items = [w for w in session_coll.items if w.interval.overlaps(ir)]
         if len(session_items) == 0:
-            LOG.warning(f"EnrichedSessionMergeItem: no session items. set_empty.")
+            LOG.warning("EnrichedSessionMergeItem: no session items. set_empty.")
             if self.should_archive():
                 self.set_empty()
             return
         if not (
             session_items[-1].has_partial_archive() or session_items[-1].has_archive()
         ):
-            LOG.warning(f"EnrichedSessionMergeItem: session isn't updated!")
+            LOG.warning("EnrichedSessionMergeItem: session isn't updated!")
             return
 
         sddf = session_coll.ddf(
@@ -81,7 +79,7 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
         )
 
         # --- Walls ---
-        LOG.warning(f"EnrichedSessionMergeItem: merge wall_collection")
+        LOG.warning("EnrichedSessionMergeItem: merge wall_collection")
         wall_items = [
             w
             for w in wall_coll.items
@@ -95,7 +93,7 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
         ]
 
         if len(wall_items) == 0:
-            LOG.error(f"EnrichedSessionMergeItem: no wall items")
+            LOG.error("EnrichedSessionMergeItem: no wall items")
             return
 
         wddf = wall_coll.ddf(
@@ -140,9 +138,9 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
 
         try:
             results = client.gather(list(futures))
-        except Exception as e:
+        except Exception:
             client.cancel(futures, asynchronous=False, force=True)
-            raise e
+            raise
 
         dfp = pd.DataFrame(
             list(flatten(results)), columns=["user_id", "product_id", "team_id"]
@@ -154,18 +152,13 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
         df = df[df["started"].between(start, end)]
 
         is_missing = df[["product_id"]].isna().sum().sum() > 0
-        session_is_partial = any([w.should_archive() is False for w in session_items])
+        session_is_partial = any(w.should_archive() is False for w in session_items)
         session_is_missing = any(
-            [
-                w.should_archive() is True and w.has_archive() is False
-                for w in session_items
-            ]
+            w.should_archive() is True and w.has_archive() is False
+            for w in session_items
         )
         wall_is_missing = any(
-            [
-                w.should_archive() is True and w.has_archive() is False
-                for w in wall_items
-            ]
+            w.should_archive() is True and w.has_archive() is False for w in wall_items
         )
         is_partial = (
             is_missing or session_is_partial or session_is_missing or wall_is_missing
@@ -192,7 +185,6 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
                 client,
                 ddf=ddf,
                 is_partial=False,
-                client_resources=client_resources,
             )
 
 
@@ -203,7 +195,7 @@ class EnrichedSessionMerge(MergeCollection):
 
     def build(
         self,
-        client: Client,
+        client: DaskClient,
         session_coll: SessionDFCollection,
         wall_coll: WallDFCollection,
         pg_config: PostgresConfig,
@@ -232,7 +224,7 @@ class EnrichedSessionMerge(MergeCollection):
     def to_admin_response(
         self,
         rr: ReportRequest,
-        client: Client,
+        client: DaskClient,
         product_ids: list[UUIDStr] | None = None,
         user: User | None = None,
     ) -> pd.DataFrame:
@@ -243,6 +235,7 @@ class EnrichedSessionMerge(MergeCollection):
         filters = []
 
         if user:
+            assert product_ids
             assert (
                 len(product_ids) <= 1
             ), "Can't search more than 1 Product ID for a specific User"

@@ -1,13 +1,13 @@
-from enum import Enum
+from enum import StrEnum
+from typing import Annotated
 
 from pydantic import Field
-from typing_extensions import Annotated
 
 SagoQuestionIdType = Annotated[
     str, Field(min_length=1, max_length=16, pattern=r"^[0-9]+$")
 ]
 
 
-class SagoStatus(str, Enum):
+class SagoStatus(StrEnum):
     LIVE = "LIVE"
     NOT_LIVE = "NOT_LIVE"

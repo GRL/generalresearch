@@ -2,26 +2,28 @@ from __future__ import annotations
 
 from collections.abc import Collection
 from copy import copy
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from pydantic import NonNegativeInt
 
 from generalresearch.managers.base import PostgresManager
-from generalresearch.models.thl.user import User
-from generalresearch.models.thl.wallet import PayoutType
-from generalresearch.models.thl.wallet.cashout_method import (
-    CashMailCashoutMethodData,
-    CashoutMethod,
-    PaypalCashoutMethodData,
-)
+from generalresearch.models.thl.user_ref import UserRef
+from generalresearch.models.thl.wallet.definitions import PayoutType
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.user import User
+    from generalresearch.models.thl.wallet.cashout_method import (
+        CashMailCashoutMethodData,
+        CashoutMethod,
+        PaypalCashoutMethodData,
+    )
 
 
 class CashoutMethodManager(PostgresManager):
-
     def create(self, cm: CashoutMethod) -> None:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         query = """
         INSERT INTO accounting_cashoutmethod (
             id, last_updated, is_live, provider, 
@@ -56,9 +58,9 @@ class CashoutMethodManager(PostgresManager):
         res = next(iter(db_res), None)
         assert res, f"cashout method id {cm_id} not found"
         # Don't let anyone delete a non-user-scoped cashout method
-        assert (
-            res["user_id"] is not None
-        ), "error trying to delete non user-scoped cashout method"
+        assert res["user_id"] is not None, (
+            "error trying to delete non user-scoped cashout method"
+        )
 
         self.pg_config.execute_write(
             query="""
@@ -78,6 +80,7 @@ class CashoutMethodManager(PostgresManager):
         :return: the uuid of the created cashout method
         """
         # todo: validate shipping address?
+        from generalresearch.models.thl.wallet.cashout_method import CashoutMethod
 
         cm = CashoutMethod(
             name="Cash in Mail",
@@ -90,7 +93,7 @@ class CashoutMethodManager(PostgresManager):
             max_value=25000,  # $250.00
             data=data,
             type=PayoutType.CASH_IN_MAIL,
-            user=user,
+            user=user.to_user_ref(),
             ext_id=data.delivery_address.md5sum(),
         )
 
@@ -122,6 +125,8 @@ class CashoutMethodManager(PostgresManager):
         :param user:
         :return: the uuid of the created cashout method
         """
+        from generalresearch.models.thl.wallet.cashout_method import CashoutMethod
+
         cm = CashoutMethod(
             name="PayPal",
             description="Cashout via PayPal",
@@ -132,7 +137,7 @@ class CashoutMethodManager(PostgresManager):
             max_value=25_000,  # $250.00
             data=data,
             type=PayoutType.PAYPAL,
-            user=user,
+            user=user.to_user_ref(),
             ext_id=data.email,
         )
         # Make sure this user doesn't already have one
@@ -154,13 +159,13 @@ class CashoutMethodManager(PostgresManager):
     @staticmethod
     def make_filter_str(
         uuid: str | None = None,
-        user: User | None = None,
+        user: UserRef | None = None,
         ext_id: str | None = None,
         payout_types: Collection[PayoutType] | None = None,
         is_live: bool | None = True,
     ):
         filters = []
-        params = dict()
+        params = {}
         if uuid is not None:
             params["uuid"] = uuid
             filters.append("id = %(uuid)s")
@@ -185,7 +190,7 @@ class CashoutMethodManager(PostgresManager):
     def filter_count(
         self,
         uuid: str | None = None,
-        user: User | None = None,
+        user: UserRef | None = None,
         ext_id: str | None = None,
         payout_types: Collection[PayoutType] | None = None,
         is_live: bool | None = True,
@@ -210,7 +215,7 @@ class CashoutMethodManager(PostgresManager):
     def filter(
         self,
         uuid: str | None = None,
-        user: User | None = None,
+        user: UserRef | None = None,
         ext_id: str | None = None,
         payout_types: Collection[PayoutType] | None = None,
         is_live: bool | None = True,
@@ -274,16 +279,18 @@ class CashoutMethodManager(PostgresManager):
         # The data column here is inconsistent. Pulling keys from the mysql 'data' col
         #   and putting them into the base level. Renamed so that we don't overwrite
         #   a col called "data" within the "_data_" field.
+        from generalresearch.models.thl.wallet.cashout_method import CashoutMethod
+
         for k in list(x["_data_"].keys()):
             if k in CashoutMethod.model_fields:
                 x[k] = x["_data_"].pop(k)
 
         x["type"] = PayoutType(x["provider"].upper())
         if "data" not in x:
-            x["data"] = dict()
+            x["data"] = {}
         x["data"].update(x.pop("_data_"))
         x["data"]["type"] = x["type"]
         if user and x["type"] in {PayoutType.PAYPAL, PayoutType.CASH_IN_MAIL}:
-            x["user"] = user
+            x["user"] = user.to_user_ref()
 
         return CashoutMethod.model_validate(x)

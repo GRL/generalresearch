@@ -3,22 +3,21 @@ from __future__ import annotations
 # https://integrations.precisionsample.com/api.html#Get%20Questions
 import json
 import logging
-from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal
+from enum import StrEnum
+from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
-from generalresearch.models import Source, string_utils
+from generalresearch.models.definitions import Source
 from generalresearch.models.precision import PrecisionQuestionID
+from generalresearch.models.string_utils import remove_nbsp
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
     MarketplaceUserQuestionAnswer,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.profiling.upk_question import (
-        UpkQuestion,
-    )
+from generalresearch.models.thl.profiling.upk_question import (
+    UpkQuestion,
+)
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -43,7 +42,7 @@ class PrecisionQuestionOption(BaseModel):
     order: int = Field()
 
 
-class PrecisionQuestionType(str, Enum):
+class PrecisionQuestionType(StrEnum):
     """
     From the API: {'Drop Down', 'Multi Select', 'Single Select', 'Single Select Matrix', 'Vertical Question'}
     Of course undocumented. And there doesn't seem to be a text entry option?
@@ -54,15 +53,15 @@ class PrecisionQuestionType(str, Enum):
     TEXT_ENTRY = "t"
 
     @classmethod
-    def from_api(cls, a: int):
-        API_TYPE_MAP = {
+    def from_api(cls, a: int) -> PrecisionQuestionType | None:
+        api_type_map: dict[str, PrecisionQuestionType] = {
             "Drop Down": PrecisionQuestionType.SINGLE_SELECT,
             "Multi Select": PrecisionQuestionType.MULTI_SELECT,
             "Single Select": PrecisionQuestionType.SINGLE_SELECT,
             "Single Select Matrix": PrecisionQuestionType.SINGLE_SELECT,
             "Vertical Question": PrecisionQuestionType.SINGLE_SELECT,
         }
-        return API_TYPE_MAP[a] if a in API_TYPE_MAP else None
+        return api_type_map.get(a, None)
 
 
 class PrecisionUserQuestionAnswer(MarketplaceUserQuestionAnswer):
@@ -94,7 +93,7 @@ class PrecisionQuestion(MarketplaceQuestion):
 
     @field_validator("question_text", mode="after")
     def remove_nbsp(cls, s: str | None):
-        return string_utils.remove_nbsp(s)
+        return remove_nbsp(s)
 
     @model_validator(mode="after")
     def check_type_options_agreement(self):
@@ -112,7 +111,7 @@ class PrecisionQuestion(MarketplaceQuestion):
         """
         try:
             return cls._from_api(d)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse question: {d}. {e}")
             return None
 

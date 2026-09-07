@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 from collections.abc import Collection
+from typing import TYPE_CHECKING
 
-from generalresearch.managers.base import Permission, PostgresManager
+from generalresearch.managers.base import PostgresManager
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.category import Category
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.base import Permission
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class CategoryManager(PostgresManager):
-    categories = dict()
-    category_label_map = dict()
 
     def __init__(
         self,
@@ -18,8 +20,9 @@ class CategoryManager(PostgresManager):
         permissions: Collection[Permission] | None = None,
     ):
         super().__init__(pg_config=pg_config, permissions=permissions)
-        self.categories: dict[UUIDStr, Category] = dict()
-        self.category_label_map: dict[str, Category] = dict()
+        self.categories: dict[UUIDStr, Category] = {}
+        self.category_label_map: dict[str, Category] = {}
+
         self.populate_caches()
 
     def populate_caches(self):

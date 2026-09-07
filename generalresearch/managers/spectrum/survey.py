@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pymysql
 from pymysql import IntegrityError
@@ -16,6 +16,37 @@ from generalresearch.models.spectrum.survey import (
 
 logger = logging.getLogger()
 
+SURVEY_FIELDS = [
+    "survey_id",
+    "survey_name",
+    "status",
+    "country_iso",
+    "language_iso",
+    "cpi",
+    "field_end_date",
+    "category_code",
+    "calculation_type",
+    "requires_pii",
+    "buyer_id",
+    "survey_exclusions",
+    "exclusion_period",
+    "bid_loi",
+    "bid_ir",
+    "last_block_loi",
+    "last_block_ir",
+    "overall_ir",
+    "overall_loi",
+    "project_last_complete_date",
+    "include_psids",
+    "exclude_psids",
+    "qualifications",
+    "quotas",
+    "used_question_ids",
+    "is_live",
+    "modified_api",
+    "created_api",
+]
+
 
 class SpectrumCriteriaManager(CriteriaManager):
     CONDITION_MODEL = SpectrumCondition
@@ -23,36 +54,6 @@ class SpectrumCriteriaManager(CriteriaManager):
 
 
 class SpectrumSurveyManager(SurveyManager):
-    SURVEY_FIELDS = [
-        "survey_id",
-        "survey_name",
-        "status",
-        "country_iso",
-        "language_iso",
-        "cpi",
-        "field_end_date",
-        "category_code",
-        "calculation_type",
-        "requires_pii",
-        "buyer_id",
-        "survey_exclusions",
-        "exclusion_period",
-        "bid_loi",
-        "bid_ir",
-        "last_block_loi",
-        "last_block_ir",
-        "overall_ir",
-        "overall_loi",
-        "project_last_complete_date",
-        "include_psids",
-        "exclude_psids",
-        "qualifications",
-        "quotas",
-        "used_question_ids",
-        "is_live",
-        "modified_api",
-        "created_api",
-    ]
 
     def get_survey_library(
         self,
@@ -110,12 +111,12 @@ class SpectrumSurveyManager(SurveyManager):
         return surveys
 
     def create(self, survey: SpectrumSurvey) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         d = survey.to_mysql()
         conn: pymysql.Connection = self.sql_helper.make_connection()
         conn.autocommit(True)
         c = conn.cursor()
-        create_fields = self.SURVEY_FIELDS + ["updated"]
+        create_fields = SURVEY_FIELDS + ["updated"]
 
         fields_str = ", ".join([f"`{x}`" for x in create_fields])
         values_str = ", ".join([f"%({x})s" for x in create_fields])
@@ -134,7 +135,7 @@ class SpectrumSurveyManager(SurveyManager):
         return True
 
     def update(self, surveys: list[SpectrumSurvey]) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         # Due to stupidity with bid/actual loi/ir values (last block nonsense),
         # we can't do a bulk update b/c the fields may be different in
@@ -146,7 +147,7 @@ class SpectrumSurveyManager(SurveyManager):
 
     def update_one(self, survey: SpectrumSurvey, now: datetime | None = None) -> bool:
         if now is None:
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=UTC)
 
         d = survey.to_mysql()
         # We have to have special logic for bid/actual loi/ir here. The api
@@ -212,6 +213,6 @@ class SpectrumSurveyManager(SurveyManager):
                 if e.args[0] == 1062:
                     existing_sns.add(sn)
                 else:
-                    raise e
+                    raise
 
         self.update([surveys[sn] for sn in existing_sns])

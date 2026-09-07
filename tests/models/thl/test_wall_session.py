@@ -1,9 +1,11 @@
-from datetime import datetime, timedelta, timezone
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.models.thl.session import Session, Wall
 from generalresearch.models.thl.user import User
@@ -12,7 +14,7 @@ from generalresearch.models.thl.user import User
 class TestWallSession:
 
     def test_session_with_no_wall_events(self):
-        started = datetime(2023, 1, 1, tzinfo=timezone.utc)
+        started = datetime(2023, 1, 1, tzinfo=UTC)
         s = Session(user=User(user_id=1), started=started)
         assert s.status is None
         assert s.status_code_1 is None
@@ -24,7 +26,7 @@ class TestWallSession:
         # assert s.status_code_1 == StatusCode1.SESSION_START_FAIL
 
     def test_session_timeout_with_only_grs(self):
-        started = datetime(2023, 1, 1, tzinfo=timezone.utc)
+        started = datetime(2023, 1, 1, tzinfo=UTC)
         s = Session(user=User(user_id=1), started=started)
         w = Wall(
             user_id=1,
@@ -53,7 +55,7 @@ class TestWallSession:
         # assert s.status_code_1 == StatusCode1.GRS_FAIL
 
     def test_session_with_only_grs_complete(self):
-        started = datetime(year=2023, month=1, day=1, tzinfo=timezone.utc)
+        started = datetime(year=2023, month=1, day=1, tzinfo=UTC)
 
         # A Session is started
         s = Session(user=User(user_id=1), started=started)
@@ -98,7 +100,7 @@ class TestWallSession:
         # assert s.status_code_1 is None
 
     def test_session_with_only_non_grs_fail(self):
-        started = datetime(year=2023, month=1, day=1, tzinfo=timezone.utc)
+        started = datetime(year=2023, month=1, day=1, tzinfo=UTC)
 
         s = Session(user=User(user_id=1), started=started)
         w = Wall(
@@ -119,7 +121,7 @@ class TestWallSession:
         assert s.payout is None
 
     def test_session_with_only_non_grs_timeout(self):
-        started = datetime(year=2023, month=1, day=1, tzinfo=timezone.utc)
+        started = datetime(year=2023, month=1, day=1, tzinfo=UTC)
 
         s = Session(user=User(user_id=1), started=started)
         w = Wall(
@@ -139,7 +141,7 @@ class TestWallSession:
         assert s.payout is None
 
     def test_session_with_grs_and_external(self):
-        started = datetime(year=2023, month=1, day=1, tzinfo=timezone.utc)
+        started = datetime(year=2023, month=1, day=1, tzinfo=UTC)
 
         s = Session(user=User(user_id=1), started=started)
         w = Wall(
@@ -168,7 +170,7 @@ class TestWallSession:
         s.append_wall_event(w)
         w.finish(
             status=Status.ABANDON,
-            finished=datetime.now(tz=timezone.utc) + timedelta(minutes=10),
+            finished=datetime.now(tz=UTC) + timedelta(minutes=10),
             status_code_1=StatusCode1.BUYER_ABANDON,
         )
         status, status_code_1 = s.determine_session_status()
@@ -206,7 +208,7 @@ class TestWallSession:
         assert s.payout is None
 
     def test_session_marketplace_fail(self):
-        started = datetime(2023, 1, 1, tzinfo=timezone.utc)
+        started = datetime(2023, 1, 1, tzinfo=UTC)
 
         s = Session(user=User(user_id=1), started=started)
         w = Wall(
@@ -229,7 +231,7 @@ class TestWallSession:
         assert StatusCode1.SESSION_CONTINUE_QUALITY_FAIL == s.status_code_1
 
     def test_session_unknown(self):
-        started = datetime(2023, 1, 1, tzinfo=timezone.utc)
+        started = datetime(2023, 1, 1, tzinfo=UTC)
 
         s = Session(user=User(user_id=1), started=started)
         w = Wall(

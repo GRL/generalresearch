@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from datetime import timezone
+from datetime import UTC
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -16,20 +16,21 @@ from pydantic import (
     model_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
-from generalresearch.config import is_debug
 
+from generalresearch.config import is_debug
 from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.definitions import SessionAdjustedStatus
-from generalresearch.pg_helper import PostgresConfig
 
 payout_example = random.randint(150, 750 * 100)
 adjustment_example = random.randint(-1_000, 50 * 100)
 
 if TYPE_CHECKING:
+
     from generalresearch.managers.thl.product import ProductManager
-    from generalresearch.models.thl.ledger import AccountType, Direction, LedgerAccount
+    from generalresearch.models.thl.ledger import LedgerAccount
+    from generalresearch.models.thl.product import Product
 
 
 class AdjustmentType(BaseModel):
@@ -125,10 +126,10 @@ class POPFinancial(BaseModel):
             Direction,
         )
 
-        assert all([a.account_type == AccountType.BP_WALLET for a in accounts])
-        assert all([a.normal_balance == Direction.CREDIT for a in accounts])
+        assert all(a.account_type == AccountType.BP_WALLET for a in accounts)
+        assert all(a.normal_balance == Direction.CREDIT for a in accounts)
         if not is_debug():
-            assert all([a.currency == "USD" for a in accounts])
+            assert all(a.currency == "USD" for a in accounts)
 
         if input_data.empty:
             return []
@@ -150,7 +151,7 @@ class POPFinancial(BaseModel):
             index: int  # Not useful, just a RangeIndex
             row: pd.DataFrame
 
-            row["time_idx"] = row.time_idx.to_pydatetime().replace(tzinfo=timezone.utc)
+            row["time_idx"] = row.time_idx.to_pydatetime().replace(tzinfo=UTC)
             instance = ProductBalances.from_pandas(row)
 
             res.append(
@@ -324,8 +325,6 @@ class ProductBalances(BaseModel):
     )
     @property
     def payout_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.payout).to_usd_str()
 
     @computed_field(
@@ -384,8 +383,6 @@ class ProductBalances(BaseModel):
     )
     @property
     def payment_usd_str(self):
-        from generalresearch.currency import USDCent
-
         return USDCent(self.payment).to_usd_str()
 
     @computed_field(
@@ -427,8 +424,6 @@ class ProductBalances(BaseModel):
     )
     @property
     def retainer_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.retainer).to_usd_str()
 
     @computed_field(
@@ -460,8 +455,6 @@ class ProductBalances(BaseModel):
     )
     @property
     def available_balance_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.available_balance).to_usd_str()
 
     @computed_field(
@@ -477,8 +470,6 @@ class ProductBalances(BaseModel):
     )
     @property
     def recoup(self) -> USDCent:
-        from generalresearch.currency import USDCent
-
         if self.balance >= 0:
             return USDCent(0)
 
@@ -517,7 +508,7 @@ class ProductBalances(BaseModel):
         if isinstance(input_data, pd.Series):
             return ProductBalances.model_validate(input_data.to_dict())
 
-        elif isinstance(input_data, pd.DataFrame):
+        else:
             assert isinstance(input_data.index, pd.DatetimeIndex), "Invalid input data"
 
             # The pop merge is grouped by 1min intervals. Therefore, if we take
@@ -529,9 +520,6 @@ class ProductBalances(BaseModel):
             pb = ProductBalances.model_validate(input_data.sum().to_dict())
             pb.last_event = pq_last_event_close.to_pydatetime()
             return pb
-
-        else:
-            raise NotImplementedError("Can't handle this input")
 
     def __str__(self) -> str:
         return (
@@ -558,7 +546,7 @@ class BusinessBalances(BaseModel):
         they all explicitly are set
         """
 
-        if any([pb.product_id is None for pb in v]):
+        if any(pb.product_id is None for pb in v):
             raise ValueError("'product_id' must be set for BusinessBalance children.")
 
         return v
@@ -581,8 +569,6 @@ class BusinessBalances(BaseModel):
     )
     @property
     def payout_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.payout).to_usd_str()
 
     @computed_field(
@@ -684,8 +670,6 @@ class BusinessBalances(BaseModel):
     )
     @property
     def payment_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.payment).to_usd_str()
 
     @computed_field(
@@ -733,8 +717,6 @@ class BusinessBalances(BaseModel):
     )
     @property
     def retainer_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.retainer).to_usd_str()
 
     @computed_field(
@@ -766,8 +748,6 @@ class BusinessBalances(BaseModel):
     )
     @property
     def available_balance_usd_str(self) -> str:
-        from generalresearch.currency import USDCent
-
         return USDCent(self.available_balance).to_usd_str()
 
     # --- Properties: account related ---
@@ -802,8 +782,6 @@ class BusinessBalances(BaseModel):
         """Returns the sum of this Business' recouped amount from any
         children Products.
         """
-        from generalresearch.currency import USDCent
-
         return USDCent(sum([i.recoup for i in self.product_balances]))
 
     @computed_field(
@@ -835,7 +813,7 @@ class BusinessBalances(BaseModel):
     def from_pandas(
         input_data: pd.DataFrame,
         accounts: list[LedgerAccount],
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
     ) -> BusinessBalances:
         LOG.debug(f"BusinessBalances.from_pandas(input_data={input_data.shape})")
 
@@ -846,16 +824,14 @@ class BusinessBalances(BaseModel):
             AccountType,
             Direction,
         )
-        from generalresearch.models.thl.product import Product
-        from generalresearch.managers.thl.product import ProductManager
 
         # Validate the input accounts
         assert len(accounts) > 0, "Must provide accounts"
-        assert all([a.account_type == AccountType.BP_WALLET for a in accounts])
-        assert all([a.normal_balance == Direction.CREDIT for a in accounts])
+        assert all(a.account_type == AccountType.BP_WALLET for a in accounts)
+        assert all(a.normal_balance == Direction.CREDIT for a in accounts)
 
         if not is_debug():
-            assert all([a.currency == "USD" for a in accounts])
+            assert all(a.currency == "USD" for a in accounts)
 
         # Validate the input dataframe
         assert input_data.index.name == "account_id"
@@ -873,8 +849,7 @@ class BusinessBalances(BaseModel):
         # Sort the ProductBalances so that they're always in a consistent
         #   sorted order.
 
-        pm = ProductManager(pg_config=thl_pg_config)
-        products: list[Product] = pm.get_by_uuids(
+        products: list[Product] = product_manager.get_by_uuids(
             product_uuids=[pb.product_id for pb in product_balances]
         )
         sorted_products_uuids = [

@@ -3,13 +3,14 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from collections.abc import Callable, Collection
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import UUID
 
 import numpy as np
 import pandas as pd
+from generalresearch.models.thl.wallet.definitions import PayoutType
 from pydantic import AwareDatetime, PositiveInt
 
 from generalresearch.config import (
@@ -31,14 +32,12 @@ from generalresearch.managers.thl.ledger_manager.ledger import (
     LedgerManager,
 )
 from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.thl.contest.contest import Contest
 from generalresearch.models.thl.contest.definitions import (
     ContestPrizeKind,
     ContestType,
 )
 from generalresearch.models.thl.contest.milestone import MilestoneContest
 from generalresearch.models.thl.contest.raffle import (
-    ContestEntry,
     ContestEntryType,
     RaffleContest,
 )
@@ -59,7 +58,6 @@ from generalresearch.models.thl.payout_format import format_payout_format
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import Session, Status, Wall
 from generalresearch.models.thl.user import User
-from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.user_wallet import (
     UserDisplayedWalletBalance,
     UserLedgerWallet,
@@ -276,10 +274,10 @@ class ThlLedgerManager(LedgerManager):
         time_end: datetime | None = None,
     ):
         if time_start is None:
-            time_start = datetime(year=2017, month=1, day=1, tzinfo=timezone.utc)
+            time_start = datetime(year=2017, month=1, day=1, tzinfo=UTC)
 
         if time_end is None:
-            time_end = datetime.now(tz=timezone.utc)
+            time_end = datetime.now(tz=UTC)
 
         assert all(isinstance(item, str) for item in account_uuids), (
             "Must pass account_uuid as str"
@@ -850,9 +848,7 @@ class ThlLedgerManager(LedgerManager):
         if skip_one_per_day_check or skip_wallet_balance_check:
             skip_flag_check = True
 
-        assert datetime.now(tz=timezone.utc) > created, (
-            "created cannot be in the future"
-        )
+        assert datetime.now(tz=UTC) > created, "created cannot be in the future"
         f = lambda: self.create_tx_bp_payout_(
             product=product,
             amount=amount,
@@ -886,12 +882,13 @@ class ThlLedgerManager(LedgerManager):
         created: datetime,
     ) -> LedgerTransaction:
 
+        tx_type = TransactionType.BP_PAYOUT
         metadata = {
-            tmc.TX_TYPE: TransactionType.BP_PAYOUT,
+            tmc.TX_TYPE: tx_type,
             tmc.EVENT: payoutevent_uuid,
         }
-        # This tag might will uniquely identify this tx
-        tag = f"{self.currency.value}:bp_payout:{payoutevent_uuid}"
+        # This tag will uniquely identify this tx
+        tag = f"{self.currency.value}:{tx_type.value}:{payoutevent_uuid}"
         cash_account = self.get_account_cash()
         bp_wallet_account = self.get_account_or_create_bp_wallet(product)
 
@@ -956,9 +953,7 @@ class ThlLedgerManager(LedgerManager):
         :param skip_flag_check: If True, we skip the flag check to allow
             for retry of a failed previous call.
         """
-        assert datetime.now(tz=timezone.utc) > created, (
-            "created cannot be in the future"
-        )
+        assert datetime.now(tz=UTC) > created, "created cannot be in the future"
         assert isinstance(amount, int)
         assert isinstance(amount, USDCent)
 
@@ -1984,7 +1979,7 @@ class ThlLedgerManager(LedgerManager):
             "Can't get wallet balance on non-managed account."
         )
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         wallet = self.get_account_or_create_user_wallet(user)
         if user.product_id == JAMES_BILLINGS_BPID:
             assert since_days_ago is None
@@ -2014,7 +2009,7 @@ class ThlLedgerManager(LedgerManager):
         After 3 days, about 25% of all "future" recons have happened,
         7 days: 50%, 14 days: 75%, till end of next month: 100%.
         """
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         # The redeemable balance can NOT ever be more than the actual user_wallet_balance
 
         # Sum up the redeemable amount for each complete

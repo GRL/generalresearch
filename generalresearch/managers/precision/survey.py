@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pymysql
 from pymysql import IntegrityError
@@ -16,6 +16,30 @@ from generalresearch.models.precision.survey import (
 
 logger = logging.getLogger()
 
+SURVEY_FIELDS = [
+    # 'country_iso', 'language_iso',  # these come from join table
+    "survey_id",
+    "is_live",
+    "status",
+    "cpi",
+    "group_id",
+    "name",
+    "survey_guid",
+    "buyer_id",
+    "category_id",
+    "bid_loi",
+    "bid_ir",
+    "global_conversion",
+    "desired_count",
+    "achieved_count",
+    "allowed_devices",
+    "entry_link",
+    "excluded_surveys",
+    "quotas",
+    "used_question_ids",
+    "expected_end_date",
+]
+
 
 class PrecisionCriteriaManager(CriteriaManager):
     CONDITION_MODEL = PrecisionCondition
@@ -23,29 +47,6 @@ class PrecisionCriteriaManager(CriteriaManager):
 
 
 class PrecisionSurveyManager(SurveyManager):
-    SURVEY_FIELDS = [
-        # 'country_iso', 'language_iso',  # these come from join table
-        "survey_id",
-        "is_live",
-        "status",
-        "cpi",
-        "group_id",
-        "name",
-        "survey_guid",
-        "buyer_id",
-        "category_id",
-        "bid_loi",
-        "bid_ir",
-        "global_conversion",
-        "desired_count",
-        "achieved_count",
-        "allowed_devices",
-        "entry_link",
-        "excluded_surveys",
-        "quotas",
-        "used_question_ids",
-        "expected_end_date",
-    ]
 
     def get_survey_library(
         self,
@@ -104,12 +105,12 @@ class PrecisionSurveyManager(SurveyManager):
         return surveys
 
     def create(self, survey: PrecisionSurvey) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         d = survey.to_mysql()
         conn: pymysql.Connection = self.sql_helper.make_connection()
         conn.autocommit(False)
         c = conn.cursor()
-        create_fields = self.SURVEY_FIELDS + ["created", "updated"]
+        create_fields = SURVEY_FIELDS + ["created", "updated"]
 
         fields_str = ", ".join([f"`{x}`" for x in create_fields])
         values_str = ", ".join([f"%({x})s" for x in create_fields])
@@ -125,7 +126,7 @@ class PrecisionSurveyManager(SurveyManager):
 
         country_data = [(survey.survey_id, c) for c in survey.country_isos]
         c.executemany(
-            f"""
+            """
         INSERT INTO `thl-precision`.`precision_survey_country`
         (survey_id, country_iso, is_active) VALUES
         (%s, %s, TRUE)
@@ -134,7 +135,7 @@ class PrecisionSurveyManager(SurveyManager):
         )
         lang_data = [(survey.survey_id, c) for c in survey.language_isos]
         c.executemany(
-            f"""
+            """
         INSERT INTO `thl-precision`.`precision_survey_language`
         (survey_id, language_iso, is_active) VALUES
         (%s, %s, TRUE)
@@ -151,7 +152,7 @@ class PrecisionSurveyManager(SurveyManager):
         return True
 
     def update_one(self, survey: PrecisionSurvey) -> bool:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         d = survey.to_mysql()
         d["updated"] = now
 
@@ -188,7 +189,7 @@ class PrecisionSurveyManager(SurveyManager):
         country_data = [(survey.survey_id, c) for c in survey.country_isos]
         # Turn ON countries in this survey's list of countries, insert row, if already exists, set active.
         c.executemany(
-            query=f"""
+            query="""
         INSERT INTO `thl-precision`.`precision_survey_country`
         (survey_id, country_iso, is_active) VALUES
         (%s, %s, TRUE) ON DUPLICATE KEY UPDATE is_active = TRUE;
@@ -207,7 +208,7 @@ class PrecisionSurveyManager(SurveyManager):
         )
         language_data = [(survey.survey_id, c) for c in survey.language_isos]
         c.executemany(
-            query=f"""
+            query="""
         INSERT INTO `thl-precision`.`precision_survey_language`
         (survey_id, language_iso, is_active) VALUES
         (%s, %s, TRUE) ON DUPLICATE KEY UPDATE is_active = TRUE;
@@ -241,5 +242,5 @@ class PrecisionSurveyManager(SurveyManager):
                 if e.args[0] == 1062:
                     existing_sns.add(sn)
                 else:
-                    raise e
+                    raise
         self.update([surveys[sn] for sn in existing_sns])

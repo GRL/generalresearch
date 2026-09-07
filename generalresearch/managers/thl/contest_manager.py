@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import datetime, timezone
-from typing import Any, Literal, cast
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, Literal, cast
 from uuid import UUID
 
 import redis
@@ -10,22 +10,14 @@ from pydantic import NonNegativeInt, PositiveInt
 from redis import Redis
 
 from generalresearch.managers.base import PostgresManager
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
-from generalresearch.managers.thl.user_manager.user_manager import (
-    UserManager,
-)
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.contest import (
     ContestPrize,
     ContestWinner,
 )
-from generalresearch.models.thl.contest.contest import (
-    Contest,
-    ContestUserView,
-)
+from generalresearch.models.thl.contest.contest_entry import ContestEntry
 from generalresearch.models.thl.contest.definitions import (
+    ContestEntryType,
     ContestStatus,
     ContestType,
 )
@@ -41,18 +33,28 @@ from generalresearch.models.thl.contest.leaderboard import (
     LeaderboardContestUserView,
 )
 from generalresearch.models.thl.contest.milestone import (
-    ContestEntryTrigger,
     MilestoneContest,
     MilestoneEntry,
     MilestoneUserView,
 )
 from generalresearch.models.thl.contest.raffle import (
-    ContestEntry,
-    ContestEntryType,
     RaffleContest,
     RaffleUserView,
 )
 from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.managers.thl.user_manager.user_manager import (
+        UserManager,
+    )
+    from generalresearch.models.thl.contest.contest import (
+        Contest,
+        ContestUserView,
+    )
+    from generalresearch.models.thl.contest.milestone import ContestEntryTrigger
 
 CONTEST_SELECT = """
     c.id,
@@ -173,7 +175,7 @@ class ContestBaseManager(PostgresManager):
         except ValueError as e:
             if e.args[0] == "Contest not found":
                 return None
-            raise e
+            raise
 
     @staticmethod
     def make_filter_str(
@@ -187,7 +189,7 @@ class ContestBaseManager(PostgresManager):
         has_participants: bool | None = None,
     ) -> tuple[str, dict[str, Any]]:
         filters = []
-        params = dict()
+        params = {}
 
         if product_id:
             params["product_id"] = product_id
@@ -199,10 +201,10 @@ class ContestBaseManager(PostgresManager):
             params["contest_type"] = contest_type.value
             filters.append("contest_type = %(contest_type)s")
         if starts_at_before is True:
-            params["starts_at"] = datetime.now(tz=timezone.utc)
+            params["starts_at"] = datetime.now(tz=UTC)
             filters.append("starts_at < %(starts_at)s")
         elif starts_at_before:
-            assert starts_at_before.tzinfo == timezone.utc
+            assert starts_at_before.tzinfo == UTC
             params["starts_at"] = starts_at_before
             filters.append("starts_at < %(starts_at)s")
         if name is not None:
@@ -681,7 +683,7 @@ class RaffleContestManager(ContestBaseManager):
             raise ContestError(msg)
 
         if contest.entry_type == ContestEntryType.CASH:
-            tx = ledger_manager.create_tx_user_enter_contest(
+            ledger_manager.create_tx_user_enter_contest(
                 contest_uuid=contest.uuid, contest_entry=entry
             )
 
@@ -822,12 +824,10 @@ class MilestoneContestManager(ContestBaseManager):
         if decision:
             contest.update(
                 status=ContestStatus.COMPLETED,
-                ended_at=datetime.now(tz=timezone.utc),
+                ended_at=datetime.now(tz=UTC),
                 end_reason=reason,
             )
             self.end_milestone_contest(contest)
-
-        return None
 
     def enter_contest_db_work_milestone(
         self, contest: MilestoneUserView, user: User, incr: PositiveInt
@@ -1053,7 +1053,7 @@ class ContestManager(
     ) -> NonNegativeInt:
         contests_closed = 0
         for contest in contests:
-            should_end, reason = contest.should_end()
+            should_end, _ = contest.should_end()
             if should_end:
                 if hasattr(contest, "redis_client"):
                     contest.redis_client = redis_client

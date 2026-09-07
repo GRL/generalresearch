@@ -3,7 +3,7 @@ from __future__ import annotations
 import binascii
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from psycopg import sql
@@ -11,13 +11,14 @@ from pydantic import AnyHttpUrl, PositiveInt
 
 from generalresearch.managers.base import PostgresManager, PostgresManagerWithRedis
 from generalresearch.models.custom_types import UUIDStr
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
-
-LOG = logging.getLogger("gr")
 
 if TYPE_CHECKING:
+
     from generalresearch.models.gr.authentication import GRToken, GRUser
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
+
+LOG = logging.getLogger("gr")
 
 
 class GRUserManager(PostgresManagerWithRedis):
@@ -29,7 +30,7 @@ class GRUserManager(PostgresManagerWithRedis):
     ) -> GRUser:
         from generalresearch.models.gr.authentication import GRUser
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
 
         instance = GRUser.model_validate(
             {
@@ -146,8 +147,8 @@ class GRUserManager(PostgresManagerWithRedis):
 
         for item in res:
             for k, v in item.items():
-                if isinstance(item[k], datetime):
-                    item[k] = item[k].replace(tzinfo=timezone.utc)
+                if isinstance(v, datetime):
+                    item[k] = item[k].replace(tzinfo=UTC)
 
         return [GRUser.model_validate(item) for item in res]
 
@@ -160,7 +161,7 @@ class GRUserManager(PostgresManagerWithRedis):
 
         res = thl_pg_config.execute_sql_query(
             query="""
-                SELECT bp.id
+                SELECT bp.id::uuid as uuid
                 FROM userprofile_brokerageproduct AS bp
                 WHERE bp.business_id = ANY(%s)
             """,
@@ -216,7 +217,7 @@ class GRTokenManager(PostgresManager):
                     "key": api_key,
                     "user_id": gr_user.id,
                     "user": gr_user,
-                    "created": datetime.now(tz=timezone.utc),
+                    "created": datetime.now(tz=UTC),
                 }
             )
 
@@ -234,10 +235,10 @@ class GRTokenManager(PostgresManager):
             res = c.fetchall()
 
         if len(res) == 0:
-            raise Exception(f"No GRUser with token of '{api_key}'")
+            raise ValueError(f"No GRUser with token of '{api_key}'")
 
         if len(res) > 1:
-            raise Exception(f"Too many GRUsers found with token of '{api_key}'")
+            raise ValueError(f"Too many GRUsers found with token of '{api_key}'")
 
         item = res[0]
 
@@ -251,7 +252,7 @@ class GRTokenManager(PostgresManager):
         token = GRToken.model_validate(
             {
                 "key": binascii.hexlify(os.urandom(20)).decode(),
-                "created": datetime.now(tz=timezone.utc),
+                "created": datetime.now(tz=UTC),
                 "user_id": user_id,
             }
         )
@@ -269,8 +270,6 @@ class GRTokenManager(PostgresManager):
                     params=data,
                 )
             conn.commit()
-
-        return
 
     def get_by_user_id(self, user_id: PositiveInt) -> GRToken | None:
         # django authtoken_token table has (user_id) UNIQUE constraint
@@ -296,8 +295,8 @@ class GRTokenManager(PostgresManager):
 
         res = result[0]
 
-        for k, _ in res.items():
+        for k in res:
             if isinstance(res[k], datetime):
-                res[k] = res[k].replace(tzinfo=timezone.utc)
+                res[k] = res[k].replace(tzinfo=UTC)
 
         return GRToken.model_validate(res)

@@ -1,9 +1,9 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 
-status_codes_map: Dict[str, str] = {
+status_codes_map: dict[str, str] = {
     "quo_ful": "quota_full",
     "sur_clo": "survey_closed",
     "profilin": "profiling",
@@ -28,8 +28,8 @@ status_codes_map: Dict[str, str] = {
     "su_al_ta": "survey_already_taken",
     "complete": "complete",
 }
-status_map = defaultdict(lambda: Status.FAIL, **{"complete": Status.COMPLETE})
-status_codes_ext_map: Dict[StatusCode1, List[str]] = {
+status_map = defaultdict(lambda: Status.FAIL, complete=Status.COMPLETE)
+status_codes_ext_map: dict[StatusCode1, list[str]] = {
     StatusCode1.COMPLETE: ["complete"],
     StatusCode1.BUYER_FAIL: ["third_party_termination", "screenout"],
     StatusCode1.BUYER_QUALITY_FAIL: [
@@ -58,10 +58,10 @@ status_codes_ext_map: Dict[StatusCode1, List[str]] = {
     ],
     StatusCode1.PS_OVERQUOTA: ["quota_full", "survey_closed", "survey_expired"],
 }
-ext_status_code_map = dict()
+ext_status_code_map = {}
 for k, v in status_codes_ext_map.items():
     k: StatusCode1
-    v: List[str]
+    v: list[str]
 
     for vv in v:
         vv: str
@@ -70,9 +70,9 @@ for k, v in status_codes_ext_map.items():
 
 def annotate_status_code(
     ext_status_code_1: str,
-    ext_status_code_2: Optional[str] = None,
-    ext_status_code_3: Optional[str] = None,
-) -> Tuple[Status, StatusCode1, Optional[Any]]:
+    ext_status_code_2: str | None = None,
+    ext_status_code_3: str | None = None,
+) -> tuple[Status, StatusCode1, Any | None]:
     """
     :params ext_status_code_1: from callback url params: &sti={{status_id}}
     :params ext_status_code_2: from callback url params: &sdi={{status_detail_id}}

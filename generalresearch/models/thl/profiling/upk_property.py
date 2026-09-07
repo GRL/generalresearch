@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property
 from uuid import uuid4
 
@@ -11,7 +11,7 @@ from generalresearch.models.thl.category import Category
 from generalresearch.utils.enum import ReprEnumMeta
 
 
-class PropertyType(str, Enum, metaclass=ReprEnumMeta):
+class PropertyType(StrEnum, metaclass=ReprEnumMeta):
     # UserProfileKnowledge Item
     UPK_ITEM = "i"
     # UserProfileKnowledge Numerical
@@ -25,7 +25,7 @@ class PropertyType(str, Enum, metaclass=ReprEnumMeta):
     # UPK_DATE = "d"
 
 
-class Cardinality(str, Enum, metaclass=ReprEnumMeta):
+class Cardinality(StrEnum, metaclass=ReprEnumMeta):
     # Zero or More
     ZERO_OR_MORE = "*"
     # Zero or One

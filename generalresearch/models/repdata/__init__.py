@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class RepDataStatus(str, Enum):
+class RepDataStatus(StrEnum):
     LIVE = "LIVE"
     DRAFT = "DRAFT"
     PAUSED = "PAUSED"

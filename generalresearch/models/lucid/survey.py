@@ -4,13 +4,13 @@ from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
-from generalresearch.models import Source
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     BigAutoInteger,
     CoercedStr,
     UUIDStr,
 )
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.locales import CountryISO, LanguageISO
 from generalresearch.models.thl.survey.condition import (
     ConditionValueType,

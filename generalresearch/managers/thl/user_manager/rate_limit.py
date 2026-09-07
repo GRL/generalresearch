@@ -1,14 +1,19 @@
 import logging
+from typing import TYPE_CHECKING
 
 from limits import RateLimitItem, RateLimitItemPerHour, storage, strategies
 from limits.limits import TIME_TYPES, safe_string
 from pydantic import RedisDsn
 
 from generalresearch.managers.thl.user_manager import (
-    UserCreateNotAllowedError,
     get_bp_user_create_limit_hourly,
 )
-from generalresearch.models.thl.product import Product
+from generalresearch.managers.thl.user_manager.exceptions import (
+    UserCreateNotAllowedError,
+)
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.product import Product
 
 logger = logging.getLogger()
 

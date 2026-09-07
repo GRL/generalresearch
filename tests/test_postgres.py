@@ -1,18 +1,21 @@
 import socket
 import subprocess
-from typing import Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from pydantic import PostgresDsn
 
-from generalresearch.models.custom_types import InternalHostname, PostgresDict
 from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import InternalHostname, PostgresDict
 
 
 def is_port_open(host: InternalHostname, port: int = 5432, timeout: int = 3):
     try:
         with socket.create_connection((host, port), timeout=timeout):
             return True
-    except (socket.timeout, ConnectionRefusedError, OSError):
+    except (TimeoutError, ConnectionRefusedError, OSError):
         return False
 
 
@@ -65,4 +68,32 @@ class TestPostgresDjangoCreation:
             WHERE table_schema = 'public';
         """)
         assert len(res) == 1
-        assert res[0]["count"] == 56
+        assert res[0]["count"] == 57
+
+    def test_django_tables_only_gr(self, gr_db: PostgresConfig):
+        """
+        IMPORTANT: This can't really run with only the GR tables,
+            that's because we have most of the database init fixtures
+            as session scoped; and we can't ensure that this will
+            run before any test that depends on the core thl
+            migrations
+        """
+
+        res = gr_db.execute_sql_query(query="""
+            SELECT COUNT(*)
+            FROM information_schema.tables
+            WHERE table_schema = 'public';
+        """)
+        assert len(res) == 1
+        assert res[0]["count"] == 65
+
+    def test_django_tables_with_gr(
+        self, thl_web_rw: PostgresConfig, gr_db: PostgresConfig
+    ):
+        res = thl_web_rw.execute_sql_query(query="""
+            SELECT COUNT(*) 
+            FROM information_schema.tables
+            WHERE table_schema = 'public';
+        """)
+        assert len(res) == 1
+        assert res[0]["count"] == 65

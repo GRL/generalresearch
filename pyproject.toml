@@ -9,15 +9,16 @@ description = "Python Utilities for General Research"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-#    "fastapi",
     "Faker",
     "PyMySQL",
     "psycopg",
     "cachetools",
     "decorator",
+    "influxdb",
     "limits",
     "more-itertools",
     "numpy",
+    "pandas",
     "pandera",
     "protobuf",
     "pyarrow",
@@ -34,6 +35,7 @@ dependencies = [
     "scipy",
     "sentry-sdk",
     "slackclient",
+    "grip-client",
     "tldextract",
     "ua-parser",
     "user-agents",
@@ -41,7 +43,7 @@ dependencies = [
 ]
 [project.optional-dependencies]
 django = ["Django>=5.2", "psycopg>=3.1"]
-
+dask = ["dask>=2026.7.1", "distributed>=2026.7.1"]
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -54,3 +56,13 @@ include = ["generalresearch", "generalresearch.*", "test_utils", "test_utils.*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+
+[tool.ruff]
+target-version = "py314"
+exclude = [
+    "generalresearch/thl_django",
+]
+
+[tool.pylint.messages_control]
+disable = ["all"]
+enable = ["cyclic-import"]

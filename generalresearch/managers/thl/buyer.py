@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from generalresearch.managers.base import Permission, PostgresManager
-from generalresearch.models import Source
 from generalresearch.models.thl.survey.buyer import Buyer
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.definitions import Source
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class BuyerManager(PostgresManager):
@@ -18,8 +21,8 @@ class BuyerManager(PostgresManager):
     ):
         super().__init__(pg_config=pg_config, permissions=permissions)
         # self.buyer_pk: Dict[Buyer, int] = dict()
-        self.source_code_buyer: dict[str, Buyer] = dict()
-        self.source_code_pk: dict[str, int] = dict()
+        self.source_code_buyer: dict[str, Buyer] = {}
+        self.source_code_pk: dict[str, int] = {}
         self.populate_caches()
 
     def populate_caches(self):
@@ -45,7 +48,7 @@ class BuyerManager(PostgresManager):
             return None
 
     def bulk_get_or_create(self, source: Source, codes: Collection[str]) -> list[Buyer]:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         buyers = []
         params_seq = []
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 import inspect
 import re
 from enum import EnumMeta
-from typing import Dict
 
 
 class ReprEnumMeta(EnumMeta):
@@ -20,7 +19,7 @@ class ReprEnumMeta(EnumMeta):
                 [f" - __{e.value}__ *({e.name})*: {descriptions[e.name]}" for e in self]
             )
         else:
-            return f"\nAllowed values: \n" + "\n".join(
+            return "\nAllowed values: \n" + "\n".join(
                 [f" - __{e.value}__ *({e.name})*: {descriptions[e.name]}" for e in self]
             )
 
@@ -36,12 +35,12 @@ class ReprEnumMeta(EnumMeta):
                 [f" - __{e.name}__: {descriptions[e.name]}" for e in self]
             )
         else:
-            return f"\nAllowed values: \n" + "\n".join(
+            return "\nAllowed values: \n" + "\n".join(
                 [f" - __{e.name}__: {descriptions[e.name]}" for e in self]
             )
 
 
-def get_enum_comments(enum_class) -> Dict:
+def get_enum_comments(enum_class) -> dict:
     source = inspect.getsource(enum_class)
     # Regular expression to match multi-line comments and enum values
     pattern = re.compile(r"((?:\s*#.*?\n)+)\s*(\w+)\s*=")

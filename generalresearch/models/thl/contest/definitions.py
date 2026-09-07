@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from generalresearch.utils.enum import ReprEnumMeta
 
 
-class ContestStatus(str, Enum):
+class ContestStatus(StrEnum):
     ACTIVE = "active"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
 
 
-class ContestType(str, Enum, metaclass=ReprEnumMeta):
+class ContestType(StrEnum, metaclass=ReprEnumMeta):
     """There are 3 contest types. They have a common base, with some unique
     configurations and behaviors for each.
     """
@@ -26,7 +26,7 @@ class ContestType(str, Enum, metaclass=ReprEnumMeta):
     MILESTONE = "milestone"
 
 
-class ContestEndReason(str, Enum):
+class ContestEndReason(StrEnum):
     """
     Defines why a contest ended
     """
@@ -44,7 +44,7 @@ class ContestEndReason(str, Enum):
     MAX_WINNERS = "max_winners"
 
 
-class ContestPrizeKind(str, Enum, metaclass=ReprEnumMeta):
+class ContestPrizeKind(StrEnum, metaclass=ReprEnumMeta):
     # A physical prize (e.g. a iPhone, cash in the mail, dinner with Max)
     PHYSICAL = "physical"
 
@@ -56,7 +56,7 @@ class ContestPrizeKind(str, Enum, metaclass=ReprEnumMeta):
     CASH = "cash"
 
 
-class ContestEntryTrigger(str, Enum):
+class ContestEntryTrigger(StrEnum):
     """
     Defines what action/event triggers a (possible) entry into the contest (automatically).
     This only is valid on milestone contests
@@ -67,7 +67,7 @@ class ContestEntryTrigger(str, Enum):
     REFERRAL = "referral"
 
 
-class ContestEntryType(str, Enum, metaclass=ReprEnumMeta):
+class ContestEntryType(StrEnum, metaclass=ReprEnumMeta):
     """
     All entries into a contest must be of the same type, and match
     the entry_type of the Contest itself.
@@ -83,7 +83,7 @@ class ContestEntryType(str, Enum, metaclass=ReprEnumMeta):
     CASH = "cash"
 
 
-class LeaderboardTieBreakStrategy(str, Enum):
+class LeaderboardTieBreakStrategy(StrEnum):
     """
     Strategies for resolving ties in leaderboard-based contests.
     """

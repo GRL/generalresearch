@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 import random
 from collections import defaultdict
-from datetime import datetime, timezone
-from typing import Any, Literal
+from datetime import UTC, datetime
+from typing import Any, Literal, Self
 
 from pydantic import (
     ConfigDict,
@@ -14,11 +14,12 @@ from pydantic import (
     model_validator,
 )
 from scipy.stats import hypergeom
-from typing_extensions import Self
 
 from generalresearch.currency import USDCent
 from generalresearch.models.thl.contest import (
+    ContestEndCondition,
     ContestEntryRule,
+    ContestPrize,
     ContestWinner,
 )
 from generalresearch.models.thl.contest.contest import (
@@ -26,17 +27,15 @@ from generalresearch.models.thl.contest.contest import (
     ContestBase,
     ContestUserView,
 )
-from generalresearch.models.thl.contest.contest_entry import ContestEntry
+from generalresearch.models.thl.contest.contest_entry import (
+    ContestEntry,
+)
 from generalresearch.models.thl.contest.definitions import (
     ContestEndReason,
     ContestEntryType,
+    ContestPrizeKind,
     ContestStatus,
     ContestType,
-)
-from generalresearch.models.thl.contest.examples import (
-    _example_raffle,
-    _example_raffle_create,
-    _example_raffle_user_view,
 )
 
 logging.basicConfig()
@@ -48,7 +47,7 @@ class RaffleContestCreate(ContestBase):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_raffle_create,
+        # json_schema_extra=json_example_raffle_create,
     )
 
     contest_type: Literal[ContestType.RAFFLE] = Field(default=ContestType.RAFFLE)
@@ -64,12 +63,36 @@ class RaffleContestCreate(ContestBase):
             raise ValueError("At least one end condition must be specified")
         return self
 
+    @classmethod
+    def example(cls) -> RaffleContestCreate:
+        return cls(
+            name="Win an iPhone",
+            description="iPhone winner will be drawn in proportion to entry "
+            "amount. Contest ends once $800 has been entered.",
+            contest_type=ContestType.RAFFLE,
+            end_condition=ContestEndCondition(target_entry_amount=USDCent(800_00)),
+            prizes=[
+                ContestPrize(
+                    kind=ContestPrizeKind.PHYSICAL,
+                    name="iPhone 16",
+                    estimated_cash_value=USDCent(800_00),
+                )
+            ],
+            starts_at="2025-06-12T21:12:58.061170Z",
+            terms_and_conditions=None,
+            entry_rule=ContestEntryRule(
+                max_entry_amount_per_user=10000, max_daily_entries_per_user=1000
+            ),
+            country_isos={"us", "ca"},
+            entry_type=ContestEntryType.CASH,
+        )
+
 
 class RaffleContest(RaffleContestCreate, Contest):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_raffle,
+        # json_schema_extra=json_example_raffle,
     )
 
     entries: list[ContestEntry] = Field(default_factory=list, exclude=True)
@@ -87,19 +110,22 @@ class RaffleContest(RaffleContestCreate, Contest):
 
     @model_validator(mode="after")
     def validate_entry_type(self):
-        assert all(
-            entry.entry_type == self.entry_type for entry in self.entries
-        ), f"all entries must be of type {self.entry_type}"
+        assert all(entry.entry_type == self.entry_type for entry in self.entries), (
+            f"all entries must be of type {self.entry_type}"
+        )
         return self
 
     @field_validator("current_amount", mode="before")
-    def coerce_current_amount(cls, v, info):
+    def coerce_current_amount(cls, v: int | USDCent, info):
         if v is None:
             return None
+
         if info.data.get("entry_type") == ContestEntryType.CASH:
             return USDCent(v)
+
         elif info.data.get("entry_type") == ContestEntryType.COUNT:
             return int(v)
+
         return v
 
     @model_validator(mode="after")
@@ -128,7 +154,7 @@ class RaffleContest(RaffleContestCreate, Contest):
         # If there is more than 1 prize, the winning entry is subtracted
         #   from the user's entry count
         user_amount = defaultdict(int)
-        user_id_user = dict()
+        user_id_user = {}
         for entry in self.entries:
             user_amount[entry.user.user_id] += entry.amount
             user_id_user[entry.user.user_id] = entry.user
@@ -150,10 +176,12 @@ class RaffleContest(RaffleContestCreate, Contest):
         res, msg = super().should_end()
         if res:
             return res, msg
-        if self.status == ContestStatus.ACTIVE:
-            if self.end_condition.target_entry_amount:
-                if self.current_amount >= self.end_condition.target_entry_amount:
-                    return True, ContestEndReason.TARGET_ENTRY_AMOUNT
+        if (
+            self.status == ContestStatus.ACTIVE
+            and self.end_condition.target_entry_amount
+            and self.current_amount >= self.end_condition.target_entry_amount
+        ):
+            return True, ContestEndReason.TARGET_ENTRY_AMOUNT
         return False, None
 
     @staticmethod
@@ -202,9 +230,7 @@ class RaffleContest(RaffleContestCreate, Contest):
         c = self.end_condition
         if c.target_entry_amount and self.current_amount >= c.target_entry_amount:
             return True
-        if c.ends_at and datetime.now(tz=timezone.utc) >= c.ends_at:
-            return True
-        return False
+        return bool(c.ends_at and datetime.now(tz=UTC) >= c.ends_at)
 
     def model_dump_mysql(self) -> dict[str, Any]:
         d = super().model_dump_mysql()
@@ -212,16 +238,48 @@ class RaffleContest(RaffleContestCreate, Contest):
         return d
 
     @classmethod
-    def model_validate_mysql(cls, data: dict) -> Self:
+    def model_validate_mysql(cls, data: dict[str, Any]) -> Self:
         data["entry_rule"] = ContestEntryRule.model_validate(data["entry_rule"])
         return super().model_validate_mysql(data)
+
+    @classmethod
+    def example(cls) -> RaffleContest:
+        product_id = "1108d053e4fa47c5b0dbdcd03a7981e7"
+        return cls(
+            name="Win an iPhone",
+            description="iPhone winner will be drawn in proportion to entry "
+            "amount. Contest ends once $800 has been entered.",
+            contest_type=ContestType.RAFFLE,
+            end_condition=ContestEndCondition(target_entry_amount=USDCent(800_00)),
+            prizes=[
+                ContestPrize(
+                    kind=ContestPrizeKind.PHYSICAL,
+                    name="iPhone 16",
+                    estimated_cash_value=USDCent(800_00),
+                )
+            ],
+            starts_at="2025-06-12T21:12:58.061170Z",
+            terms_and_conditions=None,
+            entry_rule=ContestEntryRule(
+                max_entry_amount_per_user=10000, max_daily_entries_per_user=1000
+            ),
+            country_isos={"us", "ca"},
+            entry_type=ContestEntryType.CASH,
+            status=ContestStatus.ACTIVE,
+            uuid="ce3968b8e18a4b96af62007f262ed7f7",
+            created_at="2025-06-12T21:12:58.061205Z",
+            updated_at="2025-06-12T21:12:58.061205Z",
+            current_amount=4723,
+            current_participants=12,
+            product_id=product_id,
+        )
 
 
 class RaffleUserView(RaffleContest, ContestUserView):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_raffle_user_view,
+        # json_schema_extra=json_example_raffle_user_view,
     )
 
     user_amount: int | USDCent = Field(
@@ -279,17 +337,19 @@ class RaffleUserView(RaffleContest, ContestUserView):
         return probs
 
     def is_entry_eligible(self, entry: ContestEntry) -> tuple[bool, str]:
-        if self.entry_rule.max_entry_amount_per_user:
-            if (
-                self.user_amount + entry.amount
-            ) > self.entry_rule.max_entry_amount_per_user:
-                return False, "Entry would exceed max amount per user."
+        if (
+            self.entry_rule.max_entry_amount_per_user
+            and (self.user_amount + entry.amount)
+            > self.entry_rule.max_entry_amount_per_user
+        ):
+            return False, "Entry would exceed max amount per user."
 
-        if self.entry_rule.max_daily_entries_per_user:
-            if (
-                self.user_amount_today + entry.amount
-            ) > self.entry_rule.max_daily_entries_per_user:
-                return False, "Entry would exceed max amount per user per day."
+        if (
+            self.entry_rule.max_daily_entries_per_user
+            and (self.user_amount_today + entry.amount)
+            > self.entry_rule.max_daily_entries_per_user
+        ):
+            return False, "Entry would exceed max amount per user per day."
         return True, ""
 
     def is_user_eligible(self, country_iso: str) -> tuple[bool, str]:
@@ -297,16 +357,18 @@ class RaffleUserView(RaffleContest, ContestUserView):
         if not passes:
             return False, msg
 
-        if self.entry_rule.max_entry_amount_per_user:
+        if self.entry_rule.max_entry_amount_per_user:  # noqa: SIM102
             # Greater or equal b/c we're asking if the user is eligible to
             # enter MORE, now! If it equals, nothing is wrong, just that they
             # are not eligible anymore.
             if self.user_amount >= self.entry_rule.max_entry_amount_per_user:
                 return False, "Reached max amount per user."
 
-        if self.entry_rule.max_daily_entries_per_user:
-            if self.user_amount_today >= self.entry_rule.max_daily_entries_per_user:
-                return False, "Reached max amount today."
+        if (
+            self.entry_rule.max_daily_entries_per_user
+            and self.user_amount_today >= self.entry_rule.max_daily_entries_per_user
+        ):
+            return False, "Reached max amount today."
 
         # This would indicate something is wrong, as something else should have done this
         e, _ = self.should_end()
@@ -316,3 +378,38 @@ class RaffleUserView(RaffleContest, ContestUserView):
 
         # todo: others in self.entry_rule ... min_completes, id_verified, etc.
         return True, ""
+
+    @classmethod
+    def example(cls) -> RaffleUserView:
+        product_id = "1108d053e4fa47c5b0dbdcd03a7981e7"
+        return cls(
+            name="Win an iPhone",
+            description="iPhone winner will be drawn in proportion to entry "
+            "amount. Contest ends once $800 has been entered.",
+            contest_type=ContestType.RAFFLE,
+            end_condition=ContestEndCondition(target_entry_amount=USDCent(800_00)),
+            prizes=[
+                ContestPrize(
+                    kind=ContestPrizeKind.PHYSICAL,
+                    name="iPhone 16",
+                    estimated_cash_value=USDCent(800_00),
+                )
+            ],
+            starts_at="2025-06-12T21:12:58.061170Z",
+            terms_and_conditions=None,
+            entry_rule=ContestEntryRule(
+                max_entry_amount_per_user=10000, max_daily_entries_per_user=1000
+            ),
+            country_isos={"us", "ca"},
+            entry_type=ContestEntryType.CASH,
+            status=ContestStatus.ACTIVE,
+            uuid="ce3968b8e18a4b96af62007f262ed7f7",
+            created_at="2025-06-12T21:12:58.061205Z",
+            updated_at="2025-06-12T21:12:58.061205Z",
+            current_amount=4723,
+            current_participants=12,
+            product_id=product_id,
+            user_amount=420,
+            user_amount_today=0,
+            product_user_id="test-user",
+        )

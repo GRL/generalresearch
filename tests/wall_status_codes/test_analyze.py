@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.wall_status_codes import innovate
 

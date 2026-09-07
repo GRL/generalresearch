@@ -40,7 +40,7 @@ texts_in = {
 }
 
 
-def option_is_catch_all(c: "UpkQuestionChoice") -> bool:
+def option_is_catch_all(c: UpkQuestionChoice) -> bool:
     """
     Exclusive not specifically in the sense that it is a multi-select question
     and if this option is selected no others can be selected. But also in the
@@ -51,6 +51,4 @@ def option_is_catch_all(c: "UpkQuestionChoice") -> bool:
         return True
     if c.text.lower() in texts_exact:
         return True
-    if any(t in c.text.lower() for t in texts_in):
-        return True
-    return False
+    return bool(any(t in c.text.lower() for t in texts_in))

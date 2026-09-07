@@ -1,19 +1,19 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import cached_property
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, computed_field
 
-from generalresearch.models import MAX_INT32, Source
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     CountryISOLike,
     LanguageISOLike,
     UUIDStr,
 )
+from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.models.thl.locales import CountryISO, LanguageISO
 
 
@@ -82,10 +82,9 @@ class MarketplaceQuestion(BaseModel, ABC):
         #   question has more than 6.
         repr_args = list(self.__repr_args__())
         for n, (k, v) in enumerate(repr_args):
-            if k == "options":
-                if v and len(v) > 6:
-                    v = v[:3] + ["..."] + v[-3:]
-                    repr_args[n] = ("options", v)
+            if k == "options" and v and len(v) > 6:
+                v = v[:3] + ["..."] + v[-3:]
+                repr_args[n] = ("options", v)
         join_str = ", "
         repr_str = join_str.join(
             repr(v) if a is None else f"{a}={v!r}" for a, v in repr_args
@@ -111,9 +110,7 @@ class MarketplaceUserQuestionAnswer(BaseModel):
     # This may be a pipe-separated string if the question_type is multi. Regex
     #   means any chars except capital letters
     option_id: str = Field(pattern=r"^[^A-Z]*$")
-    created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    created: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
     country_iso: CountryISO = Field(frozen=True)
     language_iso: LanguageISO = Field(frozen=True)
 

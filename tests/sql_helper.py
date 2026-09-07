@@ -19,7 +19,7 @@ class TestSqlHelper:
     def test_scheme(self):
         from generalresearch.sql_helper import SqlHelper
 
-        dsn = MySQLDsn(f"mysql://root@localhost/test")
+        dsn = MySQLDsn("mysql://root@localhost/test")
         instance = SqlHelper(dsn=dsn)
         assert instance.is_mysql()
 
@@ -30,7 +30,7 @@ class TestSqlHelper:
         # self.assertTrue(instance.is_postgresql())
 
         with pytest.raises(ValidationError):
-            SqlHelper(dsn=MariaDBDsn(f"maria://root@localhost/test"))
+            SqlHelper(dsn=MariaDBDsn("maria://root@localhost/test"))
 
     def test_row_decode(self):
         from generalresearch.sql_helper import decode_uuids

@@ -1,16 +1,21 @@
-from typing import Any, Dict
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from generalresearch.config import (
     is_debug,
 )
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
-from generalresearch.managers.thl.payout import PayoutEventManager
-from generalresearch.managers.thl.tango_api import TangoClient, TangoOrderRequest
+from generalresearch.managers.thl.tango_api import TangoOrderRequest
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.payout import UserPayoutEvent
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.managers.thl.payout import PayoutEventManager
+    from generalresearch.managers.thl.tango_api import TangoClient
+    from generalresearch.models.thl.payout import UserPayoutEvent
+    from generalresearch.models.thl.user import User
 
 
 def complete_tango_order(
@@ -44,7 +49,7 @@ def complete_tango_order(
             tango_client=tango_client,
         )
 
-    except Exception as e:
+    except AssertionError:
         # todo: its possible the order went through, but something else was wrong
         # we should try to retrieve the order by its ref_id and confirm it really
         # failed...
@@ -65,13 +70,13 @@ def complete_tango_order(
 
 
 def create_tango_order(
-    request_data: Dict[str, Any], ref_id: str, tango_client: TangoClient
-) -> Dict[str, Any]:
+    request_data: dict[str, Any], ref_id: str, tango_client: TangoClient
+) -> dict[str, Any]:
     """
     Create a tango gift card order.
     Throws exception if anything is not right.
-    # https://integration-www.tangocard.com/raas_api_console/v2/
-    # https://www.apimatic.io/apidocs/tangocard/v/2_3_4#/python
+    - https://integration-www.tangocard.com/raas_api_console/v2/
+    - https://www.apimatic.io/apidocs/tangocard/v/2_3_4#/python
 
     :param utid: Card identifier
     :param amount: requested card value in USD

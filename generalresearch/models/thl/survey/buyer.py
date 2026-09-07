@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from math import log
 from typing import Annotated
@@ -16,12 +16,12 @@ from pydantic import (
 )
 from scipy.stats import beta as beta_dist
 
-from generalresearch.models import Source
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     CountryISOLike,
     UUIDStr,
 )
+from generalresearch.models.definitions import Source
 
 
 class Buyer(BaseModel):
@@ -46,7 +46,7 @@ class Buyer(BaseModel):
     )
     label: str | None = Field(default=None, max_length=255)
     created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
         description="When this entry was made, or when the buyer was first seen",
     )
 
@@ -177,9 +177,10 @@ class BuyerCountryStat(BaseModel):
     )
 
     # ---- Scoring ----
-    score: float = Field(
+    score: float | None = Field(
         description="Composite score calculated from all of the individual features",
         examples=[-5.329389837486194],
+        default=None,
     )
 
     @model_validator(mode="after")

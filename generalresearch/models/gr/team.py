@@ -2,46 +2,53 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pandas as pd
+import pyarrow as pa
 from dask.distributed import Client
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
     PositiveInt,
+    ValidationError,
     field_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
-from typing_extensions import Self
 
 from generalresearch.decorators import LOG
-from generalresearch.incite.mergers.foundations.enriched_session import (
-    EnrichedSessionMerge,
-)
-from generalresearch.incite.mergers.foundations.enriched_wall import (
-    EnrichedWallMerge,
-)
 from generalresearch.models.admin.request import ReportRequest, ReportType
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     UUIDStr,
     UUIDStrCoerce,
 )
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
 from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
+    from generalresearch.incite.mergers.foundations.enriched_session import (
+        EnrichedSessionMerge,
+    )
+    from generalresearch.incite.mergers.foundations.enriched_wall import (
+        EnrichedWallMerge,
+    )
+    from generalresearch.managers.gr.authentication import (
+        GRUserManager,
+    )
+    from generalresearch.managers.gr.business import BusinessManager
+    from generalresearch.managers.gr.team import MembershipManager
+    from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.gr.authentication import GRUser
     from generalresearch.models.gr.business import Business
     from generalresearch.models.thl.product import Product
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 
 class MembershipPrivilege(Enum, metaclass=ReprEnumMeta):
@@ -92,7 +99,7 @@ class Membership(BaseModel):
     @classmethod
     def created_utc(cls, v: datetime | str) -> datetime | str:
         if isinstance(v, datetime):
-            return v.replace(tzinfo=timezone.utc)
+            return v.replace(tzinfo=UTC)
         return v
 
     # --- prefetch methods ---
@@ -119,48 +126,29 @@ class Team(BaseModel):
 
     # --- Prefetch Methods ---
 
-    def prefetch_memberships(self, pg_config: PostgresConfig) -> None:
-        from generalresearch.managers.gr.team import MembershipManager
+    def prefetch_memberships(self, gr_membership_manager: MembershipManager) -> None:
+        self.memberships = gr_membership_manager.get_by_team_id(team_id=self.id)
 
-        mm = MembershipManager(pg_config=pg_config)
-        self.memberships = mm.get_by_team_id(team_id=self.id)
+    def prefetch_gr_users(self, gr_user_manager: GRUserManager) -> None:
+        self.gr_users = gr_user_manager.get_by_team(team_id=self.id)
 
-    def prefetch_gr_users(
-        self, pg_config: PostgresConfig, redis_config: RedisConfig
-    ) -> None:
-        from generalresearch.managers.gr.authentication import (
-            GRUserManager,
-        )
+    def prefetch_businesses(self, gr_business_manager: BusinessManager) -> None:
+        self.businesses = gr_business_manager.get_by_team(team_id=self.id)
 
-        gr_um = GRUserManager(pg_config=pg_config, redis_config=redis_config)
-
-        self.gr_users = gr_um.get_by_team(team_id=self.id)
-
-    def prefetch_businesses(
-        self, pg_config: PostgresConfig, redis_config: RedisConfig
-    ) -> None:
-        from generalresearch.managers.gr.business import BusinessManager
-
-        bm = BusinessManager(pg_config=pg_config, redis_config=redis_config)
-        self.businesses = bm.get_by_team(team_id=self.id)
-
-    def prefetch_products(self, thl_pg_config: PostgresConfig) -> None:
-        from generalresearch.managers.thl.product import ProductManager
-
-        pm = ProductManager(pg_config=thl_pg_config)
-        self.products = pm.fetch_uuids(team_uuids=[self.uuid])
+    def prefetch_products(self, product_manager: ProductManager) -> None:
+        self.products = product_manager.fetch_uuids(team_uuids=[self.uuid])
 
     # --- Prebuild Methods ---
 
     def prebuild_enriched_session_parquet(
         self,
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
         ds: GRLDatasets,
         client: Client,
         mnt_gr_api: Path,
         enriched_session: EnrichedSessionMerge | None = None,
     ) -> None:
-        self.prefetch_products(thl_pg_config=thl_pg_config)
+        self.prefetch_products(product_manager=product_manager)
 
         if enriched_session is None:
             from generalresearch.incite.defaults import (
@@ -192,20 +180,18 @@ class Team(BaseModel):
 
         try:
             _ = pd.read_parquet(path, engine="pyarrow")
-        except Exception as e:
+        except (pa.ArrowException, OSError, ValueError) as e:
             raise OSError(f"Parquet verification failed: {e}")
-
-        return
 
     def prebuild_enriched_wall_parquet(
         self,
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
         ds: GRLDatasets,
         client: Client,
         mnt_gr_api: Path,
         enriched_wall: EnrichedWallMerge | None = None,
     ) -> None:
-        self.prefetch_products(thl_pg_config=thl_pg_config)
+        self.prefetch_products(product_manager=product_manager)
 
         if enriched_wall is None:
             from generalresearch.incite.defaults import (
@@ -237,10 +223,8 @@ class Team(BaseModel):
 
         try:
             _ = pd.read_parquet(path, engine="pyarrow")
-        except Exception as e:
+        except (pa.ArrowException, OSError, ValueError) as e:
             raise OSError(f"Parquet verification failed: {e}")
-
-        return None
 
     @classmethod
     def required_fields(cls) -> list[str]:
@@ -275,8 +259,10 @@ class Team(BaseModel):
 
     def set_cache(
         self,
-        pg_config: PostgresConfig,
-        thl_web_rr: PostgresConfig,
+        product_manager: ProductManager,
+        gr_user_manager: GRUserManager,
+        gr_business_manager: BusinessManager,
+        gr_membership_manager: MembershipManager,
         redis_config: RedisConfig,
         client: Client,
         ds: GRLDatasets,
@@ -284,12 +270,10 @@ class Team(BaseModel):
         enriched_session: EnrichedSessionMerge | None = None,
         enriched_wall: EnrichedWallMerge | None = None,
     ) -> None:
-        ex_secs = 60 * 60 * 24 * 3  # 3 days
-
-        self.prefetch_products(thl_pg_config=thl_web_rr)
-        self.prefetch_gr_users(pg_config=pg_config, redis_config=redis_config)
-        self.prefetch_businesses(pg_config=pg_config, redis_config=redis_config)
-        self.prefetch_memberships(pg_config=pg_config)
+        self.prefetch_products(product_manager=product_manager)
+        self.prefetch_gr_users(gr_user_manager=gr_user_manager)
+        self.prefetch_businesses(gr_business_manager=gr_business_manager)
+        self.prefetch_memberships(gr_membership_manager=gr_membership_manager)
 
         rc = redis_config.create_redis_client()
         mapping = self.model_dump(mode="json")
@@ -306,7 +290,7 @@ class Team(BaseModel):
             enriched_session = es(ds=ds)
 
         self.prebuild_enriched_session_parquet(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             client=client,
             ds=ds,
             mnt_gr_api=mnt_gr_api,
@@ -319,14 +303,12 @@ class Team(BaseModel):
             enriched_wall = ew(ds=ds)
 
         self.prebuild_enriched_wall_parquet(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             client=client,
             ds=ds,
             mnt_gr_api=mnt_gr_api,
             enriched_wall=enriched_wall,
         )
-
-        return
 
     # --- ORM ---
 
@@ -336,14 +318,14 @@ class Team(BaseModel):
         uuid: UUIDStr,
         fields: list[str],
         gr_redis_config: RedisConfig,
-    ) -> Self | None:
+    ) -> Team | None:
         keys: list = Team.required_fields() + fields
         rc = gr_redis_config.create_redis_client()
 
         try:
-            res: list = rc.hmget(name=f"team:{uuid}", keys=keys)
+            res: list[str | bytes | None] = rc.hmget(name=f"team:{uuid}", keys=keys)
             d = {val: json.loads(res[idx]) for idx, val in enumerate(keys)}
             return Team.model_validate(d)
 
-        except (Exception,) as e:
+        except ValidationError:
             return None

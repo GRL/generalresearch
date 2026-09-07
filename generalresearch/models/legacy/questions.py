@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from pydantic import (
     BaseModel,
@@ -14,7 +14,6 @@ from pydantic import (
     model_validator,
 )
 from sentry_sdk import capture_exception
-from typing_extensions import Annotated, Self
 
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.legacy.api_status import StatusResponse
@@ -25,9 +24,7 @@ from generalresearch.models.thl.session import Wall
 from generalresearch.models.thl.user import User
 
 if TYPE_CHECKING:
-    from generalresearch.managers.thl.user_manager.user_manager import (
-        UserManager,
-    )
+    from generalresearch.managers.thl.user_manager.user_manager import UserManager
     from generalresearch.managers.thl.wall import WallManager
 
 
@@ -88,26 +85,17 @@ class UserQuestionAnswerIn(BaseModel):
         fingerprint_tz = "a91cb1dea814480dba12d9b7b48696dd"
         fingerprint_fingerprint = "1d1e2e8380ac474b87fb4e4c569b48df"
 
-        if self.question_id in {
-            user_agent_qid,
-            fingerprint_langs,
-            fingerprint_tz,
-            fingerprint_fingerprint,
-        }:
-            if len(self.answer) != 1:
-                raise ValueError("Too many answer values provided")
-
-        return self
-
-    @model_validator(mode="after")
-    def user_agent_check(self) -> Self:
-        # TODO: where / how do I want to pass in this Werz user_agent stuff?
-        user_agent_qid = "2fbedb2b9f7647b09ff5e52fa119cc5e"
-
-        if self.question_id == user_agent_qid:
-            val = self.answer[0]
-            # assert val == request.user_agent.to_header():
-            pass
+        if (
+            self.question_id
+            in {
+                user_agent_qid,
+                fingerprint_langs,
+                fingerprint_tz,
+                fingerprint_fingerprint,
+            }
+            and len(self.answer) != 1
+        ):
+            raise ValueError("Too many answer values provided")
 
         return self
 
@@ -218,7 +206,6 @@ class UserQuestionAnswers(BaseModel):
 
     # --- Prefetch ---
     def prefetch_user(self, um: UserManager) -> None:
-        from generalresearch.models.thl.user import User
 
         res: User | None = um.get_user_if_exists(
             product_id=self.product_id, product_user_id=self.product_user_id
@@ -230,8 +217,7 @@ class UserQuestionAnswers(BaseModel):
         self.user = res
 
     def prefetch_wall(self, wm: WallManager) -> None:
-        from generalresearch.models import Source
-        from generalresearch.models.thl.session import Wall
+        from generalresearch.models.definitions import Source
 
         res: Wall | None = wm.get_from_uuid_if_exists(wall_uuid=self.session_id)
 

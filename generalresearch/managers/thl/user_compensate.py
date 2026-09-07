@@ -1,16 +1,19 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from pydantic import NonNegativeInt
 
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
 from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.models.thl.user import User
 
 
 def user_compensate(
@@ -28,7 +31,7 @@ def user_compensate(
     pg_config = ledger_manager.pg_config
     redis_client = ledger_manager.redis_client
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     assert type(amount_int) is int
     user.prefetch_product(pg_config=pg_config)
     assert (

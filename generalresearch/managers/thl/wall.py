@@ -3,9 +3,10 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from functools import cached_property
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from faker import Faker
@@ -13,20 +14,15 @@ from psycopg import sql
 from psycopg.rows import dict_row
 from pydantic import AwareDatetime, PositiveInt
 
-from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
-    Permission,
     PostgresManager,
     PostgresManagerWithRedis,
 )
-from generalresearch.models import Source
+from generalresearch.managers.utils import parse_order_by
 from generalresearch.models.custom_types import SurveyKey, UUIDStr
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.definitions import (
-    ReportValue,
-    Status,
-    StatusCode1,
     WallAdjustedStatus,
-    WallStatusCode2,
 )
 from generalresearch.models.thl.ledger import OrderBy
 from generalresearch.models.thl.session import (
@@ -35,7 +31,18 @@ from generalresearch.models.thl.session import (
     check_adjusted_status_wall_consistent,
 )
 from generalresearch.models.thl.survey.model import TaskActivity
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.managers.base import (
+        Permission,
+    )
+    from generalresearch.models.thl.definitions import (
+        ReportValue,
+        Status,
+        StatusCode1,
+        WallStatusCode2,
+    )
+    from generalresearch.pg_helper import PostgresConfig
 
 logger = logging.getLogger("WallManager")
 fake = Faker()
@@ -360,12 +367,10 @@ class WallManager(PostgresManager):
         params = {}
         filters.append("user_id = %(user_id)s")
         params["user_id"] = user_id
-        default_started = datetime.now(tz=timezone.utc) - timedelta(days=90)
+        default_started = datetime.now(tz=UTC) - timedelta(days=90)
         started_after = started_after or default_started
-        started_before = started_before or datetime.now(tz=timezone.utc)
-        assert (
-            started_before.tzinfo == timezone.utc
-        ), "started_before must be tz-aware as UTC"
+        started_before = started_before or datetime.now(tz=UTC)
+        assert started_before.tzinfo == UTC, "started_before must be tz-aware as UTC"
         assert (
             started_after < started_before
         ), "started_after must be before started_before"
@@ -412,7 +417,7 @@ class WallManager(PostgresManager):
         started_before: datetime | None = None,
         order_by: str | None = "-started",
     ) -> list[WallAttempt]:
-        started_before = started_before or datetime.now(tz=timezone.utc)
+        started_before = started_before or datetime.now(tz=UTC)
         res = []
         page = 1
         while True:
@@ -486,7 +491,7 @@ class WallManager(PostgresManager):
         ORDER BY rs.source, rs.survey_id;
         """
 
-        params = dict()
+        params = {}
         filters = []
 
         # Instead of doing a big IN with a big set of tuples, since we know
@@ -581,7 +586,7 @@ class WallCacheManager(PostgresManagerWithRedis):
         # b as second element and a as third element"
         attempts = sorted(attempts, key=lambda x: x.started)
         json_res = [attempt.model_dump_json() for attempt in attempts]
-        res = self.redis_client.lpush(redis_key, *json_res)
+        _ = self.redis_client.lpush(redis_key, *json_res)
         self.redis_client.expire(redis_key, time=60 * 60 * 24)
 
         # So this doesn't grow forever, keep only the most recent 5k

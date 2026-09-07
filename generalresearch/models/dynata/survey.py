@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import timezone
+from datetime import UTC
 from decimal import Decimal
 from functools import cached_property
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 from more_itertools import flatten
 from pydantic import (
@@ -17,10 +17,8 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.locales import Localelator
-from generalresearch.models import Source, TaskCalculationType
 from generalresearch.models.custom_types import (
     AlphaNumStr,
     AlphaNumStrSet,
@@ -28,6 +26,7 @@ from generalresearch.models.custom_types import (
     CoercedStr,
     DeviceTypes,
 )
+from generalresearch.models.definitions import Source, TaskCalculationType
 from generalresearch.models.dynata import DynataStatus
 from generalresearch.models.thl.demographics import (
     Gender,
@@ -133,9 +132,7 @@ class DynataCondition(MarketplaceCondition):
 
         if cell["kind"] == "RANGE":
             d["values"] = [
-                "{0}-{1}".format(
-                    cell["range"]["from"] or "inf", cell["range"]["to"] or "inf"
-                )
+                f"{cell['range']['from'] or 'inf'}-{cell['range']['to'] or 'inf'}"
             ]
             d["value_type"] = ConditionValueType.RANGE
             return cls.model_validate(d)
@@ -171,7 +168,7 @@ class DynataQuota(BaseModel):
     status: DynataStatus = Field()
 
     def __hash__(self):
-        return hash(tuple((tuple(self.condition_hashes), self.count, self.status)))
+        return hash((tuple(self.condition_hashes), self.count, self.status))
 
     @property
     def is_open(self) -> bool:
@@ -247,7 +244,7 @@ class DynataQuotaGroup(RootModel):
     ) -> tuple[bool | None, set[str]]:
         # Qualify for ANY quota object within a quota group
         obj_evals = {obj: obj.passes_soft(criteria_evaluation) for obj in self.root}
-        evals = set(v[0] for v in obj_evals.values())
+        evals = {v[0] for v in obj_evals.values()}
         # If we match 1 obj, then the others don't matter
         if any(evals):
             return True, set()
@@ -322,7 +319,7 @@ class DynataFilterGroup(RootModel):
     ) -> tuple[bool | None, set[str]]:
         # Passes back "passes" (T/F/none) and a list of unknown criterion hashes
         obj_evals = {obj: obj.passes_soft(criteria_evaluation) for obj in self.root}
-        evals = set(v[0] for v in obj_evals.values())
+        evals = {v[0] for v in obj_evals.values()}
         # If we match 1 obj, then the others don't matter
         if any(evals):
             return True, set()
@@ -552,8 +549,8 @@ class DynataSurvey(MarketplaceTask):
 
     @classmethod
     def from_db(cls, d: dict[str, Any]) -> Self:
-        d["created"] = d["created"].replace(tzinfo=timezone.utc)
-        d["last_updated"] = d["last_updated"].replace(tzinfo=timezone.utc)
+        d["created"] = d["created"].replace(tzinfo=UTC)
+        d["last_updated"] = d["last_updated"].replace(tzinfo=UTC)
         d["filters"] = json.loads(d["filters"])
         d["quotas"] = json.loads(d["quotas"])
         d["used_question_ids"] = json.loads(d["used_question_ids"])
@@ -581,7 +578,7 @@ class DynataSurvey(MarketplaceTask):
         group_eval = {
             group: group.passes_soft(criteria_evaluation) for group in self.filters
         }
-        evals = set(g[0] for g in group_eval.values())
+        evals = {g[0] for g in group_eval.values()}
         if False in evals:
             return False, set()
         elif None in evals:
@@ -617,7 +614,7 @@ class DynataSurvey(MarketplaceTask):
         group_eval = {
             quota: quota.passes_soft(criteria_evaluation) for quota in self.quotas
         }
-        evals = set(g[0] for g in group_eval.values())
+        evals = {g[0] for g in group_eval.values()}
         if False in evals:
             return False, set()
         elif None in evals:

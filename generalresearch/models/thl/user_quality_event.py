@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, Field, PositiveInt
 
-from generalresearch.models import MAX_INT32, Source
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.models.thl.definitions import WallAdjustedStatus
-from generalresearch.models.thl.user import BPUIDStr
+from generalresearch.models.thl.user_identifiers import BPUIDStr
 from generalresearch.utils.enum import ReprEnumMeta
 
 """
@@ -18,7 +18,7 @@ Typically used internally. These affect a user's quality standing.
 """
 
 
-class QualityEventType(str, Enum, metaclass=ReprEnumMeta):
+class QualityEventType(StrEnum, metaclass=ReprEnumMeta):
     """
     Currently, the grpc call SendUserQualityEvents handles both the
         recons/task adj, access control, and "security/hash failure" events.
@@ -61,9 +61,7 @@ class TaskAdjustmentEvent(BaseModel):
     mid: UUIDStr = Field()
     source: Source = Field()
     status: WallAdjustedStatus = Field()
-    alert_time: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    alert_time: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
     quality_event_type: Literal[QualityEventType.task_adjustment] = Field(
         default=QualityEventType.task_adjustment
     )

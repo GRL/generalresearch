@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import random
 from typing import (
-    List,
     Literal,
     Union,
     get_args,
     get_origin,
     get_type_hints,
-    Optional,
 )
 
 import numpy as np
+from grip_client.enums import AccessType
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -29,7 +28,6 @@ from generalresearch.grliq.models.forensic_result import (
 )
 from generalresearch.models.custom_types import AwareDatetimeISO, IPvAnyAddressStr
 from generalresearch.models.thl.locales import CountryISO
-from generalresearch.models.thl.maxmind.definitions import UserType
 
 example_rtt_percentiles = (
     [133.332]
@@ -57,9 +55,7 @@ class UserForensicSummary(BaseModel):
     )
 
     # These must be nullable in case a user has 0 attempts!
-    category_result_summary: GrlIqForensicCategorySummary | None= Field(
-        default=None
-    )
+    category_result_summary: GrlIqForensicCategorySummary | None = Field(default=None)
     checker_result_summary: GrlIqCheckerResultsSummary | None = Field(default=None)
 
     country_timing_data_summary: dict[CountryISO, TimingDataCountrySummary] = Field(
@@ -128,7 +124,7 @@ def generate_GrlIqCheckerResultsSummary():
         if base_type == GrlIqCheckerResult:
             if is_opt:
                 fields[f"{field_name}_avg"] = (
-                    Optional[GrlIqAvgScore],
+                    GrlIqAvgScore | None,
                     Field(default=None, examples=[random.randint(0, 100)]),
                 )
                 fields[f"{field_name}_pct_none"] = (
@@ -189,7 +185,9 @@ class IPTimingDataSummary(BaseModel):
     client_ip: IPvAnyAddressStr = Field(examples=["123.123.123.123"])
     country_iso: CountryISO = Field(examples=["us"])
     server_location: Literal["fremont_ca"] = Field(default="fremont_ca")
-    user_type: UserType | None = Field(default=None, examples=[UserType.RESIDENTIAL])
+    user_type: AccessType | None = Field(
+        default=None, examples=[AccessType.RESIDENTIAL]
+    )
     expected_rtt_range: tuple[float, float] = Field(
         description="The expected rtt range for this IP (based on country_iso/user_type) to server_location",
         examples=[(45.193, 120.841)],
@@ -211,16 +209,16 @@ class CountryRTTDistribution(BaseModel):
         description="Country client_ip is located in", examples=["fr"]
     )
     # For users marked as fraud or not
-    is_fraud: bool| None = Field(
+    is_fraud: bool | None = Field(
         default=None,
         description="If timing data from sessions determined to be fraud are included",
     )
 
     # we could split by this optionally
-    user_type: UserType|None = Field(
+    user_type: AccessType | None = Field(
         default=None,
         description="user_type of the client_ip as determined by MaxMind",
-        examples=[UserType.RESIDENTIAL],
+        examples=[AccessType.RESIDENTIAL],
     )
 
     rtt_min: float = Field(gt=0, examples=[133.332])
@@ -228,7 +226,7 @@ class CountryRTTDistribution(BaseModel):
     rtt_mean: float = Field(gt=0, examples=[179.302])
     rtt_max: float = Field(gt=0, examples=[890.006])
     rtt_std: float = Field(gt=0, examples=[46.831])
-    rtt_percentiles: List[float] = Field(
+    rtt_percentiles: list[float] = Field(
         min_length=101, max_length=101, examples=[example_rtt_percentiles]
     )
 
@@ -255,10 +253,9 @@ class CountryRTTDistribution(BaseModel):
         Render a boxplot from the RTT percentiles.
         """
         try:
-            # annoying pycharm error
             import matplotlib.pyplot as plt
-        except ImportError as e:
-            raise e
+        except ImportError:
+            return
 
         p = self.rtt_percentiles
         data = {
@@ -270,7 +267,7 @@ class CountryRTTDistribution(BaseModel):
             "fliers": [p[0]] + ([p[100]] if p[100] > p[95] else []),
         }
 
-        fig, ax = plt.subplots(figsize=(4, 1.5))
+        _, ax = plt.subplots(figsize=(4, 1.5))
         ax.bxp([data], showfliers=True, vert=False)
         ax.set_title(f"RTT Boxplot for {self.country_iso}")
         ax.set_xlabel("RTT (ms)")

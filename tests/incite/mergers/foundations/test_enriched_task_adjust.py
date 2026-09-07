@@ -1,16 +1,30 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from datetime import timedelta
 from itertools import product as iter_product
+from typing import TYPE_CHECKING
 
 import dask.dataframe as dd
 import pandas as pd
 import pytest
+from dask.distributed import Client as DaskClient
 
-from test_utils.incite.collections.conftest import (
-    wall_collection,
-    task_adj_collection,
-    session_collection,
-)
-from test_utils.incite.mergers.conftest import enriched_wall_merge
+if TYPE_CHECKING:
+    from generalresearch.incite.collections.thl_web import (
+        SessionDFCollection,
+        TaskAdjustmentDFCollection,
+        WallDFCollection,
+    )
+    from generalresearch.incite.mergers.foundations.enriched_task_adjust import (
+        EnrichedTaskAdjustMerge,
+    )
+    from generalresearch.incite.mergers.foundations.enriched_wall import (
+        EnrichedWallMerge,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
 
 
 @pytest.mark.parametrize(
@@ -27,19 +41,18 @@ class TestEnrichedTaskAdjust:
     @pytest.mark.skip
     def test_base(
         self,
-        client_no_amm,
-        user_factory,
-        product,
-        task_adj_collection,
-        wall_collection,
-        session_collection,
-        enriched_wall_merge,
-        enriched_task_adjust_merge,
-        incite_item_factory,
-        delete_df_collection,
-        thl_web_rr,
+        client_no_amm: DaskClient,
+        user_factory: Callable[..., User],
+        product: Product,
+        task_adj_collection: TaskAdjustmentDFCollection,
+        wall_collection: WallDFCollection,
+        session_collection: SessionDFCollection,
+        enriched_wall_merge: EnrichedWallMerge,
+        enriched_task_adjust_merge: EnrichedTaskAdjustMerge,
+        incite_item_factory: Callable[..., None],
+        delete_df_collection: Callable[..., None],
+        thl_web_rr: PostgresConfig,
     ):
-        from generalresearch.models.thl.user import User
 
         # -- Build & Setup
         delete_df_collection(coll=session_collection)

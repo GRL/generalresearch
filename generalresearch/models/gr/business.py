@@ -3,24 +3,22 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pandas as pd
-from dask.distributed import Client
+import pyarrow as pa
+from dask.distributed import Client as DaskClient
 from psycopg.cursor import Cursor
 from psycopg.rows import dict_row
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt
+from pydantic import BaseModel, ConfigDict, Field, PositiveInt, ValidationError
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_extra_types.phone_numbers import PhoneNumber
-from typing_extensions import Self
 
 from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
-from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 from generalresearch.incite.schemas.mergers.pop_ledger import (
     numerical_col_names,
 )
@@ -30,13 +28,20 @@ from generalresearch.models.custom_types import (
     UUIDStr,
     UUIDStrCoerce,
 )
+from generalresearch.models.gr.definitions import BusinessType, TransferMethod
+from generalresearch.models.gr.team import Team
 from generalresearch.models.thl.finance import BusinessBalances, POPFinancial
 from generalresearch.models.thl.ledger import LedgerAccount, OrderBy
 from generalresearch.models.thl.payout import BusinessPayoutEvent
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
 from generalresearch.utils.aggregation import group_by_year
-from generalresearch.utils.enum import ReprEnumMeta
+
+if TYPE_CHECKING:
+    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
@@ -45,6 +50,9 @@ if TYPE_CHECKING:
     )
     from generalresearch.incite.mergers.foundations.enriched_wall import (
         EnrichedWallMerge,
+    )
+    from generalresearch.managers.gr.business import (
+        BusinessBankAccountManager,
     )
     from generalresearch.managers.thl.ledger_manager.ledger import (
         LedgerManager,
@@ -55,18 +63,8 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.payout import (
         BusinessPayoutEventManager,
     )
-    from generalresearch.models.gr.team import Team
+    from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.thl.product import Product
-
-
-class TransferMethod(Enum, metaclass=ReprEnumMeta):
-    ACH = 0
-    WIRE = 1
-
-
-class BusinessType(str, Enum, metaclass=ReprEnumMeta):
-    INDIVIDUAL = "i"
-    COMPANY = "c"
 
 
 class BusinessBankAccount(BaseModel):
@@ -204,16 +202,18 @@ class Business(BaseModel):
 
     # Initialization is deferred until unless it's called
     # (see .prebuild_***())
-    balance: BusinessBalances | None = Field(default=None, name="Business Balance")
+    balance: BusinessBalances | None = Field(default=None, title="Business Balance")
 
     payouts_total_str: str | None = Field(default=None)
     payouts_total: USDCent | None = Field(default=None)
     payouts: list[BusinessPayoutEvent] | None = Field(
         default=None,
-        name="Business Payouts",
-        description="These are the ACH or Wire payments that were sent to the"
-        "Business as a single amount, summed for all the Business"
-        "child Products",
+        title="Business Payouts",
+        description=(
+            "These are the ACH or Wire payments that were sent to the"
+            "Business as a single amount, summed for all the Business"
+            "child Products"
+        ),
     )
 
     pop_financial: list[POPFinancial] | None = Field(default=None)
@@ -238,18 +238,19 @@ class Business(BaseModel):
         # --- Prefetch ---
 
     def prefetch_addresses(self, pg_config: PostgresConfig) -> None:
-        with pg_config.make_connection() as conn:
-            with conn.cursor(row_factory=dict_row) as c:
-                c.execute(
-                    query="""
+        with pg_config.make_connection() as conn, conn.cursor(
+            row_factory=dict_row
+        ) as c:
+            c.execute(
+                query="""
                         SELECT *
                         FROM common_businessaddress AS ba
                         WHERE ba.business_id = %s
                         LIMIT 1
                     """,
-                    params=[self.id],
-                )
-                res = c.fetchall()
+                params=[self.id],
+            )
+            res = c.fetchall()
 
         if len(res) == 0:
             self.addresses = []
@@ -257,55 +258,54 @@ class Business(BaseModel):
         self.addresses = [BusinessAddress.model_validate(i) for i in res]
 
     def prefetch_teams(self, pg_config: PostgresConfig) -> None:
-        from generalresearch.models.gr.team import Team
+        with pg_config.make_connection() as conn, conn.cursor(
+            row_factory=dict_row
+        ) as c:
+            c: Cursor
 
-        with pg_config.make_connection() as conn:
-            with conn.cursor(row_factory=dict_row) as c:
-                c: Cursor
-
-                c.execute(
-                    query="""
+            c.execute(
+                query="""
                     SELECT t.* 
                     FROM common_team AS t
                     INNER JOIN common_team_businesses AS tb
                         ON tb.team_id = t.id
                     WHERE tb.business_id = %s
                 """,
-                    params=(self.id,),
-                )
+                params=(self.id,),
+            )
 
-                res = c.fetchall()
+            res = c.fetchall()
 
         if len(res) == 0:
             self.teams = []
 
         self.teams = [Team.model_validate(i) for i in res]
 
-    def prefetch_products(self, thl_pg_config: PostgresConfig) -> None:
+    def prefetch_products(self, product_manager: ProductManager) -> None:
         """
         :return: All the Products for this Business
         """
-        from generalresearch.managers.thl.product import ProductManager
 
-        pm = ProductManager(pg_config=thl_pg_config)
-        self.products = pm.fetch_uuids(business_uuids=[self.uuid])
+        self.products = product_manager.fetch_uuids(business_uuids=[self.uuid])
 
-    def prefetch_bank_accounts(self, pg_config: PostgresConfig) -> None:
-        from generalresearch.managers.gr.business import (
-            BusinessBankAccountManager,
+    def prefetch_bank_accounts(
+        self, business_bank_account_manager: BusinessBankAccountManager
+    ) -> None:
+        self.bank_accounts = business_bank_account_manager.get_by_business_id(
+            business_id=self.id
         )
 
-        bam = BusinessBankAccountManager(pg_config=pg_config)
-        self.bank_accounts = bam.get_by_business_id(business_id=self.id)
-
     def prefetch_bp_accounts(
-        self, thl_lm: ThlLedgerManager, thl_pg_config: PostgresConfig
+        self, thl_lm: ThlLedgerManager, product_manager: ProductManager
     ):
         # We need to prefetch the Products everytime because there is no way
         #   of knowing if a new Product has been added since the last time it
         #   ran.
-        self.prefetch_products(thl_pg_config=thl_pg_config)
+        self.prefetch_products(product_manager=product_manager)
+        assert isinstance(self.products, list)
         product_lookup = {p.uuid: p for p in self.products}
+        assert isinstance(self.product_uuids, list)
+        assert thl_lm.currency
 
         accounts = thl_lm.get_accounts_if_exists(
             qualified_names=[
@@ -320,11 +320,12 @@ class Business(BaseModel):
         for product_uuid in self.product_uuids:
             if product_uuid not in bp_account:
                 refresh = True
-                logging.exception(
+                logger.exception(
                     f"Business {self.uuid} does not have a BP Wallet Account for Product {product_uuid}. Creating..."
                 )
                 product = product_lookup[product_uuid]
                 thl_lm.get_account_or_create_bp_wallet(product=product)
+
         if refresh:
             accounts = thl_lm.get_accounts_if_exists(
                 qualified_names=[
@@ -341,10 +342,10 @@ class Business(BaseModel):
 
     def prebuild_balance(
         self,
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
         lm: LedgerManager,
         ds: GRLDatasets,
-        client: Client,
+        client: DaskClient,
         pop_ledger: PopLedgerMerge | None = None,
         at_timestamp: AwareDatetime | None = None,
     ) -> None:
@@ -371,8 +372,9 @@ class Business(BaseModel):
         volume levels.
         """
         LOG.debug(f"Business.prebuild_balance({self.uuid=})")
+        assert lm.currency
 
-        self.prefetch_products(thl_pg_config=thl_pg_config)
+        self.prefetch_products(product_manager=product_manager)
 
         accounts: list[LedgerAccount] = lm.get_accounts_if_exists(
             qualified_names=(
@@ -391,8 +393,8 @@ class Business(BaseModel):
             pop_ledger = plm(ds=ds)
 
         if at_timestamp is None:
-            at_timestamp = datetime.now(tz=timezone.utc)
-        assert at_timestamp.tzinfo == timezone.utc
+            at_timestamp = datetime.now(tz=UTC)
+        assert at_timestamp.tzinfo == UTC
 
         ddf = pop_ledger.ddf(
             force_rr_latest=False,
@@ -421,33 +423,27 @@ class Business(BaseModel):
             #   that is still valid. Don't attempt to build a balance, leave it
             #   as None rather than all zeros
             LOG.warning(f"Business({self.uuid=}).prebuild_balance empty dataframe")
-            return None
+            return
 
         LOG.debug(f"Business.prebuild_balance.groupby() {df.head()}")
         df = df.groupby("account_id").sum()
 
         self.balance = BusinessBalances.from_pandas(
-            input_data=df, accounts=accounts, thl_pg_config=thl_pg_config
+            input_data=df, accounts=accounts, product_manager=product_manager
         )
 
         return
 
     def prebuild_payouts(
         self,
-        thl_pg_config: PostgresConfig,
-        thl_lm: ThlLedgerManager,
         bpem: BusinessPayoutEventManager,
     ) -> None:
         LOG.debug(f"Business.prebuild_payouts({self.uuid=})")
 
-        self.prefetch_products(thl_pg_config=thl_pg_config)
-
-        self.payouts = bpem.get_business_payout_events_for_products(
-            thl_ledger_manager=thl_lm,
-            product_uuids=self.product_uuids,
+        self.payouts = bpem.get_business_payout_events_for_business(
+            business_uuid=self.uuid,
             order_by=OrderBy.DESC,
         )
-
         self.prebuild_payouts_total()
 
     def prebuild_payouts_total(self):
@@ -455,14 +451,12 @@ class Business(BaseModel):
         self.payouts_total = USDCent(sum([po.amount for po in self.payouts]))
         self.payouts_total_str = self.payouts_total.to_usd_str()
 
-        return
-
     def prebuild_pop_financial(
         self,
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
         thl_lm: ThlLedgerManager,
         ds: GRLDatasets,
-        client: Client,
+        client: DaskClient,
         pop_ledger: PopLedgerMerge | None = None,
     ) -> None:
         """This is very similar to the Product POP Financial endpoint; however,
@@ -471,7 +465,8 @@ class Business(BaseModel):
         financial activity within that time window.
         """
         if self.bp_accounts is None:
-            self.prefetch_bp_accounts(thl_lm=thl_lm, thl_pg_config=thl_pg_config)
+            self.prefetch_bp_accounts(thl_lm=thl_lm, product_manager=product_manager)
+        assert isinstance(self.bp_accounts, list)
 
         from generalresearch.models.admin.request import (
             ReportRequest,
@@ -514,13 +509,13 @@ class Business(BaseModel):
 
     def prebuild_enriched_session_parquet(
         self,
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
         ds: GRLDatasets,
-        client: Client,
+        client: DaskClient,
         mnt_gr_api: Path,
         enriched_session: EnrichedSessionMerge | None = None,
     ) -> None:
-        self.prefetch_products(thl_pg_config=thl_pg_config)
+        self.prefetch_products(product_manager=product_manager)
 
         if enriched_session is None:
             from generalresearch.incite.defaults import (
@@ -551,21 +546,19 @@ class Business(BaseModel):
         )
 
         try:
-            test = pd.read_parquet(path, engine="pyarrow")
-        except Exception as e:
+            _ = pd.read_parquet(path, engine="pyarrow")
+        except (pa.ArrowException, OSError, ValueError) as e:
             raise OSError(f"Parquet verification failed: {e}")
-
-        return None
 
     def prebuild_enriched_wall_parquet(
         self,
-        thl_pg_config: PostgresConfig,
+        product_manager: ProductManager,
         ds: GRLDatasets,
-        client: Client,
+        client: DaskClient,
         mnt_gr_api: Path,
         enriched_wall: EnrichedWallMerge | None = None,
     ) -> None:
-        self.prefetch_products(thl_pg_config=thl_pg_config)
+        self.prefetch_products(product_manager=product_manager)
 
         if enriched_wall is None:
             from generalresearch.incite.defaults import (
@@ -596,11 +589,9 @@ class Business(BaseModel):
         )
 
         try:
-            test = pd.read_parquet(path, engine="pyarrow")
-        except Exception as e:
+            _ = pd.read_parquet(path, engine="pyarrow")
+        except (pa.ArrowException, OSError, ValueError) as e:
             raise OSError(f"Parquet verification failed: {e}")
-
-        return None
 
     @classmethod
     def required_fields(cls) -> list[str]:
@@ -633,9 +624,11 @@ class Business(BaseModel):
     def set_cache(
         self,
         pg_config: PostgresConfig,
+        product_manager: ProductManager,
+        business_bank_account_manager: BusinessBankAccountManager,
         thl_web_rr: PostgresConfig,
         redis_config: RedisConfig,
-        client: Client,
+        client: DaskClient,
         ds: GRLDatasets,
         lm: LedgerManager,
         thl_lm: ThlLedgerManager,
@@ -651,20 +644,22 @@ class Business(BaseModel):
 
         self.prefetch_addresses(pg_config=pg_config)
         self.prefetch_teams(pg_config=pg_config)
-        self.prefetch_products(thl_pg_config=thl_web_rr)
-        self.prefetch_bank_accounts(pg_config=pg_config)
-        self.prefetch_bp_accounts(thl_lm=thl_lm, thl_pg_config=thl_web_rr)
+        self.prefetch_products(product_manager=product_manager)
+        self.prefetch_bank_accounts(
+            business_bank_account_manager=business_bank_account_manager
+        )
+        self.prefetch_bp_accounts(thl_lm=thl_lm, product_manager=product_manager)
 
         self.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=lm,
             ds=ds,
             client=client,
             pop_ledger=pop_ledger,
         )
-        self.prebuild_payouts(thl_pg_config=thl_web_rr, thl_lm=thl_lm, bpem=bpem)
+        self.prebuild_payouts(bpem=bpem)
         self.prebuild_pop_financial(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             thl_lm=thl_lm,
             ds=ds,
             client=client,
@@ -696,7 +691,7 @@ class Business(BaseModel):
             enriched_session = es(ds=ds)
 
         self.prebuild_enriched_session_parquet(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             client=client,
             ds=ds,
             mnt_gr_api=mnt_gr_api,
@@ -709,7 +704,7 @@ class Business(BaseModel):
             enriched_wall = ew(ds=ds)
 
         self.prebuild_enriched_wall_parquet(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             client=client,
             ds=ds,
             mnt_gr_api=mnt_gr_api,
@@ -724,18 +719,18 @@ class Business(BaseModel):
         uuid: UUIDStr,
         fields: list[str],
         gr_redis_config: RedisConfig,
-    ) -> Self | None:
+    ) -> Business | None:
         keys: list[str] = Business.required_fields() + fields
 
         if "pop_financial" in keys:
             # We should explicitly pass the pop_financial years we want. By default,
             #   at least get this year.
-            year = datetime.now(tz=timezone.utc).year
+            year = datetime.now(tz=UTC).year
             keys = list(set(keys) | {f"pop_financial:{year}"})
         rc = gr_redis_config.create_redis_client()
 
         try:
-            res: list = rc.hmget(name=f"business:{uuid}", keys=keys)
+            res: list[str | bytes | None] = rc.hmget(name=f"business:{uuid}", keys=keys)
             d = {
                 val: json.loads(res[idx]) if res[idx] is not None else None
                 for idx, val in enumerate(keys)
@@ -753,6 +748,5 @@ class Business(BaseModel):
             result["pop_financial"] = pop_financial
 
             return Business.model_validate(result)
-        except Exception as e:
-            logging.exception(e)
+        except ValidationError:
             return None

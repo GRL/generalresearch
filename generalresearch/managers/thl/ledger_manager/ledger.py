@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from collections.abc import Callable, Collection
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import redis
@@ -13,7 +13,6 @@ from pydantic import AwareDatetime, NonNegativeInt, PositiveInt
 from redis.exceptions import LockError, LockNotOwnedError
 
 from generalresearch.currency import LedgerCurrency
-from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
     Permission,
     PostgresManager,
@@ -28,16 +27,19 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionFlagAlreadyExistsError,
     LedgerTransactionReleaseLockError,
 )
+from generalresearch.managers.utils import parse_order_by
 from generalresearch.models.custom_types import UUIDStr, check_valid_uuid
 from generalresearch.models.thl.ledger import (
     LedgerAccount,
     LedgerEntry,
     LedgerTransaction,
-    UserLedgerTransactionType,
     UserLedgerTransactionTypesSummary,
 )
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.ledger import UserLedgerTransactionType
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 logging.basicConfig()
 logger = logging.getLogger("LedgerManager")
@@ -104,8 +106,8 @@ class LedgerManagerBasePostgres(PostgresManager, RedisManager):
         filters = []
         params = {}
         if time_start or time_end:
-            time_end = time_end or datetime.now(tz=timezone.utc)
-            time_start = time_start or datetime(2017, 1, 1, tzinfo=timezone.utc)
+            time_end = time_end or datetime.now(tz=UTC)
+            time_start = time_start or datetime(2017, 1, 1, tzinfo=UTC)
             assert time_start.tzinfo.utcoffset(time_start) == timedelta()
             assert time_end.tzinfo.utcoffset(time_end) == timedelta()
             filters.append("lt.created BETWEEN %(time_start)s AND %(time_end)s")
@@ -149,9 +151,9 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         )
 
         if metadata is None:
-            metadata = dict()
+            metadata = {}
         if created is None:
-            created = datetime.now(tz=timezone.utc)
+            created = datetime.now(tz=UTC)
 
         t = LedgerTransaction(
             created=created,
@@ -436,7 +438,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
                     )
                 }
             else:
-                metadata = dict()
+                metadata = {}
 
             entries = [
                 LedgerEntry(
@@ -456,7 +458,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
                     id=row["transaction_id"],
                     entries=entries,
                     metadata=metadata,
-                    created=row["created"].replace(tzinfo=timezone.utc),
+                    created=row["created"].replace(tzinfo=UTC),
                     ext_description=row["ext_description"],
                     tag=row["tag"],
                 )
@@ -757,7 +759,7 @@ class LedgerMetadataManager(LedgerManagerBasePostgres):
 
         """
 
-        tx_ids = set([tx.id for tx in transactions])
+        tx_ids = {tx.id for tx in transactions}
         res = self.pg_config.execute_sql_query(
             query="""
                 SELECT 
@@ -789,7 +791,7 @@ class LedgerMetadataManager(LedgerManagerBasePostgres):
         from the database.
         """
 
-        tx_ids = set([tx.id for tx in transactions])
+        tx_ids = {tx.id for tx in transactions}
         res = self.pg_config.execute_sql_query(
             query="""
                 SELECT tx_meta.id 
@@ -799,7 +801,7 @@ class LedgerMetadataManager(LedgerManagerBasePostgres):
             params=[list(tx_ids)],
         )
 
-        return set([i["id"] for i in res])
+        return {i["id"] for i in res}
 
 
 class LedgerEntryManager(LedgerManagerBasePostgres):
@@ -809,7 +811,7 @@ class LedgerEntryManager(LedgerManagerBasePostgres):
     def get_tx_entries_by_txs(
         self, transactions: list[LedgerTransaction]
     ) -> list[LedgerEntry]:
-        tx_ids = set([tx.id for tx in transactions])
+        tx_ids = {tx.id for tx in transactions}
         tx_entries = self.pg_config.execute_sql_query(
             query="""
                 SELECT 
@@ -1147,4 +1149,5 @@ class LedgerManager(
         }
         for k, v in d.items():
             v["total"] = (v["debit"] - v["credit"]) * k.normal_balance.value
+
         return d

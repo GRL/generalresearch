@@ -2,15 +2,11 @@ from __future__ import annotations
 
 import statistics
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from generalresearch.grliq.managers.forensic_data import GrlIqDataManager
-from generalresearch.grliq.managers.forensic_events import (
-    GrlIqEventManager,
-)
 from generalresearch.grliq.models.forensic_result import (
     GrlIqCheckerResults,
     GrlIqForensicCategoryResult,
@@ -22,12 +18,18 @@ from generalresearch.grliq.models.forensic_summary import (
     TimingDataCountrySummary,
     UserForensicSummary,
 )
-from generalresearch.models.thl.user import User
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from generalresearch.grliq.managers.forensic_data import GrlIqDataManager
+    from generalresearch.grliq.managers.forensic_events import (
+        GrlIqEventManager,
+    )
+    from generalresearch.models.thl.user import User
+    from generalresearch.redis_helper import RedisConfig
 
 
 def calculate_category_summary(
-    res: List[GrlIqForensicCategoryResult],
+    res: list[GrlIqForensicCategoryResult],
 ) -> GrlIqForensicCategorySummary:
     totals = defaultdict(int)
     is_complete_count = 0
@@ -55,7 +57,7 @@ def calculate_category_summary(
 
 
 def calculate_checker_summary(
-    res: List[GrlIqCheckerResults],
+    res: list[GrlIqCheckerResults],
 ) -> GrlIqCheckerResultsSummary:
     totals = defaultdict(list)
     none_totals = defaultdict(int)
@@ -85,8 +87,8 @@ def calculate_checker_summary(
 
 
 def calculate_timing_summary(
-    redis_config: RedisConfig, timing_res: List[Dict[str, Any]]
-) -> Dict[str, TimingDataCountrySummary]:
+    redis_config: RedisConfig, timing_res: list[dict[str, Any]]
+) -> dict[str, TimingDataCountrySummary]:
 
     country_median_rtts = defaultdict(list)
     for x in timing_res:
@@ -109,7 +111,7 @@ def calculate_timing_summary(
         for k, v in country_distributions.items()
     }
 
-    out = dict()
+    out = {}
     for country_iso, median_rtts in country_median_rtts.items():
         country_stats = country_distributions[country_iso]
         z_scores = [
@@ -137,7 +139,7 @@ def run_user_forensic_summary(
     user: User,
 ) -> UserForensicSummary:
 
-    now = datetime.now(tz=timezone.utc)
+    now = datetime.now(tz=UTC)
     created_between = (now - timedelta(days=90), now)
     select_str = "id, session_uuid, product_id, product_user_id, created_at, result_data, category_result"
     res = iq_dm.filter(
@@ -158,12 +160,14 @@ def run_user_forensic_summary(
     )
 
     session_uuids = {x["session_uuid"] for x in res}
-    timing_res: List[Dict] = iq_em.filter_distinct_timing(session_uuids=session_uuids)
+    timing_res: list[dict[str, Any]] = iq_em.filter_distinct_timing(
+        session_uuids=session_uuids
+    )
 
     country_timing_data_summary = (
         calculate_timing_summary(redis_config=redis_config, timing_res=timing_res)
         if timing_res
-        else dict()
+        else {}
     )
 
     s = UserForensicSummary(

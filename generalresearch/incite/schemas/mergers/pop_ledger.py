@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from collections.abc import Callable
 from datetime import timedelta
 
 import pandas as pd
@@ -21,6 +24,11 @@ from generalresearch.models.thl.ledger import Direction, TransactionType
 
 # If an amount is "very" large, something is def wrong. Defining "very" somewhat arbitrarily here.
 SUSPICIOUSLY_LARGE_NUMBER = (2**32 / 2) - 1  # 2147483647
+
+_tz_min_freq: Callable[[pd.Series], pd.Series] = lambda i: (i.dt.second == 0) & (
+    i.dt.microsecond == 0
+)
+
 
 NonNegativeAmount = Column(
     dtype="Int32",
@@ -49,7 +57,7 @@ PopLedgerSchema = DataFrameSchema(
     | {
         "time_idx": Column(
             dtype=pd.DatetimeTZDtype(tz="UTC"),
-            checks=Check(lambda x: (x.dt.second == 0) & (x.dt.microsecond == 0)),
+            checks=Check(_tz_min_freq),
             nullable=False,
         ),
         "account_id": TxSchema.columns["account_id"],

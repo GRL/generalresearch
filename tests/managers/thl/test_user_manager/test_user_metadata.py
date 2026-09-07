@@ -1,20 +1,38 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 
 from generalresearch.models.thl.user_profile import UserMetadata
-from test_utils.models.conftest import user, user_manager, user_factory
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.user_manager.user_metadata_manager import (
+        UserMetadataManager,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
 
 
 class TestUserMetadataManager:
 
-    def test_get_notset(self, user, user_manager, user_metadata_manager):
+    def test_get_notset(
+        self,
+        user: User,
+        user_metadata_manager: UserMetadataManager,
+    ):
         # The row in the db won't exist. It just returns the default obj with everything None (except for the user_id)
         um1 = user_metadata_manager.get(user_id=user.user_id)
         assert um1 == UserMetadata(user_id=user.user_id)
 
-    def test_create(self, user_factory, product, user_metadata_manager):
-        from generalresearch.models.thl.user import User
+    def test_create(
+        self,
+        user_factory: Callable[..., User],
+        product: Product,
+        user_metadata_manager: UserMetadataManager,
+    ):
 
         u1: User = user_factory(product=product)
 
@@ -27,8 +45,12 @@ class TestUserMetadataManager:
         um2 = user_metadata_manager.get(email_address=email_address)
         assert um == um2
 
-    def test_create_no_email(self, product, user_factory, user_metadata_manager):
-        from generalresearch.models.thl.user import User
+    def test_create_no_email(
+        self,
+        product: Product,
+        user_factory: Callable[..., User],
+        user_metadata_manager: UserMetadataManager,
+    ):
 
         u1: User = user_factory(product=product)
         um = UserMetadata(user_id=u1.user_id)
@@ -38,8 +60,12 @@ class TestUserMetadataManager:
         um2 = user_metadata_manager.get(user_id=u1.user_id)
         assert um == um2
 
-    def test_update(self, product, user_factory, user_metadata_manager):
-        from generalresearch.models.thl.user import User
+    def test_update(
+        self,
+        product: Product,
+        user_factory: Callable[..., User],
+        user_metadata_manager: UserMetadataManager,
+    ):
 
         u: User = user_factory(product=product)
 
@@ -58,8 +84,9 @@ class TestUserMetadataManager:
             email_address=email_address.replace("example1", "example2"),
         )
 
-    def test_filter(self, user_factory, product, user_metadata_manager):
-        from generalresearch.models.thl.user import User
+    def test_filter(
+        self, user_factory: Callable[..., User], product: Product, user_metadata_manager
+    ):
 
         user1: User = user_factory(product=product)
         user2: User = user_factory(product=product)

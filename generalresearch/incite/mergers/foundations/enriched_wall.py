@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -8,11 +7,12 @@ import dask.dataframe as dd
 import pandas as pd
 from distributed import Client
 
+from generalresearch.incite import LOG
 from generalresearch.incite.collections.thl_web import (
     SessionDFCollection,
     WallDFCollection,
 )
-from generalresearch.incite.mergers import (
+from generalresearch.incite.mergers.base import (
     MergeCollection,
     MergeCollectionItem,
     MergeType,
@@ -25,13 +25,11 @@ from generalresearch.incite.schemas.mergers.foundations.enriched_wall import (
     EnrichedWallSchema,
 )
 from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.thl.user import User
 from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.models.admin.request import ReportRequest
-
-LOG = logging.getLogger("incite")
+    from generalresearch.models.thl.user import User
 
 
 class EnrichedWallMergeItem(MergeCollectionItem):
@@ -42,7 +40,6 @@ class EnrichedWallMergeItem(MergeCollectionItem):
         session_coll: SessionDFCollection,
         pg_config: PostgresConfig,
         client: Client | None = None,
-        client_resources: dict[str, Any] | None = None,
     ) -> None:
 
         ir: pd.Interval = self.interval
@@ -55,10 +52,10 @@ class EnrichedWallMergeItem(MergeCollectionItem):
             return
 
         # --- Wall ---
-        LOG.warning(f"EnrichedWallMergeItem: get wall_collection")
+        LOG.warning("EnrichedWallMergeItem: get wall_collection")
         wall_items = [w for w in wall_coll.items if w.interval.overlaps(ir)]
         if len(wall_items) == 0:
-            LOG.warning(f"EnrichedWallMergeItem: no wall items. set_empty.")
+            LOG.warning("EnrichedWallMergeItem: no wall items. set_empty.")
             if self.should_archive():
                 self.set_empty()
             return
@@ -93,7 +90,7 @@ class EnrichedWallMergeItem(MergeCollectionItem):
         wdf = wdf.reset_index(drop=False)
 
         # --- Sessions ---
-        LOG.warning(f"EnrichedWallMergeItem: merge session_collection")
+        LOG.warning("EnrichedWallMergeItem: merge session_collection")
         session_items = [
             s
             for s in session_coll.items
@@ -107,7 +104,7 @@ class EnrichedWallMergeItem(MergeCollectionItem):
         ]
 
         if len(session_items) == 0:
-            LOG.error(f"EnrichedWallMergeItem: no session items. breaking early.")
+            LOG.error("EnrichedWallMergeItem: no session items. breaking early.")
             return
 
         sdf = session_coll.ddf(
@@ -148,7 +145,7 @@ class EnrichedWallMergeItem(MergeCollectionItem):
         is_missing = False
         df = df.dropna(subset=["product_id", "session_id"], how="any")
 
-        wall_is_partial = any([w.should_archive() is False for w in wall_items])
+        wall_is_partial = any(w.should_archive() is False for w in wall_items)
         is_partial = is_missing or wall_is_partial
 
         # Lots of downstream issues with this...
@@ -162,7 +159,6 @@ class EnrichedWallMergeItem(MergeCollectionItem):
                 ddf=ddf,
                 is_partial=True,
                 validate_after=False,
-                client_resources=client_resources,
             )
         else:
             df = self.validate_df(df=df)
@@ -171,7 +167,6 @@ class EnrichedWallMergeItem(MergeCollectionItem):
                 client,
                 ddf=ddf,
                 is_partial=False,
-                client_resources=client_resources,
             )
 
 

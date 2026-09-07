@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
-from generalresearch.models import Source
-from generalresearch.models.thl.survey.condition import (
-    MarketplaceCondition,
-)
+if TYPE_CHECKING:
+    from generalresearch.models.definitions import Source
+    from generalresearch.models.dynata.survey import DynataCondition
+    from generalresearch.models.thl.survey.condition import (
+        MarketplaceCondition,
+    )
 
 
 class SoftPairResultType(int, Enum):
@@ -34,7 +37,7 @@ class SoftPairResult:
     pair_type: SoftPairResultType
     source: Source
     survey_id: str
-    conditions: set[MarketplaceCondition] | None = None
+    conditions: set[MarketplaceCondition | DynataCondition] | None = None
 
     @property
     def survey_sid(self) -> str:
@@ -49,7 +52,7 @@ class SoftPairResult:
             return (
                 self.survey_id
                 + ":"
-                + ";".join(sorted(set([c.question_id for c in self.conditions])))
+                + ";".join(sorted({c.question_id for c in self.conditions}))
             )
         else:
             return None

@@ -1,17 +1,19 @@
-from datetime import datetime, timezone
+from __future__ import annotations
 
-from generalresearch.models import Source
+from datetime import UTC, datetime
+
+from generalresearch.models.definitions import Source
 from generalresearch.models.spectrum.question import (
-    SpectrumQuestionOption,
     SpectrumQuestion,
-    SpectrumQuestionType,
     SpectrumQuestionClass,
+    SpectrumQuestionOption,
+    SpectrumQuestionType,
 )
 from generalresearch.models.thl.profiling.upk_question import (
     UpkQuestion,
+    UpkQuestionChoice,
     UpkQuestionSelectorMC,
     UpkQuestionType,
-    UpkQuestionChoice,
 )
 
 
@@ -32,6 +34,7 @@ class TestSpectrumQuestion:
             "mod_on": 1706557247467,
         }
         q = SpectrumQuestion.from_api(example_1, "us", "eng")
+        assert isinstance(q, SpectrumQuestion)
 
         expected_q = SpectrumQuestion(
             question_id="213",
@@ -43,7 +46,7 @@ class TestSpectrumQuestion:
             tags=None,
             options=None,
             class_num=SpectrumQuestionClass.CORE,
-            created=datetime(2017, 8, 16, 7, 52, 7, 688000, tzinfo=timezone.utc),
+            created=datetime(2017, 8, 16, 7, 52, 7, 688000, tzinfo=UTC),
             is_live=True,
             source=Source.SPECTRUM,
             category_id=None,
@@ -72,6 +75,8 @@ class TestSpectrumQuestion:
             "mod_on": 1706557249817,
         }
         q = SpectrumQuestion.from_api(example_2, "us", "eng")
+        assert isinstance(q, SpectrumQuestion)
+
         expected_q = SpectrumQuestion(
             question_id="211",
             country_iso="us",
@@ -85,7 +90,7 @@ class TestSpectrumQuestion:
                 SpectrumQuestionOption(id="112", text="Female", order=1),
             ],
             class_num=SpectrumQuestionClass.CORE,
-            created=datetime(2017, 8, 16, 7, 52, 7, 688000, tzinfo=timezone.utc),
+            created=datetime(2017, 8, 16, 7, 52, 7, 688000, tzinfo=UTC),
             is_live=True,
             source=Source.SPECTRUM,
             category_id=None,
@@ -160,7 +165,7 @@ class TestSpectrumQuestion:
                 SpectrumQuestionOption(id="999", text="None of the above", order=3),
             ],
             class_num=SpectrumQuestionClass.EXTENDED,
-            created=datetime(2017, 8, 16, 7, 52, 7, 688000, tzinfo=timezone.utc),
+            created=datetime(2017, 8, 16, 7, 52, 7, 688000, tzinfo=UTC),
             is_live=True,
             source=Source.SPECTRUM,
             category_id=None,

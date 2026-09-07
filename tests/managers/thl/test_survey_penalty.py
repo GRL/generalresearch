@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 import uuid
+from typing import TYPE_CHECKING
 
 import pytest
-from cachetools.keys import _HashedTuple
 
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.survey.penalty import (
     BPSurveyPenalty,
     TeamSurveyPenalty,
 )
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.survey_penalty import SurveyPenaltyManager
 
 
 @pytest.fixture
@@ -23,7 +28,9 @@ def team_uuid() -> str:
 
 
 @pytest.fixture
-def penalties(product_uuid, team_uuid):
+def penalties(
+    product_uuid: str, team_uuid: str
+) -> list[BPSurveyPenalty | TeamSurveyPenalty]:
     return [
         BPSurveyPenalty(
             source=Source.TESTING, survey_id="a", penalty=0.1, product_id=product_uuid
@@ -49,7 +56,13 @@ def penalties(product_uuid, team_uuid):
 
 
 class TestSurveyPenalty:
-    def test(self, surveypenalty_manager, penalties, product_uuid, team_uuid):
+    def test(
+        self,
+        surveypenalty_manager: SurveyPenaltyManager,
+        penalties: list[BPSurveyPenalty | TeamSurveyPenalty],
+        product_uuid: str,
+        team_uuid: str,
+    ):
         surveypenalty_manager.set_penalties(penalties)
 
         res = surveypenalty_manager.get_penalties_for(
@@ -89,10 +102,8 @@ class TestSurveyPenalty:
         )
         assert res == {"t:a": 0.1, "t:b": 0.2, "u:b": 0.1}
         assert surveypenalty_manager.cache.currsize == 1
-        cached_key = tuple(list(list(surveypenalty_manager.cache.keys())[0])[1:])
-        assert cached_key == tuple(
-            ["product_id", product_uuid, "team_id", team_id_random]
-        )
+        cached_key = tuple(list(next(iter(surveypenalty_manager.cache.keys())))[1:])
+        assert cached_key == ("product_id", product_uuid, "team_id", team_id_random)
 
         # Both don't exist, return nothing
         res = surveypenalty_manager.get_penalties_for(

@@ -5,7 +5,7 @@ from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.incite.schemas import ARCHIVE_AFTER, PARTITION_ON
 from generalresearch.locales import Localelator
-from generalresearch.models import DeviceType, Source
+from generalresearch.models.definitions import DeviceType, Source
 from generalresearch.models.thl.definitions import (
     ReportValue,
     Status,

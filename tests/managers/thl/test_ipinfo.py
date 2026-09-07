@@ -1,51 +1,75 @@
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+
 import faker
 
 from generalresearch.managers.thl.ipinfo import (
+    GeoIpInfoManager,
     IPGeonameManager,
     IPInformationManager,
-    GeoIpInfoManager,
 )
-from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation
+from generalresearch.models.thl.ipinfo import (
+    GeoIPInformation,
+    IPGeoname,
+    IPInformation,
+)
+
+if TYPE_CHECKING:
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 fake = faker.Faker()
 
 
 class TestIPGeonameManager:
 
-    def test_init(self, thl_web_rr, ip_geoname_manager: IPGeonameManager):
+    def test_init(
+        self, thl_web_rr: PostgresConfig, ip_geoname_manager: IPGeonameManager
+    ):
 
         instance = IPGeonameManager(pg_config=thl_web_rr)
         assert isinstance(instance, IPGeonameManager)
         assert isinstance(ip_geoname_manager, IPGeonameManager)
 
-    def test_create(self, ip_geoname_manager: IPGeonameManager):
+    def test_create(
+        self,
+        ip_geoname_factory: Callable[..., IPGeoname],
+        ip_geoname_manager: IPGeonameManager,
+    ):
 
-        instance = ip_geoname_manager.create_dummy()
-
+        instance = ip_geoname_factory()
         assert isinstance(instance, IPGeoname)
 
         res = ip_geoname_manager.fetch_geoname_ids(filter_ids=[instance.geoname_id])
-
         assert res[0].model_dump_json() == instance.model_dump_json()
 
 
 class TestIPInformationManager:
 
-    def test_init(self, thl_web_rr, ip_information_manager: IPInformationManager):
+    def test_init(
+        self, thl_web_rr: PostgresConfig, ip_information_manager: IPInformationManager
+    ):
         instance = IPInformationManager(pg_config=thl_web_rr)
         assert isinstance(instance, IPInformationManager)
         assert isinstance(ip_information_manager, IPInformationManager)
 
-    def test_create(self, ip_information_manager: IPInformationManager):
-        instance = ip_information_manager.create_dummy()
-
+    def test_create(
+        self,
+        ip_information_factory: Callable[..., IPInformation],
+        ip_information_manager: IPInformationManager,
+    ):
+        instance = ip_information_factory()
         assert isinstance(instance, IPInformation)
 
         res = ip_information_manager.fetch_ip_information(filter_ips=[instance.ip])
-
         assert res[0].model_dump_json() == instance.model_dump_json()
 
-    def test_prefetch_geoname(self, ip_information, ip_geoname, thl_web_rr):
+    def test_prefetch_geoname(
+        self,
+        ip_information: IPInformation,
+        ip_geoname: IPGeoname,
+        thl_web_rr: PostgresConfig,
+    ):
         assert isinstance(ip_information, IPInformation)
 
         assert ip_information.geoname_id == ip_geoname.geoname_id
@@ -57,13 +81,21 @@ class TestIPInformationManager:
 
 class TestGeoIpInfoManager:
     def test_init(
-        self, thl_web_rr, thl_redis_config, geoipinfo_manager: GeoIpInfoManager
+        self,
+        thl_web_rr: PostgresConfig,
+        thl_redis_config: RedisConfig,
+        geoipinfo_manager: GeoIpInfoManager,
     ):
         instance = GeoIpInfoManager(pg_config=thl_web_rr, redis_config=thl_redis_config)
         assert isinstance(instance, GeoIpInfoManager)
         assert isinstance(geoipinfo_manager, GeoIpInfoManager)
 
-    def test_multi(self, ip_information_factory, ip_geoname, geoipinfo_manager):
+    def test_multi(
+        self,
+        ip_information_factory: Callable[..., IPInformation],
+        ip_geoname: IPGeoname,
+        geoipinfo_manager: GeoIpInfoManager,
+    ):
         ip = fake.ipv4_public()
         ip_information_factory(ip=ip, geoname=ip_geoname)
         ips = [ip]
@@ -90,7 +122,12 @@ class TestGeoIpInfoManager:
         assert res[ip] is not None
         assert res[ip2] is not None
 
-    def test_multi_ipv6(self, ip_information_factory, ip_geoname, geoipinfo_manager):
+    def test_multi_ipv6(
+        self,
+        ip_information_factory: Callable[..., IPInformation],
+        ip_geoname: IPGeoname,
+        geoipinfo_manager: GeoIpInfoManager,
+    ):
         ip = fake.ipv6()
         # Make another IP that will be in the same /64 block.
         ip2 = ip[:-1] + "a" if ip[-1] != "a" else ip[:-1] + "b"
@@ -105,13 +142,19 @@ class TestGeoIpInfoManager:
         # Looks up in redis, if not exists, looks in mysql, then sets
         #   the caches that didn't exist.
         res = geoipinfo_manager.get_multi(ip_addresses=ips)
-        assert res[ip].ip == ip
-        assert res[ip].lookup_prefix == "/64"
-        assert res[ip2].ip == ip2
-        assert res[ip2].lookup_prefix == "/64"
+
+        res1 = res[ip]
+        assert isinstance(res1, GeoIPInformation)
+        assert res1.ip == ip
+        assert res1.lookup_prefix == "/64"
+
+        res2 = res[ip2]
+        assert isinstance(res2, GeoIPInformation)
+        assert res2.ip == ip2
+        assert res2.lookup_prefix == "/64"
         # they should be the same basically, except for the ip
 
-    def test_doesnt_exist(self, geoipinfo_manager):
+    def test_doesnt_exist(self, geoipinfo_manager: GeoIpInfoManager):
         ip = fake.ipv4_public()
         res = geoipinfo_manager.get_multi(ip_addresses=[ip])
         assert res == {ip: None}

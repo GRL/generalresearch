@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
+from typing import Any, Self
 from uuid import uuid4
 
 from pydantic import (
@@ -12,14 +12,13 @@ from pydantic import (
     computed_field,
     model_validator,
 )
-from typing_extensions import Self
 
-from generalresearch.models import MAX_INT32
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     CountryISOLike,
     UUIDStr,
 )
+from generalresearch.models.definitions import MAX_INT32
 from generalresearch.models.thl.profiling.upk_property import (
     Cardinality,
     PropertyType,
@@ -60,9 +59,7 @@ class UpkQuestionAnswer(BaseModel):
     # ISO 3166-1 alpha-2 (two-letter codes, lowercase)
     country_iso: CountryISOLike = Field()
 
-    created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    created: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # If the property is PropertyType.UPK_ITEM, it should have an item (and no value).
     # If the property is UPK_NUMERICAL or UPK_TEXT, it'll have a value (and no item).

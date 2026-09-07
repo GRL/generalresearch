@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import glob
-import logging
 import os
 import re
 import shutil
 import subprocess
 import warnings
 from collections.abc import Callable, Sequence
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from os import R_OK, access, listdir
 from os.path import isdir
 from os.path import join as pjoin
@@ -17,11 +16,13 @@ from sys import platform
 from typing import (
     TYPE_CHECKING,
     Any,
+    Self,
 )
 from uuid import uuid4
 
 import dask.dataframe as dd
 import pandas as pd
+import pandera as pa
 import pyarrow.parquet as pq
 from distributed import Client as DaskClient
 from pandera.pandas import DataFrameSchema
@@ -34,15 +35,14 @@ from pydantic import (
     PositiveInt,
     PrivateAttr,
     TypeAdapter,
-    ValidationInfo,
     field_validator,
     model_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
 from sentry_sdk import capture_exception
-from typing_extensions import Self
 
 from generalresearch.config import is_debug
+from generalresearch.incite import LOG
 from generalresearch.incite.schemas import (
     ARCHIVE_AFTER,
     empty_dataframe_from_schema,
@@ -51,15 +51,11 @@ from generalresearch.models.custom_types import AwareDatetimeISO
 
 if TYPE_CHECKING:
     from generalresearch.incite.collections import DFCollection, DFCollectionItem
-    from generalresearch.incite.collections.thl_marketplaces import (
-        DFCollectionType,
-    )
-    from generalresearch.incite.mergers import MergeCollection, MergeType
+    from generalresearch.incite.collections.thl_marketplaces import DFCollectionType
+    from generalresearch.incite.mergers.base import MergeCollection, MergeType
 
     Collection = DFCollection | MergeCollection
 
-logging.basicConfig()
-LOG = logging.getLogger()
 
 # Item = Union["DFCollectionItem", "MergeCollectionItem"]
 Item = Any
@@ -67,7 +63,6 @@ Items = Sequence[Item]
 DT_STR = "%Y-%m-%d %H:%M:%S"
 
 _dir_adapter = TypeAdapter(DirectoryPath)
-_filepath_adapter = TypeAdapter(FilePath)
 
 
 class NFSMount(BaseModel):
@@ -95,7 +90,7 @@ class GRLDatasets(BaseModel):
         from generalresearch.incite.collections.thl_marketplaces import (
             DFCollectionType,
         )
-        from generalresearch.incite.mergers import MergeType
+        from generalresearch.incite.mergers.base import MergeType
 
         assert self.data_src, "data src must be defined"
 
@@ -128,9 +123,10 @@ class GRLDatasets(BaseModel):
             type..
         """
 
-        from generalresearch.incite.mergers import MergeType
+        from generalresearch.incite.mergers.base import MergeType
 
         folder = "mergers" if isinstance(enum_type, MergeType) else "raw/df-collections"
+        assert self.incite is not None
         return Path(
             pjoin(self.data_src, self.incite.point, folder, str(enum_type.value))
         )
@@ -163,7 +159,7 @@ class CollectionBase(BaseModel):
     offset: str = Field(default="72h", max_length=5)
 
     start: AwareDatetimeISO = Field(
-        default=datetime(year=2018, month=1, day=1, tzinfo=timezone.utc),
+        default=datetime(year=2018, month=1, day=1, tzinfo=UTC),
         description="This is the starting point in which data will be retrieved"
         "in chunks from.",
         frozen=True,
@@ -201,11 +197,8 @@ class CollectionBase(BaseModel):
 
     @model_validator(mode="after")
     def check_model_after(self) -> Self:
-        if self.offset is None or self.start is None:
-            return self
-
         offset_total_sec = pd.Timedelta(self.offset).total_seconds()
-        start_total_sec = (datetime.now(tz=timezone.utc) - self.start).total_seconds()
+        start_total_sec = (datetime.now(tz=UTC) - self.start).total_seconds()
 
         if offset_total_sec > start_total_sec:
             raise ValueError("Offset must be equal to, or smaller the start timestamp")
@@ -213,22 +206,20 @@ class CollectionBase(BaseModel):
         return self
 
     @field_validator("start")
-    def check_start(
-        cls, start: datetime | None, info: ValidationInfo
-    ) -> datetime | None:
+    def check_start(cls, start: datetime | None) -> datetime | None:
         if start and start.microsecond != 0:
             raise ValueError("Collection.start must not have microseconds")
         return start
 
     @field_validator("offset")
-    def check_offset(cls, v: str | None, info: ValidationInfo):
+    def check_offset(cls, v: str | None):
         # pd.offsets.__all__
         if v is None:
             # In MergeCollections, offset can be None
             return v
         try:
             pd.Timedelta(v)
-        except Exception as e:
+        except (ValueError, TypeError) as e:
             capture_exception(error=e)
             raise ValueError(
                 "Invalid offset alias provided. Please review: "
@@ -291,14 +282,14 @@ class CollectionBase(BaseModel):
     @property
     def interval_range(self) -> list[tuple[datetime, datetime]]:
         """closed='left', so 0 <= x < 5"""
-        end = self.finished or datetime.now(tz=timezone.utc).replace(microsecond=0)
+        end = self.finished or datetime.now(tz=UTC).replace(microsecond=0)
         iv_r = self._interval_range(end)
         return [(iv.left.to_pydatetime(), iv.right.to_pydatetime()) for iv in iv_r]
 
     @property
     def progress(self) -> pd.DataFrame:
         records = [i.to_dict() for i in self.items]
-        end = self.finished if self.finished else datetime.now(tz=timezone.utc)
+        end = self.finished if self.finished else datetime.now(tz=UTC)
         return pd.DataFrame.from_records(records, index=self._interval_range(end))
 
     @property
@@ -601,15 +592,15 @@ class CollectionBase(BaseModel):
         return res
 
     def get_items_from_year(self, year: int) -> Items:
-        ts = datetime(year=year, month=1, day=1, tzinfo=timezone.utc)
+        ts = datetime(year=year, month=1, day=1, tzinfo=UTC)
         return self.get_items(since=ts)
 
     def get_items_last90(self) -> Items:
-        ts = datetime.now(tz=timezone.utc) - timedelta(days=90)
+        ts = datetime.now(tz=UTC) - timedelta(days=90)
         return self.get_items(since=ts)
 
     def get_items_last365(self) -> Items:
-        ts = datetime.now(tz=timezone.utc) - timedelta(days=365)
+        ts = datetime.now(tz=UTC) - timedelta(days=365)
         return self.get_items(since=ts)
 
 
@@ -617,7 +608,7 @@ class CollectionItemBase(BaseModel):
     # I want to intentionally keep these as native python types, and not
     # pandas specific types.
     start: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc).replace(microsecond=0)
+        default_factory=lambda: datetime.now(tz=UTC).replace(microsecond=0)
     )
 
     # --- Private attrs ---
@@ -807,7 +798,7 @@ class CollectionItemBase(BaseModel):
         if archive_after is None:
             return False
 
-        return datetime.now(tz=timezone.utc) > self.finish + archive_after
+        return datetime.now(tz=UTC) > self.finish + archive_after
 
     def set_empty(self):
         assert self.should_archive(), (
@@ -841,8 +832,8 @@ class CollectionItemBase(BaseModel):
                 raise ValueError("Unknown path type.")
 
             df = parquet.read().to_pandas()
-        except Exception:
-            LOG.warning(f"Invalid archive {path=}")
+        except Exception as e:
+            LOG.warning(f"Invalid archive {path=} {e=}")
             df = None
 
         # Check if it's None or a totally empty pd.DataFrame before we waste
@@ -860,8 +851,7 @@ class CollectionItemBase(BaseModel):
         try:
             schema: DataFrameSchema = self._collection._schema
             return schema.validate(check_obj=df, lazy=True, sample=sample)
-        except Exception as e:
-            LOG.exception(e)
+        except pa.errors.SchemaErrors as e:
             capture_exception(error=e)
             return None
 

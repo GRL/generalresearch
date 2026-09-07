@@ -1,15 +1,14 @@
-from enum import Enum
-from typing import Literal
+from enum import StrEnum
+from typing import Annotated, Literal
 
 from pydantic import Field
-from typing_extensions import Annotated
 
 ProdegeQuestionIdType = Annotated[
     str, Field(min_length=1, max_length=16, pattern=r"^[0-9]+$")
 ]
 
 
-class ProdegeStatus(str, Enum):
+class ProdegeStatus(StrEnum):
     LIVE = "LIVE"
     # We need another status to mark if a survey we thought was live does not come back
     #   from the API, we'll mark it as NOT_FOUND
@@ -19,7 +18,7 @@ class ProdegeStatus(str, Enum):
     INELIGIBLE = "INELIGIBLE"
 
 
-class ProdegePastParticipationType(str, Enum):
+class ProdegePastParticipationType(StrEnum):
     # These come from the "participation_types" key in the survey API response
     #   which is how we filter by users' past_participation.
     CLICK = "click"

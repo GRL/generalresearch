@@ -1,112 +1,137 @@
+from __future__ import annotations
+
 import logging
-from datetime import datetime, timezone, timedelta
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from random import randint
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 
 from generalresearch.currency import USDCent
+from generalresearch.managers.thl.ledger_manager.exceptions import (
+    LedgerTransactionConditionFailedError,
+)
 from generalresearch.managers.thl.ledger_manager.ledger import (
     LedgerTransaction,
 )
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.definitions import (
     WALL_ALLOWED_STATUS_STATUS_CODE,
 )
-from generalresearch.models.thl.ledger import Direction
-from generalresearch.models.thl.ledger import TransactionType
+from generalresearch.models.thl.ledger import (
+    Direction,
+    TransactionType,
+)
+from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.product import (
     PayoutConfig,
     PayoutTransformation,
+    Product,
     UserWalletConfig,
 )
 from generalresearch.models.thl.session import (
-    Wall,
+    Session,
     Status,
     StatusCode1,
-    Session,
+    Wall,
     WallAdjustedStatus,
 )
-from generalresearch.models.thl.user import User
-from generalresearch.models.thl.wallet import PayoutType
-from generalresearch.models.thl.payout import UserPayoutEvent
+from generalresearch.models.thl.wallet.definitions import PayoutType
+
+if TYPE_CHECKING:
+    from generalresearch.currency import LedgerCurrency
+    from generalresearch.managers.thl.ledger_manager.ledger import (
+        LedgerManager,
+    )
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.managers.thl.wall import WallManager
+    from generalresearch.models.thl.ledger import (
+        LedgerAccount,
+    )
+    from generalresearch.models.thl.user import User
 
 logger = logging.getLogger("LedgerManager")
 
 
 class TestThlLedgerTxManager:
+    @pytest.fixture(autouse=True)
+    def setup(self, delete_ledger_db, create_main_accounts):
+        delete_ledger_db()
+        create_main_accounts()
 
     def test_create_tx_task_complete(
         self,
-        wall,
-        user,
-        account_revenue_task_complete,
-        create_main_accounts,
-        thl_lm,
-        lm,
+        wall: Wall,
+        user: User,
+        account_revenue_task_complete: LedgerAccount,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
     ):
-        create_main_accounts()
-        tx = thl_lm.create_tx_task_complete(wall=wall, user=user)
+        tx = thl_ledger_manager.create_tx_task_complete(wall=wall, user=user)
         assert isinstance(tx, LedgerTransaction)
 
-        res = lm.get_tx_by_id(transaction_id=tx.id)
+        res = ledger_manager.get_tx_by_id(transaction_id=tx.id)
         assert res.created == tx.created
 
     def test_create_tx_task_complete_(
-        self, wall, user, account_revenue_task_complete, thl_lm, lm
+        self,
+        wall: Wall,
+        user: User,
+        account_revenue_task_complete: LedgerAccount,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
     ):
-        tx = thl_lm.create_tx_task_complete_(wall=wall, user=user)
+        tx = thl_ledger_manager.create_tx_task_complete_(wall=wall, user=user)
         assert isinstance(tx, LedgerTransaction)
 
-        res = lm.get_tx_by_id(transaction_id=tx.id)
+        res = ledger_manager.get_tx_by_id(transaction_id=tx.id)
         assert res.created == tx.created
 
     def test_create_tx_bp_payment(
         self,
-        session_factory,
-        user,
-        create_main_accounts,
-        delete_ledger_db,
-        thl_lm,
-        lm,
-        session_manager,
+        session_factory: Callable[..., Session],
+        user: User,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        session_manager: SessionManager,
     ):
-        delete_ledger_db()
-        create_main_accounts()
+
         s1 = session_factory(user=user)
 
-        status, status_code_1 = s1.determine_session_status()
-        thl_net, commission_amount, bp_pay, user_pay = s1.determine_payments()
+        _, status_code_1 = s1.determine_session_status()
+        _, _, bp_pay, user_pay = s1.determine_payments()
         session_manager.finish_with_status(
             session=s1,
             status=Status.COMPLETE,
             status_code_1=status_code_1,
-            finished=datetime.now(tz=timezone.utc) + timedelta(minutes=10),
+            finished=datetime.now(tz=UTC) + timedelta(minutes=10),
             payout=bp_pay,
             user_payout=user_pay,
         )
 
-        tx = thl_lm.create_tx_bp_payment(session=s1)
+        tx = thl_ledger_manager.create_tx_bp_payment(session=s1)
         assert isinstance(tx, LedgerTransaction)
 
-        res = lm.get_tx_by_id(transaction_id=tx.id)
+        res = ledger_manager.get_tx_by_id(transaction_id=tx.id)
         assert res.created == tx.created
 
     def test_create_tx_bp_payment_amt(
         self,
-        session_factory,
-        user_factory,
-        product_manager,
-        create_main_accounts,
-        delete_ledger_db,
-        thl_lm,
-        lm,
-        session_manager,
+        session_factory: Callable[..., Session],
+        user_factory: Callable[..., User],
+        product_manager: ProductManager,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        session_manager: SessionManager,
+        product_factory: Callable[..., Product],
     ):
-        delete_ledger_db()
-        create_main_accounts()
-        product = product_manager.create_dummy(
+
+        product = product_factory(
             payout_config=PayoutConfig(
                 payout_transformation=PayoutTransformation(
                     f="payout_transformation_amt"
@@ -115,42 +140,41 @@ class TestThlLedgerTxManager:
             user_wallet_config=UserWalletConfig(amt=True, enabled=True),
         )
         user = user_factory(product=product)
-        s1 = session_factory(user=user, wall_req_cpi=Decimal("1"))
+        s1 = session_factory(user=user, wall_req_cpi=Decimal(1))
 
         status, status_code_1 = s1.determine_session_status()
         assert status == Status.COMPLETE
         thl_net, commission_amount, bp_pay, user_pay = s1.determine_payments(
-            thl_ledger_manager=thl_lm
+            thl_ledger_manager=thl_ledger_manager
         )
         print(thl_net, commission_amount, bp_pay, user_pay)
         session_manager.finish_with_status(
             session=s1,
             status=Status.COMPLETE,
             status_code_1=status_code_1,
-            finished=datetime.now(tz=timezone.utc) + timedelta(minutes=10),
+            finished=datetime.now(tz=UTC) + timedelta(minutes=10),
             payout=bp_pay,
             user_payout=user_pay,
         )
 
-        tx = thl_lm.create_tx_bp_payment(session=s1)
+        tx = thl_ledger_manager.create_tx_bp_payment(session=s1)
         assert isinstance(tx, LedgerTransaction)
 
-        res = lm.get_tx_by_id(transaction_id=tx.id)
+        res = ledger_manager.get_tx_by_id(transaction_id=tx.id)
         assert res.created == tx.created
 
     def test_create_tx_bp_payment_(
         self,
-        session_factory,
-        user,
-        create_main_accounts,
-        thl_lm,
-        lm,
-        session_manager,
-        utc_hour_ago,
+        session_factory: Callable[..., Session],
+        user: User,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        session_manager: SessionManager,
+        utc_hour_ago: datetime,
     ):
         s1 = session_factory(user=user)
         status, status_code_1 = s1.determine_session_status()
-        thl_net, commission_amount, bp_pay, user_pay = s1.determine_payments()
+        _, _, bp_pay, user_pay = s1.determine_payments()
         session_manager.finish_with_status(
             session=s1,
             status=status,
@@ -161,14 +185,19 @@ class TestThlLedgerTxManager:
         )
 
         s1.determine_payments()
-        tx = thl_lm.create_tx_bp_payment_(session=s1)
+        tx = thl_ledger_manager.create_tx_bp_payment_(session=s1)
         assert isinstance(tx, LedgerTransaction)
 
-        res = lm.get_tx_by_id(transaction_id=tx.id)
+        res = ledger_manager.get_tx_by_id(transaction_id=tx.id)
         assert res.created == tx.created
 
     def test_create_tx_task_adjustment(
-        self, wall_factory, session, user, create_main_accounts, thl_lm, lm
+        self,
+        wall_factory: Callable[..., Wall],
+        bare_session: Session,
+        user: User,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
     ):
         """Create Wall event Complete, and Create a Tx Task Adjustment
 
@@ -176,29 +205,34 @@ class TestThlLedgerTxManager:
             the transaction comes back with balanced amounts, and that
             the name of the Source is in the Tx description
         """
-
         wall_status = Status.COMPLETE
-        wall: Wall = wall_factory(session=session, wall_status=wall_status)
+        wall: Wall = wall_factory(session=bare_session, wall_status=wall_status)
 
-        tx = thl_lm.create_tx_task_adjustment(wall=wall, user=user)
+        tx = thl_ledger_manager.create_tx_task_adjustment(wall=wall, user=user)
         assert isinstance(tx, LedgerTransaction)
-        res = lm.get_tx_by_id(transaction_id=tx.id)
+        res = ledger_manager.get_tx_by_id(transaction_id=tx.id)
 
         assert res.entries[0].amount == int(wall.cpi * 100)
         assert res.entries[1].amount == int(wall.cpi * 100)
         assert wall.source.name in res.ext_description
         assert res.created == tx.created
 
-    def test_create_tx_bp_adjustment(self, session, user, caplog, thl_lm, lm):
+    def test_create_tx_bp_adjustment(
+        self,
+        session: Session,
+        user: User,
+        caplog,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+    ):
         status, status_code_1 = session.determine_session_status()
         thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
 
-        # The default session fixture is just an unfinished wall event
         assert len(session.wall_events) == 1
         assert session.finished is None
-        assert status == Status.TIMEOUT
+        assert status == Status.FAIL
         assert status_code_1 in list(
-            WALL_ALLOWED_STATUS_STATUS_CODE.get(Status.TIMEOUT, {})
+            WALL_ALLOWED_STATUS_STATUS_CODE.get(Status.FAIL, {})
         )
         assert thl_net == Decimal(0)
         assert commission_amount == Decimal(0)
@@ -208,28 +242,32 @@ class TestThlLedgerTxManager:
         # Update the finished timestamp, but nothing else. This means that
         #   there is no financial changes needed
         session.update(
-            **{
-                "finished": datetime.now(tz=timezone.utc) + timedelta(minutes=10),
-            }
+            finished=datetime.now(tz=UTC) + timedelta(minutes=10), status=Status.FAIL
         )
         assert session.finished
         with caplog.at_level(logging.INFO):
-            tx = thl_lm.create_tx_bp_adjustment(session=session)
+            tx = thl_ledger_manager.create_tx_bp_adjustment(session=session)
             assert tx is None
         assert "No transactions needed." in caplog.text
 
-    def test_create_tx_bp_payout(self, product, caplog, thl_lm, currency):
+    def test_create_tx_bp_payout(
+        self,
+        product: Product,
+        caplog,
+        thl_ledger_manager: ThlLedgerManager,
+        currency: LedgerCurrency,
+    ):
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         payoutevent_uuid = uuid4().hex
 
         # Create a BP Payout for a Product without any activity. By issuing,
         #   the skip_* checks, we should be able to force it to work, and will
         #   then ultimately result in a negative balance
-        tx = thl_lm.create_tx_bp_payout(
+        tx = thl_ledger_manager.create_tx_bp_payout(
             product=product,
             amount=rand_amount,
             payoutevent_uuid=payoutevent_uuid,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             skip_wallet_balance_check=True,
             skip_one_per_day_check=True,
             skip_flag_check=True,
@@ -240,7 +278,7 @@ class TestThlLedgerTxManager:
         assert tx.ext_description == "BP Payout"
         assert (
             tx.tag
-            == f"{thl_lm.currency.value}:{TransactionType.BP_PAYOUT.value}:{payoutevent_uuid}"
+            == f"{thl_ledger_manager.currency.value}:{TransactionType.BP_PAYOUT.value}:{payoutevent_uuid}"
         )
         assert tx.entries[0].amount == rand_amount
         assert tx.entries[1].amount == rand_amount
@@ -248,35 +286,42 @@ class TestThlLedgerTxManager:
         # Check the Product's balance, it should be negative the amount that was
         #   paid out. That's because the Product earned nothing.. and then was
         #   sent something.
-        balance = thl_lm.get_account_balance(
-            account=thl_lm.get_account_or_create_bp_wallet(product=product)
+        balance = thl_ledger_manager.get_account_balance(
+            account=thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
         )
         assert balance == int(rand_amount) * -1
 
         # Test some basic assertions
-        with caplog.at_level(logging.INFO):
-            with pytest.raises(expected_exception=Exception):
-                thl_lm.create_tx_bp_payout(
-                    product=product,
-                    amount=rand_amount,
-                    payoutevent_uuid=uuid4().hex,
-                    created=datetime.now(tz=timezone.utc),
-                    skip_wallet_balance_check=False,
-                    skip_one_per_day_check=False,
-                    skip_flag_check=False,
-                )
+        with (
+            caplog.at_level(logging.INFO),
+            pytest.raises(expected_exception=LedgerTransactionConditionFailedError),
+        ):
+            thl_ledger_manager.create_tx_bp_payout(
+                product=product,
+                amount=rand_amount,
+                payoutevent_uuid=uuid4().hex,
+                created=datetime.now(tz=UTC),
+                skip_wallet_balance_check=False,
+                skip_one_per_day_check=False,
+                skip_flag_check=False,
+            )
         assert "failed condition check >1 tx per day" in caplog.text
 
-    def test_create_tx_bp_payout_(self, product, thl_lm, lm, currency):
+    def test_create_tx_bp_payout_(
+        self,
+        product: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        currency: LedgerCurrency,
+    ):
         rand_amount: USDCent = USDCent(randint(100, 1_000))
         payoutevent_uuid = uuid4().hex
 
         # Create a BP Payout for a Product without any activity.
-        tx = thl_lm.create_tx_bp_payout_(
+        tx = thl_ledger_manager.create_tx_bp_payout_(
             product=product,
             amount=rand_amount,
             payoutevent_uuid=payoutevent_uuid,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
         )
 
         # Check the basic attributes
@@ -290,17 +335,21 @@ class TestThlLedgerTxManager:
         assert tx.entries[1].amount == rand_amount
 
     def test_create_tx_plug_bp_wallet(
-        self, product, create_main_accounts, thl_lm, lm, currency
+        self,
+        product: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
     ):
         """A BP Wallet "plug" is a way to makeup discrepancies and simply
         add or remove money
         """
         rand_amount: USDCent = USDCent(randint(100, 1_000))
 
-        tx = thl_lm.create_tx_plug_bp_wallet(
+        tx = thl_ledger_manager.create_tx_plug_bp_wallet(
             product=product,
             amount=rand_amount,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             direction=Direction.DEBIT,
             skip_flag_check=False,
         )
@@ -309,13 +358,17 @@ class TestThlLedgerTxManager:
 
         # We issued the BP money they didn't earn, so now they have a
         #   negative balance
-        balance = thl_lm.get_account_balance(
-            account=thl_lm.get_account_or_create_bp_wallet(product=product)
+        balance = thl_ledger_manager.get_account_balance(
+            account=thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
         )
         assert balance == int(rand_amount) * -1
 
     def test_create_tx_plug_bp_wallet_(
-        self, product, create_main_accounts, thl_lm, lm, currency
+        self,
+        product: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
     ):
         """A BP Wallet "plug" is a way to fix discrepancies and simply
         add or remove money.
@@ -325,10 +378,10 @@ class TestThlLedgerTxManager:
         """
         rand_amount: USDCent = USDCent(randint(100, 1_000))
 
-        tx = thl_lm.create_tx_plug_bp_wallet_(
+        tx = thl_ledger_manager.create_tx_plug_bp_wallet_(
             product=product,
             amount=rand_amount,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             direction=Direction.DEBIT,
         )
 
@@ -336,32 +389,32 @@ class TestThlLedgerTxManager:
 
         # We issued the BP money they didn't earn, so now they have a
         #   negative balance
-        balance = thl_lm.get_account_balance(
-            account=thl_lm.get_account_or_create_bp_wallet(product=product)
+        balance = thl_ledger_manager.get_account_balance(
+            account=thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
         )
         assert balance == int(rand_amount) * -1
 
         # Issue a positive one now, and confirm the balance goes positive
-        thl_lm.create_tx_plug_bp_wallet_(
+        thl_ledger_manager.create_tx_plug_bp_wallet_(
             product=product,
             amount=rand_amount + rand_amount,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
             direction=Direction.CREDIT,
         )
-        balance = thl_lm.get_account_balance(
-            account=thl_lm.get_account_or_create_bp_wallet(product=product)
+        balance = thl_ledger_manager.get_account_balance(
+            account=thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
         )
         assert balance == int(rand_amount)
 
     def test_create_tx_user_payout_request(
         self,
-        user,
-        product_user_wallet_yes,
-        user_factory,
-        delete_df_collection,
-        thl_lm,
-        lm,
-        currency,
+        user: User,
+        product_user_wallet_yes: Product,
+        user_factory: Callable[..., User],
+        delete_df_collection: Callable[..., None],
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
     ):
         pe = UserPayoutEvent(
             uuid=uuid4().hex,
@@ -374,7 +427,7 @@ class TestThlLedgerTxManager:
         # The default user fixture uses a product that doesn't have wallet
         #   mode enabled
         with pytest.raises(expected_exception=AssertionError):
-            thl_lm.create_tx_user_payout_request(
+            thl_ledger_manager.create_tx_user_payout_request(
                 user=user,
                 payout_event=pe,
                 skip_flag_check=True,
@@ -385,12 +438,12 @@ class TestThlLedgerTxManager:
         u2 = user_factory(product=product_user_wallet_yes)
 
         # User's pre-balance is 0 because no activity has occurred yet
-        pre_balance = lm.get_account_balance(
-            account=thl_lm.get_account_or_create_user_wallet(user=u2)
+        pre_balance = ledger_manager.get_account_balance(
+            account=thl_ledger_manager.get_account_or_create_user_wallet(user=u2)
         )
         assert pre_balance == 0
 
-        tx = thl_lm.create_tx_user_payout_request(
+        tx = thl_ledger_manager.create_tx_user_payout_request(
             user=u2,
             payout_event=pe,
             skip_flag_check=True,
@@ -411,21 +464,19 @@ class TestThlLedgerTxManager:
 
         # Post balance is -$5.00 because it comes out of the wallet before
         #   it's Approved or Completed
-        post_balance = lm.get_account_balance(
-            account=thl_lm.get_account_or_create_user_wallet(user=u2)
+        post_balance = ledger_manager.get_account_balance(
+            account=thl_ledger_manager.get_account_or_create_user_wallet(user=u2)
         )
         assert post_balance == -500
 
     def test_create_tx_user_payout_request_(
         self,
-        user,
-        product_user_wallet_yes,
-        user_factory,
-        delete_ledger_db,
-        thl_lm,
-        lm,
+        user: User,
+        product_user_wallet_yes: Product,
+        user_factory: Callable[..., User],
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
     ):
-        delete_ledger_db()
 
         pe = UserPayoutEvent(
             uuid=uuid4().hex,
@@ -436,36 +487,32 @@ class TestThlLedgerTxManager:
         )
 
         rand_description = uuid4().hex
-        tx = thl_lm.create_tx_user_payout_request_(
+        tx = thl_ledger_manager.create_tx_user_payout_request_(
             user=user, payout_event=pe, description=rand_description
         )
 
         assert tx.ext_description == rand_description
 
-        post_balance = lm.get_account_balance(
-            account=thl_lm.get_account_or_create_user_wallet(user=user)
+        post_balance = ledger_manager.get_account_balance(
+            account=thl_ledger_manager.get_account_or_create_user_wallet(user=user)
         )
         assert post_balance == -500
 
     def test_create_tx_user_payout_complete(
         self,
-        user_factory,
-        product_user_wallet_yes,
-        create_main_accounts,
-        delete_ledger_db,
-        thl_lm,
-        lm,
-        currency,
+        user_factory: Callable[..., User],
+        product_user_wallet_yes: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         user: User = user_factory(product=product_user_wallet_yes)
-        user_account = thl_lm.get_account_or_create_user_wallet(user=user)
+        user_account = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
         rand_amount = randint(100, 1_000)
 
         # Ensure the user starts out with nothing...
-        assert lm.get_account_balance(account=user_account) == 0
+        assert ledger_manager.get_account_balance(account=user_account) == 0
 
         pe = UserPayoutEvent(
             uuid=uuid4().hex,
@@ -477,7 +524,7 @@ class TestThlLedgerTxManager:
 
         # Confirm it's not possible unless a request occurred happen
         with pytest.raises(expected_exception=ValueError):
-            thl_lm.create_tx_user_payout_complete(
+            thl_ledger_manager.create_tx_user_payout_complete(
                 user=user,
                 payout_event=pe,
                 fee_amount=None,
@@ -485,17 +532,19 @@ class TestThlLedgerTxManager:
             )
 
         # (1) Make a request first
-        thl_lm.create_tx_user_payout_request(
+        thl_ledger_manager.create_tx_user_payout_request(
             user=user,
             payout_event=pe,
             skip_flag_check=True,
             skip_wallet_balance_check=True,
         )
         # Assert the balance came out of their user wallet
-        assert lm.get_account_balance(account=user_account) == rand_amount * -1
+        assert (
+            ledger_manager.get_account_balance(account=user_account) == rand_amount * -1
+        )
 
         # (2) Complete the request
-        tx = thl_lm.create_tx_user_payout_complete(
+        tx = thl_ledger_manager.create_tx_user_payout_complete(
             user=user,
             payout_event=pe,
             fee_amount=Decimal(0),
@@ -508,18 +557,19 @@ class TestThlLedgerTxManager:
 
         # The amount that comes out of the user wallet doesn't change after
         #   it's approved becuase it's already been withdrawn
-        assert lm.get_account_balance(account=user_account) == rand_amount * -1
+        assert (
+            ledger_manager.get_account_balance(account=user_account) == rand_amount * -1
+        )
 
     def test_create_tx_user_payout_complete_(
         self,
-        user_factory,
-        product_user_wallet_yes,
-        create_main_accounts,
-        thl_lm,
-        lm,
+        user_factory: Callable[..., User],
+        product_user_wallet_yes: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
     ):
         user: User = user_factory(product=product_user_wallet_yes)
-        user_account = thl_lm.get_account_or_create_user_wallet(user=user)
+        user_account = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
         rand_amount = randint(100, 1_000)
 
         pe = UserPayoutEvent(
@@ -531,7 +581,7 @@ class TestThlLedgerTxManager:
         )
 
         # (1) Make a request first
-        thl_lm.create_tx_user_payout_request(
+        thl_ledger_manager.create_tx_user_payout_request(
             user=user,
             payout_event=pe,
             skip_flag_check=True,
@@ -541,12 +591,14 @@ class TestThlLedgerTxManager:
         # (2) Complete the request
         rand_desc = uuid4().hex
 
-        bp_expense_account = thl_lm.get_account_or_create_bp_expense(
+        bp_expense_account = thl_ledger_manager.get_account_or_create_bp_expense(
             product=user.product, expense_name="paypal"
         )
-        bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(product=user.product)
+        bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
+            product=user.product
+        )
 
-        tx = thl_lm.create_tx_user_payout_complete_(
+        tx = thl_ledger_manager.create_tx_user_payout_complete_(
             user=user,
             payout_event=pe,
             fee_amount=Decimal("0.00"),
@@ -555,19 +607,20 @@ class TestThlLedgerTxManager:
             description=rand_desc,
         )
         assert tx.ext_description == rand_desc
-        assert lm.get_account_balance(account=user_account) == rand_amount * -1
+        assert (
+            ledger_manager.get_account_balance(account=user_account) == rand_amount * -1
+        )
 
     def test_create_tx_user_payout_cancelled(
         self,
-        user_factory,
-        product_user_wallet_yes,
-        create_main_accounts,
-        thl_lm,
-        lm,
-        currency,
+        user_factory: Callable[..., User],
+        product_user_wallet_yes: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
     ):
         user: User = user_factory(product=product_user_wallet_yes)
-        user_account = thl_lm.get_account_or_create_user_wallet(user=user)
+        user_account = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
         rand_amount = randint(100, 1_000)
 
         pe = UserPayoutEvent(
@@ -579,17 +632,19 @@ class TestThlLedgerTxManager:
         )
 
         # (1) Make a request first
-        thl_lm.create_tx_user_payout_request(
+        thl_ledger_manager.create_tx_user_payout_request(
             user=user,
             payout_event=pe,
             skip_flag_check=True,
             skip_wallet_balance_check=True,
         )
         # Assert the balance came out of their user wallet
-        assert lm.get_account_balance(account=user_account) == rand_amount * -1
+        assert (
+            ledger_manager.get_account_balance(account=user_account) == rand_amount * -1
+        )
 
         # (2) Cancel the request
-        tx = thl_lm.create_tx_user_payout_cancelled(
+        tx = thl_ledger_manager.create_tx_user_payout_cancelled(
             user=user,
             payout_event=pe,
             skip_flag_check=False,
@@ -600,19 +655,18 @@ class TestThlLedgerTxManager:
         assert isinstance(tx, LedgerTransaction)
 
         # Assert the balance comes back to 0 after it was cancelled
-        assert lm.get_account_balance(account=user_account) == 0
+        assert ledger_manager.get_account_balance(account=user_account) == 0
 
     def test_create_tx_user_payout_cancelled_(
         self,
-        user_factory,
-        product_user_wallet_yes,
-        create_main_accounts,
-        thl_lm,
-        lm,
-        currency,
+        user_factory: Callable[..., User],
+        product_user_wallet_yes: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
     ):
         user: User = user_factory(product=product_user_wallet_yes)
-        user_account = thl_lm.get_account_or_create_user_wallet(user=user)
+        user_account = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
         rand_amount = randint(100, 1_000)
 
         pe = UserPayoutEvent(
@@ -624,43 +678,44 @@ class TestThlLedgerTxManager:
         )
 
         # (1) Make a request first
-        thl_lm.create_tx_user_payout_request(
+        thl_ledger_manager.create_tx_user_payout_request(
             user=user,
             payout_event=pe,
             skip_flag_check=True,
             skip_wallet_balance_check=True,
         )
         # Assert the balance came out of their user wallet
-        assert lm.get_account_balance(account=user_account) == rand_amount * -1
+        assert (
+            ledger_manager.get_account_balance(account=user_account) == rand_amount * -1
+        )
 
         # (2) Cancel the request
         rand_desc = uuid4().hex
-        tx = thl_lm.create_tx_user_payout_cancelled_(
+        tx = thl_ledger_manager.create_tx_user_payout_cancelled_(
             user=user, payout_event=pe, description=rand_desc
         )
         assert isinstance(tx, LedgerTransaction)
         assert tx.ext_description == rand_desc
-        assert lm.get_account_balance(account=user_account) == 0
+        assert ledger_manager.get_account_balance(account=user_account) == 0
 
     def test_create_tx_user_bonus(
         self,
-        user_factory,
-        product_user_wallet_yes,
-        create_main_accounts,
-        thl_lm,
-        lm,
-        currency,
+        user_factory: Callable[..., User],
+        product_user_wallet_yes: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
     ):
         user: User = user_factory(product=product_user_wallet_yes)
-        user_account = thl_lm.get_account_or_create_user_wallet(user=user)
+        user_account = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
         rand_amount = randint(100, 1_000)
         rand_ref_uuid = uuid4().hex
         rand_desc = uuid4().hex
 
         # Assert the balance came out of their user wallet
-        assert lm.get_account_balance(account=user_account) == 0
+        assert ledger_manager.get_account_balance(account=user_account) == 0
 
-        tx = thl_lm.create_tx_user_bonus(
+        tx = thl_ledger_manager.create_tx_user_bonus(
             user=user,
             amount=Decimal(rand_amount / 100),
             ref_uuid=rand_ref_uuid,
@@ -668,44 +723,47 @@ class TestThlLedgerTxManager:
             skip_flag_check=True,
         )
         assert tx.ext_description == rand_desc
-        assert tx.tag == f"{thl_lm.currency.value}:user_bonus:{rand_ref_uuid}"
+        assert (
+            tx.tag == f"{thl_ledger_manager.currency.value}:user_bonus:{rand_ref_uuid}"
+        )
         assert tx.entries[0].amount == rand_amount
         assert tx.entries[1].amount == rand_amount
 
         # Assert the balance came out of their user wallet
-        assert lm.get_account_balance(account=user_account) == rand_amount
+        assert ledger_manager.get_account_balance(account=user_account) == rand_amount
 
     def test_create_tx_user_bonus_(
         self,
-        user_factory,
-        product_user_wallet_yes,
-        create_main_accounts,
-        thl_lm,
-        lm,
-        currency,
+        user_factory: Callable[..., User],
+        product_user_wallet_yes: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
     ):
         user: User = user_factory(product=product_user_wallet_yes)
-        user_account = thl_lm.get_account_or_create_user_wallet(user=user)
+        user_account = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
         rand_amount = randint(100, 1_000)
         rand_ref_uuid = uuid4().hex
         rand_desc = uuid4().hex
 
         # Assert the balance came out of their user wallet
-        assert lm.get_account_balance(account=user_account) == 0
+        assert ledger_manager.get_account_balance(account=user_account) == 0
 
-        tx = thl_lm.create_tx_user_bonus_(
+        tx = thl_ledger_manager.create_tx_user_bonus_(
             user=user,
             amount=Decimal(rand_amount / 100),
             ref_uuid=rand_ref_uuid,
             description=rand_desc,
         )
         assert tx.ext_description == rand_desc
-        assert tx.tag == f"{thl_lm.currency.value}:user_bonus:{rand_ref_uuid}"
+        assert (
+            tx.tag == f"{thl_ledger_manager.currency.value}:user_bonus:{rand_ref_uuid}"
+        )
         assert tx.entries[0].amount == rand_amount
         assert tx.entries[1].amount == rand_amount
 
         # Assert the balance came out of their user wallet
-        assert lm.get_account_balance(account=user_account) == rand_amount
+        assert ledger_manager.get_account_balance(account=user_account) == rand_amount
 
 
 class TestThlLedgerTxManagerFlows:
@@ -713,11 +771,18 @@ class TestThlLedgerTxManagerFlows:
     examples
     """
 
-    def test_create_tx_task_complete(
-        self, user, create_main_accounts, thl_lm, lm, currency, delete_ledger_db
-    ):
+    @pytest.fixture(autouse=True)
+    def setup(self, delete_ledger_db, create_main_accounts):
         delete_ledger_db()
         create_main_accounts()
+
+    def test_create_tx_task_complete(
+        self,
+        user: User,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
+    ):
 
         wall1 = Wall(
             user_id=1,
@@ -727,10 +792,12 @@ class TestThlLedgerTxManagerFlows:
             session_id=1,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
-        thl_lm.create_tx_task_complete(wall=wall1, user=user, created=wall1.started)
+        thl_ledger_manager.create_tx_task_complete(
+            wall=wall1, user=user, created=wall1.started
+        )
 
         wall2 = Wall(
             user_id=1,
@@ -740,41 +807,43 @@ class TestThlLedgerTxManagerFlows:
             session_id=1,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
-        thl_lm.create_tx_task_complete(wall=wall2, user=user, created=wall2.started)
+        thl_ledger_manager.create_tx_task_complete(
+            wall=wall2, user=user, created=wall2.started
+        )
 
-        cash = thl_lm.get_account_cash()
-        revenue = thl_lm.get_account_task_complete_revenue()
+        cash = thl_ledger_manager.get_account_cash()
+        revenue = thl_ledger_manager.get_account_task_complete_revenue()
 
-        assert lm.get_account_balance(cash) == 123 + 321
-        assert lm.get_account_balance(revenue) == 123 + 321
-        assert lm.check_ledger_balanced()
+        assert ledger_manager.get_account_balance(cash) == 123 + 321
+        assert ledger_manager.get_account_balance(revenue) == 123 + 321
+        assert ledger_manager.check_ledger_balanced()
 
         assert (
-            lm.get_account_filtered_balance(
+            ledger_manager.get_account_filtered_balance(
                 account=revenue, metadata_key="source", metadata_value="d"
             )
             == 123
         )
 
         assert (
-            lm.get_account_filtered_balance(
+            ledger_manager.get_account_filtered_balance(
                 account=revenue, metadata_key="source", metadata_value="f"
             )
             == 321
         )
 
         assert (
-            lm.get_account_filtered_balance(
+            ledger_manager.get_account_filtered_balance(
                 account=revenue, metadata_key="source", metadata_value="x"
             )
             == 0
         )
 
         assert (
-            thl_lm.get_account_filtered_balance(
+            thl_ledger_manager.get_account_filtered_balance(
                 account=revenue,
                 metadata_key="thl_wall",
                 metadata_value=wall1.uuid,
@@ -783,7 +852,11 @@ class TestThlLedgerTxManagerFlows:
         )
 
     def test_create_transaction_task_complete_1_cent(
-        self, user, create_main_accounts, thl_lm, lm, currency
+        self,
+        user: User,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
     ):
         wall1 = Wall(
             user_id=1,
@@ -793,10 +866,10 @@ class TestThlLedgerTxManagerFlows:
             session_id=1,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
-        tx = thl_lm.create_tx_task_complete(
+        tx = thl_ledger_manager.create_tx_task_complete(
             wall=wall1, user=user, created=wall1.started
         )
 
@@ -804,17 +877,13 @@ class TestThlLedgerTxManagerFlows:
 
     def test_create_transaction_bp_payment(
         self,
-        user,
-        create_main_accounts,
-        thl_lm,
-        lm,
-        currency,
-        delete_ledger_db,
-        session_factory,
-        utc_hour_ago,
+        user: User,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
+        session_factory: Callable[..., Session],
+        utc_hour_ago: datetime,
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         s1: Session = session_factory(
             user=user,
@@ -824,50 +893,53 @@ class TestThlLedgerTxManagerFlows:
         )
         w1: Wall = s1.wall_events[0]
 
-        tx = thl_lm.create_tx_task_complete(wall=w1, user=user, created=w1.started)
+        tx = thl_ledger_manager.create_tx_task_complete(
+            wall=w1, user=user, created=w1.started
+        )
         assert isinstance(tx, LedgerTransaction)
 
         status, status_code_1 = s1.determine_session_status()
         thl_net, commission_amount, bp_pay, user_pay = s1.determine_payments()
         s1.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": s1.started + timedelta(minutes=10),
-                "payout": bp_pay,
-                "user_payout": user_pay,
-            }
+            status=status,
+            status_code_1=status_code_1,
+            finished=s1.started + timedelta(minutes=10),
+            payout=bp_pay,
+            user_payout=user_pay,
         )
         print(thl_net, commission_amount, bp_pay, user_pay)
-        thl_lm.create_tx_bp_payment(session=s1, created=w1.started)
+        thl_ledger_manager.create_tx_bp_payment(session=s1, created=w1.started)
 
-        revenue = thl_lm.get_account_task_complete_revenue()
-        bp_wallet = thl_lm.get_account_or_create_bp_wallet(product=user.product)
-        bp_commission = thl_lm.get_account_or_create_bp_commission(product=user.product)
+        revenue = thl_ledger_manager.get_account_task_complete_revenue()
+        bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet(
+            product=user.product
+        )
+        bp_commission = thl_ledger_manager.get_account_or_create_bp_commission(
+            product=user.product
+        )
 
-        assert 0 == lm.get_account_balance(account=revenue)
-        assert 50 == lm.get_account_filtered_balance(
+        assert 0 == ledger_manager.get_account_balance(account=revenue)
+        assert 50 == ledger_manager.get_account_filtered_balance(
             account=revenue,
             metadata_key="source",
             metadata_value=Source.TESTING,
         )
-        assert 48 == lm.get_account_balance(account=bp_wallet)
-        assert 48 == lm.get_account_filtered_balance(
+        assert 48 == ledger_manager.get_account_balance(account=bp_wallet)
+        assert 48 == ledger_manager.get_account_filtered_balance(
             account=bp_wallet,
             metadata_key="thl_session",
             metadata_value=s1.uuid,
         )
-        assert 2 == thl_lm.get_account_balance(account=bp_commission)
-        assert thl_lm.check_ledger_balanced()
+        assert 2 == thl_ledger_manager.get_account_balance(account=bp_commission)
+        assert thl_ledger_manager.check_ledger_balanced()
 
     def test_create_transaction_bp_payment_round(
         self,
-        user_factory,
-        product_user_wallet_no,
-        create_main_accounts,
-        thl_lm,
-        lm,
-        currency,
+        user_factory: Callable[..., User],
+        product_user_wallet_no: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
     ):
         product_user_wallet_no.commission_pct = Decimal("0.085")
         user: User = user_factory(product=product_user_wallet_no)
@@ -880,11 +952,11 @@ class TestThlLedgerTxManagerFlows:
             session_id=3,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
 
-        tx = thl_lm.create_tx_task_complete(
+        tx = thl_ledger_manager.create_tx_task_complete(
             wall=wall1, user=user, created=wall1.started
         )
         assert isinstance(tx, LedgerTransaction)
@@ -893,24 +965,27 @@ class TestThlLedgerTxManagerFlows:
         status, status_code_1 = session.determine_session_status()
         thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": session.started + timedelta(minutes=10),
-                "payout": bp_pay,
-                "user_payout": user_pay,
-            }
+            status=status,
+            status_code_1=status_code_1,
+            finished=session.started + timedelta(minutes=10),
+            payout=bp_pay,
+            user_payout=user_pay,
         )
 
         print(thl_net, commission_amount, bp_pay, user_pay)
-        tx = thl_lm.create_tx_bp_payment(session=session, created=wall1.started)
+        tx = thl_ledger_manager.create_tx_bp_payment(
+            session=session, created=wall1.started
+        )
         assert isinstance(tx, LedgerTransaction)
 
     def test_create_transaction_bp_payment_round2(
-        self, delete_ledger_db, user, create_main_accounts, thl_lm, lm, currency
+        self,
+        user: User,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
     ):
-        delete_ledger_db()
-        create_main_accounts()
+
         # user must be no user wallet
         # e.g. session 869b5bfa47f44b4f81cd095ed01df2ff this fails if you dont round properly
 
@@ -922,34 +997,33 @@ class TestThlLedgerTxManagerFlows:
             session_id=3,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
 
-        thl_lm.create_tx_task_complete(wall=wall1, user=user, created=wall1.started)
+        thl_ledger_manager.create_tx_task_complete(
+            wall=wall1, user=user, created=wall1.started
+        )
         session = Session(started=wall1.started, user=user, wall_events=[wall1])
         status, status_code_1 = session.determine_session_status()
         # thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": session.started + timedelta(minutes=10),
-                "payout": Decimal("1.53"),
-                "user_payout": Decimal("1.53"),
-            }
+            status=status,
+            status_code_1=status_code_1,
+            finished=session.started + timedelta(minutes=10),
+            payout=Decimal("1.53"),
+            user_payout=Decimal("1.53"),
         )
 
-        thl_lm.create_tx_bp_payment(session=session, created=wall1.started)
+        thl_ledger_manager.create_tx_bp_payment(session=session, created=wall1.started)
 
     def test_create_transaction_bp_payment_round3(
         self,
-        user_factory,
-        product_user_wallet_yes,
-        create_main_accounts,
-        thl_lm,
-        lm,
-        currency,
+        user_factory: Callable[..., User],
+        product_user_wallet_yes: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
     ):
         # e.g. session ___ fails b/c we rounded incorrectly
         #   before, and now we are off by a penny...
@@ -963,22 +1037,22 @@ class TestThlLedgerTxManagerFlows:
             session_id=3,
             status=Status.COMPLETE,
             status_code_1=StatusCode1.COMPLETE,
-            started=datetime.now(timezone.utc),
-            finished=datetime.now(timezone.utc) + timedelta(seconds=1),
+            started=datetime.now(UTC),
+            finished=datetime.now(UTC) + timedelta(seconds=1),
         )
-        thl_lm.create_tx_task_complete(wall=wall1, user=user, created=wall1.started)
+        thl_ledger_manager.create_tx_task_complete(
+            wall=wall1, user=user, created=wall1.started
+        )
 
         session = Session(started=wall1.started, user=user, wall_events=[wall1])
         status, status_code_1 = session.determine_session_status()
         # thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": session.started + timedelta(minutes=10),
-                "payout": Decimal("0.39"),
-                "user_payout": Decimal("0.26"),
-            }
+            status=status,
+            status_code_1=status_code_1,
+            finished=session.started + timedelta(minutes=10),
+            payout=Decimal("0.39"),
+            user_payout=Decimal("0.26"),
         )
         # with pytest.logs(logger, level=logging.WARNING) as cm:
         #     tx = thl_lm.create_transaction_bp_payment(session, created=wall1.started)
@@ -986,22 +1060,19 @@ class TestThlLedgerTxManagerFlows:
 
     def test_create_transaction_bp_payment_user_wallet(
         self,
-        user_factory,
-        product_user_wallet_yes,
-        create_main_accounts,
-        delete_ledger_db,
-        thl_lm,
-        session_manager,
-        wall_manager,
-        lm,
-        session_factory,
-        currency,
-        utc_hour_ago,
+        user_factory: Callable[..., User],
+        product_user_wallet_yes: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        session_manager: SessionManager,
+        wall_manager: WallManager,
+        ledger_manager: LedgerManager,
+        session_factory: Callable[..., Session],
+        currency: LedgerCurrency,
+        utc_hour_ago: datetime,
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         user: User = user_factory(product=product_user_wallet_yes)
+        assert isinstance(user.product, Product)
         assert user.product.user_wallet_enabled
 
         s1: Session = session_factory(
@@ -1013,10 +1084,12 @@ class TestThlLedgerTxManagerFlows:
         )
         w1: Wall = s1.wall_events[0]
 
-        thl_lm.create_tx_task_complete(wall=w1, user=user, created=w1.started)
+        thl_ledger_manager.create_tx_task_complete(
+            wall=w1, user=user, created=w1.started
+        )
 
         status, status_code_1 = s1.determine_session_status()
-        thl_net, commission_amount, bp_pay, user_pay = s1.determine_payments()
+        _, _, bp_pay, user_pay = s1.determine_payments()
         session_manager.finish_with_status(
             session=s1,
             status=status,
@@ -1025,55 +1098,59 @@ class TestThlLedgerTxManagerFlows:
             payout=bp_pay,
             user_payout=user_pay,
         )
-        thl_lm.create_tx_bp_payment(session=s1, created=w1.started)
+        thl_ledger_manager.create_tx_bp_payment(session=s1, created=w1.started)
 
-        revenue = thl_lm.get_account_task_complete_revenue()
-        bp_wallet = thl_lm.get_account_or_create_bp_wallet(product=user.product)
-        bp_commission = thl_lm.get_account_or_create_bp_commission(product=user.product)
-        user_wallet = thl_lm.get_account_or_create_user_wallet(user=user)
+        revenue = thl_ledger_manager.get_account_task_complete_revenue()
+        bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet(
+            product=user.product
+        )
+        bp_commission = thl_ledger_manager.get_account_or_create_bp_commission(
+            product=user.product
+        )
+        user_wallet = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
 
-        assert 0 == thl_lm.get_account_balance(account=revenue)
-        assert 50 == thl_lm.get_account_filtered_balance(
+        assert 0 == thl_ledger_manager.get_account_balance(account=revenue)
+        assert 50 == thl_ledger_manager.get_account_filtered_balance(
             account=revenue,
             metadata_key="source",
             metadata_value=Source.TESTING,
         )
 
-        assert 48 - 19 == thl_lm.get_account_balance(account=bp_wallet)
-        assert 48 - 19 == thl_lm.get_account_filtered_balance(
+        assert 48 - 19 == thl_ledger_manager.get_account_balance(account=bp_wallet)
+        assert 48 - 19 == thl_ledger_manager.get_account_filtered_balance(
             account=bp_wallet,
             metadata_key="thl_session",
             metadata_value=s1.uuid,
         )
-        assert 2 == thl_lm.get_account_balance(bp_commission)
-        assert 19 == thl_lm.get_account_balance(user_wallet)
-        assert 19 == thl_lm.get_account_filtered_balance(
+        assert 2 == thl_ledger_manager.get_account_balance(bp_commission)
+        assert 19 == thl_ledger_manager.get_account_balance(user_wallet)
+        assert 19 == thl_ledger_manager.get_account_filtered_balance(
             account=user_wallet,
             metadata_key="thl_session",
             metadata_value=s1.uuid,
         )
 
-        assert 0 == thl_lm.get_account_filtered_balance(
+        assert 0 == thl_ledger_manager.get_account_filtered_balance(
             account=user_wallet, metadata_key="thl_session", metadata_value="x"
         )
-        assert thl_lm.check_ledger_balanced()
+        assert thl_ledger_manager.check_ledger_balanced()
 
 
 class TestThlLedgerManagerAdj:
+    @pytest.fixture(autouse=True)
+    def setup(self, delete_ledger_db, create_main_accounts):
+        delete_ledger_db()
+        create_main_accounts()
 
     def test_create_tx_task_adjustment(
         self,
-        user_factory,
-        product_user_wallet_no,
-        create_main_accounts,
-        delete_ledger_db,
-        thl_lm,
-        lm,
-        utc_hour_ago,
-        currency,
+        user_factory: Callable[..., User],
+        product_user_wallet_no: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        utc_hour_ago: datetime,
+        currency: LedgerCurrency,
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         user: User = user_factory(product=product_user_wallet_no)
 
@@ -1089,7 +1166,7 @@ class TestThlLedgerManagerAdj:
             finished=utc_hour_ago + timedelta(seconds=1),
         )
 
-        thl_lm.create_tx_task_complete(wall1, user, created=wall1.started)
+        thl_ledger_manager.create_tx_task_complete(wall1, user, created=wall1.started)
 
         wall2 = Wall(
             user_id=1,
@@ -1102,7 +1179,7 @@ class TestThlLedgerManagerAdj:
             started=utc_hour_ago,
             finished=utc_hour_ago + timedelta(seconds=1),
         )
-        thl_lm.create_tx_task_complete(wall2, user, created=wall2.started)
+        thl_ledger_manager.create_tx_task_complete(wall2, user, created=wall2.started)
 
         wall1.update(
             adjusted_status=WallAdjustedStatus.ADJUSTED_TO_FAIL,
@@ -1110,24 +1187,26 @@ class TestThlLedgerManagerAdj:
             adjusted_timestamp=utc_hour_ago + timedelta(hours=1),
         )
         print(wall1.get_cpi_after_adjustment())
-        thl_lm.create_tx_task_adjustment(wall1, user)
+        thl_ledger_manager.create_tx_task_adjustment(wall1, user)
 
-        cash = thl_lm.get_account_cash()
-        revenue = thl_lm.get_account_task_complete_revenue()
+        cash = thl_ledger_manager.get_account_cash()
+        revenue = thl_ledger_manager.get_account_task_complete_revenue()
 
-        assert 123 + 321 - 123 == thl_lm.get_account_balance(account=cash)
-        assert 123 + 321 - 123 == thl_lm.get_account_balance(account=revenue)
-        assert thl_lm.check_ledger_balanced()
-        assert 0 == thl_lm.get_account_filtered_balance(
+        assert 123 + 321 - 123 == thl_ledger_manager.get_account_balance(account=cash)
+        assert 123 + 321 - 123 == thl_ledger_manager.get_account_balance(
+            account=revenue
+        )
+        assert thl_ledger_manager.check_ledger_balanced()
+        assert 0 == thl_ledger_manager.get_account_filtered_balance(
             revenue, metadata_key="source", metadata_value="d"
         )
-        assert 321 == thl_lm.get_account_filtered_balance(
+        assert 321 == thl_ledger_manager.get_account_filtered_balance(
             revenue, metadata_key="source", metadata_value="f"
         )
-        assert 0 == thl_lm.get_account_filtered_balance(
+        assert 0 == thl_ledger_manager.get_account_filtered_balance(
             revenue, metadata_key="source", metadata_value="x"
         )
-        assert 123 - 123 == thl_lm.get_account_filtered_balance(
+        assert 123 - 123 == thl_ledger_manager.get_account_filtered_balance(
             account=revenue, metadata_key="thl_wall", metadata_value=wall1.uuid
         )
 
@@ -1138,46 +1217,42 @@ class TestThlLedgerManagerAdj:
             adjusted_timestamp=utc_hour_ago + timedelta(minutes=45),
         )
         print(wall1.get_cpi_after_adjustment())
-        thl_lm.create_tx_task_adjustment(wall1, user)
+        thl_ledger_manager.create_tx_task_adjustment(wall1, user)
         # and then run it again to make sure it does nothing
-        thl_lm.create_tx_task_adjustment(wall1, user)
+        thl_ledger_manager.create_tx_task_adjustment(wall1, user)
 
-        cash = thl_lm.get_account_cash()
-        revenue = thl_lm.get_account_task_complete_revenue()
+        cash = thl_ledger_manager.get_account_cash()
+        revenue = thl_ledger_manager.get_account_task_complete_revenue()
 
-        assert 123 + 321 - 123 + 123 == thl_lm.get_account_balance(cash)
-        assert 123 + 321 - 123 + 123 == thl_lm.get_account_balance(revenue)
-        assert thl_lm.check_ledger_balanced()
-        assert 123 == thl_lm.get_account_filtered_balance(
+        assert 123 + 321 - 123 + 123 == thl_ledger_manager.get_account_balance(cash)
+        assert 123 + 321 - 123 + 123 == thl_ledger_manager.get_account_balance(revenue)
+        assert thl_ledger_manager.check_ledger_balanced()
+        assert 123 == thl_ledger_manager.get_account_filtered_balance(
             account=revenue, metadata_key="source", metadata_value="d"
         )
-        assert 321 == thl_lm.get_account_filtered_balance(
+        assert 321 == thl_ledger_manager.get_account_filtered_balance(
             account=revenue, metadata_key="source", metadata_value="f"
         )
-        assert 0 == thl_lm.get_account_filtered_balance(
+        assert 0 == thl_ledger_manager.get_account_filtered_balance(
             account=revenue, metadata_key="source", metadata_value="x"
         )
-        assert 123 - 123 + 123 == thl_lm.get_account_filtered_balance(
+        assert 123 - 123 + 123 == thl_ledger_manager.get_account_filtered_balance(
             account=revenue, metadata_key="thl_wall", metadata_value=wall1.uuid
         )
 
     def test_create_tx_bp_adjustment(
         self,
-        user,
-        product_user_wallet_no,
-        create_main_accounts,
+        user: User,
+        product_user_wallet_no: Product,
         caplog,
-        thl_lm,
-        lm,
-        currency,
-        session_manager,
-        wall_manager,
-        session_factory,
-        utc_hour_ago,
-        delete_ledger_db,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
+        session_manager: SessionManager,
+        wall_manager: WallManager,
+        session_factory: Callable[..., Session],
+        utc_hour_ago: datetime,
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         s1 = session_factory(
             user=user,
@@ -1190,11 +1265,15 @@ class TestThlLedgerManagerAdj:
         w1: Wall = s1.wall_events[0]
         w2: Wall = s1.wall_events[1]
 
-        thl_lm.create_tx_task_complete(wall=w1, user=user, created=w1.started)
-        thl_lm.create_tx_task_complete(wall=w2, user=user, created=w2.started)
+        thl_ledger_manager.create_tx_task_complete(
+            wall=w1, user=user, created=w1.started
+        )
+        thl_ledger_manager.create_tx_task_complete(
+            wall=w2, user=user, created=w2.started
+        )
 
         status, status_code_1 = s1.determine_session_status()
-        thl_net, commission_amount, bp_pay, user_pay = s1.determine_payments()
+        _, _, bp_pay, user_pay = s1.determine_payments()
         session_manager.finish_with_status(
             session=s1,
             status=status,
@@ -1203,21 +1282,25 @@ class TestThlLedgerManagerAdj:
             payout=bp_pay,
             user_payout=user_pay,
         )
-        thl_lm.create_tx_bp_payment(session=s1, created=w1.started)
-        revenue = thl_lm.get_account_task_complete_revenue()
-        bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(product=user.product)
-        bp_commission_account = thl_lm.get_account_or_create_bp_commission(
+        thl_ledger_manager.create_tx_bp_payment(session=s1, created=w1.started)
+        revenue = thl_ledger_manager.get_account_task_complete_revenue()
+        bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
             product=user.product
         )
-        assert 380 == thl_lm.get_account_balance(account=bp_wallet_account)
-        assert 0 == thl_lm.get_account_balance(account=revenue)
-        assert 20 == thl_lm.get_account_balance(account=bp_commission_account)
-        thl_lm.check_ledger_balanced()
+        bp_commission_account = thl_ledger_manager.get_account_or_create_bp_commission(
+            product=user.product
+        )
+        assert 380 == thl_ledger_manager.get_account_balance(account=bp_wallet_account)
+        assert 0 == thl_ledger_manager.get_account_balance(account=revenue)
+        assert 20 == thl_ledger_manager.get_account_balance(
+            account=bp_commission_account
+        )
+        thl_ledger_manager.check_ledger_balanced()
 
         # This should do nothing (since we haven't adjusted any wall events)
         s1.adjust_status()
         with caplog.at_level(logging.INFO):
-            thl_lm.create_tx_bp_adjustment(session=s1)
+            thl_ledger_manager.create_tx_bp_adjustment(session=s1)
 
         assert (
             "create_transaction_bp_adjustment. No transactions needed." in caplog.text
@@ -1235,22 +1318,22 @@ class TestThlLedgerManagerAdj:
             adjusted_cpi=Decimal(0),
             adjusted_timestamp=utc_hour_ago + timedelta(hours=1),
         )
-        thl_lm.create_tx_task_adjustment(wall=w1, user=user)
+        thl_ledger_manager.create_tx_task_adjustment(wall=w1, user=user)
         # -$1.00 b/c the MP took the $1 back, but we haven't yet taken the BP payment back
-        assert -100 == thl_lm.get_account_balance(revenue)
+        assert -100 == thl_ledger_manager.get_account_balance(revenue)
         s1.adjust_status()
-        thl_lm.create_tx_bp_adjustment(session=s1)
+        thl_ledger_manager.create_tx_bp_adjustment(session=s1)
 
         with caplog.at_level(logging.INFO):
-            thl_lm.create_tx_bp_adjustment(session=s1)
+            thl_ledger_manager.create_tx_bp_adjustment(session=s1)
         assert (
             "create_transaction_bp_adjustment. No transactions needed." in caplog.text
         )
 
-        assert 380 - 95 == thl_lm.get_account_balance(bp_wallet_account)
-        assert 0 == thl_lm.get_account_balance(revenue)
-        assert 20 - 5 == thl_lm.get_account_balance(bp_commission_account)
-        assert thl_lm.check_ledger_balanced()
+        assert 380 - 95 == thl_ledger_manager.get_account_balance(bp_wallet_account)
+        assert 0 == thl_ledger_manager.get_account_balance(revenue)
+        assert 20 - 5 == thl_ledger_manager.get_account_balance(bp_commission_account)
+        assert thl_ledger_manager.check_ledger_balanced()
 
         # unrecon the $1 survey
         wall_manager.adjust_status(
@@ -1259,32 +1342,28 @@ class TestThlLedgerManagerAdj:
             adjusted_cpi=None,
             adjusted_timestamp=utc_hour_ago + timedelta(minutes=45),
         )
-        thl_lm.create_tx_task_adjustment(
+        thl_ledger_manager.create_tx_task_adjustment(
             wall=w1,
             user=user,
             created=utc_hour_ago + timedelta(minutes=45),
         )
-        new_status, new_payout, new_user_payout = s1.determine_new_status_and_payouts()
+        _, _, _ = s1.determine_new_status_and_payouts()
         s1.adjust_status()
-        thl_lm.create_tx_bp_adjustment(session=s1)
-        assert 380 == thl_lm.get_account_balance(bp_wallet_account)
-        assert 0 == thl_lm.get_account_balance(revenue)
-        assert 20, thl_lm.get_account_balance(bp_commission_account)
-        assert thl_lm.check_ledger_balanced()
+        thl_ledger_manager.create_tx_bp_adjustment(session=s1)
+        assert 380 == thl_ledger_manager.get_account_balance(bp_wallet_account)
+        assert 0 == thl_ledger_manager.get_account_balance(revenue)
+        assert 20, thl_ledger_manager.get_account_balance(bp_commission_account)
+        assert thl_ledger_manager.check_ledger_balanced()
 
     def test_create_tx_bp_adjustment_small(
         self,
-        user_factory,
-        product_user_wallet_no,
-        create_main_accounts,
-        delete_ledger_db,
-        thl_lm,
-        lm,
-        utc_hour_ago,
-        currency,
+        user_factory: Callable[..., User],
+        product_user_wallet_no: Product,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        utc_hour_ago: datetime,
+        currency: LedgerCurrency,
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
         # This failed when I didn't check that `change_commission` > 0 in
         #   create_transaction_bp_adjustment
@@ -1302,51 +1381,46 @@ class TestThlLedgerManagerAdj:
             finished=utc_hour_ago + timedelta(seconds=1),
         )
 
-        tx = thl_lm.create_tx_task_complete(
+        tx = thl_ledger_manager.create_tx_task_complete(
             wall=wall1, user=user, created=wall1.started
         )
         assert isinstance(tx, LedgerTransaction)
 
         session = Session(started=wall1.started, user=user, wall_events=[wall1])
         status, status_code_1 = session.determine_session_status()
-        thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
+        _, _, bp_pay, user_pay = session.determine_payments()
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": utc_hour_ago + timedelta(minutes=10),
-                "payout": bp_pay,
-                "user_payout": user_pay,
-            }
+            status=status,
+            status_code_1=status_code_1,
+            finished=utc_hour_ago + timedelta(minutes=10),
+            payout=bp_pay,
+            user_payout=user_pay,
         )
-        thl_lm.create_tx_bp_payment(session, created=wall1.started)
+        thl_ledger_manager.create_tx_bp_payment(session, created=wall1.started)
 
         wall1.update(
             adjusted_status=WallAdjustedStatus.ADJUSTED_TO_FAIL,
             adjusted_cpi=0,
             adjusted_timestamp=utc_hour_ago + timedelta(hours=1),
         )
-        thl_lm.create_tx_task_adjustment(wall1, user)
+        thl_ledger_manager.create_tx_task_adjustment(wall1, user)
         session.adjust_status()
-        thl_lm.create_tx_bp_adjustment(session)
+        thl_ledger_manager.create_tx_bp_adjustment(session)
 
     def test_create_tx_bp_adjustment_abandon(
         self,
-        user_factory,
-        product_user_wallet_no,
-        delete_ledger_db,
-        session_factory,
-        create_main_accounts,
+        user_factory: Callable[..., User],
+        product_user_wallet_no: Product,
+        session_factory: Callable[..., Session],
         caplog,
-        thl_lm,
-        lm,
-        currency,
-        utc_hour_ago,
-        session_manager,
-        wall_manager,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
+        utc_hour_ago: datetime,
+        session_manager: SessionManager,
+        wall_manager: WallManager,
     ):
-        delete_ledger_db()
-        create_main_accounts()
+
         user: User = user_factory(product=product_user_wallet_no)
         s1: Session = session_factory(
             user=user, final_status=Status.ABANDON, wall_req_cpi=Decimal(1)
@@ -1360,9 +1434,9 @@ class TestThlLedgerManagerAdj:
             adjusted_cpi=w1.cpi,
             adjusted_timestamp=utc_hour_ago + timedelta(hours=1),
         )
-        thl_lm.create_tx_task_adjustment(wall=w1, user=user)
+        thl_ledger_manager.create_tx_task_adjustment(wall=w1, user=user)
         s1.adjust_status()
-        thl_lm.create_tx_bp_adjustment(session=s1)
+        thl_ledger_manager.create_tx_bp_adjustment(session=s1)
         # And then adjust it back (it was abandon before, but now it should be
         # fail (?) or back to abandon?)
         wall_manager.adjust_status(
@@ -1371,24 +1445,26 @@ class TestThlLedgerManagerAdj:
             adjusted_cpi=None,
             adjusted_timestamp=utc_hour_ago + timedelta(hours=1),
         )
-        thl_lm.create_tx_task_adjustment(wall=w1, user=user)
+        thl_ledger_manager.create_tx_task_adjustment(wall=w1, user=user)
         s1.adjust_status()
-        thl_lm.create_tx_bp_adjustment(session=s1)
+        thl_ledger_manager.create_tx_bp_adjustment(session=s1)
 
-        revenue = thl_lm.get_account_task_complete_revenue()
-        bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(product=user.product)
-        bp_commission_account = thl_lm.get_account_or_create_bp_commission(
+        revenue = thl_ledger_manager.get_account_task_complete_revenue()
+        bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
             product=user.product
         )
-        assert 0 == thl_lm.get_account_balance(bp_wallet_account)
-        assert 0 == thl_lm.get_account_balance(revenue)
-        assert 0 == thl_lm.get_account_balance(bp_commission_account)
-        assert thl_lm.check_ledger_balanced()
+        bp_commission_account = thl_ledger_manager.get_account_or_create_bp_commission(
+            product=user.product
+        )
+        assert 0 == thl_ledger_manager.get_account_balance(bp_wallet_account)
+        assert 0 == thl_ledger_manager.get_account_balance(revenue)
+        assert 0 == thl_ledger_manager.get_account_balance(bp_commission_account)
+        assert thl_ledger_manager.check_ledger_balanced()
 
         # This should do nothing
         s1.adjust_status()
         with caplog.at_level(logging.INFO):
-            thl_lm.create_tx_bp_adjustment(session=s1)
+            thl_ledger_manager.create_tx_bp_adjustment(session=s1)
         assert "No transactions needed" in caplog.text
 
         # Now back to complete again
@@ -1399,24 +1475,20 @@ class TestThlLedgerManagerAdj:
             adjusted_timestamp=utc_hour_ago + timedelta(hours=1),
         )
         s1.adjust_status()
-        thl_lm.create_tx_bp_adjustment(session=s1)
-        assert 95 == thl_lm.get_account_balance(bp_wallet_account)
+        thl_ledger_manager.create_tx_bp_adjustment(session=s1)
+        assert 95 == thl_ledger_manager.get_account_balance(bp_wallet_account)
 
     def test_create_tx_bp_adjustment_user_wallet(
         self,
-        user_factory,
-        product_user_wallet_yes,
-        create_main_accounts,
-        delete_ledger_db,
+        user_factory: Callable[..., User],
+        product_user_wallet_yes: Product,
         caplog,
-        thl_lm,
-        lm,
-        currency,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        currency: LedgerCurrency,
     ):
-        delete_ledger_db()
-        create_main_accounts()
 
-        now = datetime.now(timezone.utc) - timedelta(days=1)
+        now = datetime.now(UTC) - timedelta(days=1)
         user: User = user_factory(product=product_user_wallet_yes)
 
         # Create 2 Wall completes and create the respective transaction for
@@ -1447,7 +1519,7 @@ class TestThlLedgerManagerAdj:
             started=now_w1,
             finished=now_w1 + timedelta(minutes=1),
         )
-        tx = thl_lm.create_tx_task_complete(
+        tx = thl_ledger_manager.create_tx_task_complete(
             wall=wall1, user=user, created=wall1.started
         )
         assert isinstance(tx, LedgerTransaction)
@@ -1464,7 +1536,7 @@ class TestThlLedgerManagerAdj:
             started=now_w2,
             finished=now_w2 + timedelta(minutes=1),
         )
-        tx = thl_lm.create_tx_task_complete(
+        tx = thl_ledger_manager.create_tx_task_complete(
             wall=wall2, user=user, created=wall2.started
         )
         assert isinstance(tx, LedgerTransaction)
@@ -1485,34 +1557,38 @@ class TestThlLedgerManagerAdj:
         assert user_pay == Decimal("1.52")
 
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": now + timedelta(minutes=10),
-                "payout": bp_pay,
-                "user_payout": user_pay,
-            }
+            status=status,
+            status_code_1=status_code_1,
+            finished=now + timedelta(minutes=10),
+            payout=bp_pay,
+            user_payout=user_pay,
         )
 
-        tx = thl_lm.create_tx_bp_adjustment(session=session, created=wall1.started)
+        tx = thl_ledger_manager.create_tx_bp_adjustment(
+            session=session, created=wall1.started
+        )
         assert isinstance(tx, LedgerTransaction)
 
-        bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(product=user.product)
-        assert 228 == thl_lm.get_account_balance(account=bp_wallet_account)
-
-        user_account = thl_lm.get_account_or_create_user_wallet(user=user)
-        assert 152 == thl_lm.get_account_balance(account=user_account)
-
-        revenue = thl_lm.get_account_task_complete_revenue()
-        assert 0 == thl_lm.get_account_balance(account=revenue)
-
-        bp_commission_account = thl_lm.get_account_or_create_bp_commission(
+        bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
             product=user.product
         )
-        assert 20 == thl_lm.get_account_balance(account=bp_commission_account)
+        assert 228 == thl_ledger_manager.get_account_balance(account=bp_wallet_account)
+
+        user_account = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
+        assert 152 == thl_ledger_manager.get_account_balance(account=user_account)
+
+        revenue = thl_ledger_manager.get_account_task_complete_revenue()
+        assert 0 == thl_ledger_manager.get_account_balance(account=revenue)
+
+        bp_commission_account = thl_ledger_manager.get_account_or_create_bp_commission(
+            product=user.product
+        )
+        assert 20 == thl_ledger_manager.get_account_balance(
+            account=bp_commission_account
+        )
 
         # the total (4.00) = 2.28 + 1.52 + .20
-        assert thl_lm.check_ledger_balanced()
+        assert thl_ledger_manager.check_ledger_balanced()
 
         # This should do nothing (since we haven't adjusted any wall events)
         session.adjust_status()
@@ -1522,7 +1598,7 @@ class TestThlLedgerManagerAdj:
             session.get_user_payout_after_adjustment(),
         )
         with caplog.at_level(logging.INFO):
-            thl_lm.create_tx_bp_adjustment(session)
+            thl_ledger_manager.create_tx_bp_adjustment(session)
         assert (
             "create_transaction_bp_adjustment. No transactions needed." in caplog.text
         )
@@ -1533,16 +1609,16 @@ class TestThlLedgerManagerAdj:
             adjusted_cpi=0,
             adjusted_timestamp=now + timedelta(hours=1),
         )
-        thl_lm.create_tx_task_adjustment(wall1, user)
+        thl_ledger_manager.create_tx_task_adjustment(wall1, user)
         # -$1.00 b/c the MP took the $1 back, but we haven't yet taken the BP payment back
-        assert -100 == thl_lm.get_account_balance(revenue)
+        assert -100 == thl_ledger_manager.get_account_balance(revenue)
         session.adjust_status()
         print(
             session.get_status_after_adjustment(),
             session.get_payout_after_adjustment(),
             session.get_user_payout_after_adjustment(),
         )
-        thl_lm.create_tx_bp_adjustment(session)
+        thl_ledger_manager.create_tx_bp_adjustment(session)
 
         # running this twice b/c it should do nothing the 2nd time
         print(
@@ -1551,16 +1627,16 @@ class TestThlLedgerManagerAdj:
             session.get_user_payout_after_adjustment(),
         )
         with caplog.at_level(logging.INFO):
-            thl_lm.create_tx_bp_adjustment(session)
+            thl_ledger_manager.create_tx_bp_adjustment(session)
         assert (
             "create_transaction_bp_adjustment. No transactions needed." in caplog.text
         )
 
-        assert 228 - 57 == thl_lm.get_account_balance(bp_wallet_account)
-        assert 152 - 38 == thl_lm.get_account_balance(user_account)
-        assert 0 == thl_lm.get_account_balance(revenue)
-        assert 20 - 5 == thl_lm.get_account_balance(bp_commission_account)
-        assert thl_lm.check_ledger_balanced()
+        assert 228 - 57 == thl_ledger_manager.get_account_balance(bp_wallet_account)
+        assert 152 - 38 == thl_ledger_manager.get_account_balance(user_account)
+        assert 0 == thl_ledger_manager.get_account_balance(revenue)
+        assert 20 - 5 == thl_ledger_manager.get_account_balance(bp_commission_account)
+        assert thl_ledger_manager.check_ledger_balanced()
 
         # unrecon the $1 survey
         wall1.update(
@@ -1568,7 +1644,7 @@ class TestThlLedgerManagerAdj:
             adjusted_cpi=None,
             adjusted_timestamp=now + timedelta(hours=2),
         )
-        tx = thl_lm.create_tx_task_adjustment(wall=wall1, user=user)
+        tx = thl_ledger_manager.create_tx_task_adjustment(wall=wall1, user=user)
         assert isinstance(tx, LedgerTransaction)
 
         new_status, new_payout, new_user_payout = (
@@ -1581,13 +1657,17 @@ class TestThlLedgerManagerAdj:
             session.get_payout_after_adjustment(),
             session.get_user_payout_after_adjustment(),
         )
-        thl_lm.create_tx_bp_adjustment(session)
+        thl_ledger_manager.create_tx_bp_adjustment(session)
 
-        assert 228 - 57 + 57 == thl_lm.get_account_balance(bp_wallet_account)
-        assert 152 - 38 + 38 == thl_lm.get_account_balance(user_account)
-        assert 0 == thl_lm.get_account_balance(revenue)
-        assert 20 - 5 + 5 == thl_lm.get_account_balance(bp_commission_account)
-        assert thl_lm.check_ledger_balanced()
+        assert 228 - 57 + 57 == thl_ledger_manager.get_account_balance(
+            bp_wallet_account
+        )
+        assert 152 - 38 + 38 == thl_ledger_manager.get_account_balance(user_account)
+        assert 0 == thl_ledger_manager.get_account_balance(revenue)
+        assert 20 - 5 + 5 == thl_ledger_manager.get_account_balance(
+            bp_commission_account
+        )
+        assert thl_ledger_manager.check_ledger_balanced()
 
         # make the $2 failure into a complete also
         wall3.update(
@@ -1595,7 +1675,7 @@ class TestThlLedgerManagerAdj:
             adjusted_cpi=wall3.cpi,
             adjusted_timestamp=now + timedelta(hours=2),
         )
-        thl_lm.create_tx_task_adjustment(wall3, user)
+        thl_ledger_manager.create_tx_task_adjustment(wall3, user)
         new_status, new_payout, new_user_payout = (
             session.determine_new_status_and_payouts()
         )
@@ -1606,27 +1686,30 @@ class TestThlLedgerManagerAdj:
             session.get_payout_after_adjustment(),
             session.get_user_payout_after_adjustment(),
         )
-        thl_lm.create_tx_bp_adjustment(session)
-        assert 228 - 57 + 57 + 114 == thl_lm.get_account_balance(bp_wallet_account)
-        assert 152 - 38 + 38 + 76 == thl_lm.get_account_balance(user_account)
-        assert 0 == thl_lm.get_account_balance(revenue)
-        assert 20 - 5 + 5 + 10 == thl_lm.get_account_balance(bp_commission_account)
-        assert thl_lm.check_ledger_balanced()
+        thl_ledger_manager.create_tx_bp_adjustment(session)
+        assert 228 - 57 + 57 + 114 == thl_ledger_manager.get_account_balance(
+            bp_wallet_account
+        )
+        assert 152 - 38 + 38 + 76 == thl_ledger_manager.get_account_balance(
+            user_account
+        )
+        assert 0 == thl_ledger_manager.get_account_balance(revenue)
+        assert 20 - 5 + 5 + 10 == thl_ledger_manager.get_account_balance(
+            bp_commission_account
+        )
+        assert thl_ledger_manager.check_ledger_balanced()
 
     def test_create_transaction_bp_adjustment_cpi_adjustment(
         self,
-        user_factory,
-        product_user_wallet_no,
-        create_main_accounts,
-        delete_ledger_db,
+        user_factory: Callable[..., User],
+        product_user_wallet_no: Product,
         caplog,
-        thl_lm,
-        lm,
-        utc_hour_ago,
-        currency,
+        thl_ledger_manager: ThlLedgerManager,
+        ledger_manager: LedgerManager,
+        utc_hour_ago: datetime,
+        currency: LedgerCurrency,
     ):
-        delete_ledger_db()
-        create_main_accounts()
+
         user: User = user_factory(product=product_user_wallet_no)
 
         wall1 = Wall(
@@ -1640,7 +1723,7 @@ class TestThlLedgerManagerAdj:
             started=utc_hour_ago,
             finished=utc_hour_ago + timedelta(seconds=1),
         )
-        tx = thl_lm.create_tx_task_complete(
+        tx = thl_ledger_manager.create_tx_task_complete(
             wall=wall1, user=user, created=wall1.started
         )
         assert isinstance(tx, LedgerTransaction)
@@ -1656,32 +1739,34 @@ class TestThlLedgerManagerAdj:
             started=utc_hour_ago,
             finished=utc_hour_ago + timedelta(seconds=1),
         )
-        tx = thl_lm.create_tx_task_complete(
+        tx = thl_ledger_manager.create_tx_task_complete(
             wall=wall2, user=user, created=wall2.started
         )
         assert isinstance(tx, LedgerTransaction)
 
         session = Session(started=wall1.started, user=user, wall_events=[wall1, wall2])
         status, status_code_1 = session.determine_session_status()
-        thl_net, commission_amount, bp_pay, user_pay = session.determine_payments()
+        _, _, bp_pay, user_pay = session.determine_payments()
         session.update(
-            **{
-                "status": status,
-                "status_code_1": status_code_1,
-                "finished": utc_hour_ago + timedelta(minutes=10),
-                "payout": bp_pay,
-                "user_payout": user_pay,
-            }
+            status=status,
+            status_code_1=status_code_1,
+            finished=utc_hour_ago + timedelta(minutes=10),
+            payout=bp_pay,
+            user_payout=user_pay,
         )
-        thl_lm.create_tx_bp_payment(session, created=wall1.started)
+        thl_ledger_manager.create_tx_bp_payment(session, created=wall1.started)
 
-        revenue = thl_lm.get_account_task_complete_revenue()
-        bp_wallet_account = thl_lm.get_account_or_create_bp_wallet(user.product)
-        bp_commission_account = thl_lm.get_account_or_create_bp_commission(user.product)
-        assert 380 == thl_lm.get_account_balance(bp_wallet_account)
-        assert 0 == thl_lm.get_account_balance(revenue)
-        assert 20 == thl_lm.get_account_balance(bp_commission_account)
-        assert thl_lm.check_ledger_balanced()
+        revenue = thl_ledger_manager.get_account_task_complete_revenue()
+        bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
+            user.product
+        )
+        bp_commission_account = thl_ledger_manager.get_account_or_create_bp_commission(
+            user.product
+        )
+        assert 380 == thl_ledger_manager.get_account_balance(bp_wallet_account)
+        assert 0 == thl_ledger_manager.get_account_balance(revenue)
+        assert 20 == thl_ledger_manager.get_account_balance(bp_commission_account)
+        assert thl_ledger_manager.check_ledger_balanced()
 
         # cpi adjustment $1 -> $.60.
         wall1.update(
@@ -1689,17 +1774,17 @@ class TestThlLedgerManagerAdj:
             adjusted_cpi=Decimal("0.60"),
             adjusted_timestamp=utc_hour_ago + timedelta(minutes=30),
         )
-        thl_lm.create_tx_task_adjustment(wall1, user)
+        thl_ledger_manager.create_tx_task_adjustment(wall1, user)
 
         # -$0.40 b/c the MP took $0.40 back, but we haven't yet taken the BP payment back
-        assert -40 == thl_lm.get_account_balance(revenue)
+        assert -40 == thl_ledger_manager.get_account_balance(revenue)
         session.adjust_status()
         print(
             session.get_status_after_adjustment(),
             session.get_payout_after_adjustment(),
             session.get_user_payout_after_adjustment(),
         )
-        thl_lm.create_tx_bp_adjustment(session)
+        thl_ledger_manager.create_tx_bp_adjustment(session)
 
         # running this twice b/c it should do nothing the 2nd time
         print(
@@ -1708,14 +1793,14 @@ class TestThlLedgerManagerAdj:
             session.get_user_payout_after_adjustment(),
         )
         with caplog.at_level(logging.INFO):
-            thl_lm.create_tx_bp_adjustment(session)
+            thl_ledger_manager.create_tx_bp_adjustment(session)
         assert "create_transaction_bp_adjustment." in caplog.text
         assert "No transactions needed." in caplog.text
 
-        assert 380 - 38 == thl_lm.get_account_balance(bp_wallet_account)
-        assert 0 == thl_lm.get_account_balance(revenue)
-        assert 20 - 2 == thl_lm.get_account_balance(bp_commission_account)
-        assert thl_lm.check_ledger_balanced()
+        assert 380 - 38 == thl_ledger_manager.get_account_balance(bp_wallet_account)
+        assert 0 == thl_ledger_manager.get_account_balance(revenue)
+        assert 20 - 2 == thl_ledger_manager.get_account_balance(bp_commission_account)
+        assert thl_ledger_manager.check_ledger_balanced()
 
         # adjust it to failure
         wall1.update(
@@ -1723,13 +1808,17 @@ class TestThlLedgerManagerAdj:
             adjusted_cpi=0,
             adjusted_timestamp=utc_hour_ago + timedelta(minutes=45),
         )
-        thl_lm.create_tx_task_adjustment(wall1, user)
+        thl_ledger_manager.create_tx_task_adjustment(wall1, user)
         session.adjust_status()
-        thl_lm.create_tx_bp_adjustment(session)
-        assert 300 - (300 * 0.05) == thl_lm.get_account_balance(bp_wallet_account)
-        assert 0 == thl_lm.get_account_balance(revenue)
-        assert 300 * 0.05 == thl_lm.get_account_balance(bp_commission_account)
-        assert thl_lm.check_ledger_balanced()
+        thl_ledger_manager.create_tx_bp_adjustment(session)
+        assert 300 - (300 * 0.05) == thl_ledger_manager.get_account_balance(
+            bp_wallet_account
+        )
+        assert 0 == thl_ledger_manager.get_account_balance(revenue)
+        assert 300 * 0.05 == thl_ledger_manager.get_account_balance(
+            bp_commission_account
+        )
+        assert thl_ledger_manager.check_ledger_balanced()
 
         # and then back to cpi adj again, but this time for more than the orig amount
         wall1.update(
@@ -1737,13 +1826,17 @@ class TestThlLedgerManagerAdj:
             adjusted_cpi=Decimal("2.00"),
             adjusted_timestamp=utc_hour_ago + timedelta(minutes=45),
         )
-        thl_lm.create_tx_task_adjustment(wall1, user)
+        thl_ledger_manager.create_tx_task_adjustment(wall1, user)
         session.adjust_status()
-        thl_lm.create_tx_bp_adjustment(session)
-        assert 500 - (500 * 0.05) == thl_lm.get_account_balance(bp_wallet_account)
-        assert 0 == thl_lm.get_account_balance(revenue)
-        assert 500 * 0.05 == thl_lm.get_account_balance(bp_commission_account)
-        assert thl_lm.check_ledger_balanced()
+        thl_ledger_manager.create_tx_bp_adjustment(session)
+        assert 500 - (500 * 0.05) == thl_ledger_manager.get_account_balance(
+            bp_wallet_account
+        )
+        assert 0 == thl_ledger_manager.get_account_balance(revenue)
+        assert 500 * 0.05 == thl_ledger_manager.get_account_balance(
+            bp_commission_account
+        )
+        assert thl_ledger_manager.check_ledger_balanced()
 
         # And adjust again
         wall1.update(
@@ -1751,12 +1844,14 @@ class TestThlLedgerManagerAdj:
             adjusted_cpi=Decimal("3.00"),
             adjusted_timestamp=utc_hour_ago + timedelta(minutes=45),
         )
-        thl_lm.create_tx_task_adjustment(wall=wall1, user=user)
+        thl_ledger_manager.create_tx_task_adjustment(wall=wall1, user=user)
         session.adjust_status()
-        thl_lm.create_tx_bp_adjustment(session=session)
-        assert 600 - (600 * 0.05) == thl_lm.get_account_balance(
+        thl_ledger_manager.create_tx_bp_adjustment(session=session)
+        assert 600 - (600 * 0.05) == thl_ledger_manager.get_account_balance(
             account=bp_wallet_account
         )
-        assert 0 == thl_lm.get_account_balance(account=revenue)
-        assert 600 * 0.05 == thl_lm.get_account_balance(account=bp_commission_account)
-        assert thl_lm.check_ledger_balanced()
+        assert 0 == thl_ledger_manager.get_account_balance(account=revenue)
+        assert 600 * 0.05 == thl_ledger_manager.get_account_balance(
+            account=bp_commission_account
+        )
+        assert thl_ledger_manager.check_ledger_balanced()

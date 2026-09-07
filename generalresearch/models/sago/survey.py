@@ -2,17 +2,22 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import timezone
+from datetime import UTC
 from decimal import Decimal
 from functools import cached_property
-from typing import Annotated, Any, Literal, Type
+from typing import Annotated, Any, Literal, Self
 
 from more_itertools import flatten
-from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
-from typing_extensions import Self
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    computed_field,
+    model_validator,
+)
 
 from generalresearch.locales import Localelator
-from generalresearch.models import LogicalOperator, Source
 from generalresearch.models.custom_types import (
     AlphaNumStr,
     AlphaNumStrSet,
@@ -21,6 +26,7 @@ from generalresearch.models.custom_types import (
     DeviceTypes,
     IPLikeStrSet,
 )
+from generalresearch.models.definitions import LogicalOperator, Source
 from generalresearch.models.sago import SagoStatus
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.survey import MarketplaceTask
@@ -72,7 +78,7 @@ class SagoQuota(BaseModel):
     # There is no explicit status. The quota is closed if the count is 0
 
     def __hash__(self) -> int:
-        return hash(tuple((tuple(self.condition_hashes), self.remaining_count)))
+        return hash((tuple(self.condition_hashes), self.remaining_count))
 
     @property
     def is_open(self) -> bool:
@@ -235,7 +241,7 @@ class SagoSurvey(MarketplaceTask):
         return data
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return SagoCondition
 
     @property
@@ -262,7 +268,7 @@ class SagoSurvey(MarketplaceTask):
     def from_api(cls, d: dict[str, Any]) -> SagoSurvey | None:
         try:
             return cls._from_api(d)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse survey: {d}. {e}")
             return None
 
@@ -274,11 +280,10 @@ class SagoSurvey(MarketplaceTask):
         # Fancy repr that abbreviates ip_exclusions and survey_exclusions
         repr_args = list(self.__repr_args__())
         for n, (k, v) in enumerate(repr_args):
-            if k in {"ip_exclusions", "survey_exclusions"}:
-                if v and len(v) > 6:
-                    v = sorted(v)
-                    v = v[:3] + ["…"] + v[-3:]
-                    repr_args[n] = (k, v)
+            if k in {"ip_exclusions", "survey_exclusions"} and v and len(v) > 6:
+                v = sorted(v)
+                v = v[:3] + ["…"] + v[-3:]
+                repr_args[n] = (k, v)
         join_str = ", "
         repr_str = join_str.join(
             repr(v) if a is None else f"{a}={v!r}" for a, v in repr_args
@@ -314,9 +319,9 @@ class SagoSurvey(MarketplaceTask):
 
     @classmethod
     def from_db(cls, d: dict[str, Any]):
-        d["created"] = d["created"].replace(tzinfo=timezone.utc)
-        d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
-        d["modified_api"] = d["modified_api"].replace(tzinfo=timezone.utc)
+        d["created"] = d["created"].replace(tzinfo=UTC)
+        d["updated"] = d["updated"].replace(tzinfo=UTC)
+        d["modified_api"] = d["modified_api"].replace(tzinfo=UTC)
         d["qualifications"] = json.loads(d["qualifications"])
         d["used_question_ids"] = json.loads(d["used_question_ids"])
         d["quotas"] = json.loads(d["quotas"])
@@ -363,7 +368,7 @@ class SagoSurvey(MarketplaceTask):
         quota_eval = {
             quota: quota.matches_soft(criteria_evaluation) for quota in self.quotas
         }
-        evals = set(g[0] for g in quota_eval.values())
+        evals = {g[0] for g in quota_eval.values()}
         if any(m[0] is True and not q.is_open for q, m in quota_eval.items()):
             # matched a full quota
             return False, set()

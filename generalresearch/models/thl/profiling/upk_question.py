@@ -3,9 +3,9 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property
-from typing import Any, List, Literal, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -16,10 +16,9 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Annotated
 
-from generalresearch.models import Source
 from generalresearch.models.custom_types import UUIDStr
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.category import Category
 
 
@@ -99,7 +98,7 @@ class UpkQuestionChoiceOut(UpkQuestionChoice):
     # importance: Optional[UPKImportance] = Field(default=None, exclude=True)
 
 
-class UpkQuestionType(str, Enum):
+class UpkQuestionType(StrEnum):
     # The question has options that the user must select from. A MC question
     #   can be e.g. Selector.SINGLE_ANSWER or Selector.MULTIPLE_ANSWER to
     #   indicate only 1 or more than 1 option can be selected respectively.
@@ -112,7 +111,7 @@ class UpkQuestionType(str, Enum):
     HIDDEN = "HIDDEN"
 
 
-class UpkQuestionSelector(str, Enum):
+class UpkQuestionSelector(StrEnum):
     pass
 
 
@@ -215,11 +214,9 @@ SelectorType = (
     | UpkQuestionSelectorHIDDEN
 )
 Configuration = Annotated[
-    Union[
-        UpkQuestionConfigurationMC,
-        UpkQuestionConfigurationTE,
-        UpkQuestionConfigurationSLIDER,
-    ],
+    UpkQuestionConfigurationMC
+    | UpkQuestionConfigurationTE
+    | UpkQuestionConfigurationSLIDER,
     Field(discriminator="type"),
 ]
 
@@ -370,7 +367,7 @@ class UpkQuestion(BaseModel):
                 self.choices is None
             ), f"No `choices` are allowed for type `{self.type}`"
         else:
-            assert self.choices is not None, f"`choices` must be set"
+            assert self.choices is not None, "`choices` must be set"
         return self
 
     @model_validator(mode="after")
@@ -433,7 +430,7 @@ class UpkQuestion(BaseModel):
 
     @field_validator("choices")
     @classmethod
-    def order_choices(cls, choices: List):
+    def order_choices(cls, choices: list):
         if choices:
             choices.sort(key=lambda x: x.order)
         return choices
@@ -478,10 +475,9 @@ class UpkQuestion(BaseModel):
         # Almost nothing has >1k options, besides location stuff (cities,
         # etc.) which should get harmonized. When presenting them, we'll
         # filter down options to at most 50.
-        if self.choices and (len(self.choices) <= 1 or len(self.choices) > 1000):
-            return False
-
-        return True
+        return not (
+            self.choices and (len(self.choices) <= 1 or len(self.choices) > 1000)
+        )
 
     @property
     def md5sum(self):
@@ -537,7 +533,7 @@ class UpkQuestion(BaseModel):
         ), "Multiple of the same answer submitted"
         if self.type == UpkQuestionType.MULTIPLE_CHOICE:
             assert len(answer) >= 1, "MC question with no selected answers"
-            choice_codes = set(x.id for x in self.choices)
+            choice_codes = {x.id for x in self.choices}
             if self.selector == UpkQuestionSelectorMC.SINGLE_ANSWER:
                 assert (
                     len(answer) == 1
@@ -566,9 +562,7 @@ class UpkQuestion(BaseModel):
             assert len(answer) == 1, "Only one answer allowed"
             answer = answer[0]
             assert len(answer) > 0, "Must provide answer"
-            max_length = (
-                self.configuration.max_length if self.configuration else 0 or 100000
-            )
+            max_length = self.configuration.max_length if self.configuration else 100000
             assert len(answer) <= max_length, "Answer longer than allowed"
             if self.validation and self.validation.patterns:
                 for pattern in self.validation.patterns:

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, Self
 from uuid import uuid4
 
 from pydantic import (
@@ -17,21 +17,15 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
-from generalresearch.models import DeviceType, Source
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     EnumNameSerializer,
     IPvAnyAddressStr,
     UUIDStr,
 )
+from generalresearch.models.definitions import DeviceType, Source
 from generalresearch.models.legacy.bucket import Bucket
-from generalresearch.models.thl import (
-    Product,
-    decimal_to_int_cents,
-    int_cents_to_decimal,
-)
 from generalresearch.models.thl.definitions import (
     WALL_ALLOWED_STATUS_CODE_1_2,
     WALL_ALLOWED_STATUS_STATUS_CODE,
@@ -43,7 +37,12 @@ from generalresearch.models.thl.definitions import (
     WallAdjustedStatus,
     WallStatusCode2,
 )
+from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user import User
+from generalresearch.models.thl.utils import (
+    decimal_to_int_cents,
+    int_cents_to_decimal,
+)
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
@@ -69,9 +68,7 @@ class WallBase(BaseModel):
     buyer_id: str | None = Field(default=None, max_length=32)
     req_survey_id: str = Field(max_length=32)
     req_cpi: Decimal = Field(decimal_places=5, lt=1000, ge=0)
-    started: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    started: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # These get set on creation, or updated when the wall event is finished. So
     #   they shouldn't really ever be NULL, but you don't have to pass them in
@@ -127,9 +124,9 @@ class WallBase(BaseModel):
     @classmethod
     def check_cpi_decimal_places(cls, v: Decimal) -> Decimal:
         if v is not None:
-            assert (
-                v.as_tuple().exponent >= -5
-            ), "Must have 5 or fewer decimal places ('XXX.YYYYY')"
+            assert v.as_tuple().exponent >= -5, (
+                "Must have 5 or fewer decimal places ('XXX.YYYYY')"
+            )
         return v
 
     @model_validator(mode="before")
@@ -158,29 +155,27 @@ class WallBase(BaseModel):
 
     @model_validator(mode="after")
     def check_timestamps(self):
-        assert self.started <= datetime.now(
-            tz=timezone.utc
-        ), "Started must not be in the future"
+        assert self.started <= datetime.now(tz=UTC), "Started must not be in the future"
         if self.finished:
             assert self.finished > self.started, "Finished must be after started"
-            assert self.finished - self.started <= timedelta(
-                minutes=90
-            ), "Maximum wall event time is 90 min"
+            assert self.finished - self.started <= timedelta(minutes=90), (
+                "Maximum wall event time is 90 min"
+            )
         return self
 
     @model_validator(mode="after")
     def check_ext_statuses(self):
         if self.ext_status_code_3 is not None:
-            assert (
-                self.ext_status_code_1 is not None
-            ), "Set ext_status_code_1 before ext_status_code_3"
-            assert (
-                self.ext_status_code_2 is not None
-            ), "Set ext_status_code_2 before ext_status_code_3"
+            assert self.ext_status_code_1 is not None, (
+                "Set ext_status_code_1 before ext_status_code_3"
+            )
+            assert self.ext_status_code_2 is not None, (
+                "Set ext_status_code_2 before ext_status_code_3"
+            )
         if self.ext_status_code_2 is not None:
-            assert (
-                self.ext_status_code_1 is not None
-            ), "Set ext_status_code_1 before ext_status_code_2"
+            assert self.ext_status_code_1 is not None, (
+                "Set ext_status_code_1 before ext_status_code_2"
+            )
         return self
 
     @model_validator(mode="after")
@@ -188,27 +183,27 @@ class WallBase(BaseModel):
         if self.status in {Status.COMPLETE, Status.FAIL}:
             assert self.finished is not None, "finished should be set"
         if self.status == Status.COMPLETE:
-            assert (
-                self.status_code_1 == StatusCode1.COMPLETE
-            ), "status_code_1 should be COMPLETE"
+            assert self.status_code_1 == StatusCode1.COMPLETE, (
+                "status_code_1 should be COMPLETE"
+            )
         return self
 
     @model_validator(mode="after")
     def check_status_status_code_agreement(self) -> Self:
         if self.status_code_1:
             options = WALL_ALLOWED_STATUS_STATUS_CODE.get(self.status, {})
-            assert (
-                self.status_code_1 in options
-            ), f"If status is {self.status.value}, status_code_1 should be in {options}"
+            assert self.status_code_1 in options, (
+                f"If status is {self.status.value}, status_code_1 should be in {options}"
+            )
         return self
 
     @model_validator(mode="after")
     def check_status_code1_2_agreement(self) -> Self:
         if self.status_code_2:
             options = WALL_ALLOWED_STATUS_CODE_1_2.get(self.status_code_1, {})
-            assert (
-                self.status_code_2 in options
-            ), f"If status_code_1 is {self.status_code_1.value}, status_code_2 should be in {options}"
+            assert self.status_code_2 in options, (
+                f"If status_code_1 is {self.status_code_1.value}, status_code_2 should be in {options}"
+            )
         return self
 
     # --- Methods ---
@@ -239,10 +234,7 @@ class WallBase(BaseModel):
         return self.is_visible() and self.status == Status.COMPLETE
 
     def allow_session(self) -> bool:
-        if self.status == Status.COMPLETE:
-            return False
-
-        return True
+        return self.status != Status.COMPLETE
 
     def update(self, **kwargs) -> None:
         """
@@ -278,7 +270,7 @@ class WallBase(BaseModel):
 
         # This is just used in tests at the moment. This needs to be adjusted.
         if finished is None:
-            finished = datetime.now(tz=timezone.utc)
+            finished = datetime.now(tz=UTC)
 
         self.update(
             status=status,
@@ -304,16 +296,16 @@ class WallBase(BaseModel):
         finished: datetime | None = None,
     ) -> None:
         # This should be called by the wall manager in order to actually update db
-        from generalresearch import wall_status_codes
+        from generalresearch.wall_status_codes import annotate_status_code
 
-        status, status_code_1, status_code_2 = wall_status_codes.annotate_status_code(
+        status, status_code_1, status_code_2 = annotate_status_code(
             self.source,
             ext_status_code_1,
             ext_status_code_2,
             ext_status_code_3,
         )
         if finished is None:
-            finished = datetime.now(tz=timezone.utc)
+            finished = datetime.now(tz=UTC)
         self.update(
             status=status,
             status_code_1=status_code_1,
@@ -325,18 +317,18 @@ class WallBase(BaseModel):
         )
 
     def is_soft_fail(self) -> bool:
-        from generalresearch import wall_status_codes
+        from generalresearch.wall_status_codes import is_soft_fail
 
         assert self.status is not None, "status should not be None"
         assert self.status_code_1 is not None, "status_code_1 should not be None"
-        return wall_status_codes.is_soft_fail(self)
+        return is_soft_fail(self)
 
     def stop_marketplace_session(self) -> bool:
-        from generalresearch import wall_status_codes
+        from generalresearch.wall_status_codes import stop_marketplace_session
 
         assert self.status is not None, "status should not be None"
         assert self.status_code_1 is not None, "status_code_1 should not be None"
-        return wall_status_codes.stop_marketplace_session(self)
+        return stop_marketplace_session(self)
 
     def get_status_after_adjustment(self) -> Status:
         if self.adjusted_status in {
@@ -357,10 +349,13 @@ class WallBase(BaseModel):
             WallAdjustedStatus.CPI_ADJUSTMENT,
         }:
             return self.adjusted_cpi
+
         elif self.adjusted_status == WallAdjustedStatus.ADJUSTED_TO_FAIL:
             return Decimal(0)
+
         elif self.status == Status.COMPLETE:
             return self.cpi
+
         else:
             return Decimal(0)
 
@@ -386,7 +381,7 @@ class WallBase(BaseModel):
         TODO: Transition this over to use the ReportTask pydantic model.
         """
         report_timestamp = (
-            report_timestamp if report_timestamp else datetime.now(tz=timezone.utc)
+            report_timestamp if report_timestamp else datetime.now(tz=UTC)
         )
         if self.status is None and self.finished is None:
             self.status = Status.ABANDON
@@ -419,15 +414,15 @@ class Wall(WallBase):
     @model_validator(mode="after")
     def check_adjusted_null(self) -> Self:
         if self.adjusted_status is not None or self.adjusted_cpi is not None:
-            assert (
-                self.adjusted_cpi is not None
-            ), "Set adjusted_cpi if the wall has been adjusted"
-            assert (
-                self.adjusted_status is not None
-            ), "Set adjusted_status if the wall has been adjusted"
-            assert (
-                self.adjusted_timestamp is not None
-            ), "Set adjusted_timestamp if the wall has been adjusted"
+            assert self.adjusted_cpi is not None, (
+                "Set adjusted_cpi if the wall has been adjusted"
+            )
+            assert self.adjusted_status is not None, (
+                "Set adjusted_status if the wall has been adjusted"
+            )
+            assert self.adjusted_timestamp is not None, (
+                "Set adjusted_timestamp if the wall has been adjusted"
+            )
         return self
 
     @model_validator(mode="after")
@@ -439,9 +434,9 @@ class Wall(WallBase):
 
     # --- Properties ---
 
-    @computed_field
+    @computed_field()
     @property
-    def elapsed(self) -> timedelta:
+    def elapsed(self) -> timedelta | None:
         return self.finished - self.started if self.finished else None
 
     def to_json(self) -> str:
@@ -450,9 +445,9 @@ class Wall(WallBase):
         d = self.model_dump(mode="json", exclude={"elapsed"})
         return json.dumps(d)
 
-    def model_dump_mysql(self, *args, **kwargs) -> dict:
+    def model_dump_mysql(self) -> dict[str, Any]:
         # Generate a dictionary representation of the model, with special handling for datetimes
-        d = self.model_dump(mode="json", exclude={"elapsed"}, *args, **kwargs)
+        d = self.model_dump(mode="json", exclude={"elapsed"})
         d["started"] = self.started.replace(tzinfo=None)
         if self.finished:
             d["finished"] = self.finished.replace(tzinfo=None)
@@ -462,7 +457,6 @@ class Wall(WallBase):
 
 
 class WallOut(WallBase):
-
     # These get serialized to the enum name instead of the int value (for ease in UI)
     status_code_1: Annotated[StatusCode1, EnumNameSerializer] | None = Field(
         default=None,
@@ -504,13 +498,13 @@ class WallOut(WallBase):
     )
 
     # Serialize user_cpi to an int
-    @field_serializer("user_cpi", return_type=int)
-    def serialize_user_cpi(self, v: Decimal, _info):
+    @field_serializer("user_cpi", return_type=int | None)
+    def serialize_user_cpi(self, v: Decimal | None) -> int | None:
         return decimal_to_int_cents(v)
 
     # If user_cpi is an int, put it back to a decimal
     @field_validator("user_cpi", mode="before")
-    def deserialize_user_cpi(cls, v):
+    def deserialize_user_cpi(cls, v: Decimal | None) -> Decimal | None:
         if isinstance(v, int):
             return int_cents_to_decimal(v)
         return v
@@ -518,11 +512,11 @@ class WallOut(WallBase):
     # noinspection PyNestedDecorators
     @field_validator("user_cpi", mode="after")
     @classmethod
-    def check_cpi_decimal_places(cls, v: Decimal) -> Decimal:
+    def check_cpi_decimal_places(cls, v: Decimal | None) -> Decimal | None:
         if v is not None:
-            assert (
-                v.as_tuple().exponent >= -5
-            ), "Must have 5 or fewer decimal places ('XXX.YYYYY')"
+            assert v.as_tuple().exponent >= -5, (
+                "Must have 5 or fewer decimal places ('XXX.YYYYY')"
+            )
         return v
 
     @field_validator("status_code_1", mode="before")
@@ -587,9 +581,7 @@ class Session(BaseModel):
     id: int | None = None
     uuid: UUIDStr = Field(default_factory=lambda: uuid4().hex)
     user: User
-    started: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    started: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # This is the "bucket" the user clicked on to start this session. We only
     # store the 4 fields: loi_min, loi_max, user_payout_min, user_payout_max
@@ -677,9 +669,9 @@ class Session(BaseModel):
     @classmethod
     def check_payout_decimal_places(cls, v: Decimal) -> Decimal:
         if v is not None:
-            assert (
-                v.as_tuple().exponent >= -2
-            ), "Must have 2 or fewer decimal places ('XXX.YY')"
+            assert v.as_tuple().exponent >= -2, (
+                "Must have 2 or fewer decimal places ('XXX.YY')"
+            )
             # explicitly make sure it is 2 decimal places, after checking that it is already 2 or less.
             v = v.quantize(Decimal("0.00"))
         return v
@@ -701,17 +693,21 @@ class Session(BaseModel):
                 StatusCode1.PS_FAIL,
                 StatusCode1.PS_QUALITY,
                 StatusCode1.PS_BLOCKED,
-            }, f"status_code_1 {self.status_code_1.name} invalid for status {self.status.value}"
+            }, (
+                f"status_code_1 {self.status_code_1.name} invalid for status {self.status.value}"
+            )
         elif self.status in {Status.TIMEOUT, Status.ABANDON}:
             assert self.status_code_1 in {
                 StatusCode1.PS_ABANDON,
                 StatusCode1.GRS_ABANDON,
                 StatusCode1.BUYER_ABANDON,
-            }, f"status_code_1 {self.status_code_1.name} invalid for status {self.status.value}"
+            }, (
+                f"status_code_1 {self.status_code_1.name} invalid for status {self.status.value}"
+            )
         elif self.status == Status.COMPLETE:
-            assert (
-                self.status_code_1 == StatusCode1.COMPLETE
-            ), f"status_code_1 {self.status_code_1.name} invalid for status {self.status.value}"
+            assert self.status_code_1 == StatusCode1.COMPLETE, (
+                f"status_code_1 {self.status_code_1.name} invalid for status {self.status.value}"
+            )
         else:
             assert self.status_code_1 is None, (
                 f"status_code_1 {self.status_code_1.name} invalid for status "
@@ -734,9 +730,9 @@ class Session(BaseModel):
     @model_validator(mode="after")
     def check_payout_when_complete(self):
         if self.status == Status.COMPLETE:
-            assert (
-                self.payout is not None
-            ), "there should be a payout if the session is marked complete"
+            assert self.payout is not None, (
+                "there should be a payout if the session is marked complete"
+            )
         return self
 
     # @model_validator(mode='after')
@@ -762,19 +758,19 @@ class Session(BaseModel):
     @model_validator(mode="after")
     def check_adjusted(self):
         if self.adjusted_status is not None or self.adjusted_payout is not None:
-            assert (
-                self.adjusted_payout is not None
-            ), "Set adjusted_payout if the session has been adjusted"
-            assert (
-                self.adjusted_status is not None
-            ), "Set adjusted_status if the session has been adjusted"
-            assert (
-                self.adjusted_timestamp is not None
-            ), "Set adjusted_timestamp if the session has been adjusted"
+            assert self.adjusted_payout is not None, (
+                "Set adjusted_payout if the session has been adjusted"
+            )
+            assert self.adjusted_status is not None, (
+                "Set adjusted_status if the session has been adjusted"
+            )
+            assert self.adjusted_timestamp is not None, (
+                "Set adjusted_timestamp if the session has been adjusted"
+            )
         if self.adjusted_user_payout is not None:
-            assert (
-                self.adjusted_payout is not None
-            ), "Set adjusted_payout if adjusted_user_payout is set"
+            assert self.adjusted_payout is not None, (
+                "Set adjusted_payout if adjusted_user_payout is set"
+            )
             # NOTE: the other way around is NOT required!
             # (the adjusted_user_payout / user_payout can be null)
         return self
@@ -787,9 +783,9 @@ class Session(BaseModel):
                 "the adjusted_status should be null"
             )
         if self.adjusted_status == SessionAdjustedStatus.ADJUSTED_TO_FAIL:
-            assert (
-                self.status == Status.COMPLETE
-            ), "Session.status must be COMPLETE for the adjusted_status to be ADJUSTED_TO_FAIL"
+            assert self.status == Status.COMPLETE, (
+                "Session.status must be COMPLETE for the adjusted_status to be ADJUSTED_TO_FAIL"
+            )
         return self
 
     # --- Properties ---
@@ -828,7 +824,7 @@ class Session(BaseModel):
         The status of the BP's user_wallet_config.failed_attempt_credit_enabled does
         not matter here.
         """
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         min_session_length = timedelta(minutes=1)
 
         if self.status is None:
@@ -850,13 +846,12 @@ class Session(BaseModel):
         )
 
     def model_dump_mysql(
-        self, *args, **kwargs
+        self, **kwargs
     ) -> dict[str, str | int | datetime | float | None]:
 
         # Generate a dictionary representation of the model, with special
         #   handling for datetimes, and nested models such as User & Bucket
-
-        d = self.model_dump(mode="json", *args, **kwargs)
+        d = self.model_dump(mode="json", **kwargs)
         d["started"] = self.started.replace(tzinfo=None)
 
         if self.finished:
@@ -907,7 +902,7 @@ class Session(BaseModel):
         if (
             last_wall.status is None
             and self.status is None
-            and datetime.now(tz=timezone.utc)
+            and datetime.now(tz=UTC)
             > self.started + timedelta(seconds=task_timeout_seconds)
         ):
             last_wall.status = Status.TIMEOUT
@@ -988,7 +983,7 @@ class Session(BaseModel):
         self, max_session_len: timedelta, max_session_hard_retry: int
     ) -> bool:
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         last_wall = self.get_last_visible_wall()
 
         if last_wall and last_wall.status == Status.COMPLETE:
@@ -1002,10 +997,7 @@ class Session(BaseModel):
             return True
 
         # Hard limit of 40 wall events per session
-        if len(self.wall_events) >= 40:
-            return True
-
-        return False
+        return len(self.wall_events) >= 40
 
     def determine_payments(
         self,
@@ -1018,6 +1010,7 @@ class Session(BaseModel):
         )
 
         product = self.user.product
+        assert product
         # Handle brokerage product payouts
         bp_pay: Decimal = product.determine_bp_payment(thl_net)
         commission_amount: Decimal = thl_net - bp_pay
@@ -1124,9 +1117,9 @@ class Session(BaseModel):
             return False
 
         if self.status == Status.COMPLETE:
-            assert (
-                self.adjusted_status != SessionAdjustedStatus.ADJUSTED_TO_COMPLETE
-            ), "Can't have complete adj to complete"
+            assert self.adjusted_status != SessionAdjustedStatus.ADJUSTED_TO_COMPLETE, (
+                "Can't have complete adj to complete"
+            )
             if self.adjusted_status in {
                 None,
                 SessionAdjustedStatus.PAYOUT_ADJUSTMENT,
@@ -1270,19 +1263,19 @@ def check_adjusted_status_consistent(
         assert adjusted_cpi == cpi, "adjusted_cpi should be equal to the original cpi"
 
     elif adjusted_status == WallAdjustedStatus.ADJUSTED_TO_FAIL:
-        assert (
-            status == Status.COMPLETE
-        ), "Wall.status must be COMPLETE for the adjusted_status to be ADJUSTED_TO_FAIL"
-        assert (
-            adjusted_cpi == 0
-        ), "adjusted_cpi should be 0 if adjusted_status is ADJUSTED_TO_FAIL"
+        assert status == Status.COMPLETE, (
+            "Wall.status must be COMPLETE for the adjusted_status to be ADJUSTED_TO_FAIL"
+        )
+        assert adjusted_cpi == 0, (
+            "adjusted_cpi should be 0 if adjusted_status is ADJUSTED_TO_FAIL"
+        )
 
     elif adjusted_status == WallAdjustedStatus.CPI_ADJUSTMENT:
         # the original status is allowed to be anything
         # the adjusted cpi should be something different
-        assert (
-            adjusted_cpi != 0 and adjusted_cpi != cpi
-        ), "If CPI_ADJUSTMENT, the adjusted_cpi should be different from the original cpi or 0"
+        assert adjusted_cpi != 0 and adjusted_cpi != cpi, (
+            "If CPI_ADJUSTMENT, the adjusted_cpi should be different from the original cpi or 0"
+        )
 
     elif adjusted_status is None:
         assert adjusted_cpi is None, "incompatible adjusted values"
@@ -1343,21 +1336,21 @@ def _check_adjusted_status_wall_consistent(
 
     # status / adjusted_status agreement
     if status == Status.COMPLETE:
-        assert (
-            new_adjusted_status != WallAdjustedStatus.ADJUSTED_TO_COMPLETE
-        ), "adjusted status can't be ADJUSTED_TO_COMPLETE if the status is already COMPLETE"
+        assert new_adjusted_status != WallAdjustedStatus.ADJUSTED_TO_COMPLETE, (
+            "adjusted status can't be ADJUSTED_TO_COMPLETE if the status is already COMPLETE"
+        )
     elif status == Status.FAIL:
-        assert (
-            new_adjusted_status != WallAdjustedStatus.ADJUSTED_TO_FAIL
-        ), "adjusted status can't be ADJUSTED_TO_FAIL if the status is already FAIL"
+        assert new_adjusted_status != WallAdjustedStatus.ADJUSTED_TO_FAIL, (
+            "adjusted status can't be ADJUSTED_TO_FAIL if the status is already FAIL"
+        )
     else:
         # status is None/timeout/abandon, which we treat as a fail anyway
-        assert (
-            new_adjusted_status != WallAdjustedStatus.ADJUSTED_TO_FAIL
-        ), "attempt is already a failure"
+        assert new_adjusted_status != WallAdjustedStatus.ADJUSTED_TO_FAIL, (
+            "attempt is already a failure"
+        )
 
     # adjusted_status / new_adjusted_status agreement
     if new_adjusted_status == WallAdjustedStatus.CPI_ADJUSTMENT:
-        assert (
-            new_adjusted_cpi != adjusted_cpi
-        ), f"adjusted_cpi is already {adjusted_cpi}"
+        assert new_adjusted_cpi != adjusted_cpi, (
+            f"adjusted_cpi is already {adjusted_cpi}"
+        )

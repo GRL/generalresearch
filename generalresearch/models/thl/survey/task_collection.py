@@ -38,7 +38,8 @@ class TaskCollection(BaseModel):
         except pa.errors.SchemaErrors as exc:
             idx = exc.failure_cases["index"]
             if len(idx) >= len(df) * 0.10:
-                raise exc
+                raise
+
             logger.info(f"{self.__repr_name__()}:handle_df:{json.dumps(exc.message)}")
             df.drop(index=list(idx), inplace=True)
             # we need to redo the validation after removing failing rows!

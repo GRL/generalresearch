@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from datetime import timedelta
 from typing import Any, Literal
 
@@ -9,8 +8,10 @@ import pandas as pd
 from distributed import Client
 from sentry_sdk import capture_exception
 
+from generalresearch.incite import LOG
 from generalresearch.incite.collections.thl_web import WallDFCollection
-from generalresearch.incite.mergers import (
+from generalresearch.incite.exceptions import BuildError
+from generalresearch.incite.mergers.base import (
     MergeCollection,
     MergeCollectionItem,
     MergeType,
@@ -22,8 +23,6 @@ from generalresearch.incite.schemas.mergers.ym_survey_wall import (
     YMSurveyWallSchema,
 )
 from generalresearch.models.custom_types import AwareDatetimeISO
-
-LOG = logging.getLogger("incite")
 
 
 class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
@@ -38,7 +37,7 @@ class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
         LOG.info(f"YMSurveyWallMerge.build({self.start=}, {self.finish=})")
         ir: pd.Interval = self.interval
         start, _ = self.start, self.finish
-        ddf = wall_coll.ddf(
+        ddf: dd.DataFrame | None = wall_coll.ddf(
             items=wall_coll.get_items(start),
             force_rr_latest=False,
             include_partial=True,
@@ -60,9 +59,10 @@ class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
             ],
             filters=[("started", ">=", start)],
         )
+        assert isinstance(ddf, dd.DataFrame)
         ddf = ddf[ddf["started"] > start]
 
-        LOG.warning(f"YMSurveyWallMerge: merge session_collection")
+        LOG.warning("YMSurveyWallMerge: merge session_collection")
         session_items = [
             s
             for s in enriched_session.items
@@ -91,6 +91,7 @@ class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
         )
 
         df = client.compute(ddf, resources=client_resources, sync=True)
+        assert isinstance(df, pd.DataFrame)
         df["elapsed"] = (df["finished"] - df["started"]).dt.total_seconds()
         df["elapsed"] = df["elapsed"].round().astype("Int64")
         df = df.drop(columns={"finished", "payout"}, errors="ignore")
@@ -98,17 +99,15 @@ class YMSurveyWallMergeCollectionItem(MergeCollectionItem):
         df.dropna(subset="product_id", how="any", inplace=True)
         df.sort_values(by="started", inplace=True)
 
-        LOG.debug(f"YMSurveyWallMerge.build() validation")
+        LOG.debug("YMSurveyWallMerge.build() validation")
 
         df = self.validate_df(df=df)
         if df is not None:
             ddf = dd.from_pandas(df, npartitions=4)
-            LOG.info(f"YMSurveyWallMerge.build() saving")
+            LOG.info("YMSurveyWallMerge.build() saving")
             self.to_archive_symlink(client=client, ddf=ddf)
         else:
             LOG.warning("YMSurveyWallMerge failed validation")
-
-        return None
 
 
 class YMSurveyWallMerge(MergeCollection):
@@ -144,8 +143,7 @@ class YMSurveyWallMerge(MergeCollection):
                 wall_coll=wall_coll,
                 enriched_session=enriched_session,
             )
-        except (Exception,) as e:
+        except BuildError as e:
             capture_exception(error=e)
-            pass
 
         item.delete_dangling_partials(keep_latest=2, target_path=item.path)

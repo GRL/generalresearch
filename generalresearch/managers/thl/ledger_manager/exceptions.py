@@ -11,7 +11,6 @@ class LedgerTransactionCreateError(Exception):
     Ledger transaction creation failed
     """
 
-    pass
 
 
 class LedgerTransactionCreateLockError(LedgerTransactionCreateError):
@@ -19,7 +18,6 @@ class LedgerTransactionCreateLockError(LedgerTransactionCreateError):
     Ledger transaction creation failed because we could not acquire a lock
     """
 
-    pass
 
 
 class LedgerTransactionReleaseLockError(LedgerTransactionCreateError):
@@ -29,7 +27,6 @@ class LedgerTransactionReleaseLockError(LedgerTransactionCreateError):
         back-populate as in sentry I see this very rarely.
     """
 
-    pass
 
 
 class LedgerTransactionFlagAlreadyExistsError(LedgerTransactionCreateError):
@@ -38,7 +35,6 @@ class LedgerTransactionFlagAlreadyExistsError(LedgerTransactionCreateError):
     tx was already set
     """
 
-    pass
 
 
 class LedgerTransactionConditionFailedError(LedgerTransactionCreateError):
@@ -46,4 +42,3 @@ class LedgerTransactionConditionFailedError(LedgerTransactionCreateError):
     We tried to create a transaction but the condition check failed.
     """
 
-    pass

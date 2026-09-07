@@ -3,34 +3,34 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from functools import cached_property
-from typing import Any, Literal, Type
+from typing import Any, Literal, Self
 from uuid import UUID
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    ValidationError,
     computed_field,
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.grpc import timestamp_from_datetime
 from generalresearch.locales import Localelator
-from generalresearch.models import (
-    DeviceType,
-    LogicalOperator,
-    Source,
-    TaskCalculationType,
-)
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     CoercedStr,
     UUIDStr,
+)
+from generalresearch.models.definitions import (
+    DeviceType,
+    LogicalOperator,
+    Source,
+    TaskCalculationType,
 )
 from generalresearch.models.repdata import RepDataStatus
 from generalresearch.models.thl.demographics import Gender
@@ -304,7 +304,7 @@ class RepDataStream(MarketplaceTask):
         return self.stream_status == RepDataStatus.LIVE
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return RepDataCondition
 
     @property
@@ -460,7 +460,7 @@ class RepDataSurvey(BaseModel):
 
     @property
     def all_conditions(self) -> list[RepDataCondition]:
-        cs = list()
+        cs = []
         for stream in self.streams:
             cs.extend(stream.all_conditions)
         # dedupe by criterion_hash
@@ -478,7 +478,7 @@ class RepDataSurvey(BaseModel):
         """
         try:
             return cls._from_api(survey_response)
-        except Exception as e:
+        except ValidationError as e:
             survey_id = survey_response.get("survey_id") or survey_response.get(
                 "SurveyNumber"
             )
@@ -486,7 +486,7 @@ class RepDataSurvey(BaseModel):
             return None
 
     @classmethod
-    def _from_api(cls, survey_response) -> RepDataSurvey:
+    def _from_api(cls, survey_response: dict[str, Any]) -> RepDataSurvey:
         d = survey_response.copy()
         d["country_iso"] = locale_helper.get_country_iso(d["SurveyCountry"].lower())
         d["language_iso"] = locale_helper.get_language_iso(d["SurveyLanguage"].lower())
@@ -538,8 +538,8 @@ class RepDataSurveyHashed(RepDataSurvey):
             DeviceType(int(x)) for x in res["allowed_devices"].split(",")
         ]
         if res["created"] is not None:
-            res["created"] = res["created"].replace(tzinfo=timezone.utc)
-        res["last_updated"] = res["last_updated"].replace(tzinfo=timezone.utc)
+            res["created"] = res["created"].replace(tzinfo=UTC)
+        res["last_updated"] = res["last_updated"].replace(tzinfo=UTC)
         return cls.model_validate(res)
 
     def to_mysql(self) -> dict[str, Any]:
@@ -553,7 +553,7 @@ class RepDataSurveyHashed(RepDataSurvey):
         return d
 
     def to_grpc(self, repdata_pb2):
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         timestamp = timestamp_from_datetime(now)
 
         return repdata_pb2.RepDataOpportunity(

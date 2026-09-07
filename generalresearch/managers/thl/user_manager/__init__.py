@@ -2,30 +2,18 @@ from __future__ import annotations
 
 import csv
 import logging
-import os
-import threading
-import time
 from pathlib import Path
 from threading import RLock
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from cachetools import TTLCache, cached
 
-from generalresearch.models.thl.product import Product
+if TYPE_CHECKING:
+    from generalresearch.models.thl.product import Product
 
 logger = logging.getLogger()
 
-
-class UserDoesntExistError(Exception):
-    pass
-
-
-class UserCreateNotAllowedError(Exception):
-    pass
-
-
-def download_bp_trust():
-    raise DeprecationWarning("No more S3")
+convert_int = lambda x: int(float(x))
 
 
 @cached(TTLCache(maxsize=1, ttl=5 * 60), lock=RLock())
@@ -39,20 +27,9 @@ def get_bp_trust_df():
     #         'product_name', 'bp_trust', 'team_trust', 'entrance_limit_expire_sec',
     #         'entrance_limit_value']
 
-    if not os.path.exists(fp):
-        Path(fp).touch()
-        threading.Thread(target=download_bp_trust).start()
-        # raise exception so its not cached
-        raise FileNotFoundError()
-    if time.time() - os.path.getmtime(fp) > 3600:
-        Path(fp).touch()
-        threading.Thread(target=download_bp_trust).start()
     bptrust = parse_bp_trust_df(fp)
 
     return bptrust
-
-
-convert_int = lambda x: int(float(x))
 
 
 def parse_bp_trust_df(fp: str | Path) -> dict[str, Any]:
@@ -63,7 +40,7 @@ def parse_bp_trust_df(fp: str | Path) -> dict[str, Any]:
         "entrance_limit_value": convert_int,
         "median_daily_completes_7d": convert_int,
     }
-    bptrust = dict()
+    bptrust = {}
 
     with open(fp, newline="") as csvfile:
         reader = csv.reader(csvfile)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import binascii
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from pydantic import (
@@ -15,17 +15,16 @@ from pydantic import (
     PositiveInt,
     field_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.decorators import LOG
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
 
 if TYPE_CHECKING:
     from generalresearch.models.gr.business import Business
     from generalresearch.models.gr.team import Team
     from generalresearch.models.thl.product import Product
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 
 class Claims(BaseModel):
@@ -165,8 +164,8 @@ class GRUser(BaseModel):
 
         self.prefetch_businesses(pg_config=pg_config, redis_config=redis_config)
         self.prefetch_teams(pg_config=pg_config, redis_config=redis_config)
-        business_uuids = self.business_uuids
-        team_uuids = self.team_uuids
+        business_uuids = self.business_uuids or []
+        team_uuids = self.team_uuids or []
 
         if len(business_uuids + team_uuids) == 0:
             self.products = []
@@ -182,7 +181,7 @@ class GRUser(BaseModel):
         team_products = pm.fetch_uuids(team_uuids=team_uuids) if team_uuids else []
         products = {p.id: p for p in business_products + team_products}
 
-        self.products = sorted(products.values(), key=lambda x: getattr(x, "created"))
+        self.products = sorted(products.values(), key=lambda x: x.created)
 
     def prefetch_token(self, pg_config: PostgresConfig):
         from generalresearch.managers.gr.authentication import (
@@ -199,7 +198,7 @@ class GRUser(BaseModel):
     @field_validator("date_joined")
     @classmethod
     def date_joined_utc(cls, v: datetime) -> datetime:
-        return v.replace(tzinfo=timezone.utc)
+        return v.replace(tzinfo=UTC)
 
     # --- Properties ---
     @property
@@ -284,17 +283,15 @@ class GRUser(BaseModel):
             ex=ex_secs,
         )
 
-        return None
-
     # --- ORM ---
 
     @classmethod
-    def from_postgresql(cls, d: dict) -> Self:
-        d["date_joined"] = d["date_joined"].replace(tzinfo=timezone.utc)
+    def from_postgresql(cls, d: dict[str, Any]) -> GRUser:
+        d["date_joined"] = d["date_joined"].replace(tzinfo=UTC)
         return GRUser.model_validate(d)
 
     @classmethod
-    def from_redis(cls, d: str | dict[str, Any]) -> Self:
+    def from_redis(cls, d: str | dict[str, Any]) -> GRUser:
         if isinstance(d, str):
             d = json.loads(d)
         assert isinstance(d, dict)
@@ -354,18 +351,18 @@ class GRToken(BaseModel):
     @field_validator("created", mode="before")
     @classmethod
     def created_utc(cls, v: datetime) -> datetime:
-        return v.replace(tzinfo=timezone.utc)
+        return v.replace(tzinfo=UTC)
 
     # --- Properties ---
 
     @property
-    def auth_header(self, key_name: str = "Authorization") -> dict[str, str]:
-        return {key_name: self.key}
+    def auth_header(self) -> dict[str, str]:
+        return {"Authorization": self.key}
 
     # --- ORM ---
 
     @classmethod
-    def from_redis(cls, d: str | dict[str, Any]) -> Self:
+    def from_redis(cls, d: str | dict[str, Any]) -> GRToken:
         if isinstance(d, str):
             d = json.loads(d)
         assert isinstance(d, dict)

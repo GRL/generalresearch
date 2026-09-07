@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from functools import cached_property
 from typing import TYPE_CHECKING, cast
@@ -47,9 +47,7 @@ class LeaderboardManager:
         self.product_id = product_id
         self.country_iso = country_iso
         if within_time is None:
-            self.within_time_aware = datetime.now(tz=timezone.utc).astimezone(
-                self.timezone
-            )
+            self.within_time_aware = datetime.now(tz=UTC).astimezone(self.timezone)
         elif within_time.tzinfo is not None:
             self.within_time_aware = within_time.astimezone(self.timezone)
         else:
@@ -59,7 +57,7 @@ class LeaderboardManager:
     @cached_property
     def period(self) -> Period:
         local_ts = self.within_time_aware
-        assert local_ts.tzinfo != timezone.utc and local_ts.tzinfo is not None
+        assert local_ts.tzinfo != UTC and local_ts.tzinfo is not None
         t = pd.Timestamp(local_ts).tz_localize(tz=None)
         freq_pd = {
             LeaderboardFrequency.WEEKLY: "W-SUN",

@@ -1,15 +1,25 @@
-from datetime import datetime, timezone
+from __future__ import annotations
+
+from datetime import UTC, datetime
 from decimal import Decimal
+
+from generalresearch.models.definitions import (
+    LogicalOperator,
+    Source,
+    TaskCalculationType,
+)
+from generalresearch.models.spectrum import SpectrumStatus
+from generalresearch.models.spectrum.survey import (
+    SpectrumCondition,
+    SpectrumQuota,
+    SpectrumSurvey,
+)
+from generalresearch.models.thl.survey.condition import ConditionValueType
 
 
 class TestSpectrumCondition:
 
     def test_condition_create(self):
-        from generalresearch.models import LogicalOperator
-        from generalresearch.models.spectrum.survey import (
-            SpectrumCondition,
-        )
-        from generalresearch.models.thl.survey.condition import ConditionValueType
 
         c = SpectrumCondition.from_api(
             {
@@ -64,10 +74,6 @@ class TestSpectrumCondition:
 class TestSpectrumQuota:
 
     def test_quota_create(self):
-        from generalresearch.models.spectrum.survey import (
-            SpectrumCondition,
-            SpectrumQuota,
-        )
 
         d = {
             "quota_id": "a846b545-4449-4d76-93a2-f8ebdf6e711e",
@@ -84,9 +90,6 @@ class TestSpectrumQuota:
         assert q.is_open
 
     def test_quota_passes(self):
-        from generalresearch.models.spectrum.survey import (
-            SpectrumQuota,
-        )
 
         q = SpectrumQuota(remaining_count=57, condition_hashes=["a"])
         assert q.passes({"a": True})
@@ -103,9 +106,6 @@ class TestSpectrumQuota:
         assert not q.passes({"a": True})
 
     def test_quota_passes_soft(self):
-        from generalresearch.models.spectrum.survey import (
-            SpectrumQuota,
-        )
 
         q = SpectrumQuota(remaining_count=57, condition_hashes=["a", "b", "c"])
         # Pass if we match all
@@ -122,29 +122,17 @@ class TestSpectrumQuota:
 
 class TestSpectrumSurvey:
     def test_survey_create(self):
-        from generalresearch.models import (
-            LogicalOperator,
-            Source,
-            TaskCalculationType,
-        )
-        from generalresearch.models.spectrum import SpectrumStatus
-        from generalresearch.models.spectrum.survey import (
-            SpectrumCondition,
-            SpectrumQuota,
-            SpectrumSurvey,
-        )
-        from generalresearch.models.thl.survey.condition import ConditionValueType
 
         # Note: d is the raw response after calling SpectrumAPI.preprocess_survey() on it!
         d = {
             "survey_id": 29333264,
             "survey_name": "Exciting New Survey #29333264",
             "survey_status": 22,
-            "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=timezone.utc),
+            "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=UTC),
             "category": "Exciting New",
             "category_code": 232,
-            "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=timezone.utc),
-            "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=timezone.utc),
+            "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=UTC),
+            "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=UTC),
             "soft_launch": False,
             "click_balancing": 0,
             "price_type": 1,
@@ -202,6 +190,8 @@ class TestSpectrumSurvey:
             "exclusion_period": 0,
         }
         s = SpectrumSurvey.from_api(d)
+        assert isinstance(s, SpectrumSurvey)
+
         expected_survey = SpectrumSurvey(
             cpi=Decimal("1.20000"),
             country_isos=["fr"],
@@ -212,7 +202,7 @@ class TestSpectrumSurvey:
             survey_id="29333264",
             survey_name="Exciting New Survey #29333264",
             status=SpectrumStatus.LIVE,
-            field_end_date=datetime(2024, 5, 23, 18, 18, 31, tzinfo=timezone.utc),
+            field_end_date=datetime(2024, 5, 23, 18, 18, 31, tzinfo=UTC),
             category_code="232",
             calculation_type=TaskCalculationType.COMPLETES,
             requires_pii=False,
@@ -240,8 +230,8 @@ class TestSpectrumSurvey:
                     values=["18-64"],
                 )
             },
-            created_api=datetime(2024, 5, 20, 17, 48, 13, tzinfo=timezone.utc),
-            modified_api=datetime(2024, 5, 20, 18, 18, 31, tzinfo=timezone.utc),
+            created_api=datetime(2024, 5, 20, 17, 48, 13, tzinfo=UTC),
+            modified_api=datetime(2024, 5, 20, 18, 18, 31, tzinfo=UTC),
             updated=None,
         )
         assert expected_survey.model_dump_json() == s.model_dump_json()
@@ -255,11 +245,11 @@ class TestSpectrumSurvey:
             "survey_id": 29333264,
             "survey_name": "#29333264",
             "survey_status": 22,
-            "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=timezone.utc),
+            "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=UTC),
             "category": "Exciting New",
             "category_code": 232,
-            "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=timezone.utc),
-            "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=timezone.utc),
+            "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=UTC),
+            "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=UTC),
             "soft_launch": False,
             "click_balancing": 0,
             "price_type": 1,
@@ -303,6 +293,8 @@ class TestSpectrumSurvey:
             "exclusion_period": 0,
         }
         s = SpectrumSurvey.from_api(d)
+        assert isinstance(s, SpectrumSurvey)
+
         assert {"212", "1202", "214"} == s.used_question_ids
         assert s.is_live
         assert s.is_open
@@ -318,11 +310,11 @@ class TestSpectrumSurvey:
             "survey_id": 29333264,
             "survey_name": "#29333264",
             "survey_status": 22,
-            "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=timezone.utc),
+            "field_end_date": datetime(2024, 5, 23, 18, 18, 31, tzinfo=UTC),
             "category": "Exciting New",
             "category_code": 232,
-            "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=timezone.utc),
-            "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=timezone.utc),
+            "crtd_on": datetime(2024, 5, 20, 17, 48, 13, tzinfo=UTC),
+            "mod_on": datetime(2024, 5, 20, 18, 18, 31, tzinfo=UTC),
             "soft_launch": False,
             "click_balancing": 0,
             "price_type": 1,
@@ -345,6 +337,8 @@ class TestSpectrumSurvey:
             "exclusion_period": 0,
         }
         s = SpectrumSurvey.from_api(d)
+        assert isinstance(s, SpectrumSurvey)
+
         s.qualifications = ["a", "b", "c"]
         s.quotas = [
             SpectrumQuota(remaining_count=10, condition_hashes=["a", "b"]),
@@ -411,3 +405,15 @@ class TestSpectrumSurvey:
         assert (None, {"c", "d"}) == s.determine_eligibility_soft(
             {"a": True, "b": True, "c": None, "d": None}
         )
+
+
+def test_spectrum_something(
+    spectrum_conditions: list[SpectrumCondition], spectrum_api_surveys_json: list[str]
+):
+
+    c1 = spectrum_conditions[0]
+    c3 = spectrum_conditions[2]
+
+    survey = SpectrumSurvey.model_validate_json(spectrum_api_surveys_json[0])
+    assert c1.criterion_hash in survey.qualifications
+    assert c3.criterion_hash in survey.qualifications

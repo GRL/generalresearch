@@ -2,42 +2,42 @@ from __future__ import annotations
 
 import json
 import logging
-import re
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Annotated
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, Self
 from uuid import UUID, uuid4
 
 from pydantic import (
-    AfterValidator,
     AwareDatetime,
     BaseModel,
     ConfigDict,
     Field,
     PositiveInt,
-    StringConstraints,
     field_validator,
     model_validator,
 )
 from sentry_sdk import set_tag, set_user
-from typing_extensions import Self
 
-from generalresearch.models import MAX_INT32
-from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    UUIDStr,
+)
+from generalresearch.models.definitions import MAX_INT32
 from generalresearch.models.thl.ipinfo import GeoIPInformation
 from generalresearch.models.thl.ledger import LedgerTransaction
 from generalresearch.models.thl.product import Product
+from generalresearch.models.thl.user_identifiers import BPUIDStr
+from generalresearch.models.thl.user_ref import UserRef
 from generalresearch.models.thl.userhealth import AuditLog
-from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
     from generalresearch.managers.thl.userhealth import AuditLogManager
+    from generalresearch.pg_helper import PostgresConfig
+
 
 logger = logging.getLogger()
-
-BPUID_ALLOWED = r"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!#$%&()*+,-.:;<=>?@[\]^_{|}~"
 
 
 class User(BaseModel):
@@ -102,42 +102,28 @@ class User(BaseModel):
         )
 
     # --- Validation ---
-    @field_validator("product_user_id")
-    def check_product_user_id(cls, v: str) -> str:
-        if v is not None:
-            if " " in v:
-                raise ValueError("String cannot contain spaces")
-            if "\\" in v:
-                raise ValueError("String cannot contain backslash")
-            if "/" in v:
-                raise ValueError("String cannot contain slash")
-            # I think the * on the regex messes up value matches that are
-            # the same length as the
-            rex = re.fullmatch("[" + BPUID_ALLOWED + "]*", v)
-            if not bool(rex):
-                raise ValueError("String is not valid regex")
-        return v
 
     # noinspection PyNestedDecoratorsk
     @field_validator("created", "last_seen")
     @classmethod
-    def check_not_in_future(cls, v: AwareDatetime) -> AwareDatetime:
+    def check_not_in_future(cls, v: AwareDatetime | None) -> AwareDatetime | None:
         if v is not None:
             try:
-                assert v < datetime.now(tz=timezone.utc)
-            except Exception:
+                assert v < datetime.now(tz=UTC)
+            except AssertionError:
                 raise ValueError("Input is in the future")
         return v
 
     # noinspection PyNestedDecorators
     @field_validator("created", "last_seen")
     @classmethod
-    def check_after_anno_domini(cls, v: AwareDatetime) -> AwareDatetime:
+    def check_after_anno_domini(cls, v: AwareDatetime | None) -> AwareDatetime | None:
         if v is not None:
             try:
-                assert v > datetime(year=2016, month=7, day=13, tzinfo=timezone.utc)
-            except Exception:
+                assert v > datetime(year=2016, month=7, day=13, tzinfo=UTC)
+            except AssertionError:
                 raise ValueError("Input is before Anno Domini")
+
         return v
 
     @model_validator(mode="after")
@@ -167,7 +153,7 @@ class User(BaseModel):
         )
 
     @classmethod
-    def is_valid_ubp(cls, *, product_id, product_user_id) -> bool:
+    def is_valid_ubp(cls, *, product_id: str, product_user_id: str) -> bool:
         # Attempt to create common_struct solely for validation purposes,
         # using the product_id and product_user_id
         try:
@@ -177,7 +163,7 @@ class User(BaseModel):
                 product_id=product_id,
                 product_user_id=product_user_id,
             )
-        except Exception as e:
+        except ValueError as e:
             logger.info(e)
             return False
         else:
@@ -185,7 +171,7 @@ class User(BaseModel):
 
     # --- Methods ---
     @staticmethod
-    def check_bpuid_is_not_bpid(product_id, product_user_id):
+    def check_bpuid_is_not_bpid(product_id: str | None, product_user_id: str | None):
         """Unfortunately users were already created failing this constraint,
         so only check for new users!
         """
@@ -197,13 +183,23 @@ class User(BaseModel):
             raise ValueError("product_user_id must not equal the product_id")
         return True
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         return self.model_dump(mode="python", exclude={"product"})
 
     def to_json(self) -> str:
         d = self.model_dump(mode="json", exclude={"product"})
         d["user_id"] = self.user_id
         return json.dumps(d)
+
+    def to_user_ref(self) -> UserRef:
+        assert self.user_id is not None
+        assert self.product_id is not None
+        assert self.product_user_id is not None
+        return UserRef(
+            user_id=self.user_id,
+            product_id=self.product_id,
+            product_user_id=self.product_user_id,
+        )
 
     def set_sentry_user(self):
         # https://docs.sentry.io/platforms/python/enriching-events/identify-user/
@@ -248,7 +244,7 @@ class User(BaseModel):
 
         # # Delete from db.thl-marketplaces
         # We need DELETE credentials for all these...
-        # from generalresearch.models import Source
+        # from generalresearch.models.definitions import Source
         # mp_db_table = {
         #     Source.SPECTRUM: "`thl-spectrum`.`spectrum_marketresearchprofilequestion`",
         #     Source.INNOVATE: "`thl-innovate`.`innovate_marketresearchprofilequestion`",
@@ -290,11 +286,11 @@ class User(BaseModel):
     # --- Prebuild ---
 
     @classmethod
-    def from_db(cls, res) -> Self:
+    def from_db(cls, res: dict[str, Any]) -> Self:
         if res["created"]:
-            res["created"] = res["created"].replace(tzinfo=timezone.utc)
+            res["created"] = res["created"].replace(tzinfo=UTC)
         if res["last_seen"]:
-            res["last_seen"] = res["last_seen"].replace(tzinfo=timezone.utc)
+            res["last_seen"] = res["last_seen"].replace(tzinfo=UTC)
         res["product_id"] = UUID(res["product_id"]).hex
         res["uuid"] = UUID(res["uuid"]).hex
         return cls(
@@ -308,10 +304,4 @@ class User(BaseModel):
         )
 
 
-# Used in other places where the bpuid is part of a model that's used in
-# the API (separate from a User)
-BPUIDStr = Annotated[
-    str,
-    StringConstraints(min_length=3, max_length=128),
-    AfterValidator(User.check_product_user_id),
-]
+User.model_rebuild()

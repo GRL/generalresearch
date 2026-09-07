@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Collection
+from contextlib import nullcontext
 from enum import Enum
+from typing import TYPE_CHECKING
 
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
-from generalresearch.sql_helper import SqlHelper
+if TYPE_CHECKING:
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
+    from generalresearch.sql_helper import SqlHelper
 
 
 class Permission(int, Enum):
@@ -44,6 +47,11 @@ class PostgresManager(Manager):
         super().__init__(**kwargs)
         self.pg_config = pg_config
         self.permissions = set(permissions) if permissions else set()
+
+    def connection(self, conn=None):
+        if conn is not None:
+            return nullcontext(conn)
+        return self.pg_config.make_connection()
 
 
 class RedisManager(Manager):

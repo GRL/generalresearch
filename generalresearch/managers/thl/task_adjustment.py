@@ -1,19 +1,17 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from functools import cached_property
+from typing import TYPE_CHECKING
 
-from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
     PostgresManager,
 )
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
 from generalresearch.managers.thl.session import SessionManager
 from generalresearch.managers.thl.wall import WallManager
+from generalresearch.managers.utils import parse_order_by
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.definitions import (
     Status,
@@ -23,6 +21,15 @@ from generalresearch.models.thl.session import (
     _check_adjusted_status_wall_consistent,
 )
 from generalresearch.models.thl.task_adjustment import TaskAdjustmentEvent
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
 
 
 class TaskAdjustmentManager(PostgresManager):
@@ -120,8 +127,8 @@ class TaskAdjustmentManager(PostgresManager):
             CHANGES/DELTAS as just communicated by the marketplace, not
             what the Wall's final adjusted_* will be.
         """
-        alert_time = alert_time or datetime.now(tz=timezone.utc)
-        assert alert_time.tzinfo == timezone.utc
+        alert_time = alert_time or datetime.now(tz=UTC)
+        assert alert_time.tzinfo == UTC
 
         wall = self.wall_manager.get_from_uuid(wall_uuid)
         session = self.session_manager.get_from_id(wall.session_id)
@@ -129,8 +136,9 @@ class TaskAdjustmentManager(PostgresManager):
         user.prefetch_product(self.pg_config)
 
         if adjusted_status == WallAdjustedStatus.ADJUSTED_TO_FAIL:
+            assert wall.cpi
             amount_usd = wall.cpi * -1
-            adjusted_cpi = 0
+            adjusted_cpi = Decimal(0)
         elif adjusted_status == WallAdjustedStatus.ADJUSTED_TO_COMPLETE:
             amount_usd = wall.cpi
             adjusted_cpi = wall.cpi
@@ -148,10 +156,7 @@ class TaskAdjustmentManager(PostgresManager):
         if (
             wall.status == Status.COMPLETE
             and adjusted_status == WallAdjustedStatus.ADJUSTED_TO_COMPLETE
-        ):
-            new_adjusted_status = None
-            new_adjusted_cpi = None
-        elif (
+        ) or (
             wall.status != Status.COMPLETE
             and adjusted_status == WallAdjustedStatus.ADJUSTED_TO_FAIL
         ):
@@ -172,7 +177,7 @@ class TaskAdjustmentManager(PostgresManager):
                 new_adjusted_cpi=new_adjusted_cpi,
             )
         except AssertionError as e:
-            logging.warning(e)
+            logger.warning(e)
             return
 
         event = TaskAdjustmentEvent(

@@ -3,10 +3,10 @@ from __future__ import annotations
 import hashlib
 import re
 from collections import Counter
-from datetime import datetime, timedelta, timezone
-from enum import Enum
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from functools import cached_property
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Self
 from uuid import uuid4
 
 import pycountry
@@ -23,7 +23,6 @@ from pydantic import (
 )
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_extra_types.timezone_name import TimeZoneName
-from typing_extensions import Annotated, Self
 
 from generalresearch.grliq.models import (
     AUDIO_CODEC_NAMES,
@@ -55,12 +54,14 @@ from generalresearch.models.custom_types import (
     UUIDStr,
 )
 from generalresearch.models.thl.ipinfo import GeoIPInformation
-from generalresearch.models.thl.session import Session
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.session import Session
 
 fake = Faker()
 
 
-class Platform(str, Enum):
+class Platform(StrEnum):
     MAC_INTEL = "MacIntel"
     ARM = "ARM"
     IPAD = "iPad"
@@ -75,7 +76,7 @@ class Platform(str, Enum):
     OTHER = "Other"
 
 
-class PassFailError(str, Enum):
+class PassFailError(StrEnum):
     PASS = "pass"
     FAIL = "fail"
     ERROR = "error"
@@ -96,7 +97,7 @@ class PassFailError(str, Enum):
             return {2: cls.PASS, 1: cls.FAIL, 0: cls.ERROR, -1: cls.ERROR}[int(v)]
 
 
-class SupportLevel(str, Enum):
+class SupportLevel(StrEnum):
     # Used for checking if certain features are available in the browser
     FULL = "full"
     PARTIAL = "partial"
@@ -475,9 +476,11 @@ class GrlIqData(BaseModel):
         description="Bit-packed string for font support. Each element is 32 bits, with each bit representing T/F for "
         "font support.",
         examples=[
-            "72|768|262144|1073741824|0|0|540672|73728|7340032|1342177280|117446656|256|16|0|543|4290797636"
-            "|1677723648|4168998400|0|1048576|262144|268500994|1342177280|262144|125829376|37888000|0|435363842|0"
-            "|2147483648|109543424|1880099872|268435471"
+            (
+                "72|768|262144|1073741824|0|0|540672|73728|7340032|1342177280|117446656|256|16|0|543|4290797636"
+                "|1677723648|4168998400|0|1048576|262144|268500994|1342177280|262144|125829376|37888000|0|435363842|0"
+                "|2147483648|109543424|1880099872|268435471"
+            )
         ],
     )
 
@@ -559,19 +562,21 @@ class GrlIqData(BaseModel):
 
     @cached_property
     def audio_codecs_named(self) -> dict[str, bool]:
+        assert self.audio_codecs
         return dict(
             zip(
                 AUDIO_CODEC_NAMES,
-                [True if x == "3" else False for x in self.audio_codecs.split(",")],
+                [x == "3" for x in self.audio_codecs.split(",")],
             )
         )
 
     @cached_property
     def video_codecs_named(self) -> dict[str, bool]:
+        assert self.video_codecs
         return dict(
             zip(
                 VIDEO_CODEC_NAMES,
-                [True if x == "3" else False for x in self.video_codecs.split(",")],
+                [x == "3" for x in self.video_codecs.split(",")],
             )
         )
 
@@ -771,19 +776,17 @@ class GrlIqData(BaseModel):
         # product_id and product_user_id are parsed from the post body. make sure
         #   they match the session whose mid was specified
         assert self.product_id == session.user.product_id, "product_id mismatch"
-        assert (
-            self.product_user_id == session.user.product_user_id
-        ), "product_user_id mismatch"
+        assert self.product_user_id == session.user.product_user_id, (
+            "product_user_id mismatch"
+        )
 
         # validate the Session's mid is "recent"
-        assert (datetime.now(tz=timezone.utc) - session.started) < timedelta(
-            minutes=90
-        ), "expired session"
-
-        return None
+        assert (datetime.now(tz=UTC) - session.started) < timedelta(minutes=90), (
+            "expired session"
+        )
 
     def model_dump_sql(self, **kwargs) -> dict[str, Any]:
-        d = dict()
+        d = {}
         d["uuid"] = self.uuid
         d["session_uuid"] = self.mid
         d["created_at"] = self.created_at
@@ -803,7 +806,7 @@ class GrlIqData(BaseModel):
         return d
 
     @classmethod
-    def from_db(cls, d: dict[str, Any]) -> Self:
+    def from_db(cls, d: dict[str, Any]) -> GrlIqData:
         res = GrlIqData.model_validate(d["data"])
 
         if d.get("category_result"):

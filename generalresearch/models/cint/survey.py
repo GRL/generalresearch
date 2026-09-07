@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, Self
 
 from more_itertools import flatten
 from pydantic import (
@@ -12,19 +12,19 @@ from pydantic import (
     ConfigDict,
     Field,
     NonNegativeInt,
+    ValidationError,
     computed_field,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.locales import Localelator
-from generalresearch.models import Source, TaskCalculationType
 from generalresearch.models.cint import CintQuestionIdType
 from generalresearch.models.custom_types import (
     AlphaNumStr,
     AwareDatetimeISO,
     CoercedStr,
 )
+from generalresearch.models.definitions import Source, TaskCalculationType
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.survey import MarketplaceTask
 from generalresearch.models.thl.survey.condition import (
@@ -68,7 +68,7 @@ class CintQuota(BaseModel):
     condition_hashes: list[str] | None = Field(min_length=1, default=None)
 
     def __hash__(self):
-        return hash(tuple((tuple(self.condition_hashes), self.quota_id)))
+        return hash((tuple(self.condition_hashes), self.quota_id))
 
     @model_validator(mode="after")
     def validate_condition_len(self) -> Self:
@@ -318,7 +318,7 @@ class CintSurvey(MarketplaceTask):
     def from_api(cls, d: dict[str, Any]) -> Self | None:
         try:
             return cls._from_api(d)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse survey: {d}. {e}")
             return None
 
@@ -371,8 +371,8 @@ class CintSurvey(MarketplaceTask):
             d["mobile_conversion"] = None
             d["revenue_per_click"] = None
 
-        d["conditions"] = dict()
-        d.setdefault("survey_qualifications", list())
+        d["conditions"] = {}
+        d.setdefault("survey_qualifications", [])
         qualifications = [CintCondition.from_api(q) for q in d["survey_qualifications"]]
         for q in qualifications:
             d["conditions"][q.criterion_hash] = q
@@ -390,7 +390,7 @@ class CintSurvey(MarketplaceTask):
                     d["conditions"][q.criterion_hash] = q
         d["quotas"] = quotas
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         d["created_at"] = now
         d["last_updated"] = now
 
@@ -418,8 +418,8 @@ class CintSurvey(MarketplaceTask):
 
     @classmethod
     def from_mysql(cls, d: dict[str, Any]) -> Self:
-        d["created_at"] = d["created_at"].replace(tzinfo=timezone.utc)
-        d["last_updated"] = d["last_updated"].replace(tzinfo=timezone.utc)
+        d["created_at"] = d["created_at"].replace(tzinfo=UTC)
+        d["last_updated"] = d["last_updated"].replace(tzinfo=UTC)
         d["qualifications"] = json.loads(d["qualifications"])
         d["used_question_ids"] = json.loads(d["used_question_ids"])
         d["quotas"] = json.loads(d["quotas"])
@@ -466,7 +466,7 @@ class CintSurvey(MarketplaceTask):
     ) -> tuple[bool | None, set[str]]:
         # Many surveys have 0 quotas. Quotas are exclusionary.
         # They can NOT match a quota where currently_open=0
-        total_quota = [q for q in self.quotas if q.quota_type == "total"][0]
+        total_quota = next(q for q in self.quotas if q.quota_type == "total")
         if not total_quota.is_open:
             return False, set()
         quotas = [q for q in self.quotas if q.quota_type != "total"]
@@ -475,7 +475,7 @@ class CintSurvey(MarketplaceTask):
         quota_eval = {
             quota: quota.matches_soft(criteria_evaluation) for quota in quotas
         }
-        evals = set(g[0] for g in quota_eval.values())
+        evals = {g[0] for g in quota_eval.values()}
         if any(m[0] is True and not q.is_open for q, m in quota_eval.items()):
             # matched a full quota
             return False, set()

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC
+from typing import TYPE_CHECKING
 
 from generalresearch.managers.base import SqlManager
-from generalresearch.models.thl.survey import MarketplaceTask
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.survey import MarketplaceTask
 
 
 class SurveyManager(SqlManager, ABC):
@@ -12,14 +15,12 @@ class SurveyManager(SqlManager, ABC):
         """
         Create a single survey
         """
-        ...
 
     def update(self, surveys: list[MarketplaceTask]) -> bool:
         """
         Update a list of surveys. Depending on the implementation, this may
           operate one by one or as a bulk update.
         """
-        ...
 
     def update_field(self, survey: MarketplaceTask, field: str) -> bool:
         """

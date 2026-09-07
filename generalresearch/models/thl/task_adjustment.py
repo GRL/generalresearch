@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 
-from generalresearch.models import MAX_INT32, Source
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.models.thl.definitions import (
     WallAdjustedStatus,
 )
@@ -26,11 +26,11 @@ class TaskAdjustmentEvent(BaseModel):
 
     uuid: UUIDStr = Field(default_factory=lambda: uuid4().hex)
     created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
         description="When this event was created in the db",
     )
     alerted: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
         description="When we were notified about this change",
     )
 

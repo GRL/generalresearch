@@ -2,31 +2,34 @@ from __future__ import annotations
 
 import ipaddress
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from itertools import zip_longest
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import faker
 from pydantic import NonNegativeInt, PositiveInt
 
 from generalresearch.decorators import LOG
 from generalresearch.managers.base import (
-    Permission,
     PostgresManager,
     PostgresManagerWithRedis,
 )
 from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
-from generalresearch.models.custom_types import IPvAnyAddressStr
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
 from generalresearch.models.thl.user_iphistory import (
     IPRecord,
     UserIPHistory,
     UserIPRecord,
 )
-from generalresearch.models.thl.userhealth import AuditLog, AuditLogLevel
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+from generalresearch.models.thl.userhealth import AuditLog
+
+if TYPE_CHECKING:
+    from generalresearch.managers.base import Permission
+    from generalresearch.models.custom_types import IPvAnyAddressStr
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
+    from generalresearch.models.thl.userhealth import AuditLogLevel
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 fake = faker.Faker()
 
@@ -210,7 +213,7 @@ class IPRecordManager(PostgresManagerWithRedis):
         data = {
             "user_id": user_id,
             "ip": ipaddress.ip_address(ip).exploded,
-            "created": datetime.now(tz=timezone.utc),
+            "created": datetime.now(tz=UTC),
         }
 
         fips_cols = [
@@ -221,7 +224,7 @@ class IPRecordManager(PostgresManagerWithRedis):
             "forwarded_ip5",
             "forwarded_ip6",
         ]
-        for col, ip in zip_longest(
+        for col, fwd_ip in zip_longest(
             fips_cols,
             [
                 forwarded_ip1,
@@ -233,7 +236,7 @@ class IPRecordManager(PostgresManagerWithRedis):
             ],
             fillvalue=None,
         ):
-            data[col] = ipaddress.ip_address(ip).exploded if ip else ip
+            data[col] = ipaddress.ip_address(fwd_ip).exploded if fwd_ip else fwd_ip
 
         self.pg_config.execute_write(
             query="""
@@ -335,7 +338,7 @@ class AuditLogManager(PostgresManager):
         al = AuditLog.model_validate(
             {
                 "user_id": user_id,
-                "created": datetime.now(tz=timezone.utc),
+                "created": datetime.now(tz=UTC),
                 "level": level,
                 "event_type": event_type,
                 "event_msg": event_msg,
@@ -374,10 +377,10 @@ class AuditLogManager(PostgresManager):
         )
 
         if len(res) == 0:
-            raise Exception(f"No AuditLog with id of '{auditlog_id}'")
+            raise ValueError(f"No AuditLog with id of '{auditlog_id}'")
 
         if len(res) > 1:
-            raise Exception(f"Too many AuditLog found with id of '{auditlog_id}'")
+            raise ValueError(f"Too many AuditLog found with id of '{auditlog_id}'")
 
         return AuditLog.from_mysql(res[0])
 
@@ -490,12 +493,10 @@ class AuditLogManager(PostgresManager):
         created_after: datetime | None = None,
     ) -> tuple[str, dict[str, Any]]:
         assert user_ids, "must pass at least 1 user_id"
-        assert all(
-            [isinstance(uid, int) for uid in user_ids]
-        ), "must pass user_id as int"
+        assert all(isinstance(uid, int) for uid in user_ids), "must pass user_id as int"
 
         if created_after is None:
-            created_after = datetime.now(tz=timezone.utc) - timedelta(days=7)
+            created_after = datetime.now(tz=UTC) - timedelta(days=7)
 
         filters = [
             "user_id = ANY(%(user_ids)s)",

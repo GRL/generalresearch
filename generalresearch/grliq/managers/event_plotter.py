@@ -1,20 +1,22 @@
 import html
 import webbrowser
-from typing import List
+from typing import TYPE_CHECKING
 
 import numpy as np
 from more_itertools import windowed
 from scipy.spatial.distance import euclidean
 
 from generalresearch.grliq.managers.colormap import turbo_colormap_data
-from generalresearch.grliq.models.events import KeyboardEvent, MouseEvent
+
+if TYPE_CHECKING:
+    from generalresearch.grliq.models.events import KeyboardEvent, MouseEvent
 
 
 def make_events_svg(
-    mouse_events: List[MouseEvent], keyboard_events: List[KeyboardEvent]
+    mouse_events: list[MouseEvent], keyboard_events: list[KeyboardEvent]
 ) -> str:
     if len(mouse_events) + len(keyboard_events) == 0:
-        return f'<svg xmlns="http://www.w3.org/2000/svg">\n' + "\n</svg>"
+        return '<svg xmlns="http://www.w3.org/2000/svg">\n' + "\n</svg>"
 
     t = np.array([pm.timeStamp for pm in mouse_events])
     t_diff = t.max() - t.min()
@@ -89,7 +91,7 @@ def make_events_svg(
         svg_elements.append(svg_multiline_text(text, cx + 5, cy - 5, font_size))
 
     svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg">'
+        '<svg xmlns="http://www.w3.org/2000/svg">'
         + "\n".join(svg_elements)
         + "\n</svg>"
     )
@@ -119,8 +121,8 @@ def svg_multiline_text(
 
 
 def group_input_events_by_xy(
-    mouse_events: List[MouseEvent], keyboard_events: List[KeyboardEvent]
-) -> List[tuple[tuple[float, float], List[str]]]:
+    mouse_events: list[MouseEvent], keyboard_events: list[KeyboardEvent]
+) -> list[tuple[tuple[float, float], list[str]]]:
     """
     Each keypress is its own event. For plotting, we want to group together
     all keypresses that were made when the mouse was at the same position,

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 import math
-from datetime import datetime, timedelta, timezone
-from enum import Enum
+from datetime import UTC, datetime, timedelta
+from enum import StrEnum
 from typing import Literal
 from uuid import UUID, uuid3
 from zoneinfo import ZoneInfo
@@ -27,7 +27,7 @@ from generalresearch.utils.enum import ReprEnumMeta
 logger = logging.getLogger()
 
 
-class LeaderboardCode(str, Enum, metaclass=ReprEnumMeta):
+class LeaderboardCode(StrEnum, metaclass=ReprEnumMeta):
     """
     The type of leaderboard. What the "values" represent.
     """
@@ -40,7 +40,7 @@ class LeaderboardCode(str, Enum, metaclass=ReprEnumMeta):
     SUM_PAYOUTS = "sum_user_payout"
 
 
-class LeaderboardFrequency(str, Enum, metaclass=ReprEnumMeta):
+class LeaderboardFrequency(StrEnum, metaclass=ReprEnumMeta):
     """
     The time period range for the leaderboard.
     """
@@ -115,9 +115,10 @@ class Leaderboard(BaseModel):
         examples=[LeaderboardFrequency.DAILY],
     )
 
-    timezone_name: str = Field(
+    timezone_name: str | None = Field(
         description="The timezone for the requested country",
         examples=["America/New_York"],
+        default=None,
     )
 
     sort_order: Literal["ascending", "descending"] = Field(default="descending")
@@ -146,7 +147,7 @@ class Leaderboard(BaseModel):
         # exclude=True,
     )
 
-    period_end_local: AwareDatetime = Field(
+    period_end_local: AwareDatetime | None = Field(
         description="The end of the time period covered by this board in local time, tz-aware",
         examples=[
             datetime(
@@ -160,6 +161,7 @@ class Leaderboard(BaseModel):
                 tzinfo=ZoneInfo("America/New_York"),
             )
         ],
+        default=None,
         # exclude=True,
     )
 
@@ -176,13 +178,13 @@ class Leaderboard(BaseModel):
     def period_start_utc(self) -> datetime:
         # The start of the time period covered by this board in UTC, tz-aware
         # e.g. datetime(2024, 7, 12, 4, 0, 0, 0, tzinfo=timezone.utc)
-        return self.period_start_local.astimezone(timezone.utc)
+        return self.period_start_local.astimezone(UTC)
 
     @property
     def period_end_utc(self) -> datetime:
         # The end of the time period covered by this board in UTC, tz-aware
         # e.g. datetime(2024, 7, 13, 3, 59, 59, 999999, tzinfo=timezone.utc)
-        return self.period_end_local.astimezone(timezone.utc)
+        return self.period_end_local.astimezone(UTC)
 
     @computed_field(
         description="(unix timestamp) The start time of the time range this leaderboard covers.",

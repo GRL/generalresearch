@@ -1,25 +1,26 @@
-from datetime import datetime, timezone
+from collections.abc import Generator
+from datetime import UTC, datetime
 from itertools import product
 from typing import TYPE_CHECKING
 
 import pytest
 from pandera.pandas import Column, DataFrameSchema, Index
 
-from generalresearch.incite.collections import DFCollection, DFCollectionType
+from generalresearch.incite.collections.base import DFCollection, DFCollectionType
 from generalresearch.incite.collections.thl_marketplaces import (
     InnovateSurveyHistoryCollection,
     MorningSurveyTimeseriesCollection,
     SagoSurveyHistoryCollection,
     SpectrumSurveyTimeseriesCollection,
 )
-from test_utils.incite.conftest import mnt_filepath
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
+    from generalresearch.pg_helper import PostgresConfig
 
 
-def combo_object():
-    for x in product(
+def combo_object() -> Generator[tuple[type, str]]:
+    yield from product(
         [
             InnovateSurveyHistoryCollection,
             MorningSurveyTimeseriesCollection,
@@ -27,14 +28,19 @@ def combo_object():
             SpectrumSurveyTimeseriesCollection,
         ],
         ["5min", "6H", "30D"],
-    ):
-        yield from x
+    )
 
 
 @pytest.mark.parametrize("df_coll, offset", combo_object())
 class TestDFCollection_thl_marketplaces:
 
-    def test_init(self, mnt_filepath, df_coll, offset, spectrum_rw):
+    def test_init(
+        self,
+        mnt_filepath: GRLDatasets,
+        df_coll: DFCollection,
+        offset: str,
+        spectrum_rw: PostgresConfig,
+    ):
         assert issubclass(df_coll, DFCollection)
 
         # This is stupid, but we need to pull the default from the
@@ -43,7 +49,7 @@ class TestDFCollection_thl_marketplaces:
         assert isinstance(data_type, DFCollectionType)
 
         # (1) Can't be totally empty, needs a path...
-        with pytest.raises(expected_exception=Exception) as cm:
+        with pytest.raises(expected_exception=ValueError):
             instance = df_coll()
 
         # (2) Confirm it only needs the archive_path
@@ -57,8 +63,8 @@ class TestDFCollection_thl_marketplaces:
             archive_path=mnt_filepath.archive_path(enum_type=data_type),
             sql_helper=spectrum_rw,
             offset=offset,
-            start=datetime(year=2023, month=6, day=1, minute=0, tzinfo=timezone.utc),
-            finished=datetime(year=2023, month=6, day=1, minute=5, tzinfo=timezone.utc),
+            start=datetime(year=2023, month=6, day=1, minute=0, tzinfo=UTC),
+            finished=datetime(year=2023, month=6, day=1, minute=5, tzinfo=UTC),
         )
         assert isinstance(instance, DFCollection)
 
@@ -66,7 +72,7 @@ class TestDFCollection_thl_marketplaces:
         assert isinstance(instance._schema, DataFrameSchema)
         assert isinstance(instance._schema.index, Index)
 
-        for c in instance._schema.columns.keys():
+        for c in instance._schema.columns:
             assert isinstance(c, str)
             col = instance._schema.columns[c]
             assert isinstance(col, Column)

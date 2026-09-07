@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Collection
 from datetime import datetime
-from typing import Any, Collection
+from typing import TYPE_CHECKING, Any
 
 from psycopg import sql
 from pydantic import NonNegativeInt, PositiveInt
@@ -14,12 +15,13 @@ from generalresearch.grliq.models.forensic_result import (
     Phase,
 )
 from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.thl.user import User
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.user import User
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class GrlIqDataManager:
-
     def __init__(self, postgres_config: PostgresConfig):
         self.postgres_config = postgres_config
 
@@ -32,7 +34,15 @@ class GrlIqDataManager:
         is_attempt_allowed: bool | None = None,
     ) -> GrlIqData:
 
-        data = iq_data.model_dump_sql(exclude={"events", "mouse_events", "timing_data"})
+        data = iq_data.model_dump_sql(
+            exclude={
+                "events",
+                "mouse_events",
+                "timing_data",
+                "results",
+                "category_result",
+            }
+        )
 
         data["result_data"] = None
         if result_data:
@@ -102,14 +112,13 @@ class GrlIqDataManager:
           is_attempt_allowed = %(is_attempt_allowed)s
           WHERE uuid = %(uuid)s
           """)
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query, data)
-                if c.rowcount != 1:
-                    raise ValueError(
-                        f"Expected 1 row to be updated, but {c.rowcount} rows were affected."
-                    )
-                conn.commit()
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, data)
+            if c.rowcount != 1:
+                raise ValueError(
+                    f"Expected 1 row to be updated, but {c.rowcount} rows were affected."
+                )
+            conn.commit()
 
     def update_fingerprint(self, iq_data: GrlIqData) -> None:
         # We should only run this if we modified the fingerprint algorithm
@@ -122,14 +131,13 @@ class GrlIqDataManager:
          SET fingerprint = %(fingerprint)s
          WHERE uuid = %(uuid)s
          """)
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query, data)
-                if c.rowcount != 1:
-                    raise ValueError(
-                        f"Expected 1 row to be updated, but {c.rowcount} rows were affected."
-                    )
-                conn.commit()
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, data)
+            if c.rowcount != 1:
+                raise ValueError(
+                    f"Expected 1 row to be updated, but {c.rowcount} rows were affected."
+                )
+            conn.commit()
 
     def update_data(self, iq_data: GrlIqData) -> None:
         # We should only run this if we structured new fields and want to
@@ -140,14 +148,13 @@ class GrlIqDataManager:
          SET data = %(data)s
          WHERE id = %(id)s
          """)
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query, data)
-                if c.rowcount != 1:
-                    raise ValueError(
-                        f"Expected 1 row to be updated, but {c.rowcount} rows were affected."
-                    )
-                conn.commit()
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, data)
+            if c.rowcount != 1:
+                raise ValueError(
+                    f"Expected 1 row to be updated, but {c.rowcount} rows were affected."
+                )
+            conn.commit()
 
     def get_data_if_exists(
         self, forensic_uuid: UUIDStr, load_events: bool = False
@@ -471,20 +478,20 @@ class GrlIqDataManager:
             filters.append("d.fingerprint = ANY(%(fingerprints)s)")
 
         if product_ids and len(product_ids) == 1:
-            product_id = list(product_ids)[0]
+            product_id = next(iter(product_ids))
             product_ids = None
 
         if product_ids:
-            assert (
-                users is None and user is None and product_id is None
-            ), "user, users, product_id, and product_ids are mutually exclusive"
+            assert users is None and user is None and product_id is None, (
+                "user, users, product_id, and product_ids are mutually exclusive"
+            )
             params["product_ids"] = list(set(product_ids))
             filters.append("d.product_id = ANY(%(product_ids)s::UUID[])")
 
         if product_id:
-            assert (
-                users is None and user is None and product_ids is None
-            ), "user, users, product_id, and product_ids are mutually exclusive"
+            assert users is None and user is None and product_ids is None, (
+                "user, users, product_id, and product_ids are mutually exclusive"
+            )
             params["product_id"] = product_id
             filters.append("d.product_id = %(product_id)s")
 
@@ -505,12 +512,12 @@ class GrlIqDataManager:
             )
 
         if created_between:
-            assert (
-                created_after is None
-            ), "Cannot pass both created_after and created_between"
-            assert (
-                created_before is None
-            ), "Cannot pass both created_before and created_between"
+            assert created_after is None, (
+                "Cannot pass both created_after and created_between"
+            )
+            assert created_before is None, (
+                "Cannot pass both created_before and created_between"
+            )
             params["created_after"] = created_between[0]
             params["created_before"] = created_between[1]
             filters.append(
@@ -518,9 +525,9 @@ class GrlIqDataManager:
             )
 
         if user:
-            assert (
-                product_ids is None and users is None
-            ), "user, users, and product_ids are mutually exclusive"
+            assert product_ids is None and users is None, (
+                "user, users, and product_ids are mutually exclusive"
+            )
             params["product_id"] = user.product_id
             params["product_user_id"] = user.product_user_id
             filters.append(
@@ -528,16 +535,16 @@ class GrlIqDataManager:
             )
 
         if users:
-            assert (
-                product_ids is None and user is None
-            ), "user, users, and product_ids are mutually exclusive"
+            assert product_ids is None and user is None, (
+                "user, users, and product_ids are mutually exclusive"
+            )
             user_args = ", ".join(
                 [f"(%(bp_{i})s, %(bpuid_{i})s)" for i in range(len(users))]
             )
             filters.append(f"(d.product_id, d.product_user_id) IN ({user_args})")
-            for i, user in enumerate(users):
-                params[f"bp_{i}"] = user.product_id
-                params[f"bpuid_{i}"] = user.product_user_id
+            for i, _user in enumerate(users):
+                params[f"bp_{i}"] = _user.product_id
+                params[f"bpuid_{i}"] = _user.product_user_id
 
         if phase:
             params["phase"] = phase.value
@@ -594,24 +601,19 @@ class GrlIqDataManager:
         )
 
         if only_product_id:
-            try:
-                with self.postgres_config.make_connection() as conn:
-                    with conn.cursor() as c:
-                        c.execute(
-                            query="""
-                                SELECT count AS c
-                                FROM grliq_forensicdata_product_counts
-                                WHERE product_id = %s
-                                LIMIT 1
-                            """,
-                            params=(product_id,),
-                        )
-                        res = c.fetchone()
-                        if res and res["c"] >= 0:
-                            return int(res["c"])
-
-            except (Exception,) as e:
-                pass
+            with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+                c.execute(
+                    query="""
+                            SELECT count AS c
+                            FROM grliq_forensicdata_product_counts
+                            WHERE product_id = %s
+                            LIMIT 1
+                        """,
+                    params=(product_id,),
+                )
+                res = c.fetchone()
+                if res and res["c"] >= 0:
+                    return int(res["c"])
 
         query = f"""
         SELECT COUNT(1) AS c
@@ -653,9 +655,9 @@ class GrlIqDataManager:
 
         if product_ids:
             # It doesn't use the (product_id, created_at) index with multiple product_ids
-            assert (
-                offset == 0
-            ), "Cannot paginate using product_ids, use product_id instead"
+            assert offset == 0, (
+                "Cannot paginate using product_ids, use product_id instead"
+            )
 
         filter_str, params = self.make_filter_str(
             session_uuid=session_uuid,
@@ -686,7 +688,6 @@ class GrlIqDataManager:
             res: list[dict[str, Any]] = c.fetchall()  # type: ignore
 
         for x in res:
-
             if "data" in x:
                 self.temporary_add_missing_fields(x["data"])
                 x["data"]["id"] = x["id"]

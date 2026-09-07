@@ -1,64 +1,76 @@
 from __future__ import annotations
 
-from typing import Callable
+import subprocess
+from collections.abc import Callable, Generator
+from random import randint
+from typing import TYPE_CHECKING
 
 import pytest
-import redis.asyncio as redis_async
+import redis
 from pydantic import PostgresDsn
-from redis import Redis
 
-from generalresearch.config import GRLBaseSettings
-from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
 from generalresearch.managers.gr.business import (
     BusinessAddressManager,
     BusinessBankAccountManager,
     BusinessManager,
 )
+from generalresearch.managers.gr.team import MembershipManager
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
 
+if TYPE_CHECKING:
+    from generalresearch.config import GRLBaseSettings
+    from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
+    from generalresearch.managers.gr.team import TeamManager
+
 
 # === Msc ===
+
+
 @pytest.fixture(scope="session")
-def gr_redis(settings: GRLBaseSettings) -> Redis:
-    assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
-    return Redis.from_url(
-        url=str(settings.gr_redis),
+def gr_redis_config_db() -> str:
+    # need to update 'databases' in /etc/redis/redis.conf
+    #   or this won't work and you'll have no indication why ...
+    return str(randint(99, 1_023))
+
+
+@pytest.fixture(scope="session")
+def gr_redis_config(
+    settings: GRLBaseSettings, gr_redis_config_db: str
+) -> Generator[RedisConfig]:
+    assert "unittest" in str(settings.testing_redis) or "127.0.0.1" in str(
+        settings.testing_redis
+    )
+
+    uri = f"redis://{settings.testing_redis}/{gr_redis_config_db}"
+
+    res = subprocess.run(
+        ["redis-cli", "-u", uri, "SET", "jenkins_lock", "1", "NX", "EX", "3600"],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+    if res.stdout.strip() != "OK":
+        raise ValueError("Redis already locked... aborting.")
+
+    yield RedisConfig(
+        dsn=uri,
         decode_responses=True,
         socket_timeout=settings.redis_timeout,
         socket_connect_timeout=settings.redis_timeout,
     )
 
-
-@pytest.fixture
-def gr_redis_async(settings: GRLBaseSettings) -> redis_async.Redis:
-    assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
-
-    return redis_async.Redis.from_url(
-        str(settings.gr_redis),
-        decode_responses=True,
-        socket_timeout=0.20,
-        socket_connect_timeout=0.20,
-    )
-
-
-@pytest.fixture(scope="session")
-def gr_redis_config(settings: GRLBaseSettings) -> RedisConfig:
-    assert "unittest" in str(settings.gr_redis) or "127.0.0.1" in str(settings.gr_redis)
-
-    return RedisConfig(
-        dsn=settings.gr_redis,
-        decode_responses=True,
-        socket_timeout=settings.redis_timeout,
-        socket_connect_timeout=settings.redis_timeout,
-    )
+    r = redis.from_url(uri)
+    r.flushdb()
 
 
 @pytest.fixture(scope="session")
 def gr_db(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
+    _dsn = django_db_factory("gr.common")
 
     return PostgresConfig(
-        dsn=django_db_factory("gr_carer"),
+        dsn=_dsn,
         connect_timeout=1,
         statement_timeout=5,
     )
@@ -80,7 +92,17 @@ def gr_user_manager(
 
 
 @pytest.fixture(scope="session")
-def gr_team_manager(gr_db: PostgresConfig) -> GRTokenManager:
+def gr_team_manager(gr_db: PostgresConfig, gr_redis_config: RedisConfig) -> TeamManager:
+    assert gr_db.dsn.path
+    assert "/unittest-" in gr_db.dsn.path
+
+    from generalresearch.managers.gr.team import TeamManager
+
+    return TeamManager(pg_config=gr_db, redis_config=gr_redis_config)
+
+
+@pytest.fixture(scope="session")
+def gr_token_manager(gr_db: PostgresConfig) -> GRTokenManager:
     assert gr_db.dsn.path
     assert "/unittest-" in gr_db.dsn.path
 
@@ -108,3 +130,10 @@ def gr_business_address_manager(
     gr_db: PostgresConfig,
 ) -> BusinessAddressManager:
     return BusinessAddressManager(pg_config=gr_db)
+
+
+@pytest.fixture(scope="session")
+def gr_membership_manager(
+    gr_db: PostgresConfig,
+) -> MembershipManager:
+    return MembershipManager(pg_config=gr_db)

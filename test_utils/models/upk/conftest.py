@@ -2,16 +2,14 @@ from __future__ import annotations
 
 import os
 import time
-from typing import TYPE_CHECKING
+from collections.abc import Callable
 from uuid import UUID
 
 import pandas as pd
 import pytest
 
+from generalresearch.managers.thl.category import CategoryManager
 from generalresearch.pg_helper import PostgresConfig
-
-if TYPE_CHECKING:
-    from generalresearch.managers.thl.category import CategoryManager
 
 
 def insert_data_from_csv(
@@ -169,9 +167,13 @@ def upk_data(
     propertymarketplaceassociation_data,
     propertyitemrange_data,
     question_data,
-) -> None:
-    # Wait a second to make sure the HarmonizerCache refresh loop pulls these in
-    time.sleep(2)
+) -> Callable[..., None]:
+
+    def _inner():
+        # Wait a second to make sure the HarmonizerCache refresh loop pulls these in
+        time.sleep(2)
+
+    return _inner
 
 
 def test_fixtures(upk_data):

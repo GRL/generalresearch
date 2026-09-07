@@ -4,21 +4,23 @@ import json
 import threading
 from collections import defaultdict
 from datetime import timedelta
+from typing import TYPE_CHECKING
 
 from cachetools import TTLCache, cachedmethod
 
 from generalresearch.decorators import LOG
 from generalresearch.managers.base import RedisManager
-from generalresearch.models.custom_types import (
-    UUIDStr,
-)
-from generalresearch.models.thl.survey.penalty import (
-    BPSurveyPenalty,
-    Penalty,
-    PenaltyListAdapter,
-    TeamSurveyPenalty,
-)
-from generalresearch.redis_helper import RedisConfig
+from generalresearch.models.custom_types import UUIDStr
+from generalresearch.models.thl.survey.penalty import PenaltyListAdapter
+
+if TYPE_CHECKING:
+
+    from generalresearch.models.thl.survey.penalty import (
+        BPSurveyPenalty,
+        Penalty,
+        TeamSurveyPenalty,
+    )
+    from generalresearch.redis_helper import RedisConfig
 
 
 class SurveyPenaltyManager(RedisManager):
@@ -61,7 +63,6 @@ class SurveyPenaltyManager(RedisManager):
         return f"{self.redis_prefix}:{uuid_id}"
 
     def set_penalties(self, penalties: list[Penalty]):
-        """ """
         if len(penalties) > 1000:
             LOG.warning("SurveyPenaltyManager.set_penalties batch me!")
         assert len(penalties) < 10_000, "something is surely wrong"

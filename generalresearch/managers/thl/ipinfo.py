@@ -3,9 +3,10 @@ from __future__ import annotations
 import ipaddress
 from collections.abc import Collection
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import faker
-import pymysql
+from grip_client.enums import AccessType
 from more_itertools import chunked
 from psycopg import Cursor
 from pydantic import PositiveInt
@@ -14,18 +15,19 @@ from generalresearch.managers.base import (
     PostgresManager,
     PostgresManagerWithRedis,
 )
-from generalresearch.models.custom_types import (
-    CountryISOLike,
-    IPvAnyAddressStr,
-)
 from generalresearch.models.thl.ipinfo import (
     GeoIPInformation,
     IPGeoname,
     IPInformation,
     normalize_ip,
 )
-from generalresearch.models.thl.maxmind.definitions import UserType
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+    from generalresearch.models.custom_types import (
+        CountryISOLike,
+        IPvAnyAddressStr,
+    )
+    from generalresearch.pg_helper import PostgresConfig
 
 fake = faker.Faker()
 
@@ -156,17 +158,15 @@ class IPGeonameManager(PostgresManager):
         if len(filter_ids) == 0:
             return []
 
-        with self.pg_config.make_connection() as sql_connection:
-            sql_connection: pymysql.Connection
-            with sql_connection.cursor() as c:
-                res = []
-                for chunk in chunked(filter_ids, 500):
-                    res.extend(
-                        self.fetch_geoname_ids_(
-                            c=c,
-                            filter_ids=chunk,
-                        )
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            res = []
+            for chunk in chunked(filter_ids, 500):
+                res.extend(
+                    self.fetch_geoname_ids_(
+                        c=c,
+                        filter_ids=chunk,
                     )
+                )
         return res
 
     def fetch_geoname_ids_(
@@ -246,7 +246,7 @@ class IPInformationManager(PostgresManager):
         network: str | None = None,
         organization: str | None = None,
         static_ip_score: float | None = None,
-        user_type: UserType | None = None,
+        user_type: AccessType | None = None,
         postal_code: str | None = None,
         latitude: Decimal | None = None,
         longitude: Decimal | None = None,
@@ -423,7 +423,9 @@ class IPInformationManager(PostgresManager):
         FROM thl_ipinformation
         WHERE updated >= NOW() - INTERVAL '12 hours'
         """
-        denominator = list(pg_config.execute_sql_query(query=query))[0]["denominator"]
+        denominator = next(iter(pg_config.execute_sql_query(query=query)))[
+            "denominator"
+        ]
         if denominator == 0:
             pass
 
@@ -509,7 +511,7 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
         res = [GeoIPInformation.model_validate_json(raw) for raw in res if raw]
         gs = {x.ip: x for x in res}
 
-        res2 = dict()
+        res2 = {}
         for ip, (normalized_ip, lookup_prefix) in ip_norm_lookup.items():
             if normalized_ip not in gs:
                 # try the non-normalized (remove me also 28 days from 2025-11-15)
@@ -633,16 +635,14 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
         if len(ips) == 0:
             return {}
 
-        with self.pg_config.make_connection() as sql_connection:
-            sql_connection: pymysql.Connection
-            with sql_connection.cursor() as c:
-                res = {}
-                for chunk in chunked(ips, 500):
-                    inner = self.get_mysql_multi_chunk(
-                        c=c,
-                        ips=chunk,
-                    )
-                    res.update(inner)
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            res = {}
+            for chunk in chunked(ips, 500):
+                inner = self.get_mysql_multi_chunk(
+                    c=c,
+                    ips=chunk,
+                )
+                res.update(inner)
         return res
 
     def get_mysql_multi_chunk(
@@ -719,7 +719,7 @@ class GeoIpInfoManager(PostgresManagerWithRedis):
 
         gs = [GeoIPInformation.from_mysql(i) for i in res]
         gs = {g.ip: g for g in gs}
-        res2 = dict()
+        res2 = {}
 
         for ip, (normalized_ip, lookup_prefix) in ip_norm_lookup.items():
             if normalized_ip not in gs:

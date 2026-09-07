@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -11,15 +11,18 @@ from generalresearch.managers.base import (
     PostgresManager,
     PostgresManagerWithRedis,
 )
+from generalresearch.managers.gr.authentication import GRUserManager
 from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.gr.team import Membership, MembershipPrivilege
+from generalresearch.models.gr.team import (
+    Membership,
+    MembershipPrivilege,
+)
 
 if TYPE_CHECKING:
+
     from generalresearch.models.gr.authentication import GRUser
     from generalresearch.models.gr.business import Business
-    from generalresearch.models.gr.team import (
-        Team,
-    )
+    from generalresearch.models.gr.team import Team
 
 
 class MembershipManager(PostgresManager):
@@ -43,7 +46,7 @@ class MembershipManager(PostgresManager):
             owner=False,
             team_id=team.id,
             user_id=gr_user.id,
-            created=datetime.now(tz=timezone.utc),
+            created=datetime.now(tz=UTC),
         )
 
         data = membership.model_dump(by_alias=True)
@@ -185,10 +188,12 @@ class TeamManager(PostgresManagerWithRedis):
 
         return team
 
-    def add_user(self, team: Team, gr_user: GRUser) -> Membership:
+    def add_user(
+        self, team: Team, gr_user: GRUser, gr_user_manager: GRUserManager
+    ) -> Membership:
         """Create a Membership between a GRUser and a Team"""
 
-        team.prefetch_gr_users(pg_config=self.pg_config, redis_config=self.redis_config)
+        team.prefetch_gr_users(gr_user_manager=gr_user_manager)
 
         assert gr_user not in team.gr_users, (
             "Can't create multiple Memberships for " "the same User to the same Team"

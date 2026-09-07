@@ -1,4 +1,6 @@
-from datetime import datetime, timezone
+from __future__ import annotations
+
+from datetime import UTC, datetime
 
 
 class TestEligibility:
@@ -40,7 +42,7 @@ class TestEligibility:
                 "project_id": "p1",
                 "status": "OPEN",
                 "project_exclusions": set(),
-                "created": datetime.now(tz=timezone.utc),
+                "created": datetime.now(tz=UTC),
                 "category_exclusions": set(),
                 "category_ids": set(),
                 "cpi": 1,
@@ -172,7 +174,7 @@ class TestEligibility:
                 "project_id": "p1",
                 "status": "OPEN",
                 "project_exclusions": set(),
-                "created": datetime.now(tz=timezone.utc),
+                "created": datetime.now(tz=UTC),
                 "category_exclusions": set(),
                 "category_ids": set(),
                 "cpi": 1,

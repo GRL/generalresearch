@@ -1,28 +1,32 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-from typing import Collection
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Self
 from uuid import uuid4
 
 from pydantic import (
     BaseModel,
+    ConfigDict,
     Field,
     PositiveInt,
     computed_field,
     field_validator,
+    model_validator,
 )
-from typing_extensions import Self
+from pydantic.json_schema import SkipJsonSchema
 
 from generalresearch.currency import USDCent
-from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+from generalresearch.models.custom_types import (
+    AwareDatetimeISO,
+    UUIDStr,
+    UUIDStrCoerce,
+)
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.ledger import OrderBy
-from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
     CashMailOrderData,
 )
-from generalresearch.redis_helper import RedisConfig
+from generalresearch.models.thl.wallet.definitions import PayoutType
 
 
 class PayoutEvent(BaseModel):
@@ -39,29 +43,27 @@ class PayoutEvent(BaseModel):
         multiple BrokerageProductPayoutEvents.
     """
 
-    uuid: UUIDStr = Field(
+    uuid: UUIDStrCoerce = Field(
         title="Payout Event Unique Identifier",
         default_factory=lambda: uuid4().hex,
         examples=["9453cd076713426cb68d05591c7145aa"],
     )
 
-    debit_account_uuid: UUIDStr = Field(
+    debit_account_uuid: UUIDStrCoerce | None = Field(
         description="The LedgerAccount.uuid that money is being requested from. "
         "Thie User or Brokerage Product is retrievable through the "
         "LedgerAccount.reference_uuid",
         examples=["18298cb1583846fbb06e4747b5310693"],
     )
 
-    cashout_method_uuid: UUIDStr = Field(
+    cashout_method_uuid: UUIDStrCoerce | None = Field(
         description="References a row in the account_cashoutmethod table. This "
         "is the cashout method that was used to request this "
         "payout. (A cashout is the same thing as a payout)",
         examples=["a6dc1fc1bf934557b952f253dee12813"],
     )
 
-    created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    created: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # In the smallest unit of the currency being transacted. For USD, this
     #   is cents.
@@ -84,8 +86,8 @@ class PayoutEvent(BaseModel):
         description=PayoutType.as_openapi(), examples=[PayoutType.ACH]
     )
 
-    request_data: dict = Field(
-        default_factory=dict,
+    request_data: dict | None = Field(
+        default=None,
         description="Stores payout-type-specific information that is used to "
         "request this payout from the external provider.",
     )
@@ -144,16 +146,15 @@ class PayoutEvent(BaseModel):
 
     # --- ORM ---
 
-    def model_dump_mysql(self, *args, **kwargs) -> dict:
-        d = self.model_dump(mode="json", *args, **kwargs)
+    def model_dump_postgres(self) -> dict:
+        d = self.model_dump(mode="json", exclude={"request_data", "order_data"})
 
-        if "created" in d:
-            d["created"] = self.created.replace(tzinfo=None)
-
-        if d.get("request_data") is not None:
-            d["request_data"] = json.dumps(self.request_data)
-
-        if d.get("order_data") is not None:
+        d["request_data"] = (
+            json.dumps(self.request_data) if self.request_data is not None else None
+        )
+        if self.order_data is None:
+            d["order_data"] = None
+        else:
             if isinstance(self.order_data, dict):
                 d["order_data"] = json.dumps(self.order_data)
             else:
@@ -196,7 +197,7 @@ class BrokerageProductPayoutEvent(PayoutEvent):
     - created: When the Brokerage Product was paid out
     """
 
-    product_id: UUIDStr = Field(
+    product_id: UUIDStrCoerce = Field(
         description="The Brokerage Product that was paid out",
         examples=["1108d053e4fa47c5b0dbdcd03a7981e7"],
     )
@@ -220,136 +221,136 @@ class BrokerageProductPayoutEvent(PayoutEvent):
     def amount_usd_str(self) -> str:
         return self.amount_usd.to_usd_str()
 
-    # --- ORM ---
 
-    @classmethod
-    def from_payout_event(
-        cls,
-        pe: PayoutEvent,
-        account_product_mapping: dict[UUIDStr, UUIDStr] | None = None,
-        redis_config: RedisConfig | None = None,
-    ) -> Self:
-        # TODO!: prevent re-assignment, rework this...
+class BusinessPayoutEventCreate(BaseModel):
+    """A single payout event to a supplier Business."""
 
-        if account_product_mapping is None:
-            rc = redis_config.create_redis_client()
-            account_product_mapping: dict = rc.hgetall(name="pem:account_to_product")
-            assert isinstance(account_product_mapping, dict)
-            assert pe.uuid in account_product_mapping.keys()
+    model_config = ConfigDict(validate_assignment=True)
 
-        d = pe.model_dump()
-        d["product_id"] = account_product_mapping[pe.debit_account_uuid]
-        return cls.model_validate(d)
+    # Used for holding a *unique*, external, payout-type-specific identifier.
+    ext_ref_id: str = Field(title="Unique external reference ID")
 
-    @classmethod
-    def from_payout_events(
-        cls,
-        payout_events: Collection[PayoutEvent],
-        order_by=OrderBy,
-        account_product_mapping: dict[UUIDStr, UUIDStr] | None = None,
-        redis_config: RedisConfig | None = None,
-    ) -> list[Self]:
-        # TODO!: prevent re-assignment, rework this...
+    business_id: UUIDStr = Field(
+        description="The Business receiving this supplier payout.",
+        examples=[uuid4().hex],
+    )
 
-        if account_product_mapping is None:
-            rc = redis_config.create_redis_client()
-            account_product_mapping: dict = rc.hgetall(name="pem:account_to_product")
-            assert isinstance(account_product_mapping, dict)
+    created: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
-        res = []
-        for pe in payout_events:
-            res.append(
-                cls.from_payout_event(
-                    pe=pe, account_product_mapping=account_product_mapping
-                )
-            )
+    # In the smallest unit of the currency being transacted. For USD, this
+    #   is cents.
+    amount: PositiveInt = Field(
+        lt=2**63 - 1,
+        strict=True,
+        title="Amount",
+        description="The amount issued to the supplier.",
+        examples=[1_982_343],
+    )
 
-        match order_by:
-            case OrderBy.ASC:
-                sorted_list = sorted(res, key=lambda x: x.created, reverse=False)
-            case OrderBy.DESC:
-                sorted_list = sorted(res, key=lambda x: x.created, reverse=True)
-            case _:
-                raise ValueError("Invalid order provided..")
+    status: PayoutStatus = Field(
+        default=PayoutStatus.PENDING,
+        description=PayoutStatus.as_openapi(),
+        examples=[PayoutStatus.COMPLETE],
+    )
 
-        return sorted_list
+    payout_type: PayoutType = Field(
+        description=PayoutType.as_openapi(), examples=[PayoutType.ACH]
+    )
 
+    request_data: dict | None = Field(
+        default=None,
+        description="Stores payout-type-specific information that is used to "
+        "request this payout from the external provider.",
+    )
 
-class BusinessPayoutEvent(BaseModel):
-    """A single ACH or Wire event to a Business Bank Account"""
+    order_data: dict | None = Field(
+        default=None,
+        description="Stores payout-type-specific order information that is "
+        "returned from the external payout provider.",
+    )
 
     bp_payouts: list[BrokerageProductPayoutEvent] = Field(
-        description="Here is the list of Brokerage Product Payouts that"
-        "this Business Payout includes.",
+        description="The list of Brokerage Product Payouts that this Business Payout includes",
         min_length=1,
     )
 
     @computed_field(
-        title="Amount",
-        description="The amount issued to the Bank Account",
-        examples=[19_823_43],
-        return_type=USDCent,
-    )
-    @property
-    def amount(self) -> USDCent:
-        return USDCent(sum([p.amount for p in self.bp_payouts]))
-
-    @computed_field(
         title="Amount USD Str",
-        description="The amount issued to the Bank Account as a USD string",
+        description="The amount issued to the supplier as a USD string",
         examples=["$19,823.43"],
         return_type=str,
     )
     @property
     def amount_usd_str(self) -> str:
-        return self.amount.to_usd_str()
-
-    @computed_field(
-        title="Created",
-        description="This is equal to the created time of the first"
-        "Brokerage Product Payout Event.",
-        return_type=AwareDatetimeISO,
-    )
-    @property
-    def created(self) -> AwareDatetimeISO:
-        return self.bp_payouts[0].created
-
-    @computed_field(
-        title="Line Items",
-        description="The number of sub-payments",
-        return_type=PositiveInt,
-    )
-    @property
-    def line_items(self):
-        return len(self.bp_payouts)
-
-    @computed_field(
-        title="External Reference ID",
-        description="ACH Transaction ID",
-        return_type=str | None,
-    )
-    @property
-    def ext_ref_id(self):
-        return self.bp_payouts[0].ext_ref_id
+        return USDCent(self.amount).to_usd_str()
 
     # --- Validators ---
 
+    @field_validator("payout_type", mode="before")
+    @classmethod
+    def normalize_payout_type(cls, v):
+        if isinstance(v, str):
+            try:
+                return PayoutType[v.upper()]
+            except KeyError:
+                raise ValueError(f"Invalid payout_type: {v}")
+        return v
+
     @field_validator("bp_payouts", mode="before")
     @classmethod
-    def normalize_enum(cls, v):
+    def validate_bp_payouts_type(cls, v):
         """This can be a list of Instances or Python Dictionaries depending
         on how it's initialized.
         """
 
+        if v is None:
+            return v
+
         assert isinstance(v, list)
-
-        def get_field(obj, field):
-            if isinstance(obj, dict):
-                return obj.get(field)
-            return getattr(obj, field, None)
-
-        assert all(
-            get_field(i, "ext_ref_id") == get_field(v[0], "ext_ref_id") for i in v
-        ), "Not all group values are the same"
-
         return v
+
+    @model_validator(mode="after")
+    def validate_bp_payouts(self) -> Self:
+        bp_payout_amount = sum([p.amount for p in self.bp_payouts])
+        if bp_payout_amount != self.amount:
+            raise ValueError(
+                "BusinessPayoutEvent.amount must equal the sum of "
+                f"bp_payouts amounts ({self.amount=} {bp_payout_amount=})"
+            )
+
+        invalid_payout_types = [
+            p.payout_type for p in self.bp_payouts if p.payout_type != self.payout_type
+        ]
+        if invalid_payout_types:
+            raise ValueError(
+                "All BrokerageProductPayoutEvent.payout_type values must equal "
+                f"BusinessPayoutEvent.payout_type ({self.payout_type})"
+            )
+
+        invalid_ext_ids = [
+            p.ext_ref_id for p in self.bp_payouts if p.ext_ref_id != self.ext_ref_id
+        ]
+        if invalid_ext_ids:
+            raise ValueError(
+                "All BrokerageProductPayoutEvent.ext_ref_id values must equal "
+                f"BusinessPayoutEvent.ext_ref_id ({self.ext_ref_id})"
+            )
+
+        return self
+
+    def model_dump_postgres(self):
+        d = self.model_dump(
+            mode="json",
+            exclude={"bp_payouts"},
+        )
+        d["request_data"] = (
+            json.dumps(self.request_data) if self.request_data is not None else None
+        )
+        d["order_data"] = (
+            json.dumps(self.order_data) if self.order_data is not None else None
+        )
+        return d
+
+
+class BusinessPayoutEvent(BusinessPayoutEventCreate):
+    id: SkipJsonSchema[PositiveInt] = Field(exclude=True)

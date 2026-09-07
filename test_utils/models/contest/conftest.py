@@ -1,50 +1,73 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
-from fastapi import Request
+from pytest import FixtureRequest as Request
 
 from generalresearch.currency import USDCent
-from generalresearch.managers.thl.contest_manager import ContestManager
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-from generalresearch.models.thl.contest.contest import Contest
-from generalresearch.models.thl.contest.leaderboard import (
-    LeaderboardContestCreate,
+from generalresearch.models.thl.contest import (
+    ContestEndCondition,
+    ContestPrize,
 )
-from generalresearch.models.thl.contest.milestone import (
-    MilestoneContestCreate,
+from generalresearch.models.thl.contest.definitions import (
+    ContestPrizeKind,
+    ContestType,
 )
 from generalresearch.models.thl.contest.raffle import (
+    ContestEntryType,
     RaffleContestCreate,
 )
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.contest_manager import ContestManager
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.models.thl.contest.contest import Contest
+    from generalresearch.models.thl.contest.leaderboard import (
+        LeaderboardContestCreate,
+    )
+    from generalresearch.models.thl.contest.milestone import (
+        MilestoneContestCreate,
+    )
+    from generalresearch.models.thl.contest.raffle import (
+        RaffleContest,
+    )
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
 
 # === Miscellaneous ===
 
 # === Managers ===
+
+# --- Factories ---
+
+
+@pytest.fixture(scope="function")
+def raffle_contest_factory(
+    product_user_wallet_yes: Product,
+    raffle_contest_create: RaffleContestCreate,
+    contest_manager: ContestManager,
+) -> Callable[..., RaffleContest]:
+
+    def _inner(**kwargs):
+        raffle_contest_create.update(**kwargs)
+        return contest_manager.create(
+            product_id=product_user_wallet_yes.uuid,
+            contest_create=raffle_contest_create,
+        )
+
+    return _inner
+
 
 # === Models ===
 
 
 @pytest.fixture
 def raffle_contest_create() -> RaffleContestCreate:
-    from generalresearch.models.thl.contest import (
-        ContestEndCondition,
-        ContestPrize,
-    )
-    from generalresearch.models.thl.contest.definitions import (
-        ContestPrizeKind,
-        ContestType,
-    )
-    from generalresearch.models.thl.contest.raffle import (
-        ContestEntryType,
-        RaffleContestCreate,
-    )
 
     # This is what we'll get from the fastapi endpoint
     return RaffleContestCreate(
@@ -84,23 +107,6 @@ def raffle_contest(
     )
 
 
-@pytest.fixture(scope="function")
-def raffle_contest_factory(
-    product_user_wallet_yes: Product,
-    raffle_contest_create: RaffleContestCreate,
-    contest_manager: ContestManager,
-) -> Callable[..., Contest]:
-
-    def _inner(**kwargs):
-        raffle_contest_create.update(**kwargs)
-        return contest_manager.create(
-            product_id=product_user_wallet_yes.uuid,
-            contest_create=raffle_contest_create,
-        )
-
-    return _inner
-
-
 @pytest.fixture
 def milestone_contest_create() -> MilestoneContestCreate:
     from generalresearch.models.thl.contest import (
@@ -135,7 +141,7 @@ def milestone_contest_create() -> MilestoneContestCreate:
             ),
         ],
         end_condition=MilestoneContestEndCondition(
-            ends_at=datetime(year=2030, month=1, day=1, tzinfo=timezone.utc),
+            ends_at=datetime(year=2030, month=1, day=1, tzinfo=UTC),
             max_winners=5,
         ),
         entry_trigger=ContestEntryTrigger.TASK_COMPLETE,
@@ -269,24 +275,26 @@ def user_with_money(
     request: Request,
     user_factory: Callable[..., User],
     product_user_wallet_yes: Product,
-    thl_lm: ThlLedgerManager,
+    thl_ledger_manager: ThlLedgerManager,
 ) -> User:
 
     params = getattr(request, "param", {}) or {}
     min_balance = int(params.get("min_balance", USDCent(1_00)))
 
     user: User = user_factory(product=product_user_wallet_yes)
-    wallet = thl_lm.get_account_or_create_user_wallet(user)
-    balance = thl_lm.get_account_balance(wallet)
+    wallet = thl_ledger_manager.get_account_or_create_user_wallet(user)
+    balance = thl_ledger_manager.get_account_balance(wallet)
     todo = min_balance - balance
     if todo > 0:
         # # Put money in user's wallet
-        thl_lm.create_tx_user_bonus(
+        thl_ledger_manager.create_tx_user_bonus(
             user=user,
             ref_uuid=uuid4().hex,
             description="bonus",
             amount=Decimal(todo) / 100,
         )
-        print(f"wallet balance: {thl_lm.get_user_wallet_balance(user=user)}")
+        print(
+            f"wallet balance: {thl_ledger_manager.get_user_wallet_balance(user=user)}"
+        )
 
     return user

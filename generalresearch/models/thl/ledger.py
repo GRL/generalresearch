@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Annotated, Any, Literal, Union
+from datetime import UTC, datetime
+from enum import IntEnum, StrEnum
+from typing import Annotated, Any, Literal, Self
 from uuid import uuid4
 
 from pydantic import (
@@ -15,19 +15,12 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     HttpsUrlStr,
     UUIDStr,
     check_valid_uuid,
-)
-from generalresearch.models.thl.ledger_example import (
-    _example_user_tx_adjustment,
-    _example_user_tx_bonus,
-    _example_user_tx_complete,
-    _example_user_tx_payout,
 )
 from generalresearch.models.thl.pagination import Page
 from generalresearch.models.thl.payout_format import (
@@ -37,7 +30,54 @@ from generalresearch.models.thl.payout_format import (
 from generalresearch.utils.enum import ReprEnumMeta
 
 
-class Direction(int, Enum, metaclass=ReprEnumMeta):
+def _example_user_tx_payout(schema: dict[str, Any]) -> None:
+
+    schema["example"] = UserLedgerTransactionUserPayout(
+        product_id=uuid4().hex,
+        payout_id=uuid4().hex,
+        amount=-5,
+        description="HIT Reward",
+        payout_format="${payout/100:.2f}",
+        created=datetime.now(tz=UTC),
+    ).model_dump(mode="json")
+
+
+def _example_user_tx_bonus(schema: dict[str, Any]) -> None:
+
+    schema["example"] = UserLedgerTransactionUserBonus(
+        product_id=uuid4().hex,
+        amount=100,
+        description="Compensation Bonus",
+        payout_format="${payout/100:.2f}",
+        created=datetime.now(tz=UTC),
+    ).model_dump(mode="json")
+
+
+def _example_user_tx_complete(schema: dict[str, Any]) -> None:
+
+    schema["example"] = UserLedgerTransactionTaskComplete(
+        product_id=uuid4().hex,
+        amount=38,
+        description="Task Complete",
+        payout_format="${payout/100:.2f}",
+        created=datetime.now(tz=UTC),
+        tsid=uuid4().hex,
+    ).model_dump(mode="json")
+
+
+def _example_user_tx_adjustment(schema: dict[str, Any]) -> None:
+
+    schema["example"] = UserLedgerTransactionTaskAdjustment(
+        product_id=uuid4().hex,
+        amount=-38,
+        description="Task Adjustment",
+        payout_format="${payout/100:.2f}",
+        created=datetime.now(tz=UTC),
+        tsid=uuid4().hex,
+    ).model_dump(mode="json")
+
+
+class Direction(IntEnum, metaclass=ReprEnumMeta):
     """Entries on the debit side will increase debit normal accounts, while
     entries on the credit side will decrease them. Conversely, entries on
     the credit side will increase credit normal accounts, while entries on
@@ -51,13 +91,13 @@ class Direction(int, Enum, metaclass=ReprEnumMeta):
     DEBIT = 1
 
 
-class OrderBy(str, Enum, metaclass=ReprEnumMeta):
+class OrderBy(StrEnum, metaclass=ReprEnumMeta):
     ASC = "ASC"
 
     DESC = "DESC"
 
 
-class AccountType(str, Enum, metaclass=ReprEnumMeta):
+class AccountType(StrEnum, metaclass=ReprEnumMeta):
     # Revenue from BP payment commission
     BP_COMMISSION = "bp_commission"
     # BP wallets (owed balance)
@@ -86,7 +126,7 @@ class AccountType(str, Enum, metaclass=ReprEnumMeta):
     WA_CREDIT_LINE = "wa_credit_line"
 
 
-class TransactionMetadataColumns(str, Enum):
+class TransactionMetadataColumns(StrEnum):
     BONUS = "bonus_id"
     # Note: EVENT & EVENT2 represent the same concept. I accidentally made
     # this inconsistent.
@@ -105,7 +145,7 @@ class TransactionMetadataColumns(str, Enum):
     CONTEST = "contest"
 
 
-class TransactionType(str, Enum):
+class TransactionType(StrEnum):
     """These are used in the Ledger to annotate the type of transaction (in
     metadata: tx_type)
     """
@@ -258,7 +298,7 @@ class LedgerTransaction(BaseModel):
     id: int | None = Field(default=None)
 
     created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
         description="When the Transaction (TX) was created into the database."
         "This does not represent the exact time for any action"
         "which may be responsible for this Transaction (TX), and "
@@ -288,9 +328,7 @@ class LedgerTransaction(BaseModel):
         """Created should not be in the future. This will mess up
         LedgerAccountStatement / groupby rollups.
         """
-        assert (
-            datetime.now(tz=timezone.utc) > created
-        ), "created cannot be in the future"
+        assert datetime.now(tz=UTC) > created, "created cannot be in the future"
         return created
 
     @field_validator("entries", mode="after")
@@ -302,13 +340,13 @@ class LedgerTransaction(BaseModel):
         """
         if entries:
             assert len(entries) >= 2, "ledger transaction must have 2 or more entries"
-            assert (
-                sum(x.amount * x.direction for x in entries) == 0
-            ), "ledger entries must balance"
+            assert sum(x.amount * x.direction for x in entries) == 0, (
+                "ledger entries must balance"
+            )
         return entries
 
-    def model_dump_mysql(self, *args, **kwargs) -> dict[str, Any]:
-        d = self.model_dump(mode="json", *args, **kwargs)
+    def model_dump_mysql(self, **kwargs) -> dict[str, Any]:
+        d = self.model_dump(mode="json", **kwargs)
         if "created" in d:
             d["created"] = self.created.replace(tzinfo=None)
         return d
@@ -316,7 +354,7 @@ class LedgerTransaction(BaseModel):
     def to_user_tx(
         self, user_account: LedgerAccount, product_id: str, payout_format: str
     ):
-        from generalresearch.models.thl.wallet import PayoutType
+        from generalresearch.models.thl.wallet.definitions import PayoutType
 
         d = self.model_dump(include={"created"})
         d["tx_type"] = self.metadata.get("tx_type")
@@ -401,7 +439,7 @@ class UserLedgerTransaction(BaseModel):
     # It is optional b/c we'll calculate this from the query
     balance_after: int | None = Field(default=None)
 
-    def create_url(self, product_id: str):
+    def create_url(self, product_id: str) -> str | None:
         raise NotImplementedError()
 
     @computed_field(
@@ -439,7 +477,7 @@ class UserLedgerTransactionUserPayout(UserLedgerTransaction):
         examples=["a3848e0a53d64f68a74ced5f61b6eb68"],
     )
 
-    def create_url(self, product_id: str):
+    def create_url(self, product_id: str) -> str | None:
         return f"https://fsb.generalresearch.com/{product_id}/cashout/{self.payout_id}/"
 
     @model_validator(mode="after")
@@ -467,7 +505,7 @@ class UserLedgerTransactionUserBonus(UserLedgerTransaction):
         default="Compensation Bonus",
     )
 
-    def create_url(self, product_id: str):
+    def create_url(self, product_id: str) -> str | None:
         return None
 
     @model_validator(mode="after")
@@ -505,7 +543,7 @@ class UserLedgerTransactionTaskComplete(UserLedgerTransaction):
         examples=["a3848e0a53d64f68a74ced5f61b6eb68"],
     )
 
-    def create_url(self, product_id: str):
+    def create_url(self, product_id: str) -> str | None:
         return f"https://fsb.generalresearch.com/{product_id}/status/{self.tsid}/"
 
     @model_validator(mode="after")
@@ -536,17 +574,15 @@ class UserLedgerTransactionTaskAdjustment(UserLedgerTransaction):
         examples=["a3848e0a53d64f68a74ced5f61b6eb68"],
     )
 
-    def create_url(self, product_id: str):
+    def create_url(self, product_id: str) -> str | None:
         return f"https://fsb.generalresearch.com/{product_id}/status/{self.tsid}/"
 
 
 UserLedgerTransactionType = Annotated[
-    Union[
-        UserLedgerTransactionUserPayout,
-        UserLedgerTransactionUserBonus,
-        UserLedgerTransactionTaskAdjustment,
-        UserLedgerTransactionTaskComplete,
-    ],
+    UserLedgerTransactionUserPayout
+    | UserLedgerTransactionUserBonus
+    | UserLedgerTransactionTaskAdjustment
+    | UserLedgerTransactionTaskComplete,
     Field(discriminator="tx_type"),
 ]
 

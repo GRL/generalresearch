@@ -1,44 +1,43 @@
-from datetime import datetime, timedelta, timezone
+from __future__ import annotations
+
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from itertools import product as iter_product
 from random import randint
-from typing import Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
+import dask.dataframe as dd
 import pandas as pd
 import pytest
 from dask.distributed import Client as DaskClient
 
 # noinspection PyUnresolvedReferences
-from distributed.utils_test import (
-    client_no_amm,
-)
 from faker import Faker
 
-from generalresearch.incite.collections.thl_web import LedgerDFCollection
-from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
 from generalresearch.incite.schemas.mergers.pop_ledger import (
     numerical_col_names,
 )
-from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.models.thl.finance import (
     BusinessBalances,
     POPFinancial,
     ProductBalances,
 )
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.session import Session
-from generalresearch.models.thl.user import User
-from test_utils.incite.collections.conftest import ledger_collection
-from test_utils.incite.mergers.conftest import pop_ledger_merge
-from test_utils.managers.ledger.conftest import (
-    session_with_tx_factory,
-)
+
+if TYPE_CHECKING:
+    from generalresearch.incite.collections.thl_web import LedgerDFCollection
+    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.thl.ledger import LedgerAccount
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
 
 fake = Faker()
 
 
 class TestProductBalanceInitialize:
-
     def test_unknown_fields(self):
         with pytest.raises(expected_exception=ValueError):
             ProductBalances.model_validate(
@@ -210,6 +209,8 @@ class TestProductBalanceInitialize:
         # Confirm the @property computed fields show up in openapi. I don't
         #   know how to do that yet... so this is check to confirm they're
         #   known computed fields for now
+
+        assert isinstance(instance, ProductBalances)
         computed_fields = list(instance.model_computed_fields.keys())
         assert "payout" in computed_fields
         assert "adjustment" in computed_fields
@@ -244,7 +245,6 @@ class TestProductBalanceInitialize:
 
 
 class TestBusinessBalanceInitialize:
-
     def test_validate_product_ids(self):
         instance1 = ProductBalances.model_validate(
             {"bp_payment.CREDIT": 500, "bp_adjustment.DEBIT": 40}
@@ -653,37 +653,37 @@ class TestBusinessBalanceInitialize:
 
 
 @pytest.mark.parametrize(
-    argnames="offset, duration",
+    argnames="duration",
     argvalues=list(
         iter_product(
-            ["12h", "2D"],
             [timedelta(days=2), timedelta(days=5)],
         )
     ),
 )
 class TestProductFinanceData:
-
     def test_base(
         self,
+        ledger_collection: LedgerDFCollection,
+        pop_ledger_merge,
+        client_no_amm,
+        duration: timedelta,
         product: Product,
         user_factory: Callable[..., User],
         start: datetime,
-        duration: timedelta,
-        thl_lm: ThlLedgerManager,
+        thl_ledger_manager: ThlLedgerManager,
+        session_with_tx_factory: Callable[..., None],
     ):
 
         # -- Build & Setup
-        # assert ledger_collection.start is None
-        # assert ledger_collection.offset is None
         u: User = user_factory(product=product, created=ledger_collection.start)
+        assert u.product
 
         for item in ledger_collection.items:
-
             for _ in range(3):
                 rand_item_time = fake.date_time_between(
                     start_date=item.start,
                     end_date=item.finish,
-                    tzinfo=timezone.utc,
+                    tzinfo=UTC,
                 )
                 session_with_tx_factory(started=rand_item_time, user=u)
 
@@ -697,10 +697,9 @@ class TestProductFinanceData:
 
         item_finishes = [i.finish for i in ledger_collection.items]
         item_finishes.sort(reverse=True)
-        last_item_finish = item_finishes[0]
 
         # --
-        account = thl_lm.get_account_or_create_bp_wallet(product=u.product)
+        account = thl_ledger_manager.get_account_or_create_bp_wallet(product=u.product)
 
         ddf = pop_ledger_merge.ddf(
             force_rr_latest=False,
@@ -732,17 +731,7 @@ class TestProductFinanceData:
         assert len(res) == len({i.time for i in res})
 
 
-@pytest.mark.parametrize(
-    argnames="offset, duration",
-    argvalues=list(
-        iter_product(
-            ["12h", "2D"],
-            [timedelta(days=2), timedelta(days=5)],
-        )
-    ),
-)
 class TestPOPFinancialData:
-
     def test_base(
         self,
         client_no_amm: DaskClient,
@@ -751,19 +740,16 @@ class TestPOPFinancialData:
         user_factory: Callable[..., User],
         product: Product,
         start: datetime,
-        duration: timedelta,
-        create_main_accounts,
+        create_main_accounts: Callable[..., None],
         session_with_tx_factory: Callable[..., Session],
-        thl_lm: ThlLedgerManager,
-        delete_df_collection,
-        delete_ledger_db,
+        thl_ledger_manager: ThlLedgerManager,
+        delete_df_collection: Callable[..., None],
+        delete_ledger_db: Callable[..., None],
     ):
         # -- Build & Setup
         delete_ledger_db()
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
-        # assert ledger_collection.start is None
-        # assert ledger_collection.offset is None
 
         users = []
         for _ in range(5):
@@ -773,7 +759,7 @@ class TestPOPFinancialData:
                 rand_item_time = fake.date_time_between(
                     start_date=item.start,
                     end_date=item.finish,
-                    tzinfo=timezone.utc,
+                    tzinfo=UTC,
                 )
 
                 session_with_tx_factory(started=rand_item_time, user=u)
@@ -792,8 +778,10 @@ class TestPOPFinancialData:
         last_item_finish = item_finishes[0]
 
         accounts = []
-        for user in users:
-            account = thl_lm.get_account_or_create_bp_wallet(product=u.product)
+        for _u in users:
+            account = thl_ledger_manager.get_account_or_create_bp_wallet(
+                product=_u.product
+            )
             accounts.append(account)
         account_ids = [a.uuid for a in accounts]
 
@@ -809,6 +797,7 @@ class TestPOPFinancialData:
                 ("time_idx", "<", last_item_finish),
             ],
         )
+
         df: pd.DataFrame = client_no_amm.compute(collections=ddf, sync=True)
 
         df = df.groupby([pd.Grouper(key="time_idx", freq="D"), "account_id"]).sum()
@@ -821,25 +810,13 @@ class TestPOPFinancialData:
             # This does not return the AccountID, it's the Product ID
             assert i.product_id in [u.product_id for u in users]
 
-        # 1 Product, multiple Users
+        # 1 product: Product, multiple Users
         assert len(users) == len(accounts)
-
-        # We group on days, and duration is a parameter to parametrize
-        assert isinstance(duration, timedelta)
 
         # -- Teardown
         delete_df_collection(ledger_collection)
 
 
-@pytest.mark.parametrize(
-    argnames="offset, duration",
-    argvalues=list(
-        iter_product(
-            ["12h", "1D"],
-            [timedelta(days=2), timedelta(days=3)],
-        )
-    ),
-)
 class TestBusinessBalanceData:
     def test_from_pandas(
         self,
@@ -848,15 +825,14 @@ class TestBusinessBalanceData:
         pop_ledger_merge: PopLedgerMerge,
         user_factory: Callable[..., User],
         product: Product,
-        create_main_accounts,
-        thl_lm: ThlLedgerManager,
-        thl_web_rr,
-        delete_df_collection,
-        delete_ledger_db,
+        create_main_accounts: Callable[..., None],
+        thl_ledger_manager: ThlLedgerManager,
+        product_manager: ProductManager,
+        delete_df_collection: Callable[..., None],
+        delete_ledger_db: Callable[..., None],
         session_with_tx_factory: Callable[..., Session],
-        rm_ledger_collection,
+        rm_ledger_collection: Callable[..., None],
     ):
-        from generalresearch.models.thl.ledger import LedgerAccount
 
         delete_ledger_db()
         create_main_accounts()
@@ -870,7 +846,7 @@ class TestBusinessBalanceData:
                 item_time = fake.date_time_between(
                     start_date=item.start,
                     end_date=item.finish,
-                    tzinfo=timezone.utc,
+                    tzinfo=UTC,
                 )
                 session_with_tx_factory(started=item_time, user=u)
                 item.initial_load(overwrite=True)
@@ -880,7 +856,9 @@ class TestBusinessBalanceData:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         # assert pop_ledger_merge.progress.has_archive.eq(True).all()
 
-        account: LedgerAccount = thl_lm.get_account_or_create_bp_wallet(product=product)
+        account: LedgerAccount = thl_ledger_manager.get_account_or_create_bp_wallet(
+            product=product
+        )
 
         ddf = pop_ledger_merge.ddf(
             force_rr_latest=False,
@@ -888,15 +866,18 @@ class TestBusinessBalanceData:
             columns=numerical_col_names + ["account_id"],
             filters=[("account_id", "in", [account.uuid])],
         )
+        assert isinstance(ddf, dd.DataFrame)
         ddf = ddf.groupby("account_id").sum()
         df: pd.DataFrame = client_no_amm.compute(collections=ddf, sync=True)
 
         assert isinstance(df, pd.DataFrame)
 
         instance = BusinessBalances.from_pandas(
-            input_data=df, accounts=[account], thl_pg_config=thl_web_rr
+            product_manager=product_manager,
+            input_data=df,
+            accounts=[account],
         )
-        balance: int = thl_lm.get_account_balance(account=account)
+        balance: int = thl_ledger_manager.get_account_balance(account=account)
 
         assert instance.balance == balance
         assert instance.net == balance

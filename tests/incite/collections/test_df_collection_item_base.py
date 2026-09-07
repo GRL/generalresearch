@@ -1,30 +1,30 @@
-from datetime import datetime, timezone
+from __future__ import annotations
+
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.incite.collections import (
+from generalresearch.incite.collections.base import (
+    MYSQL_ALLOWED_COLL_TYPES,
     DFCollection,
     DFCollectionItem,
     DFCollectionType,
 )
-from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
+    from generalresearch.pg_helper import PostgresConfig
 
-df_collection_types = [e for e in DFCollectionType if e is not DFCollectionType.TEST]
 
-
-@pytest.mark.parametrize("df_coll_type", df_collection_types)
+@pytest.mark.parametrize("df_coll_type", MYSQL_ALLOWED_COLL_TYPES)
 class TestDFCollectionItemBase:
-
-    def test_init(self, mnt_filepath: "GRLDatasets", df_coll_type):
+    def test_init(self, mnt_filepath: GRLDatasets, df_coll_type: DFCollectionType):
         collection = DFCollection(
             data_type=df_coll_type,
-            offset="100d",
-            start=datetime(year=1800, month=1, day=1, tzinfo=timezone.utc),
-            finished=datetime(year=1900, month=1, day=1, tzinfo=timezone.utc),
+            offset="100D",
+            start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
+            finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),
         )
 
@@ -34,23 +34,23 @@ class TestDFCollectionItemBase:
         assert isinstance(item, DFCollectionItem)
 
 
-@pytest.mark.parametrize("df_coll_type", df_collection_types)
+@pytest.mark.parametrize("df_coll_type", MYSQL_ALLOWED_COLL_TYPES)
 class TestDFCollectionItemProperties:
-
     @pytest.mark.skip
-    def test_filename(self, df_coll_type):
+    def test_filename(self, df_coll_type: DFCollectionType):
         pass
 
 
-@pytest.mark.parametrize("df_coll_type", df_collection_types)
+@pytest.mark.parametrize("df_coll_type", MYSQL_ALLOWED_COLL_TYPES)
 class TestDFCollectionItemMethods:
-
-    def test_has_mysql_false(self, mnt_filepath: "GRLDatasets", df_coll_type):
+    def test_has_mysql_false(
+        self, mnt_filepath: GRLDatasets, df_coll_type: DFCollectionType
+    ):
         collection = DFCollection(
             data_type=df_coll_type,
-            offset="100d",
-            start=datetime(year=1800, month=1, day=1, tzinfo=timezone.utc),
-            finished=datetime(year=1900, month=1, day=1, tzinfo=timezone.utc),
+            offset="100D",
+            start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
+            finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),
         )
 
@@ -58,13 +58,16 @@ class TestDFCollectionItemMethods:
         assert not instance1.has_mysql()
 
     def test_has_mysql_true(
-        self, thl_web_rr: PostgresConfig, mnt_filepath: "GRLDatasets", df_coll_type
+        self,
+        thl_web_rr: PostgresConfig,
+        mnt_filepath: GRLDatasets,
+        df_coll_type: DFCollectionType,
     ):
         collection = DFCollection(
             data_type=df_coll_type,
-            offset="100d",
-            start=datetime(year=1800, month=1, day=1, tzinfo=timezone.utc),
-            finished=datetime(year=1900, month=1, day=1, tzinfo=timezone.utc),
+            offset="100D",
+            start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
+            finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),
             pg_config=thl_web_rr,
         )
@@ -74,5 +77,5 @@ class TestDFCollectionItemMethods:
         assert instance2.has_mysql()
 
     @pytest.mark.skip
-    def test_update_partial_archive(self, df_coll_type):
+    def test_update_partial_archive(self, df_coll_type: DFCollectionType):
         pass

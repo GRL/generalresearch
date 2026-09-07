@@ -1,28 +1,42 @@
-from datetime import timedelta
+from __future__ import annotations
+
+from collections.abc import Callable
+from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from faker import Faker
 
-from generalresearch.models import DeviceType
+from generalresearch.models.definitions import DeviceType
 from generalresearch.models.legacy.bucket import Bucket
 from generalresearch.models.thl.definitions import (
+    SessionStatusCode2,
     Status,
     StatusCode1,
-    SessionStatusCode2,
 )
-from test_utils.models.conftest import user
+from generalresearch.models.thl.session import Session
+from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.models.gr.business import Business
+    from generalresearch.models.gr.team import Team
+    from generalresearch.models.thl.product import Product
+    from generalresearch.pg_helper import PostgresConfig
 
 fake = Faker()
 
 
 class TestSessionManager:
-    def test_create_session(self, session_manager, user, utc_hour_ago):
+    def test_create_session(
+        self, session_manager: SessionManager, user: User, utc_hour_ago: datetime
+    ):
         bucket = Bucket(
             loi_min=timedelta(seconds=60),
             loi_max=timedelta(seconds=120),
-            user_payout_min=Decimal("1"),
-            user_payout_max=Decimal("2"),
+            user_payout_min=Decimal(1),
+            user_payout_max=Decimal(2),
         )
 
         s1 = session_manager.create(
@@ -40,7 +54,9 @@ class TestSessionManager:
         s2 = session_manager.get_from_uuid(session_uuid=s1.uuid)
         assert s1 == s2
 
-    def test_finish_with_status(self, session_manager, user, utc_hour_ago):
+    def test_finish_with_status(
+        self, session_manager: SessionManager, user: User, utc_hour_ago: datetime
+    ):
         uuid_1 = uuid4().hex
         session = session_manager.create(
             started=utc_hour_ago, user=user, uuid_id=uuid_1
@@ -60,7 +76,7 @@ class TestSessionManager:
 
 class TestSessionManagerFilter:
 
-    def test_base(self, session_manager, user, utc_now):
+    def test_base(self, session_manager: SessionManager, user: User, utc_now: datetime):
         uuid_id = uuid4().hex
         session_manager.create(started=utc_now, user=user, uuid_id=uuid_id)
         res = session_manager.filter(limit=1)
@@ -68,7 +84,9 @@ class TestSessionManagerFilter:
         assert isinstance(res, list)
         assert res[0].uuid == uuid_id
 
-    def test_user(self, session_manager, user, utc_hour_ago):
+    def test_user(
+        self, session_manager: SessionManager, user: User, utc_hour_ago: datetime
+    ):
         session_manager.create(started=utc_hour_ago, user=user, uuid_id=uuid4().hex)
         session_manager.create(started=utc_hour_ago, user=user, uuid_id=uuid4().hex)
 
@@ -76,14 +94,16 @@ class TestSessionManagerFilter:
         assert len(res) == 2
 
     def test_product(
-        self, product_factory, user_factory, session_manager, user, utc_hour_ago
+        self,
+        product_factory: Callable[..., Product],
+        user_factory: Callable[..., User],
+        session_manager: SessionManager,
+        utc_hour_ago: datetime,
     ):
-        from generalresearch.models.thl.session import Session
-        from generalresearch.models.thl.user import User
 
         p1 = product_factory()
 
-        for n in range(5):
+        for _ in range(5):
             u = user_factory(product=p1)
             session_manager.create(started=utc_hour_ago, user=u, uuid_id=uuid4().hex)
 
@@ -96,42 +116,40 @@ class TestSessionManagerFilter:
 
     def test_team(
         self,
-        product_factory,
-        user_factory,
-        team,
-        session_manager,
-        user,
-        utc_hour_ago,
-        thl_web_rr,
+        product_factory: Callable[..., Product],
+        user_factory: Callable[..., User],
+        gr_team: Team,
+        session_manager: SessionManager,
+        utc_hour_ago: datetime,
+        thl_web_rr: PostgresConfig,
     ):
-        p1 = product_factory(team=team)
+        p1 = product_factory(team=gr_team)
 
-        for n in range(5):
+        for _ in range(5):
             u = user_factory(product=p1)
             session_manager.create(started=utc_hour_ago, user=u, uuid_id=uuid4().hex)
 
-        team.prefetch_products(thl_pg_config=thl_web_rr)
-        assert len(team.product_uuids) == 1
-        res = session_manager.filter(product_uuids=team.product_uuids)
+        gr_team.prefetch_products(thl_pg_config=thl_web_rr)
+        assert len(gr_team.product_uuids) == 1
+        res = session_manager.filter(product_uuids=gr_team.product_uuids)
         assert len(res) == 5
 
     def test_business(
         self,
-        product_factory,
-        business,
-        user_factory,
-        session_manager,
-        user,
-        utc_hour_ago,
-        thl_web_rr,
+        product_factory: Callable[..., Product],
+        gr_business: Business,
+        user_factory: Callable[..., User],
+        session_manager: SessionManager,
+        utc_hour_ago: datetime,
+        thl_web_rr: PostgresConfig,
     ):
-        p1 = product_factory(business=business)
+        p1 = product_factory(business=gr_business)
 
-        for n in range(5):
+        for _ in range(5):
             u = user_factory(product=p1)
             session_manager.create(started=utc_hour_ago, user=u, uuid_id=uuid4().hex)
 
-        business.prefetch_products(thl_pg_config=thl_web_rr)
-        assert len(business.product_uuids) == 1
-        res = session_manager.filter(product_uuids=business.product_uuids)
+        gr_business.prefetch_products(thl_pg_config=thl_web_rr)
+        assert len(gr_business.product_uuids) == 1
+        res = session_manager.filter(product_uuids=gr_business.product_uuids)
         assert len(res) == 5

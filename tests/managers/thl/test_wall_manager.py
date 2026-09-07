@@ -1,25 +1,39 @@
-from datetime import datetime, timezone, timedelta
+from __future__ import annotations
+
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
+from pydantic import PositiveInt
 
-from generalresearch.models import Source
-from generalresearch.models.thl.session import (
+from generalresearch.models.definitions import Source
+from generalresearch.models.thl.definitions import (
     ReportValue,
     Status,
     StatusCode1,
 )
-from test_utils.models.conftest import user, session
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.session import SessionManager
+    from generalresearch.managers.thl.wall import WallCacheManager, WallManager
+    from generalresearch.models.thl.session import Session, Wall
+    from generalresearch.models.thl.user import User
 
 
 class TestWallManager:
 
     @pytest.mark.parametrize("wall_count", [1, 2, 5, 10, 50, 99])
     def test_get_wall_events(
-        self, wall_manager, session_factory, user, wall_count, utc_hour_ago
+        self,
+        wall_manager: WallManager,
+        session_factory: Callable[..., Session],
+        user: User,
+        wall_count: PositiveInt,
+        utc_hour_ago: datetime,
     ):
-        from generalresearch.models.thl.session import Session
 
         s1: Session = session_factory(
             user=user, wall_count=wall_count, started=utc_hour_ago
@@ -63,12 +77,15 @@ class TestWallManager:
         ]
 
     def test_get_wall_events_list_input(
-        self, wall_manager, session_factory, user, utc_hour_ago
+        self,
+        wall_manager: WallManager,
+        session_factory: Callable[..., Session],
+        user: User,
+        utc_hour_ago: datetime,
     ):
-        from generalresearch.models.thl.session import Session
 
         session_ids = []
-        for idx in range(10):
+        for _ in range(10):
             s: Session = session_factory(user=user, wall_count=5, started=utc_hour_ago)
             session_ids.append(s.id)
 
@@ -78,21 +95,21 @@ class TestWallManager:
         assert isinstance(res, list)
         assert len(res) == 50
 
-        res1 = list(set([w.session_id for w in res]))
+        res1 = list({w.session_id for w in res})
         res1.sort()
 
         assert session_ids == res1
 
-    def test_create_wall(self, wall_manager, session_manager, user, session):
+    def test_create_wall(self, wall_manager: WallManager, user: User, session: Session):
         w = wall_manager.create(
             session_id=session.id,
             user_id=user.user_id,
             uuid_id=uuid4().hex,
-            started=datetime.now(tz=timezone.utc),
+            started=datetime.now(tz=UTC),
             source=Source.DYNATA,
             buyer_id="123",
             req_survey_id="456",
-            req_cpi=Decimal("1"),
+            req_cpi=Decimal(1),
         )
 
         assert w is not None
@@ -100,7 +117,11 @@ class TestWallManager:
         assert w == w2
 
     def test_report_wall_abandon(
-        self, wall_manager, session_manager, user, session, utc_hour_ago
+        self,
+        wall_manager: WallManager,
+        user: User,
+        session: Session,
+        utc_hour_ago: datetime,
     ):
         w1 = wall_manager.create(
             session_id=session.id,
@@ -110,7 +131,7 @@ class TestWallManager:
             source=Source.DYNATA,
             buyer_id="123",
             req_survey_id="456",
-            req_cpi=Decimal("1"),
+            req_cpi=Decimal(1),
         )
         wall_manager.report(
             wall=w1,
@@ -141,7 +162,12 @@ class TestWallManager:
         # the status and finished get updated
 
     def test_report_wall(
-        self, wall_manager, session_manager, user, session, utc_hour_ago
+        self,
+        wall_manager: WallManager,
+        session_manager: SessionManager,
+        user: User,
+        session: Session,
+        utc_hour_ago: datetime,
     ):
         w1 = wall_manager.create(
             session_id=session.id,
@@ -151,7 +177,7 @@ class TestWallManager:
             source=Source.DYNATA,
             buyer_id="123",
             req_survey_id="456",
-            req_cpi=Decimal("1"),
+            req_cpi=Decimal(1),
         )
 
         finish_ts = utc_hour_ago + timedelta(minutes=10)
@@ -178,11 +204,15 @@ class TestWallManager:
         assert "This survey blows!" == w2.report_notes
 
     def test_filter_wall_attempts(
-        self, wall_manager, session_manager, user, session, utc_hour_ago
+        self,
+        wall_manager: WallManager,
+        user: User,
+        session: Session,
+        utc_hour_ago: datetime,
     ):
         res = wall_manager.filter_wall_attempts(user_id=user.user_id)
         assert len(res) == 0
-        w1 = wall_manager.create(
+        wall_manager.create(
             session_id=session.id,
             user_id=user.user_id,
             uuid_id=uuid4().hex,
@@ -190,11 +220,11 @@ class TestWallManager:
             source=Source.DYNATA,
             buyer_id="123",
             req_survey_id="456",
-            req_cpi=Decimal("1"),
+            req_cpi=Decimal(1),
         )
         res = wall_manager.filter_wall_attempts(user_id=user.user_id)
         assert len(res) == 1
-        w2 = wall_manager.create(
+        wall_manager.create(
             session_id=session.id,
             user_id=user.user_id,
             uuid_id=uuid4().hex,
@@ -202,7 +232,7 @@ class TestWallManager:
             source=Source.DYNATA,
             buyer_id="123",
             req_survey_id="555",
-            req_cpi=Decimal("1"),
+            req_cpi=Decimal(1),
         )
         res = wall_manager.filter_wall_attempts(user_id=user.user_id)
         assert len(res) == 2
@@ -210,21 +240,25 @@ class TestWallManager:
 
 class TestWallCacheManager:
 
-    def test_get_attempts_none(self, wall_cache_manager, user):
+    def test_get_attempts_none(self, wall_cache_manager: WallCacheManager, user: User):
         attempts = wall_cache_manager.get_attempts(user.user_id)
         assert len(attempts) == 0
 
     def test_get_wall_events(
-        self, wall_cache_manager, wall_manager, session_manager, user
+        self,
+        wall_cache_manager: WallCacheManager,
+        user: User,
+        bare_session_factory: Callable[..., Session],
+        wall_factory: Callable[..., Wall],
     ):
-        start1 = datetime.now(timezone.utc) - timedelta(hours=3)
-        start2 = datetime.now(timezone.utc) - timedelta(hours=2)
-        start3 = datetime.now(timezone.utc) - timedelta(hours=1)
+        start1 = datetime.now(UTC) - timedelta(hours=3)
+        start2 = datetime.now(UTC) - timedelta(hours=2)
+        start3 = datetime.now(UTC) - timedelta(hours=1)
 
-        session = session_manager.create_dummy(started=start1, user=user)
-        wall1 = wall_manager.create_dummy(
+        session = bare_session_factory(started=start1, user=user)
+        wall_factory(
             session_id=session.id,
-            user_id=session.user_id,
+            user=session.user,
             started=start1,
             req_cpi=Decimal("1.23"),
             req_survey_id="11111",
@@ -238,9 +272,9 @@ class TestWallCacheManager:
         attempts = wall_cache_manager.get_attempts(user_id=user.user_id)
         assert len(attempts) == 1
 
-        wall2 = wall_manager.create_dummy(
+        wall_factory(
             session_id=session.id,
-            user_id=session.user_id,
+            user=session.user,
             started=start2,
             req_cpi=Decimal("1.23"),
             req_survey_id="22222",
@@ -264,10 +298,10 @@ class TestWallCacheManager:
         attempts10000 = [attempts[0]] * 6000
         wall_cache_manager.update_attempts_redis_(attempts10000, user_id=user.user_id)
 
-        session = session_manager.create_dummy(started=start3, user=user)
-        wall3 = wall_manager.create_dummy(
+        session = bare_session_factory(started=start3, user=user)
+        wall_factory(
             session_id=session.id,
-            user_id=session.user_id,
+            user=session.user,
             started=start3,
             req_cpi=Decimal("1.23"),
             req_survey_id="33333",
@@ -279,5 +313,5 @@ class TestWallCacheManager:
         redis_key = wall_cache_manager.get_cache_key_(user_id=user.user_id)
         assert wall_cache_manager.redis_client.llen(redis_key) == 5000
 
-        assert len(attempts) == 5000
+        assert len(attempts) == 5_000
         assert attempts[0].req_survey_id == "33333"

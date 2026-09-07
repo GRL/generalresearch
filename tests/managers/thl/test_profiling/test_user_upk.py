@@ -1,8 +1,12 @@
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
-from generalresearch.managers.thl.profiling.user_upk import UserUpkManager
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.profiling.user_upk import UserUpkManager
+    from generalresearch.models.thl.user import User
 
-now = datetime.now(tz=timezone.utc)
+now = datetime.now(tz=UTC)
 base = {
     "country_iso": "us",
     "language_iso": "eng",
@@ -21,11 +25,25 @@ for a in upk_ans_dict:
 
 class TestUserUpkManager:
 
-    def test_user_upk_empty(self, user_upk_manager: UserUpkManager, upk_data, user):
+    def test_user_upk_empty(
+        self,
+        user_upk_manager: UserUpkManager,
+        upk_data: Callable[..., None],
+        user: User,
+    ):
+        upk_data()
+
         res = user_upk_manager.get_user_upk_mysql(user_id=user.user_id)
         assert len(res) == 0
 
-    def test_user_upk(self, user_upk_manager: UserUpkManager, upk_data, user):
+    def test_user_upk(
+        self,
+        user_upk_manager: UserUpkManager,
+        upk_data: Callable[..., None],
+        user: User,
+    ):
+        upk_data()
+
         for x in upk_ans_dict:
             x["user_id"] = user.user_id
         user_upk = user_upk_manager.populate_user_upk_from_dict(upk_ans_dict)

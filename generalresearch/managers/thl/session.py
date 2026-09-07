@@ -1,29 +1,23 @@
 from __future__ import annotations
 
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from faker import Faker
 from psycopg import sql
 from pydantic import NonNegativeInt, PositiveInt
 
-from generalresearch.managers import parse_order_by
 from generalresearch.managers.base import (
     Permission,
     PostgresManager,
 )
 from generalresearch.managers.thl.product import ProductManager
-from generalresearch.models import DeviceType
+from generalresearch.managers.utils import parse_order_by
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.legacy.bucket import Bucket
-from generalresearch.models.thl.definitions import (
-    SessionStatusCode2,
-    Status,
-    StatusCode1,
-)
 from generalresearch.models.thl.session import (
     Session,
     Wall,
@@ -33,6 +27,15 @@ from generalresearch.models.thl.task_status import (
     TaskStatusResponse,
 )
 from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+
+    from generalresearch.models.definitions import DeviceType
+    from generalresearch.models.thl.definitions import (
+        SessionStatusCode2,
+        Status,
+        StatusCode1,
+    )
 
 fake = Faker()
 
@@ -194,7 +197,7 @@ class SessionManager(PostgresManager):
         # validation errors. There doesn't seem to be a clean way of doing this.
         # model_copy with update doesn't trigger the validators, so we
         # re-run model_validate after
-        finished = finished if finished else datetime.now(tz=timezone.utc)
+        finished = finished if finished else datetime.now(tz=UTC)
         session.update(
             status=status,
             status_code_1=status_code_1,
@@ -455,33 +458,31 @@ class SessionManager(PostgresManager):
         params = {}
 
         if started_before or started_after:
-            started_after = started_after or datetime(2017, 1, 1, tzinfo=timezone.utc)
-            started_before = started_before or datetime.now(tz=timezone.utc)
-            assert started_after.tzinfo == timezone.utc, (
-                "started_after must be tz-aware as UTC"
-            )
-            assert started_before.tzinfo == timezone.utc, (
-                "started_before must be tz-aware as UTC"
-            )
-            assert started_after < started_before, (
-                "started_after must be before started_before"
-            )
+            started_after = started_after or datetime(2017, 1, 1, tzinfo=UTC)
+            started_before = started_before or datetime.now(tz=UTC)
+            assert started_after.tzinfo == UTC, "started_after must be tz-aware as UTC"
+            assert (
+                started_before.tzinfo == UTC
+            ), "started_before must be tz-aware as UTC"
+            assert (
+                started_after < started_before
+            ), "started_after must be before started_before"
             filters.append("started BETWEEN %(started_after)s AND %(started_before)s")
             params["started_after"] = started_after
             params["started_before"] = started_before
 
         if adjusted_before or adjusted_after:
-            adjusted_after = adjusted_after or datetime(2017, 1, 1, tzinfo=timezone.utc)
-            adjusted_before = adjusted_before or datetime.now(tz=timezone.utc)
-            assert adjusted_after.tzinfo == timezone.utc, (
-                "adjusted_after must be tz-aware as UTC"
-            )
-            assert adjusted_before.tzinfo == timezone.utc, (
-                "adjusted_before must be tz-aware as UTC"
-            )
-            assert adjusted_after < adjusted_before, (
-                "adjusted_after must be before adjusted_before"
-            )
+            adjusted_after = adjusted_after or datetime(2017, 1, 1, tzinfo=UTC)
+            adjusted_before = adjusted_before or datetime.now(tz=UTC)
+            assert (
+                adjusted_after.tzinfo == UTC
+            ), "adjusted_after must be tz-aware as UTC"
+            assert (
+                adjusted_before.tzinfo == UTC
+            ), "adjusted_before must be tz-aware as UTC"
+            assert (
+                adjusted_after < adjusted_before
+            ), "adjusted_after must be before adjusted_before"
             filters.append(
                 "adjusted_timestamp BETWEEN %(adjusted_after)s AND %(adjusted_before)s"
             )

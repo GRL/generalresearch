@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import (
@@ -12,18 +12,17 @@ from pydantic import (
     ConfigDict,
     Field,
     PositiveInt,
+    ValidationError,
     field_validator,
     model_validator,
 )
 
-from generalresearch.models import MAX_INT32, Source
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.profiling.upk_question import (
-        UpkQuestion,
-    )
+from generalresearch.models.thl.profiling.upk_question import (
+    UpkQuestion,
+)
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -86,7 +85,7 @@ class RepDataQuestionOption(BaseModel):
     order: int = Field()
 
 
-class RepDataQuestionType(str, Enum):
+class RepDataQuestionType(StrEnum):
     """
     {'Derived', 'Multi Punch', 'Numeric - Open End', 'Single Punch', 'Zip Code'}
     """
@@ -142,6 +141,7 @@ class RepDataQuestion(MarketplaceQuestion):
 
     @property
     def internal_id(self) -> str:
+        assert self.lucid_id
         return self.lucid_id
 
     @field_validator("question_id", mode="before")
@@ -167,7 +167,7 @@ class RepDataQuestion(MarketplaceQuestion):
         """
         try:
             return cls._from_api(d, country_iso, language_iso)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse question: {d}. {e}")
             return None
 

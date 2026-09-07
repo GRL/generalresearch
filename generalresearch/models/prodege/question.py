@@ -3,23 +3,28 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PositiveInt,
+    ValidationError,
+    model_validator,
+)
 
 from generalresearch.locales import Localelator
-from generalresearch.models import MAX_INT32, Source
 from generalresearch.models.custom_types import AwareDatetimeISO
+from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.models.prodege import ProdegeQuestionIdType
 from generalresearch.models.thl.profiling.marketplace import MarketplaceQuestion
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.profiling.upk_question import (
-        UpkQuestion,
-    )
+from generalresearch.models.thl.profiling.upk_question import (
+    UpkQuestion,
+)
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -43,9 +48,7 @@ class ProdegeUserQuestionAnswer(BaseModel):
 
     # This may be a pipe-separated string if the question_type is multi. regex means any chars except capital letters
     option_id: str = Field(pattern=r"^[^A-Z]*$")
-    created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    created: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # ISO 3166-1 alpha-2 (two-letter codes, lowercase)
     country_iso: str = Field(
@@ -92,7 +95,7 @@ class ProdegeQuestionOption(BaseModel):
     is_exclusive: bool = Field(default=False)
 
 
-class ProdegeQuestionType(str, Enum):
+class ProdegeQuestionType(StrEnum):
     """
     {'Derived', 'Multi Punch', 'Numeric - Open End', 'Single Punch', 'Zip Code'}
     """
@@ -145,7 +148,7 @@ class ProdegeQuestion(MarketplaceQuestion):
         """
         try:
             return cls._from_api(d, country_iso)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse question: {d}. {e}")
             return None
 

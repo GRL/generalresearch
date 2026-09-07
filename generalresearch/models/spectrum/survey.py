@@ -2,16 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import timezone
+from datetime import UTC
 from decimal import Decimal
-from typing import Any, Literal, Type
+from typing import Any, Literal, Self
 
 from more_itertools import flatten
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
-from typing_extensions import Self
 
 from generalresearch.locales import Localelator
-from generalresearch.models import Source, TaskCalculationType
 from generalresearch.models.custom_types import (
     AlphaNumStr,
     AlphaNumStrSet,
@@ -19,6 +17,7 @@ from generalresearch.models.custom_types import (
     CoercedStr,
     UUIDStrSet,
 )
+from generalresearch.models.definitions import Source, TaskCalculationType
 from generalresearch.models.spectrum import SpectrumStatus
 from generalresearch.models.thl.demographics import Gender
 from generalresearch.models.thl.survey import MarketplaceTask
@@ -56,7 +55,7 @@ class SpectrumCondition(MarketplaceCondition):
             try:
                 values = [tuple(map(int, v.split("-"))) for v in self.values]
                 assert all(len(x) == 2 for x in values)
-            except (ValueError, AssertionError):
+            except ValueError, AssertionError:
                 return self
             self.values = sorted(
                 {str(val) for tupl in values for val in range(tupl[0], tupl[1] + 1)}
@@ -76,8 +75,7 @@ class SpectrumCondition(MarketplaceCondition):
                     rs["from"] = round(rs["from"] / 12)
                     rs["to"] = round(rs["to"] / 12)
             d["values"] = [
-                "{0}-{1}".format(rs["from"] or "inf", rs["to"] or "inf")
-                for rs in d["range_sets"]
+                f"{rs['from'] or 'inf'}-{rs['to'] or 'inf'}" for rs in d["range_sets"]
             ]
             d["value_type"] = ConditionValueType.RANGE
             return cls.model_validate(d)
@@ -104,7 +102,7 @@ class SpectrumQuota(BaseModel):
     # There is no explicit status. The quota is closed if the count is 0
 
     def __hash__(self) -> int:
-        return hash(tuple((tuple(self.condition_hashes), self.remaining_count)))
+        return hash((tuple(self.condition_hashes), self.remaining_count))
 
     @property
     def is_open(self) -> bool:
@@ -114,7 +112,7 @@ class SpectrumQuota(BaseModel):
         return self.remaining_count >= min_open_spots
 
     @classmethod
-    def from_api(cls, d: dict) -> Self:
+    def from_api(cls, d: dict[str, Any]) -> Self:
         d["remaining_count"] = d["quantities"]["currently_open"]
         return cls.model_validate(d)
 
@@ -297,7 +295,7 @@ class SpectrumSurvey(MarketplaceTask):
         return data
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return SpectrumCondition
 
     @property
@@ -324,7 +322,7 @@ class SpectrumSurvey(MarketplaceTask):
     def from_api(cls, d: dict[str, Any]) -> SpectrumSurvey | None:
         try:
             return cls._from_api(d)
-        except Exception as e:
+        except (AssertionError, ValueError) as e:
             logger.warning(f"Unable to parse survey: {d}. {e}")
             return None
 
@@ -337,7 +335,7 @@ class SpectrumSurvey(MarketplaceTask):
             else TaskCalculationType.COMPLETES
         )
 
-        d["conditions"] = dict()
+        d["conditions"] = {}
 
         # If we haven't hit the "detail" endpoint, we won't get this
         d.setdefault("qualifications", [])
@@ -389,16 +387,14 @@ class SpectrumSurvey(MarketplaceTask):
 
     @classmethod
     def from_db(cls, d: dict[str, Any]) -> Self:
-        d["created_api"] = d["created_api"].replace(tzinfo=timezone.utc)
-        d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
-        d["modified_api"] = d["modified_api"].replace(tzinfo=timezone.utc)
+        d["created_api"] = d["created_api"].replace(tzinfo=UTC)
+        d["updated"] = d["updated"].replace(tzinfo=UTC)
+        d["modified_api"] = d["modified_api"].replace(tzinfo=UTC)
         d["field_end_date"] = (
-            d["field_end_date"].replace(tzinfo=timezone.utc)
-            if d["field_end_date"]
-            else None
+            d["field_end_date"].replace(tzinfo=UTC) if d["field_end_date"] else None
         )
         d["project_last_complete_date"] = (
-            d["project_last_complete_date"].replace(tzinfo=timezone.utc)
+            d["project_last_complete_date"].replace(tzinfo=UTC)
             if d["project_last_complete_date"]
             else None
         )
@@ -457,7 +453,7 @@ class SpectrumSurvey(MarketplaceTask):
         quota_eval = {
             quota: quota.matches_soft(criteria_evaluation) for quota in self.quotas
         }
-        evals = set(g[0] for g in quota_eval.values())
+        evals = {g[0] for g in quota_eval.values()}
         if any(m[0] is True and not q.is_open for q, m in quota_eval.items()):
             # matched a full quota
             return False, set()

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
-from typing import Collection
+from collections.abc import Collection
+from typing import TYPE_CHECKING
 
 from generalresearch.models.cint.question import CintQuestion
-from generalresearch.sql_helper import SqlHelper
+
+if TYPE_CHECKING:
+    from generalresearch.sql_helper import SqlHelper
 
 
 def get_profiling_library(

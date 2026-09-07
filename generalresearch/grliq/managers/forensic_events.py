@@ -1,6 +1,7 @@
 import json
+from collections.abc import Collection
 from datetime import datetime
-from typing import Any, Collection, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from psycopg import sql
@@ -14,7 +15,10 @@ from generalresearch.grliq.models.events import (
     TimingData,
 )
 from generalresearch.models.custom_types import UUIDStr
-from generalresearch.pg_helper import PostgresConfig
+
+if TYPE_CHECKING:
+
+    from generalresearch.pg_helper import PostgresConfig
 
 
 class GrlIqEventManager:
@@ -25,7 +29,7 @@ class GrlIqEventManager:
     def update_or_create_timing(
         self,
         session_uuid: UUIDStr,
-        timing_data: Optional[TimingData] = None,
+        timing_data: TimingData | None = None,
     ) -> PositiveInt:
         data = {
             "session_uuid": session_uuid,
@@ -35,40 +39,35 @@ class GrlIqEventManager:
             "uuid": uuid4().hex,
         }
 
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (session_uuid,))
-                # Try to update first
-                update_query = sql.SQL(
-                    """
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (session_uuid,))
+            # Try to update first
+            update_query = sql.SQL("""
                     UPDATE grliq_forensicevents
                     SET timing_data = %(timing_data)s
                     WHERE session_uuid = %(session_uuid)s
                       AND timing_data IS NULL
                     RETURNING id
-                """
-                )
-                c.execute(update_query, data)
-                result = c.fetchone()
+                """)
+            c.execute(update_query, data)
+            result = c.fetchone()
 
-                if result:
-                    pk = result["id"]
-                    conn.commit()
-                    return pk
+            if result:
+                pk = result["id"]
+                conn.commit()
+                return pk
 
-                # No matching row to update. Do an insert
-                insert_query = sql.SQL(
-                    """
+            # No matching row to update. Do an insert
+            insert_query = sql.SQL("""
                     INSERT INTO grliq_forensicevents
                         (uuid, session_uuid, timing_data)
                     VALUES
                         (%(uuid)s, %(session_uuid)s, %(timing_data)s)
                     RETURNING id
-                """
-                )
-                c.execute(insert_query, data)
-                pk = c.fetchone()["id"]
-                conn.commit()
+                """)
+            c.execute(insert_query, data)
+            pk = c.fetchone()["id"]
+            conn.commit()
 
         return int(pk)
 
@@ -77,8 +76,8 @@ class GrlIqEventManager:
         session_uuid: UUIDStr,
         event_start: datetime,
         event_end: datetime,
-        events: Optional[List[Dict]] = None,
-        mouse_events: Optional[List[Dict]] = None,
+        events: list[dict] | None = None,
+        mouse_events: list[dict] | None = None,
     ) -> PositiveInt:
         data = {
             "uuid": uuid4().hex,
@@ -91,12 +90,10 @@ class GrlIqEventManager:
             "event_end": event_end,
         }
 
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (session_uuid,))
-                # Try to update first
-                update_query = sql.SQL(
-                    """
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (session_uuid,))
+            # Try to update first
+            update_query = sql.SQL("""
                     UPDATE grliq_forensicevents
                     SET events = %(events)s, 
                         mouse_events = %(mouse_events)s,
@@ -105,19 +102,17 @@ class GrlIqEventManager:
                     WHERE session_uuid = %(session_uuid)s
                       AND events IS NULL
                     RETURNING id
-                """
-                )
-                c.execute(update_query, data)
-                result = c.fetchone()
+                """)
+            c.execute(update_query, data)
+            result = c.fetchone()
 
-                if result:
-                    pk = result["id"]
-                    conn.commit()
-                    return pk
+            if result:
+                pk = result["id"]
+                conn.commit()
+                return pk
 
-                # No matching row to update. Do an insert
-                insert_query = sql.SQL(
-                    """
+            # No matching row to update. Do an insert
+            insert_query = sql.SQL("""
                      INSERT INTO grliq_forensicevents
                         (uuid, session_uuid, events, mouse_events,
                         event_start, event_end)
@@ -125,24 +120,23 @@ class GrlIqEventManager:
                         (%(uuid)s, %(session_uuid)s, %(events)s, %(mouse_events)s,
                         %(event_start)s, %(event_end)s)
                      RETURNING id
-                """
-                )
-                c.execute(insert_query, data)
-                pk = c.fetchone()["id"]
-                conn.commit()
+                """)
+            c.execute(insert_query, data)
+            pk = c.fetchone()["id"]
+            conn.commit()
 
         return int(pk)
 
     def filter(
         self,
-        select_str: Optional[str] = None,
-        session_uuid: Optional[str] = None,
-        session_uuids: Optional[Collection[str]] = None,
-        uuids: Optional[Collection[str]] = None,
-        started_since: Optional[datetime] = None,
-        limit: Optional[int] = None,
+        select_str: str | None = None,
+        session_uuid: str | None = None,
+        session_uuids: Collection[str] | None = None,
+        uuids: Collection[str] | None = None,
+        started_since: datetime | None = None,
+        limit: int | None = None,
         order_by: str = "event_start DESC",
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
 
         if not limit:
             limit = 100
@@ -174,10 +168,9 @@ class GrlIqEventManager:
         {filter_str}
         ORDER BY {order_by} LIMIT {limit}
         """
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query=query, params=params)
-                res = c.fetchall()
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query=query, params=params)
+            res = c.fetchall()
 
         for x in res:
             if x.get("mouse_events"):
@@ -199,10 +192,9 @@ class GrlIqEventManager:
     def filter_distinct_timing(
         self,
         session_uuids: Collection[str],
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         params = {"session_uuids": list(session_uuids)}
-        query = sql.SQL(
-            """
+        query = sql.SQL("""
         SELECT DISTINCT ON (fe.session_uuid)
             timing_data,
             fe.session_uuid,
@@ -213,12 +205,10 @@ class GrlIqEventManager:
         WHERE fe.session_uuid = ANY(%(session_uuids)s)
         AND timing_data IS NOT NULL
         ORDER BY session_uuid, fe.id DESC;
-        """
-        )
-        with self.postgres_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(query, params)
-                res = c.fetchall()
+        """)
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, params)
+            res = c.fetchall()
 
         for x in res:
             x["timing_data"] = TimingData.model_validate(x["timing_data"])
@@ -229,7 +219,7 @@ class GrlIqEventManager:
         return res
 
     @staticmethod
-    def process_mouse_events(pointer_moves: List[PointerMove], events: List[Dict]):
+    def process_mouse_events(pointer_moves: list[PointerMove], events: list[dict]):
         """
         In the db column 'mouse_events' we put all 'pointermove' events. Pull
         those out, and then any 'pointerdown' and 'pointerup' events from the
@@ -274,7 +264,7 @@ class GrlIqEventManager:
         return mouse_events
 
     @staticmethod
-    def process_keyboard_events(events: List[Dict]):
+    def process_keyboard_events(events: list[dict]):
         res = [
             KeyboardEvent(
                 type=x["type"],

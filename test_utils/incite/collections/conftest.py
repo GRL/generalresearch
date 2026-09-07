@@ -1,16 +1,16 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import pytest
 
-from generalresearch.pg_helper import PostgresConfig
 from test_utils.conftest import clear_directory
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import DFCollectionType, GRLDatasets
-    from generalresearch.incite.collections import DFCollection
+    from generalresearch.incite.collections.base import DFCollection
     from generalresearch.incite.collections.thl_web import (
         AuditLogDFCollection,
         LedgerDFCollection,
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
         UserDFCollection,
         WallDFCollection,
     )
+    from generalresearch.pg_helper import PostgresConfig
 
 
 @pytest.fixture
@@ -196,7 +197,7 @@ def df_collection(
     utc_90days_ago: datetime,
     thl_web_rr: PostgresConfig,
 ) -> DFCollection:
-    from generalresearch.incite.collections import DFCollection
+    from generalresearch.incite.collections.base import DFCollection
 
     start = utc_90days_ago.replace(microsecond=0)
 

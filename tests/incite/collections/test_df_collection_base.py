@@ -1,18 +1,18 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pandas as pd
 import pytest
 from pandera.pandas import DataFrameSchema
 
-from generalresearch.incite.collections import (
+from generalresearch.incite.collections.base import (
     DFCollection,
     DFCollectionType,
 )
-from test_utils.incite.conftest import mnt_filepath
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
+    from generalresearch.pg_helper import PostgresConfig
 
 df_collection_types = [e for e in DFCollectionType if e is not DFCollectionType.TEST]
 
@@ -24,7 +24,7 @@ class TestDFCollectionBase:
 
     """
 
-    def test_init(self, mnt_filepath: "GRLDatasets", df_coll_type: DFCollectionType):
+    def test_init(self, mnt_filepath: GRLDatasets, df_coll_type: DFCollectionType):
         """Try to initialize the DFCollection with various invalid parameters"""
         with pytest.raises(expected_exception=ValueError) as cm:
             DFCollection(archive_path=mnt_filepath.data_src)
@@ -46,24 +46,28 @@ class TestDFCollectionBase:
 class TestDFCollectionBaseProperties:
 
     @pytest.mark.skip
-    def test_df_collection_items(self, mnt_filepath: "GRLDatasets", df_coll_type):
+    def test_df_collection_items(
+        self, mnt_filepath: GRLDatasets, df_coll_type: DFCollectionType
+    ):
         instance = DFCollection(
             data_type=df_coll_type,
-            start=datetime(year=1800, month=1, day=1, tzinfo=timezone.utc),
-            finished=datetime(year=1900, month=1, day=1, tzinfo=timezone.utc),
-            offset="100d",
+            start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
+            finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
+            offset="100D",
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),
         )
 
         assert len(instance.interval_range) == len(instance.items)
         assert len(instance.items) == 366
 
-    def test_df_collection_progress(self, mnt_filepath: "GRLDatasets", df_coll_type):
+    def test_df_collection_progress(
+        self, mnt_filepath: GRLDatasets, df_coll_type: DFCollectionType
+    ):
         instance = DFCollection(
             data_type=df_coll_type,
-            start=datetime(year=1800, month=1, day=1, tzinfo=timezone.utc),
-            finished=datetime(year=1900, month=1, day=1, tzinfo=timezone.utc),
-            offset="100d",
+            start=datetime(year=1800, month=1, day=1, tzinfo=UTC),
+            finished=datetime(year=1900, month=1, day=1, tzinfo=UTC),
+            offset="100D",
             archive_path=mnt_filepath.archive_path(enum_type=df_coll_type),
         )
 
@@ -71,7 +75,9 @@ class TestDFCollectionBaseProperties:
         assert isinstance(instance.progress, pd.DataFrame)
         assert instance.progress.shape == (366, 6)
 
-    def test_df_collection_schema(self, mnt_filepath: "GRLDatasets", df_coll_type):
+    def test_df_collection_schema(
+        self, mnt_filepath: GRLDatasets, df_coll_type: DFCollectionType
+    ):
         instance1 = DFCollection(
             data_type=DFCollectionType.WALL, archive_path=mnt_filepath.data_src
         )
@@ -88,12 +94,12 @@ class TestDFCollectionBaseProperties:
 class TestDFCollectionBaseMethods:
 
     @pytest.mark.skip
-    def test_initial_load(self, mnt_filepath: "GRLDatasets", thl_web_rr):
+    def test_initial_load(self, mnt_filepath: GRLDatasets, thl_web_rr: PostgresConfig):
         instance = DFCollection(
             pg_config=thl_web_rr,
             data_type=DFCollectionType.USER,
-            start=datetime(year=2022, month=1, day=1, minute=0, tzinfo=timezone.utc),
-            finished=datetime(year=2022, month=1, day=1, minute=5, tzinfo=timezone.utc),
+            start=datetime(year=2022, month=1, day=1, minute=0, tzinfo=UTC),
+            finished=datetime(year=2022, month=1, day=1, minute=5, tzinfo=UTC),
             offset="2min",
             archive_path=mnt_filepath.data_src,
         )

@@ -4,28 +4,33 @@ from __future__ import annotations
 import json
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from functools import cached_property
-from typing import Any, Literal, Type
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    ValidationError,
     computed_field,
     field_validator,
     model_validator,
 )
 
 from generalresearch.locales import Localelator
-from generalresearch.models import LogicalOperator, Source, TaskCalculationType
 from generalresearch.models.custom_types import (
     AlphaNumStrSet,
     AwareDatetimeISO,
     CoercedStr,
     InclExcl,
     UUIDStr,
+)
+from generalresearch.models.definitions import (
+    LogicalOperator,
+    Source,
+    TaskCalculationType,
 )
 from generalresearch.models.prodege import (
     ProdegePastParticipationType,
@@ -127,7 +132,7 @@ class ProdegeQuota(BaseModel):
         return self.remaining_count >= min_open_spots
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return ProdegeCondition
 
     @property
@@ -276,7 +281,7 @@ class ProdegeUserPastParticipation(BaseModel):
         raise ValueError(f"Unknown ext_status_code_1: {self.ext_status_code_1}")
 
     def days_ago(self) -> float:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return (now - self.started).total_seconds() / (3600 * 24)
 
 
@@ -486,7 +491,7 @@ class ProdegeSurvey(MarketplaceTask):
         return data
 
     @property
-    def condition_model(self) -> Type[MarketplaceCondition]:
+    def condition_model(self) -> type[MarketplaceCondition]:
         return ProdegeCondition
 
     @property
@@ -513,7 +518,7 @@ class ProdegeSurvey(MarketplaceTask):
     def from_api(cls, d: dict[str, Any]) -> ProdegeSurvey | None:
         try:
             return cls._from_api(d)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse survey: {d}. {e}")
             return None
 
@@ -538,7 +543,7 @@ class ProdegeSurvey(MarketplaceTask):
             d["country_isos"] = [
                 locale_helper.get_country_iso(d.pop("country_code").lower())
             ]
-            d["country_iso"] = sorted(d["country_isos"])[0]
+            d["country_iso"] = min(d["country_isos"])
             # No languages are returned anywhere for anything
             d["language_isos"] = [
                 locale_helper.get_default_lang_from_country(d["country_isos"][0])
@@ -551,7 +556,7 @@ class ProdegeSurvey(MarketplaceTask):
             d["past_participation"] = ProdegePastParticipation.from_api(
                 d["past_participation"]
             )
-        d["conditions"] = dict()
+        d["conditions"] = {}
         for quota in d["quotas"]:
             quota["condition_hashes"] = []
             for c in quota["targeting_criteria"]:
@@ -562,7 +567,7 @@ class ProdegeSurvey(MarketplaceTask):
         d["quotas"] = [ProdegeQuota.from_api(q) for q in d["quotas"]]
         countries = {q.country_iso for q in d["quotas"] if q.country_iso}
         if countries:
-            d["country_iso"] = sorted(countries)[0]
+            d["country_iso"] = min(countries)
             d["country_isos"] = countries
             d["language_iso"] = locale_helper.get_default_lang_from_country(
                 d["country_iso"]
@@ -656,8 +661,8 @@ class ProdegeSurvey(MarketplaceTask):
 
     @classmethod
     def from_db(cls, d: dict[str, Any]) -> ProdegeSurvey:
-        d["created"] = d["created"].replace(tzinfo=timezone.utc)
-        d["updated"] = d["updated"].replace(tzinfo=timezone.utc)
+        d["created"] = d["created"].replace(tzinfo=UTC)
+        d["updated"] = d["updated"].replace(tzinfo=UTC)
         d["quotas"] = json.loads(d["quotas"])
         for k in [
             "max_clicks_settings",

@@ -6,7 +6,7 @@ from pandera.pandas import Check, Column, DataFrameSchema, Index
 
 from generalresearch.incite.schemas import ARCHIVE_AFTER
 from generalresearch.locales import Localelator
-from generalresearch.models import Source
+from generalresearch.models.definitions import Source
 
 COUNTRY_ISOS: set[str] = Localelator().get_all_countries()
 kosovo = "xk"

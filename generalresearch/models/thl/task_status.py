@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -12,14 +12,12 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     EnumNameSerializer,
     UUIDStr,
 )
-from generalresearch.models.thl import decimal_to_int_cents
 from generalresearch.models.thl.definitions import (
     SessionAdjustedStatus,
     SessionStatusCode2,
@@ -31,11 +29,13 @@ from generalresearch.models.thl.payout_format import (
     PayoutFormatOptionalField,
     PayoutFormatType,
 )
-from generalresearch.models.thl.product import (
-    PayoutTransformation,
-    Product,
-)
-from generalresearch.models.thl.session import Session, WallOut
+from generalresearch.models.thl.product import PayoutTransformation
+from generalresearch.models.thl.session import WallOut
+from generalresearch.models.thl.utils import decimal_to_int_cents
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.session import Session
 
 # API uses the ints, b/c this is what the grpc returned originally ...
 STATUS_MAP = {
@@ -64,8 +64,7 @@ class TaskStatusResponse(BaseModel):
     product_user_id: str = Field(
         min_length=3,
         max_length=128,
-        description="A unique identifier for each user, which is set by the "
-        "Supplier",
+        description="A unique identifier for each user, which is set by the Supplier",
         examples=["app-user-9329ebd"],
     )
 
@@ -172,12 +171,12 @@ class TaskStatusResponse(BaseModel):
 
     # Serialize enum → int
     @field_serializer("status", return_type=int)
-    def serialize_status(self, v: Status | None, _info):
+    def serialize_status(self, v: Status | None):
         return STATUS_MAP[v]
 
     # Accept int OR string for input, but internally store a Status enum
     @field_validator("status", mode="before")
-    def deserialize_status(cls, v):
+    def deserialize_status(cls, v: Status | None):
         # int → enum
         if isinstance(v, int):
             return REVERSE_STATUS_MAP[v]
@@ -225,11 +224,12 @@ class TaskStatusResponse(BaseModel):
         return v or 0
 
     @field_validator("kwargs", mode="after")
-    def sanitize_kwargs(cls, v: dict | None) -> dict | None:
+    def sanitize_kwargs(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
         if v and "clicked_timestamp" in v:
             try:
-                clicked_timestamp = datetime.strptime(
-                    v["clicked_timestamp"], "%Y-%m-%d %H:%M:%S.%f"
+                clicked_timestamp = datetime.strptime(  # noqa
+                    date_string=v["clicked_timestamp"],
+                    format="%Y-%m-%d %H:%M:%S.%f",
                 )
                 v["clicked_timestamp"] = (
                     clicked_timestamp.isoformat(timespec="microseconds") + "Z"
@@ -239,7 +239,7 @@ class TaskStatusResponse(BaseModel):
         return v
 
     @model_validator(mode="before")
-    def transform_user_payout(cls, d):
+    def transform_user_payout(cls, d: dict[str, Any]):
         # If the user_payout is None and there is a payout_format, make the user_payout 0
         if d.get("user_payout") is None and d.get("payout_format"):
             d["user_payout"] = 0
@@ -252,7 +252,7 @@ class TaskStatusResponse(BaseModel):
         return self.product_user_id
 
     @classmethod
-    def from_session(cls, session: Session, product: Product) -> Self:
+    def from_session(cls, session: Session, product: Product) -> TaskStatusResponse:
 
         user_payout_string = None
         if session.user_payout is not None:
@@ -275,7 +275,7 @@ class TaskStatusResponse(BaseModel):
             user_payout_string=user_payout_string,
             product_id=session.user.product_id,
             product_user_id=session.user.product_user_id,
-            kwargs=session.url_metadata or dict(),
+            kwargs=session.url_metadata or {},
             status_code_1=session.status_code_1,
             status_code_2=session.status_code_2,
             adjusted_status=session.adjusted_status,

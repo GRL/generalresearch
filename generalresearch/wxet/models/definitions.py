@@ -1,11 +1,10 @@
-from enum import Enum
-from typing import Optional, Tuple
+from enum import IntEnum, StrEnum
 
 from generalresearch.currency import USDMill
 from generalresearch.utils.enum import ReprEnumMeta
 
 
-class IncExcFilterType(str, Enum, metaclass=ReprEnumMeta):
+class IncExcFilterType(StrEnum, metaclass=ReprEnumMeta):
     INCLUDE = "include"
     EXCLUDE = "exclude"
 
@@ -13,7 +12,7 @@ class IncExcFilterType(str, Enum, metaclass=ReprEnumMeta):
 # Note: This is exactly the same as the generalresearch:models/thl/definitions.py:Status.
 # Keeping this because the comments (and as a result, the documentation)
 #   is slightly different, and specific to wxet.
-class WXETStatus(str, Enum, metaclass=ReprEnumMeta):
+class WXETStatus(StrEnum, metaclass=ReprEnumMeta):
     """
     The outcome of a task attempt. If the attempt is still in progress, the status will be NULL.
     """
@@ -36,7 +35,7 @@ class WXETStatus(str, Enum, metaclass=ReprEnumMeta):
 
 
 # Basically same note as for WxetStatus for WallAdjustedStatus
-class WXETAdjustedStatus(str, Enum, metaclass=ReprEnumMeta):
+class WXETAdjustedStatus(StrEnum, metaclass=ReprEnumMeta):
     # Task was reconciled to complete
     ADJUSTED_TO_COMPLETE = "ac"
 
@@ -52,7 +51,7 @@ class WXETAdjustedStatus(str, Enum, metaclass=ReprEnumMeta):
     POSTBACK_COMPLETE = "pc"
 
 
-class WXETStatusCode1(int, Enum, metaclass=ReprEnumMeta):
+class WXETStatusCode1(IntEnum, metaclass=ReprEnumMeta):
     """
     __High level status code for outcome of the attempt.__
     This should only be NULL if the WXETStatus is ABANDON or TIMEOUT
@@ -103,10 +102,10 @@ class WXETStatusCode1(int, Enum, metaclass=ReprEnumMeta):
         """This property helper indicates if the WXET Attempt made it into
         the WXET Account's (eg: the "buyer"'s) Task.
         """
-        return False if self.value > 10 else True
+        return not self.value > 10
 
 
-class WXETStatusCode2(int, Enum, metaclass=ReprEnumMeta):
+class WXETStatusCode2(IntEnum, metaclass=ReprEnumMeta):
     """
     __Status Detail__
     These are generally only set if the StatusCode1 is WXET_FAIL,
@@ -166,8 +165,8 @@ class WXETStatusCode2(int, Enum, metaclass=ReprEnumMeta):
 
 def check_wxet_status_consistent(
     status: WXETStatus,
-    status_code_1: Optional[WXETStatusCode1] = None,
-    status_code_2: Optional[WXETStatusCode2] = None,
+    status_code_1: WXETStatusCode1 | None = None,
+    status_code_2: WXETStatusCode2 | None = None,
 ) -> bool:
     """
     Raises an AssertionError if inconsistent
@@ -203,13 +202,13 @@ def check_wxet_status_consistent(
 
 def check_wxet_adjusted_status_attempt_consistent(
     status: WXETStatus,
-    status_code_1: Optional[WXETStatusCode1] = None,
-    cpi: Optional[USDMill] = None,
-    adjusted_status: Optional[WXETAdjustedStatus] = None,
-    adjusted_cpi: Optional[USDMill] = None,
-    new_adjusted_status: Optional[WXETAdjustedStatus] = None,
-    new_adjusted_cpi: Optional[USDMill] = None,
-) -> Tuple[bool, str]:
+    status_code_1: WXETStatusCode1 | None = None,
+    cpi: USDMill | None = None,
+    adjusted_status: WXETAdjustedStatus | None = None,
+    adjusted_cpi: USDMill | None = None,
+    new_adjusted_status: WXETAdjustedStatus | None = None,
+    new_adjusted_cpi: USDMill | None = None,
+) -> tuple[bool, str]:
     """
     Raises an AssertionError if inconsistent.
     - status, status_code_1, adjusted_status, adjusted_cpi, cpi are the attempt's CURRENT values
@@ -233,12 +232,12 @@ def check_wxet_adjusted_status_attempt_consistent(
 
 def _check_wxet_adjusted_status_attempt_consistent(
     status: WXETStatus,
-    status_code_1: Optional[WXETStatusCode1] = None,
-    cpi: Optional[USDMill] = None,
-    adjusted_status: Optional[WXETAdjustedStatus] = None,
-    adjusted_cpi: Optional[USDMill] = None,
-    new_adjusted_status: Optional[WXETAdjustedStatus] = None,
-    new_adjusted_cpi: Optional[USDMill] = None,
+    status_code_1: WXETStatusCode1 | None = None,
+    cpi: USDMill | None = None,
+    adjusted_status: WXETAdjustedStatus | None = None,
+    adjusted_cpi: USDMill | None = None,
+    new_adjusted_status: WXETAdjustedStatus | None = None,
+    new_adjusted_cpi: USDMill | None = None,
 ) -> None:
     """
     Raises an AssertionError if inconsistent.
@@ -297,8 +296,8 @@ def _check_wxet_adjusted_status_attempt_consistent(
 
 
 def _check_wxet_adjusted_status_consistent(
-    adjusted_status: Optional[WXETAdjustedStatus] = None,
-    adjusted_cpi: Optional[USDMill] = None,
+    adjusted_status: WXETAdjustedStatus | None = None,
+    adjusted_cpi: USDMill | None = None,
 ) -> None:
     """
     Raises an AssertionError if inconsistent.

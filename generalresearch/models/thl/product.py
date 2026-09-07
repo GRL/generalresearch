@@ -6,14 +6,15 @@ import json
 import math
 import warnings
 from collections import defaultdict
+from collections.abc import Callable
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 from functools import cached_property, partial
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     Literal,
+    Self,
 )
 from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
@@ -34,18 +35,23 @@ from pydantic import (
     model_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
-from typing_extensions import Self
 
 from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
-from generalresearch.models import Source
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     CountryISOLike,
     HttpsUrlStr,
     UUIDStr,
 )
-from generalresearch.models.thl.ledger import LedgerAccount
+from generalresearch.models.definitions import Source
+from generalresearch.models.thl.finance import (
+    POPFinancial,
+    ProductBalances,
+)
+from generalresearch.models.thl.payout import (
+    BrokerageProductPayoutEvent,
+)
 from generalresearch.models.thl.payout_format import (
     PayoutFormatType,
     format_payout_format,
@@ -57,7 +63,7 @@ from generalresearch.models.thl.payout_format import (
     examples as payout_format_examples,
 )
 from generalresearch.models.thl.supplier_tag import SupplierTag
-from generalresearch.models.thl.wallet import PayoutType
+from generalresearch.models.thl.wallet.definitions import PayoutType
 from generalresearch.models.utils import decimal_to_usd_cents
 from generalresearch.redis_helper import RedisConfig
 
@@ -70,14 +76,7 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.payout import (
         BrokerageProductPayoutEventManager,
     )
-    from generalresearch.models.thl.finance import (
-        POPFinancial,
-        ProductBalances,
-    )
-    from generalresearch.models.thl.payout import (
-        BrokerageProductPayoutEvent,
-    )
-    from generalresearch.models.thl.user import User
+    from generalresearch.models.thl.ledger import LedgerAccount
 
 
 # fmt: off
@@ -446,16 +445,16 @@ class UserWalletConfig(BaseModel):
     @field_serializer("supported_payout_types", when_used="json")
     def serialize_supported_payout_types_in_order(
         self, supported_payout_types: set[PayoutType]
-    ) -> set[PayoutType]:
-        return set(sorted(supported_payout_types))
+    ) -> list[PayoutType]:
+        return sorted(supported_payout_types)
 
     @field_validator("min_cashout", "failed_attempt_credit", mode="after")
     @classmethod
     def check_payout_decimal_places(cls, v: Decimal) -> Decimal:
         if v is not None:
-            assert (
-                v.as_tuple().exponent >= -2
-            ), "Must have 2 or fewer decimal places ('XXX.YY')"
+            assert v.as_tuple().exponent >= -2, (
+                "Must have 2 or fewer decimal places ('XXX.YY')"
+            )
             # explicitly make sure it is 2 decimal places, after checking that it is
             # already 2 or less.
             v = v.quantize(Decimal("0.00"))
@@ -465,9 +464,9 @@ class UserWalletConfig(BaseModel):
     def check_enabled(self):
         if self.enabled is False:
             assert self.amt is False, "amt can't be set if enabled is False"
-            assert (
-                self.min_cashout is None
-            ), "min_cashout can't be set if enabled is False"
+            assert self.min_cashout is None, (
+                "min_cashout can't be set if enabled is False"
+            )
         else:
             if self.min_cashout is None:
                 self.min_cashout = Decimal("0.01")
@@ -501,9 +500,9 @@ class PayoutTransformationPercentArgs(BaseModel):
     @classmethod
     def check_payout_decimal_places(cls, v: Decimal) -> Decimal:
         if v is not None:
-            assert (
-                v.as_tuple().exponent >= -2
-            ), "Must have 2 or fewer decimal places ('XXX.YY')"
+            assert v.as_tuple().exponent >= -2, (
+                "Must have 2 or fewer decimal places ('XXX.YY')"
+            )
             # explicitly make sure it is 2 decimal places, after checking that it is
             # already 2 or less.
             v = v.quantize(Decimal("0.00"))
@@ -562,8 +561,8 @@ class PayoutTransformation(BaseModel):
     def payout_transformation_percent(
         self,
         payout: Decimal,
-        pct: Decimal = 1,
-        min_payout: Decimal | None = 0,
+        pct: Decimal = Decimal(1),
+        min_payout: Decimal | None = None,
         max_payout: Decimal | None = None,
     ) -> Decimal:
         """Payout transformation for user displayed values"""
@@ -571,14 +570,14 @@ class PayoutTransformation(BaseModel):
             min_payout = Decimal(0)
         pct = Decimal(pct)
 
-        payout = Decimal(payout)
+        _payout = Decimal(payout)
         min_payout = Decimal(min_payout)
         max_payout = Decimal(max_payout) if max_payout else None
 
-        payout: Decimal = payout * pct
-        payout: Decimal = max([payout, min_payout])
-        payout: Decimal = min([payout, max_payout]) if max_payout else payout
-        return payout
+        _payout = _payout * pct
+        _payout = max(_payout, min_payout)
+        _payout = min(_payout, max_payout) if max_payout is not None else _payout
+        return _payout
 
     def payout_transformation_amt(
         self, payout: Decimal, user_wallet_balance: Decimal | None = None
@@ -588,22 +587,22 @@ class PayoutTransformation(BaseModel):
         # (display, adjustment) so ignore the 7-cent rounding.
         if user_wallet_balance is None:
             return self.payout_transformation_percent(payout=payout, pct=Decimal(".95"))
-        payout = Decimal(payout)
+        _payout = Decimal(payout)
 
-        payout: Decimal = payout * Decimal("0.95")
-        new_balance = payout + user_wallet_balance
+        _payout: Decimal = _payout * Decimal("0.95")
+        new_balance = _payout + user_wallet_balance
         # If the new_balance is <0, we aren't paying anything, so use the
         # full amount
         if new_balance < 0:
-            return payout
+            return _payout
 
         amt = (5 * math.floor((int(new_balance * 100) - 2) / 5)) + 2
         rounded_new_balance = Decimal(amt / 100).quantize(Decimal("0.00"))
-        payout = rounded_new_balance - user_wallet_balance
-        if payout < Decimal(0):
+        _payout = rounded_new_balance - user_wallet_balance
+        if _payout < Decimal(0):
             return Decimal(0)
 
-        return payout
+        return _payout
 
 
 class SourceConfig(BaseModel):
@@ -646,13 +645,13 @@ class SourceConfig(BaseModel):
     )
 
 
-class Scope(str, Enum):
+class Scope(StrEnum):
     GLOBAL = "global"
     TEAM = "team"
     PRODUCT = "product"
 
 
-class IntegrationMode(str, Enum):
+class IntegrationMode(StrEnum):
     # We handle integration, get paid
     PLATFORM = "platform"
     # "external" credentials, we do not get paid for this activity
@@ -685,9 +684,9 @@ class SupplyConfig(BaseModel):
             if c.scope == Scope.TEAM
             for team_id in c.team_ids
         ]
-        assert len(team_names) == len(
-            set(team_names)
-        ), "Can only have one TEAM policy per Source per Team"
+        assert len(team_names) == len(set(team_names)), (
+            "Can only have one TEAM policy per Source per Team"
+        )
         return self
 
     @model_validator(mode="after")
@@ -698,9 +697,9 @@ class SupplyConfig(BaseModel):
             if c.scope == Scope.PRODUCT
             for product_id in c.product_ids
         ]
-        assert len(bp_names) == len(
-            set(bp_names)
-        ), "Can only have one PRODUCT policy per Source per BP"
+        assert len(bp_names) == len(set(bp_names)), (
+            "Can only have one PRODUCT policy per Source per BP"
+        )
         return self
 
     @property
@@ -750,8 +749,8 @@ class SupplyConfig(BaseModel):
             Use global config.
         """
         d = self.global_scoped_policies_dict.copy()
-        d.update(self.team_scoped_policies_dict.get(team_id, dict()))
-        d.update(self.product_scoped_policies_dict.get(product_id, dict()))
+        d.update(self.team_scoped_policies_dict.get(team_id, {}))
+        d.update(self.product_scoped_policies_dict.get(product_id, {}))
         return d
 
     def get_config_for_product(self, product: Product) -> MergedSupplyConfig:
@@ -770,7 +769,7 @@ class SupplyConfig(BaseModel):
                     supply_policy=policy_dict[source],
                     source_config=sources_dict[source],
                 )
-                for source in policy_dict.keys()
+                for source in policy_dict
             ]
         )
 
@@ -959,9 +958,7 @@ class Product(BaseModel, validate_assignment=True):
 
     # Initialization is deferred until unless it's called
     # (see .prebuild_***())
-    balance: ProductBalances | None = Field(
-        default=None, description="Product Balance"
-    )
+    balance: ProductBalances | None = Field(default=None, description="Product Balance")
 
     payouts_total_str: str | None = Field(default=None)
     payouts_total: USDCent | None = Field(default=None)
@@ -978,7 +975,7 @@ class Product(BaseModel, validate_assignment=True):
     @field_validator("harmonizer_domain", mode="before")
     def harmonizer_domain_https(cls, s: str | None):
         # in the db, this has no scheme. accept both with a default of https://
-        if s is not None and not (s.startswith("https://") or s.startswith("http://")):
+        if s is not None and not (s.startswith(("https://", "http://"))):
             s = f"https://{s}"
         return s
 
@@ -992,15 +989,15 @@ class Product(BaseModel, validate_assignment=True):
     def harmonizer_domain_only(cls, s: str):
         # maks sure there is no path
         url_split = urlsplit(s)
-        assert (
-            url_split.path == "/"
-        ), f"harmonizer_domain should be a schema+domain only: {url_split.path}"
-        assert (
-            url_split.query == ""
-        ), f"harmonizer_domain should be a schema+domain only: {url_split.query}"
-        assert (
-            url_split.fragment == ""
-        ), f"harmonizer_domain should be a schema+domain only: {url_split.fragment}"
+        assert url_split.path == "/", (
+            f"harmonizer_domain should be a schema+domain only: {url_split.path}"
+        )
+        assert url_split.query == "", (
+            f"harmonizer_domain should be a schema+domain only: {url_split.query}"
+        )
+        assert url_split.fragment == "", (
+            f"harmonizer_domain should be a schema+domain only: {url_split.fragment}"
+        )
         return s
 
     @field_validator("redirect_url", mode="after")
@@ -1021,10 +1018,12 @@ class Product(BaseModel, validate_assignment=True):
 
     @property
     def business_uuid(self) -> UUIDStr:
+        assert self.business_id
         return self.business_id
 
     @property
     def team_uuid(self) -> UUIDStr:
+        assert self.team_id
         return self.team_id
 
     @property
@@ -1108,7 +1107,6 @@ class Product(BaseModel, validate_assignment=True):
         from generalresearch.incite.schemas.mergers.pop_ledger import (
             numerical_col_names,
         )
-        from generalresearch.models.thl.ledger import LedgerAccount
 
         account: LedgerAccount = thl_lm.get_account_or_create_bp_wallet(product=self)
         assert self.id == account.reference_uuid
@@ -1225,7 +1223,6 @@ class Product(BaseModel, validate_assignment=True):
         from generalresearch.models.thl.ledger import OrderBy
 
         self.payouts = bp_pem.get_bp_bp_payout_events_for_products(
-            thl_ledger_manager=thl_lm,
             product_uuids=[self.uuid],
             order_by=OrderBy.DESC,
         )
@@ -1378,9 +1375,7 @@ class Product(BaseModel, validate_assignment=True):
         if self.payout_config.payout_transformation is None:
             return lambda x: x
         else:
-            return (
-                self.payout_config.payout_transformation.get_payout_transformation_func()
-            )
+            return self.payout_config.payout_transformation.get_payout_transformation_func()
 
     def calculate_user_payment(
         self, bp_payout: Decimal, user_wallet_balance: Decimal | None = None
@@ -1392,7 +1387,7 @@ class Product(BaseModel, validate_assignment=True):
         if self.payout_config.payout_transformation is None:
             return None
         payout_xform_func = self.get_payout_transformation_func()
-        kwargs = dict()
+        kwargs = {}
         if "user_wallet_balance" in inspect.signature(payout_xform_func).parameters:
             kwargs["user_wallet_balance"] = user_wallet_balance
         user_payout: Decimal = payout_xform_func(bp_payout, **kwargs)
@@ -1419,6 +1414,7 @@ class Product(BaseModel, validate_assignment=True):
 
     def model_dump_mysql(self, *args, **kwargs) -> dict[str, Any]:
         d = self.model_dump(mode="json", *args, **kwargs)
+        assert self.created
 
         if "created" in d:
             d["created"] = self.created.replace(tzinfo=None)

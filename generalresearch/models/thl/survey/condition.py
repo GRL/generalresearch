@@ -4,7 +4,7 @@ import hashlib
 from abc import ABC
 from enum import Enum
 from functools import cached_property
-from typing import Any
+from typing import Annotated, Any, Self
 
 from pydantic import (
     BaseModel,
@@ -16,9 +16,8 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from typing_extensions import Annotated, Self
 
-from generalresearch.models import LogicalOperator
+from generalresearch.models.definitions import LogicalOperator
 
 MarketplaceConditionHash = Annotated[
     str, StringConstraints(min_length=7, max_length=7, pattern=r"^[a-f0-9]+$")
@@ -249,7 +248,7 @@ class MarketplaceCondition(BaseModel, ABC):
         return d
 
     @staticmethod
-    def is_numeric_including_inf(s) -> bool:
+    def is_numeric_including_inf(s: Any) -> bool:
         try:
             float(s)
             return True
@@ -264,10 +263,9 @@ class MarketplaceCondition(BaseModel, ABC):
         # Fancy repr that only shows the first and last 3 values if there are more than 6.
         repr_args = list(self.__repr_args__())
         for n, (k, v) in enumerate(repr_args):
-            if k == "values":
-                if v and len(v) > 6:
-                    v = v[:3] + ["…"] + v[-3:]
-                    repr_args[n] = ("values", v)
+            if k == "values" and v and len(v) > 6:
+                v = v[:3] + ["…"] + v[-3:]
+                repr_args[n] = ("values", v)
         join_str = ", "
         repr_str = join_str.join(
             repr(v) if a is None else f"{a}={v!r}" for a, v in repr_args
@@ -335,5 +333,5 @@ class MarketplaceCondition(BaseModel, ABC):
             except ValueError:
                 return None
             values = self.values_ranges
-            passes = any([start <= x <= end for start, end in values for x in answer])
+            passes = any(start <= x <= end for start, end in values for x in answer)
             return not passes if self.negate else passes

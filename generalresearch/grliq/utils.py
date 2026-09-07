@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID
 
-# from generalresearch.config import
 from generalresearch.models.custom_types import UUIDStr
 
 
@@ -16,7 +15,7 @@ def get_screenshot_fp(
     grliq_ss_dir_name: str = "canvas2html",
     create_dir_if_not_exists: bool = True,
 ) -> Path | None:
-    assert created_at.tzinfo == timezone.utc
+    assert created_at.tzinfo == UTC
 
     if isinstance(forensic_uuid, UUID):
         forensic_uuid = forensic_uuid.hex

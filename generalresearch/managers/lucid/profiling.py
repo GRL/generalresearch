@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import json
 from collections.abc import Collection
+from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 
-from generalresearch.decorators import LOG
 from generalresearch.models.lucid.question import LucidQuestion, LucidQuestionType
-from generalresearch.sql_helper import SqlHelper
+
+if TYPE_CHECKING:
+    from generalresearch.sql_helper import SqlHelper
+
+from generalresearch.decorators import LOG
 
 
 def get_profiling_library(

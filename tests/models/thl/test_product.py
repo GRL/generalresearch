@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import os
 import shutil
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Callable
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
@@ -12,18 +13,9 @@ from dask.distributed import Client as DaskClient
 from pydantic import ValidationError
 
 from generalresearch.currency import USDCent
-from generalresearch.incite.base import GRLDatasets
-from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
-from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-    ThlLedgerManager,
-)
-from generalresearch.managers.thl.product import ProductManager
-from generalresearch.models import Source
-from generalresearch.models.gr.business import Business
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.finance import ProductBalances
 from generalresearch.models.thl.product import (
-    BrokerageProductPayoutEvent,
-    BrokerageProductPayoutEventManager,
     IntegrationMode,
     PayoutConfig,
     PayoutTransformation,
@@ -35,12 +27,27 @@ from generalresearch.models.thl.product import (
     SupplyConfig,
     SupplyPolicy,
 )
-from generalresearch.models.thl.session import Session
-from generalresearch.models.thl.user import User
+
+if TYPE_CHECKING:
+    from generalresearch.incite.base import GRLDatasets
+    from generalresearch.incite.collections.thl_web import LedgerDFCollection
+    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
+    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
+        ThlLedgerManager,
+    )
+    from generalresearch.managers.thl.payout import PayoutEventManager
+    from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.models.gr.business import Business
+    from generalresearch.models.thl.payout import (
+        BrokerageProductPayoutEvent,
+    )
+    from generalresearch.models.thl.product import BrokerageProductPayoutEventManager
+    from generalresearch.models.thl.session import Session
+    from generalresearch.models.thl.user import User
+    from generalresearch.redis_helper import RedisConfig
 
 
 class TestProduct:
-
     def test_init(self):
         # By default, just a Pydantic instance doesn't have an id_int
         instance = Product.model_validate(
@@ -56,17 +63,19 @@ class TestProduct:
         # We're not excluding anything here, only in the "*Out" variants
         assert "id_int" in res
 
-    def test_init_db(self, product_manager: ProductManager):
+    def test_init_db(
+        self, product_factory: Callable[..., Product], product_manager: ProductManager
+    ):
         # By default, just a Pydantic instance doesn't have an id_int
-        instance = product_manager.create_dummy()
+        instance = product_factory()
         assert isinstance(instance.id_int, int)
+        assert isinstance(instance, Product)
 
         res = instance.model_dump_json()
-        assert isinstance(res, Product)
 
         # we json skip & exclude
-        res = instance.model_dump()
-        assert isinstance(res, Product)
+        p = Product.model_validate_json(res)
+        assert isinstance(p, Product)
 
     def test_redirect_url(self):
         p = Product.model_validate(
@@ -140,12 +149,6 @@ class TestProduct:
             redirect_url="https://www.google.com/hey",
         )
 
-        assert isinstance(p.payout_config.payout_transformation, PayoutTransformation)
-        assert isinstance(
-            p.payout_config.payout_transformation.kwargs,
-            PayoutTransformationPercentArgs,
-        )
-
         p.payout_config.payout_transformation = PayoutTransformation.model_validate(
             {
                 "f": "payout_transformation_percent",
@@ -155,6 +158,11 @@ class TestProduct:
 
         assert (
             "payout_transformation_percent" == p.payout_config.payout_transformation.f
+        )
+
+        assert isinstance(
+            p.payout_config.payout_transformation.kwargs,
+            PayoutTransformationPercentArgs,
         )
         assert 0.5 == p.payout_config.payout_transformation.kwargs.pct
         assert (
@@ -287,10 +295,10 @@ class TestProduct:
         p.profiling_config = ProfilingConfig(max_questions=1)
         assert p.profiling_config.max_questions == 1
 
-    def test_bp_account(self, product, thl_lm):
+    def test_bp_account(self, product: Product, thl_ledger_manager: ThlLedgerManager):
         assert product.bp_account is None
 
-        product.prefetch_bp_account(thl_lm=thl_lm)
+        product.prefetch_bp_account(thl_lm=thl_ledger_manager)
 
         from generalresearch.models.thl.ledger import LedgerAccount
 
@@ -583,14 +591,13 @@ class TestGlobalProductConfigFor:
 
 
 class TestProductFinancials:
-
     @pytest.fixture
     def start(self) -> datetime:
-        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
+        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:
-        return "30d"
+        return "30D"
 
     @pytest.fixture
     def duration(self) -> timedelta | None:
@@ -598,55 +605,75 @@ class TestProductFinancials:
 
     def test_balance(
         self,
-        business: Business,
+        gr_business: Business,
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
         mnt_filepath: GRLDatasets,
-        bp_payout_factory: Callable[..., BrokerageProductPayoutEvent],
-        thl_lm: ThlLedgerManager,
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
+        thl_ledger_manager: ThlLedgerManager,
         start: datetime,
         brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
         session_with_tx_factory: Callable[..., Session],
-        delete_ledger_db,
-        create_main_accounts,
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
         client_no_amm: DaskClient,
-        ledger_collection,
+        ledger_collection: LedgerDFCollection,
         pop_ledger_merge: PopLedgerMerge,
-        delete_df_collection,
+        delete_df_collection: Callable[..., None],
     ):
         delete_ledger_db()
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
 
-        from generalresearch.currency import USDCent
-
-        p1: Product = product_factory(business=business)
+        p1: Product = product_factory(business=gr_business)
         u1: User = user_factory(product=p1)
-        bp_wallet = thl_lm.get_account_or_create_bp_wallet(product=p1)
-        thl_lm.get_account_or_create_user_wallet(user=u1)
-        brokerage_product_payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
+        bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
+        thl_ledger_manager.get_account_or_create_user_wallet(user=u1)
 
-        assert len(thl_lm.get_tx_filtered_by_account(account_uuid=bp_wallet.uuid)) == 0
+        assert (
+            len(
+                thl_ledger_manager.get_tx_filtered_by_account(
+                    account_uuid=bp_wallet.uuid
+                )
+            )
+            == 0
+        )
 
         session_with_tx_factory(
             user=u1,
             wall_req_cpi=Decimal(".50"),
             started=start + timedelta(days=1),
         )
-        assert thl_lm.get_account_balance(account=bp_wallet) == 48
-        assert len(thl_lm.get_tx_filtered_by_account(account_uuid=bp_wallet.uuid)) == 1
+        assert thl_ledger_manager.get_account_balance(account=bp_wallet) == 48
+        assert (
+            len(
+                thl_ledger_manager.get_tx_filtered_by_account(
+                    account_uuid=bp_wallet.uuid
+                )
+            )
+            == 1
+        )
 
         session_with_tx_factory(
             user=u1,
             wall_req_cpi=Decimal("1.00"),
             started=start + timedelta(days=2),
         )
-        assert thl_lm.get_account_balance(account=bp_wallet) == 143
-        assert len(thl_lm.get_tx_filtered_by_account(account_uuid=bp_wallet.uuid)) == 2
+        assert thl_ledger_manager.get_account_balance(account=bp_wallet) == 143
+        assert (
+            len(
+                thl_ledger_manager.get_tx_filtered_by_account(
+                    account_uuid=bp_wallet.uuid
+                )
+            )
+            == 2
+        )
 
         with pytest.raises(expected_exception=AssertionError) as cm:
             p1.prebuild_balance(
-                thl_lm=thl_lm,
+                thl_lm=thl_ledger_manager,
                 ds=mnt_filepath,
                 client=client_no_amm,
             )
@@ -656,7 +683,7 @@ class TestProductFinancials:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         p1.prebuild_balance(
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
         )
@@ -670,7 +697,7 @@ class TestProductFinancials:
         assert p1.balance.available_balance == 108
 
         p1.prebuild_payouts(
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             bp_pem=brokerage_product_payout_event_manager,
         )
         assert p1.payouts is not None
@@ -680,14 +707,21 @@ class TestProductFinancials:
 
         # -- Now pay them out...
 
-        bp_payout_factory(
+        from generalresearch.currency import USDCent
+
+        brokerage_product_payout_event_factory(
             product=p1,
             amount=USDCent(50),
             created=start + timedelta(days=3),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
-        assert len(thl_lm.get_tx_filtered_by_account(account_uuid=bp_wallet.uuid)) == 3
+        assert (
+            len(
+                thl_ledger_manager.get_tx_filtered_by_account(
+                    account_uuid=bp_wallet.uuid
+                )
+            )
+            == 3
+        )
 
         # RM the entire directories
         shutil.rmtree(ledger_collection.archive_path)
@@ -699,7 +733,7 @@ class TestProductFinancials:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         p1.prebuild_balance(
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
         )
@@ -713,24 +747,29 @@ class TestProductFinancials:
         assert p1.balance.available_balance == 70
 
         p1.prebuild_payouts(
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             bp_pem=brokerage_product_payout_event_manager,
         )
         assert p1.payouts is not None
         assert len(p1.payouts) == 1
-        assert p1.payouts_total == 50
+        assert p1.payouts_total == USDCent(50)
         assert p1.payouts_total_str == "$0.50"
 
         # -- Now pay ou another!.
 
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=p1,
             amount=USDCent(5),
             created=start + timedelta(days=4),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
-        assert len(thl_lm.get_tx_filtered_by_account(account_uuid=bp_wallet.uuid)) == 4
+        assert (
+            len(
+                thl_ledger_manager.get_tx_filtered_by_account(
+                    account_uuid=bp_wallet.uuid
+                )
+            )
+            == 4
+        )
 
         # RM the entire directories
         shutil.rmtree(ledger_collection.archive_path)
@@ -742,7 +781,7 @@ class TestProductFinancials:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         p1.prebuild_balance(
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
         )
@@ -756,7 +795,7 @@ class TestProductFinancials:
         assert p1.balance.available_balance == 66
 
         p1.prebuild_payouts(
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             bp_pem=brokerage_product_payout_event_manager,
         )
         assert p1.payouts is not None
@@ -766,14 +805,13 @@ class TestProductFinancials:
 
 
 class TestProductBalance:
-
     @pytest.fixture
     def start(self) -> datetime:
-        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
+        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:
-        return "30d"
+        return "30D"
 
     @pytest.fixture
     def duration(self) -> timedelta | None:
@@ -783,18 +821,20 @@ class TestProductBalance:
         self,
         product: Product,
         mnt_filepath: GRLDatasets,
-        thl_lm: ThlLedgerManager,
+        thl_ledger_manager: ThlLedgerManager,
         client_no_amm: DaskClient,
-        delete_ledger_db,
-        create_main_accounts,
-        delete_df_collection,
-        ledger_collection,
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
+        delete_df_collection: Callable[..., None],
+        ledger_collection: LedgerDFCollection,
         user_factory: Callable[..., User],
         session_with_tx_factory: Callable[..., Session],
-        pop_ledger_merge,
+        pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory,
-        payout_event_manager,
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
+        payout_event_manager: PayoutEventManager,
     ):
         # Now let's load it up and actually test some things
         delete_ledger_db()
@@ -813,21 +853,18 @@ class TestProductBalance:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         # 2. Payout and build Parquets 2nd time
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=product,
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
             created=start + timedelta(days=1, minutes=1),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         with pytest.raises(expected_exception=AssertionError) as cm:
             product.prebuild_balance(
-                thl_lm=thl_lm, ds=mnt_filepath, client=client_no_amm
+                thl_lm=thl_ledger_manager, ds=mnt_filepath, client=client_no_amm
             )
         assert "Sql and Parquet Balance inconsistent" in str(cm)
 
@@ -835,18 +872,20 @@ class TestProductBalance:
         self,
         product: Product,
         mnt_filepath: GRLDatasets,
-        thl_lm: ThlLedgerManager,
+        thl_ledger_manager: ThlLedgerManager,
         client_no_amm: DaskClient,
-        delete_ledger_db,
-        create_main_accounts,
-        delete_df_collection,
-        ledger_collection,
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
+        delete_df_collection: Callable[..., None],
+        ledger_collection: LedgerDFCollection,
         user_factory: Callable[..., User],
-        session_with_tx_factory,
+        session_with_tx_factory: Callable[..., None],
         pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory,
-        payout_event_manager,
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
+        payout_event_manager: PayoutEventManager,
     ):
         # This is very similar to the test_complete_payout_pq_inconsistent
         #   test, however this time we're only going to assign the payout
@@ -872,31 +911,29 @@ class TestProductBalance:
 
         # 2. Payout and build Parquets 2nd time but this payout is "now"
         #    so it hasn't already been archived
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=product,
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
-            created=datetime.now(tz=timezone.utc),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
+            created=datetime.now(tz=UTC),
         )
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         # We just want to call this to confirm it doesn't raise.
-        product.prebuild_balance(thl_lm=thl_lm, ds=mnt_filepath, client=client_no_amm)
+        product.prebuild_balance(
+            thl_lm=thl_ledger_manager, ds=mnt_filepath, client=client_no_amm
+        )
 
 
 class TestProductPOPFinancial:
-
     @pytest.fixture
     def start(self) -> datetime:
-        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
+        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:
-        return "30d"
+        return "30D"
 
     @pytest.fixture
     def duration(self) -> timedelta | None:
@@ -906,14 +943,14 @@ class TestProductPOPFinancial:
         self,
         product: Product,
         mnt_filepath: GRLDatasets,
-        thl_lm: ThlLedgerManager,
+        thl_ledger_manager: ThlLedgerManager,
         client_no_amm: DaskClient,
-        delete_ledger_db,
-        create_main_accounts,
-        delete_df_collection,
-        ledger_collection,
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
+        delete_df_collection: Callable[..., None],
+        ledger_collection: LedgerDFCollection,
         user_factory: Callable[..., User],
-        session_with_tx_factory,
+        session_with_tx_factory: Callable[..., None],
         pop_ledger_merge: PopLedgerMerge,
         start: datetime,
     ):
@@ -942,7 +979,7 @@ class TestProductPOPFinancial:
         # --- test ---
         assert product.pop_financial is None
         product.prebuild_pop_financial(
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
@@ -962,14 +999,13 @@ class TestProductPOPFinancial:
 
 
 class TestProductCache:
-
     @pytest.fixture
     def start(self) -> datetime:
-        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=timezone.utc)
+        return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
 
     @pytest.fixture
     def offset(self) -> str:
-        return "30d"
+        return "30D"
 
     @pytest.fixture
     def duration(self) -> timedelta | None:
@@ -978,17 +1014,17 @@ class TestProductCache:
     def test_basic(
         self,
         product: Product,
-        mnt_filepath,
-        thl_lm,
+        mnt_filepath: GRLDatasets,
+        thl_ledger_manager: ThlLedgerManager,
         client_no_amm: DaskClient,
-        thl_redis_config,
-        brokerage_product_payout_event_manager,
-        delete_ledger_db,
-        create_main_accounts,
-        delete_df_collection,
-        ledger_collection,
+        thl_redis_config: RedisConfig,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
+        delete_df_collection: Callable[..., None],
+        ledger_collection: LedgerDFCollection,
         user_factory: Callable[..., User],
-        session_with_tx_factory,
+        session_with_tx_factory: Callable[..., None],
         pop_ledger_merge: PopLedgerMerge,
         start: datetime,
     ):
@@ -1003,7 +1039,7 @@ class TestProductCache:
         assert res is None
         with pytest.raises(expected_exception=AssertionError):
             product.set_cache(
-                thl_lm=thl_lm,
+                thl_lm=thl_ledger_manager,
                 ds=mnt_filepath,
                 client=client_no_amm,
                 bp_pem=brokerage_product_payout_event_manager,
@@ -1025,7 +1061,7 @@ class TestProductCache:
 
         # Now try again with everything in place
         product.set_cache(
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             bp_pem=brokerage_product_payout_event_manager,
@@ -1050,21 +1086,23 @@ class TestProductCache:
         self,
         product: Product,
         mnt_filepath: GRLDatasets,
-        thl_lm,
+        thl_ledger_manager: ThlLedgerManager,
         client_no_amm: DaskClient,
-        thl_redis_config,
-        brokerage_product_payout_event_manager,
-        delete_ledger_db,
-        create_main_accounts,
-        delete_df_collection,
-        ledger_collection,
+        thl_redis_config: RedisConfig,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
+        delete_df_collection: Callable[..., None],
+        ledger_collection: LedgerDFCollection,
         user_factory: Callable[..., User],
-        session_with_tx_factory,
+        session_with_tx_factory: Callable[..., None],
         pop_ledger_merge: PopLedgerMerge,
         start: datetime,
-        bp_payout_factory,
-        payout_event_manager,
-        adj_to_fail_with_tx_factory,
+        brokerage_product_payout_event_factory: Callable[
+            ..., BrokerageProductPayoutEvent
+        ],
+        payout_event_manager: PayoutEventManager,
+        adj_to_fail_with_tx_factory: Callable[..., None],
     ):
         # Now let's load it up and actually test some things
         delete_ledger_db()
@@ -1083,14 +1121,11 @@ class TestProductCache:
         )
 
         # 2. Payout
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_lm)
-        bp_payout_factory(
+        brokerage_product_payout_event_factory(
             product=product,
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
             created=start + timedelta(days=1, minutes=1),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
 
         # 3. Recon
@@ -1104,7 +1139,7 @@ class TestProductCache:
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
         product.set_cache(
-            thl_lm=thl_lm,
+            thl_lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             bp_pem=brokerage_product_payout_event_manager,

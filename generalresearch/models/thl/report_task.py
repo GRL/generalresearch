@@ -3,11 +3,13 @@ from __future__ import annotations
 import random
 from collections import defaultdict
 from collections.abc import Collection
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from generalresearch.models.thl.definitions import ReportValue
-from generalresearch.models.thl.user import BPUIDStr
+from generalresearch.models.thl.user_identifiers import BPUIDStr
+
 
 # If a report is made with multiple values, we'll take the one with the
 # highest priority
@@ -28,7 +30,7 @@ def prioritize_report_values(
         return None
     report_values = list(set(report_values))
     random.shuffle(report_values)
-    return sorted(report_values, key=lambda x: REPORT_PRIORITY[x])[-1]
+    return max(report_values, key=lambda x: REPORT_PRIORITY[x])
 
 
 class ReportTask(BaseModel):

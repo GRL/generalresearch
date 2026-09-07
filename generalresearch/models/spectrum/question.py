@@ -3,32 +3,31 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import IntEnum, StrEnum
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal, Self
 from uuid import UUID
 
 from pydantic import (
     BaseModel,
     Field,
     PositiveInt,
+    ValidationError,
     field_validator,
     model_validator,
 )
-from typing_extensions import Self
 
-from generalresearch.models import MAX_INT32, Source, string_utils
 from generalresearch.models.custom_types import AwareDatetimeISO
+from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.models.spectrum import SpectrumQuestionIdType
+from generalresearch.models.string_utils import remove_nbsp
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.profiling.upk_question import (
-        UpkQuestion,
-    )
+from generalresearch.models.thl.profiling.upk_question import (
+    UpkQuestion,
+)
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -50,9 +49,7 @@ class SpectrumUserQuestionAnswer(BaseModel):
     # This may be a pipe-separated string if the question_type is multi. regex
     #   means any chars except capital letters
     option_id: str = Field(pattern=r"^[^A-Z]*$")
-    created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    created: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
     # ISO 3166-1 alpha-2 (two-letter codes, lowercase)
     country_iso: str = Field(
         max_length=2, min_length=2, pattern=r"^[a-z]{2}$", frozen=True
@@ -93,10 +90,12 @@ class SpectrumQuestionOption(BaseModel):
 
     @field_validator("text", mode="after")
     def remove_nbsp(cls, s: str) -> str:
-        return string_utils.remove_nbsp(s)
+        res = remove_nbsp(s)
+        assert isinstance(res, str), "Spectrum Question Option text must be str"
+        return res
 
 
-class SpectrumQuestionType(str, Enum):
+class SpectrumQuestionType(StrEnum):
     # The documentation defines 4 types (1,2,3,4), however 2 is the same as 1
     #   and never comes back in the api, and we also get back 5, 6, and 7,
     #   which are all undocumented.
@@ -135,10 +134,10 @@ class SpectrumQuestionType(str, Enum):
     @classmethod
     def from_api(cls, a: int):
         api_type_map = cls.get_api_map()
-        return api_type_map[a] if a in api_type_map else None
+        return api_type_map.get(a, None)
 
 
-class SpectrumQuestionClass(int, Enum):
+class SpectrumQuestionClass(IntEnum):
     CORE = 1
     EXTENDED = 2
     CUSTOM = 3
@@ -208,7 +207,7 @@ class SpectrumQuestion(MarketplaceQuestion):
 
     @field_validator("question_name", "question_text", "tags", mode="after")
     def remove_nbsp(cls, s: str | None):
-        return string_utils.remove_nbsp(s)
+        return remove_nbsp(s)
 
     @model_validator(mode="before")
     @classmethod
@@ -263,7 +262,7 @@ class SpectrumQuestion(MarketplaceQuestion):
             return None
         try:
             return cls._from_api(d, country_iso, language_iso)
-        except Exception as e:
+        except ValidationError as e:
             logger.warning(f"Unable to parse question: {d}. {e}")
             return None
 
@@ -283,7 +282,9 @@ class SpectrumQuestion(MarketplaceQuestion):
             ]
 
         created = (
-            datetime.utcfromtimestamp(d["crtd_on"] / 1000).replace(tzinfo=timezone.utc)
+            datetime.fromtimestamp(timestamp=d["crtd_on"] / 1000, tz=UTC).replace(
+                tzinfo=UTC
+            )
             if d.get("crtd_on")
             else None
         )
@@ -308,9 +309,7 @@ class SpectrumQuestion(MarketplaceQuestion):
                 SpectrumQuestionOption(id=r["id"], text=r["text"], order=r["order"])
                 for r in d["options"]
             ]
-        d["created"] = (
-            d["created"].replace(tzinfo=timezone.utc) if d["created"] else None
-        )
+        d["created"] = d["created"].replace(tzinfo=UTC) if d["created"] else None
 
         return cls(
             question_id=d["question_id"],

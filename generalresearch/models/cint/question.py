@@ -1,29 +1,27 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Any, Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing_extensions import Self
 
-from generalresearch.models import Source, string_utils
 from generalresearch.models.cint import CintQuestionIdType
 from generalresearch.models.custom_types import AwareDatetimeISO
+from generalresearch.models.definitions import Source
+from generalresearch.models.string_utils import remove_nbsp
 from generalresearch.models.thl.profiling.marketplace import (
     MarketplaceQuestion,
     MarketplaceUserQuestionAnswer,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.profiling.upk_question import (
-        UpkQuestion,
-    )
+from generalresearch.models.thl.profiling.upk_question import (
+    UpkQuestion,
+)
 
 
-class CintQuestionType(str, Enum):
+class CintQuestionType(StrEnum):
     SINGLE_SELECT = "s"
     MULTI_SELECT = "m"
     # Dummy means they're calculated
@@ -45,7 +43,7 @@ class CintQuestionType(str, Enum):
             # This seems to be invalid as there are no options???
             "Grid": None,
         }
-        return API_TYPE_MAP[a] if a in API_TYPE_MAP else None
+        return API_TYPE_MAP.get(a)
 
 
 class CintUserQuestionAnswer(MarketplaceUserQuestionAnswer):
@@ -107,7 +105,7 @@ class CintQuestion(MarketplaceQuestion):
 
     @field_validator("question_name", "question_text", mode="after")
     def remove_nbsp(cls, s: str | None) -> str | None:
-        return string_utils.remove_nbsp(s)
+        return remove_nbsp(s)
 
     @model_validator(mode="after")
     def check_type_options_agreement(self) -> Self:
@@ -151,7 +149,7 @@ class CintQuestion(MarketplaceQuestion):
         options = None
         created_at = datetime.strptime(
             d["create_date"], "%Y-%m-%dT%H:%M:%S%z"
-        ).astimezone(timezone.utc)
+        ).astimezone(UTC)
 
         if d.get("question_options"):
             options = [
@@ -189,7 +187,7 @@ class CintQuestion(MarketplaceQuestion):
             ]
 
         if d.get("created_at"):
-            d["created_at"] = d["created_at"].replace(tzinfo=timezone.utc)
+            d["created_at"] = d["created_at"].replace(tzinfo=UTC)
 
         return cls(
             question_id=d["question_id"],

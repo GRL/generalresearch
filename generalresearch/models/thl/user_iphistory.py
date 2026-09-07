@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import ipaddress
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Self
 
 from faker import Faker
 from pydantic import (
@@ -11,21 +12,20 @@ from pydantic import (
     PositiveInt,
     field_validator,
 )
-from typing_extensions import Self
 
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     CountryISOLike,
     IPvAnyAddressStr,
 )
-from generalresearch.models.thl.ipinfo import (
-    GeoIPInformation,
-    normalize_ip,
-)
-from generalresearch.models.thl.maxmind.definitions import UserType
+from generalresearch.models.thl.ipinfo import GeoIPInformation, normalize_ip
 from generalresearch.models.thl.user import User
-from generalresearch.pg_helper import PostgresConfig
-from generalresearch.redis_helper import RedisConfig
+
+if TYPE_CHECKING:
+    from grip_client.enums import AccessType
+
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
 
 fake = Faker()
 
@@ -53,7 +53,11 @@ class UserIPRecord(BaseModel):
         )
 
     @property
-    def user_type(self) -> UserType | None:
+    def user_type(self) -> AccessType | None:
+        return self.information.user_type if self.information else None
+
+    @property
+    def access_type(self) -> AccessType | None:
         return self.information.user_type if self.information else None
 
     @property
@@ -113,7 +117,7 @@ class IPRecord(BaseModel):
     # --- ORM ---
     @classmethod
     def from_mysql(cls, d: dict) -> Self:
-        created = d["created"].replace(tzinfo=timezone.utc)
+        created = d["created"].replace(tzinfo=UTC)
 
         d["created"] = created
         d["forwarded_ip_records"] = []
@@ -169,7 +173,7 @@ class UserIPHistory(BaseModel):
     def ips_timestamp(cls, ips):
         if ips is None:
             return None
-        cutoff = datetime.now(tz=timezone.utc) - timedelta(days=28)
+        cutoff = datetime.now(tz=UTC) - timedelta(days=28)
         return sorted(
             [x for x in ips if x.created > cutoff],
             key=lambda x: x.created,
@@ -203,8 +207,6 @@ class UserIPHistory(BaseModel):
         for x in self.ips:
             if res.get(x.ip):
                 x.information = res[x.ip]
-
-        return None
 
     def collapse_ip_records(self):
         """

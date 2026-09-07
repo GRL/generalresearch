@@ -2,17 +2,21 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    HttpUrl,
     PositiveInt,
 )
-from typing_extensions import Self
 
+from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import AwareDatetimeISO
+from generalresearch.models.thl.contest import (
+    ContestPrize,
+)
 from generalresearch.models.thl.contest.contest import (
     Contest,
     ContestBase,
@@ -23,13 +27,9 @@ from generalresearch.models.thl.contest.definitions import (
     ContestEndReason,
     ContestEntryTrigger,
     ContestEntryType,
+    ContestPrizeKind,
     ContestStatus,
     ContestType,
-)
-from generalresearch.models.thl.contest.examples import (
-    _example_milestone,
-    _example_milestone_create,
-    _example_milestone_user_view,
 )
 
 logging.basicConfig()
@@ -104,19 +104,46 @@ class MilestoneContestCreate(ContestBase, MilestoneContestConfig):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_milestone_create,
+        # json_schema_extra=json_example_milestone_create,
     )
 
     contest_type: Literal[ContestType.MILESTONE] = Field(default=ContestType.MILESTONE)
 
     end_condition: MilestoneContestEndCondition = Field()
 
+    @classmethod
+    def example(cls) -> MilestoneContestCreate:
+
+        return cls(
+            name="Win a 50% bonus for 7 days and a $5 bonus after your first 10 completes!",
+            description="Only valid for the first 50 users",
+            contest_type=ContestType.MILESTONE,
+            end_condition=MilestoneContestEndCondition(max_winners=50),
+            prizes=[
+                ContestPrize(
+                    kind=ContestPrizeKind.PROMOTION,
+                    name="50% bonus on completes for 7 days",
+                    estimated_cash_value=USDCent(0),
+                ),
+                ContestPrize(
+                    kind=ContestPrizeKind.CASH,
+                    name="$5.00 Bonus",
+                    cash_amount=USDCent(5_00),
+                    estimated_cash_value=USDCent(5_00),
+                ),
+            ],
+            entry_trigger=ContestEntryTrigger.TASK_COMPLETE,
+            target_amount=10,
+            starts_at="2025-06-12T21:12:58.061170Z",
+            terms_and_conditions=HttpUrl("https://www.example.com"),
+        )
+
 
 class MilestoneContest(MilestoneContestCreate, Contest):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_milestone,
+        # json_schema_extra=json_example_milestone,
     )
 
     entry_type: Literal[ContestEntryType.COUNT] = Field(default=ContestEntryType.COUNT)
@@ -133,10 +160,12 @@ class MilestoneContest(MilestoneContestCreate, Contest):
         if res:
             return res, msg
 
-        if self.status == ContestStatus.ACTIVE:
-            if self.end_condition.max_winners:
-                if self.win_count >= self.end_condition.max_winners:
-                    return True, ContestEndReason.MAX_WINNERS
+        if (
+            self.status == ContestStatus.ACTIVE
+            and self.end_condition.max_winners
+            and self.win_count >= self.end_condition.max_winners
+        ):
+            return True, ContestEndReason.MAX_WINNERS
 
         return False, None
 
@@ -172,12 +201,43 @@ class MilestoneContest(MilestoneContestCreate, Contest):
         )
         return super().model_validate_mysql(data)
 
+    @classmethod
+    def example(cls) -> MilestoneContest:
+        product_id = "1108d053e4fa47c5b0dbdcd03a7981e7"
+        return cls(
+            name="Win a 50% bonus for 7 days and a $5 bonus after your first 10 completes!",
+            description="Only valid for the first 50 users",
+            contest_type=ContestType.MILESTONE,
+            end_condition=MilestoneContestEndCondition(max_winners=50),
+            prizes=[
+                ContestPrize(
+                    kind=ContestPrizeKind.PROMOTION,
+                    name="50% bonus on completes for 7 days",
+                    estimated_cash_value=USDCent(0),
+                ),
+                ContestPrize(
+                    kind=ContestPrizeKind.CASH,
+                    name="$5.00 Bonus",
+                    cash_amount=USDCent(5_00),
+                    estimated_cash_value=USDCent(5_00),
+                ),
+            ],
+            entry_trigger=ContestEntryTrigger.TASK_COMPLETE,
+            target_amount=10,
+            starts_at="2025-06-12T21:12:58.061170Z",
+            terms_and_conditions=HttpUrl("https://www.example.com"),
+            product_id=product_id,
+            uuid="747fe3b709ae460e816821dcb81aebb9",
+            created_at="2025-06-12T21:12:58.061205Z",
+            updated_at="2025-06-12T21:12:58.061205Z",
+            win_count=12,
+        )
+
 
 class MilestoneUserView(MilestoneContest, ContestUserView):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_milestone_user_view,
     )
 
     valid_until: AwareDatetimeISO | None = Field(
@@ -190,16 +250,10 @@ class MilestoneUserView(MilestoneContest, ContestUserView):
     )
 
     def should_award(self):
-        if self.status == ContestStatus.ACTIVE:
-            if self.should_have_awarded():
-                return True
-        return False
+        return bool(self.status == ContestStatus.ACTIVE and self.should_have_awarded())
 
     def should_have_awarded(self):
-        if self.target_amount:
-            if self.user_amount >= self.target_amount:
-                return True
-        return False
+        return bool(self.target_amount and self.user_amount >= self.target_amount)
 
     def is_user_eligible(self, country_iso: str) -> tuple[bool, str]:
         passes, msg = super().is_user_eligible(country_iso=country_iso)
@@ -223,3 +277,37 @@ class MilestoneUserView(MilestoneContest, ContestUserView):
 
         # TODO: others in self.entry_rule ... min_completes, id_verified, etc.
         return True, ""
+
+    @classmethod
+    def example(cls) -> MilestoneUserView:
+        product_id = "1108d053e4fa47c5b0dbdcd03a7981e7"
+        return cls(
+            name="Win a 50% bonus for 7 days and a $5 bonus after your first 10 completes!",
+            description="Only valid for the first 50 users",
+            contest_type=ContestType.MILESTONE,
+            end_condition=MilestoneContestEndCondition(max_winners=50),
+            prizes=[
+                ContestPrize(
+                    kind=ContestPrizeKind.PROMOTION,
+                    name="50% bonus on completes for 7 days",
+                    estimated_cash_value=USDCent(0),
+                ),
+                ContestPrize(
+                    kind=ContestPrizeKind.CASH,
+                    name="$5.00 Bonus",
+                    cash_amount=USDCent(5_00),
+                    estimated_cash_value=USDCent(5_00),
+                ),
+            ],
+            entry_trigger=ContestEntryTrigger.TASK_COMPLETE,
+            target_amount=10,
+            starts_at="2025-06-12T21:12:58.061170Z",
+            terms_and_conditions=HttpUrl("https://www.example.com"),
+            product_id=product_id,
+            uuid="747fe3b709ae460e816821dcb81aebb9",
+            created_at="2025-06-12T21:12:58.061205Z",
+            updated_at="2025-06-12T21:12:58.061205Z",
+            win_count=12,
+            user_amount=8,
+            product_user_id="test-user",
+        )

@@ -2,12 +2,24 @@ from __future__ import annotations
 
 from abc import ABC
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from more_itertools import chunked
 
 from generalresearch.managers.base import SqlManager
-from generalresearch.models.thl.survey import MarketplaceCondition
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.survey import MarketplaceCondition
+
+DB_FIELDS = [
+    "hash",
+    "question_id",
+    "logical_operator",
+    "values",
+    "value_type",
+    "negate",
+]
 
 
 class CriteriaManager(SqlManager, ABC):
@@ -15,14 +27,6 @@ class CriteriaManager(SqlManager, ABC):
     Using the terms "criteria" & "condition" interchangeably!
     """
 
-    DB_FIELDS = [
-        "hash",
-        "question_id",
-        "logical_operator",
-        "values",
-        "value_type",
-        "negate",
-    ]
     CONDITION_MODEL = None
     TABLE_NAME = ""
 
@@ -30,7 +34,6 @@ class CriteriaManager(SqlManager, ABC):
         """
         Create a single criterion
         """
-        ...
 
     def filter(self, hashes: Collection[str]) -> dict[str, MarketplaceCondition]:
         """
@@ -60,12 +63,12 @@ class CriteriaManager(SqlManager, ABC):
 
     def update(self, conditions: Collection[MarketplaceCondition]) -> None:
         # Add any new hashes into the DB
-        this_hashes = set([condition.criterion_hash for condition in conditions])
+        this_hashes = {condition.criterion_hash for condition in conditions}
         known_hashes = self.filter_exists(this_hashes)
         new_hashes = this_hashes - known_hashes
 
         if new_hashes:
-            now = datetime.now(tz=timezone.utc)
+            now = datetime.now(tz=UTC)
             values = [
                 condition.to_mysql()
                 for condition in conditions
@@ -95,8 +98,6 @@ class CriteriaManager(SqlManager, ABC):
                     args=chunk,
                 )
                 conn.commit()
-
-        return None
 
     @property
     def mysql_fields(self) -> str:

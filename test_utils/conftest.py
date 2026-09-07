@@ -5,23 +5,26 @@ import shutil
 import stat
 import subprocess
 import sys
-import tempfile
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable, Generator
+from datetime import UTC, datetime, timedelta
 from os.path import join as pjoin
 from pathlib import Path
-from typing import Callable, Generator
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import pytest
 from _pytest.config import Config
 from dotenv import load_dotenv
 from pydantic import MariaDBDsn, PostgresDsn, TypeAdapter
+from pytest import FixtureRequest, TempPathFactory
 
-from generalresearch.config import GRLBaseSettings
 from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import InternalHostname, PostgresDict
-from generalresearch.pg_helper import PostgresConfig
 from generalresearch.sql_helper import SqlHelper
+
+if TYPE_CHECKING:
+    from generalresearch.config import GRLBaseSettings
+    from generalresearch.pg_helper import PostgresConfig
 
 
 @pytest.fixture(scope="session")
@@ -93,7 +96,7 @@ def postgres_instance(settings: GRLBaseSettings) -> Generator[PostgresDsn]:
     from psycopg import connect
     from psycopg.sql import SQL, Identifier
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ts: str = now.strftime("%Y-%m-%d")
     db_name = f"unittest-{ts}-{uuid4().hex[:6]}"
 
@@ -152,40 +155,51 @@ def postgres_instance_host(
     yield value
 
 
-# @pytest.fixture(scope="session")
-# def git_key_path(settings: GRLBaseSettings) -> Path:
-#     return Path('/tmp/')
-
-
 @pytest.fixture(scope="session")
 def git_key_path(
+    tmp_path_factory: TempPathFactory,
     settings: GRLBaseSettings,
 ) -> Generator[Path]:
+    # We are using the tmp_path_factory because unlike the tmp_path (which
+    # is function scoped), this is session scoped.
 
-    assert settings.git_creds
-    with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix="_id_rsa") as f:
-        f.write(settings.git_creds)
-        key_path = f.name
+    assert settings.git_creds, "Must define key to download alternative models"
+    fn = tmp_path_factory.mktemp("keys") / "git_creds"
+    key_content = settings.git_creds.replace("\\n", "\n")
+    fn.write_text(key_content, encoding="utf-8")
+    os.chmod(fn, stat.S_IRUSR | stat.S_IWUSR)
 
-    os.chmod(key_path, stat.S_IRUSR | stat.S_IWUSR)
+    yield Path(fn)
 
-    yield Path(key_path)
-
-    os.unlink(key_path)
+    os.unlink(fn)
 
 
 @pytest.fixture(scope="session")
-def gr_repo(git_key_path: Path) -> Callable[..., Path]:
-    repo_url = "ssh://code.g-r-l.com/general-research/gr-carer.git"
-    repo_path = Path("/tmp/gr-carer")
+def gr_repo(
+    git_key_path: Path,
+    tmp_path_factory: TempPathFactory,
+) -> Callable[..., Path | None]:
+    repo_url = "ssh://code.g-r-l.com:6611/general-research/gr-carer.git"
+
+    _ran = {}
+
+    fn = tmp_path_factory.mktemp("repos")
+    repo_path = fn / "gr-carer"
 
     def _inner() -> Path:
+
+        if _ran.get(repo_url, False):
+            print(f"Already ran django_db_factory.{repo_url}")
+            return repo_path
+
+        _ran[repo_url] = True
+
         ssh_cmd = (
-            f"ssh -i {git_key_path} "
+            f'ssh -i "{git_key_path}" '
             "-o IdentitiesOnly=yes "
-            "-o StrictHostKeyChecking=no "  # or accept-new, see note below
+            "-o StrictHostKeyChecking=no "
         )
-        env = {"GIT_SSH_COMMAND": ssh_cmd}
+        env = {**os.environ, "GIT_SSH_COMMAND": ssh_cmd}
 
         if repo_path.exists():
             subprocess.run(["git", "-C", str(repo_path), "pull"], check=True, env=env)
@@ -202,51 +216,140 @@ def gr_repo(git_key_path: Path) -> Callable[..., Path]:
 
 
 @pytest.fixture(scope="session")
-def django_db_factory(
-    postgres_instance: PostgresDsn,
+def django_settings_file(
     postgres_instance_dict: PostgresDict,
+) -> Callable[..., Path]:
+
+    def _inner(
+        settings_dir: Path, extra_installed_apps: list[str] | None = None
+    ) -> Path:
+        installed_apps = [
+            "django.contrib.postgres",
+            "django.contrib.contenttypes",
+        ] + (extra_installed_apps or [])
+        """
+            This returns the directory path of where the settings file is in,
+            not the path of the settings file itself
+        """
+
+        settings_content = f"""DATABASES = {{
+    "default": {{
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": {postgres_instance_dict["name"]!r},
+        "USER": {postgres_instance_dict["username"]!r},
+        "PASSWORD": {postgres_instance_dict["password"]!r},
+        "HOST": {postgres_instance_dict["host"]!r},
+        "PORT": {postgres_instance_dict["port"]!r},
+    }}
+}}
+INSTALLED_APPS = {installed_apps!r}
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "UTC"
+USE_I18N = True
+USE_L10N = True
+USE_TZ = True
+"""
+        settings_file_path = settings_dir / "test_settings.py"
+        settings_file_path.unlink(missing_ok=True)
+        settings_file_path.write_text(settings_content)
+
+        return settings_dir
+
+    return _inner
+
+
+@pytest.fixture(scope="session")
+def django_db_factory(
+    request: FixtureRequest,
+    postgres_instance: PostgresDsn,
     gr_repo: Callable[..., Path],
-) -> Callable[..., PostgresDsn]:
+    django_settings_file: Callable[..., Path],
+    postgres_instance_dict: PostgresDict,
+    tmp_path_factory: TempPathFactory,
+) -> Callable[..., PostgresDsn | None]:
 
-    import django
-    from django.conf import settings as django_settings
-    from django.core.management import call_command
+    _ran = {}
 
-    def _inner(django_project: str = "generalresearch.thl_django"):
+    def _inner(
+        django_project: str = "generalresearch.thl_django",
+    ) -> PostgresDsn | None:
 
-        if "gr" in django_project:
-            # We need model files that are NOT in this repo.
-            gr_path = gr_repo()
-            sys.path.insert(0, str(gr_path))
+        if _ran.get(django_project, False):
+            print(f"Already ran django_db_factory:{django_project}")
+            return postgres_instance
+        _ran[django_project] = True
 
-            print(sys.path)
+        # This is the generalresearch project root path, it's
+        #   1 directory up from test_utils/, or tests/
+        base_dir = Path(request.config.rootpath).parent
 
-        # 1. Bootstrapping Django settings
-        if not django_settings.configured:
-            django_settings.configure(
-                DATABASES={
-                    "default": {
-                        "ENGINE": "django.db.backends.postgresql",
-                        "NAME": postgres_instance_dict["name"],
-                        "USER": postgres_instance_dict["username"],
-                        "PASSWORD": postgres_instance_dict["password"],
-                        "HOST": postgres_instance_dict["host"],
-                        "PORT": postgres_instance_dict["port"],
-                    }
-                },
-                INSTALLED_APPS=[
-                    "django.contrib.postgres",
-                    "django.contrib.contenttypes",
-                    django_project,
+        if django_project == "generalresearch.thl_django":
+            _cwd = base_dir
+            _manage_path = "generalresearch.thl_django.app.manage"
+            _settings_dir = base_dir / "generalresearch/thl_django/app"
+            _settings_module = "generalresearch.thl_django.app.test_settings"
+            django_settings_file(
+                settings_dir=_settings_dir,
+                extra_installed_apps=[
+                    "generalresearch.thl_django",
                 ],
             )
-        django.setup()
 
-        # for model in apps.get_models():
-        #     print(f"Discovered model: {model._meta.label}")
+        elif django_project == "gr.common":
+            _cwd = gr_repo()
+            _manage_path = "gr.app.manage"
+            _settings_dir = gr_repo() / "gr/app"
+            _settings_module = "gr.app.test_settings"
+            django_settings_file(
+                settings_dir=_settings_dir, extra_installed_apps=["gr.common"]
+            )
 
-        # 2. Run migrations directly during fixture activation
-        call_command("migrate")
+        else:
+            raise ValueError("Not implemented yet.")
+
+        assert _settings_dir
+
+        env = {"DJANGO_SETTINGS_MODULE": str(_settings_module)}
+        res1 = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                _manage_path,
+                "makemigrations",
+                f"--settings={_settings_module}",
+            ],
+            cwd=str(_cwd),
+            env=env,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        if res1.returncode != 0:
+            print("STDOUT:", res1.stdout)
+            print("STDERR:", res1.stderr)
+        res1.check_returncode()
+
+        res2 = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                _manage_path,
+                "migrate",
+                f"--settings={_settings_module}",
+            ],
+            env=env,
+            cwd=str(_cwd),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        if res2.returncode != 0:
+            print("STDOUT:", res2.stdout)
+            print("STDERR:", res2.stderr)
+        res2.check_returncode()
 
         # 3. Return the Dsn so the factory gives a way to connect
         return postgres_instance
@@ -276,37 +379,37 @@ def spectrum_rw(settings: GRLBaseSettings) -> SqlHelper:
 
 @pytest.fixture
 def start() -> datetime:
-    return datetime(year=1900, month=1, day=1, tzinfo=timezone.utc)
+    return datetime(year=1900, month=1, day=1, tzinfo=UTC)
 
 
 @pytest.fixture
 def utc_now() -> datetime:
-    return datetime.now(tz=timezone.utc)
+    return datetime.now(tz=UTC)
 
 
 @pytest.fixture
 def utc_hour_ago() -> datetime:
-    return datetime.now(tz=timezone.utc) - timedelta(hours=1)
+    return datetime.now(tz=UTC) - timedelta(hours=1)
 
 
 @pytest.fixture
 def utc_day_ago() -> datetime:
-    return datetime.now(tz=timezone.utc) - timedelta(hours=24)
+    return datetime.now(tz=UTC) - timedelta(hours=24)
 
 
 @pytest.fixture
 def utc_90days_ago() -> datetime:
-    return datetime.now(tz=timezone.utc) - timedelta(days=90)
+    return datetime.now(tz=UTC) - timedelta(days=90)
 
 
 @pytest.fixture
 def utc_60days_ago() -> datetime:
-    return datetime.now(tz=timezone.utc) - timedelta(days=60)
+    return datetime.now(tz=UTC) - timedelta(days=60)
 
 
 @pytest.fixture
 def utc_30days_ago() -> datetime:
-    return datetime.now(tz=timezone.utc) - timedelta(days=30)
+    return datetime.now(tz=UTC) - timedelta(days=30)
 
 
 # === Clean up ===
@@ -317,12 +420,12 @@ def delete_df_collection(
     thl_web_rw: PostgresConfig, create_main_accounts: Callable[..., None]
 ) -> Callable[..., None]:
 
-    from generalresearch.incite.collections import (
+    from generalresearch.incite.collections.base import (
         DFCollection,
         DFCollectionType,
     )
 
-    def _inner(coll: "DFCollection"):
+    def _inner(coll: DFCollection):
         match coll.data_type:
             case DFCollectionType.LEDGER:
                 for table in [
@@ -337,16 +440,15 @@ def delete_df_collection(
                 create_main_accounts()
 
             case DFCollectionType.WALL | DFCollectionType.SESSION:
-                with thl_web_rw.make_connection() as conn:
-                    with conn.cursor() as c:
-                        c.execute("SET CONSTRAINTS ALL DEFERRED")
-                        for table in [
-                            "thl_wall",
-                            "thl_session",
-                        ]:
-                            c.execute(
-                                query=f"DELETE FROM {table};",
-                            )
+                with thl_web_rw.make_connection() as conn, conn.cursor() as c:
+                    c.execute("SET CONSTRAINTS ALL DEFERRED")
+                    for table in [
+                        "thl_wall",
+                        "thl_session",
+                    ]:
+                        c.execute(
+                            query=f"DELETE FROM {table};",
+                        )
 
             case DFCollectionType.USER:
                 for table in ["thl_usermetadata", "thl_user"]:

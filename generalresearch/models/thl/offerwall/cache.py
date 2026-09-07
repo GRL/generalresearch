@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-from generalresearch.models import Source
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+from generalresearch.models.definitions import Source
 from generalresearch.models.thl.offerwall import OfferWallRequest
 from generalresearch.models.thl.offerwall.base import (
     OfferwallBase,
@@ -26,9 +26,7 @@ class GetOfferWallCache(BaseModel):
     request_id: str = Field()
     offerwall: OfferwallBase = Field()
     all_sids: list[str] = Field()
-    timestamp: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    timestamp: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(UTC))
     latest_ip_info: dict[str, Any] = Field(
         description="So we can easily check if user's IP info has changed"
     )
@@ -51,9 +49,7 @@ class SessionInfoCache(BaseModel):
     #   will get pruned as tasks are attempted
     tasks: list[ScoredTaskResult] = Field()
 
-    started: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    started: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # The count of attempts per marketplace
     mp_retry_count: dict[Source, int] = Field(default_factory=dict)

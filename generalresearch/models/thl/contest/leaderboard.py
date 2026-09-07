@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Literal
+from datetime import UTC, datetime, timedelta
+from typing import Any, Literal, Self
 
 from pydantic import (
     ConfigDict,
@@ -11,8 +11,8 @@ from pydantic import (
     model_validator,
 )
 from redis import Redis
-from typing_extensions import Self
 
+from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
 from generalresearch.managers.leaderboard import country_timezone
 from generalresearch.managers.leaderboard.manager import LeaderboardManager
@@ -21,6 +21,7 @@ from generalresearch.managers.thl.user_manager.user_manager import (
 )
 from generalresearch.models.thl.contest import (
     ContestEndCondition,
+    ContestPrize,
     ContestWinner,
 )
 from generalresearch.models.thl.contest.contest import (
@@ -35,11 +36,6 @@ from generalresearch.models.thl.contest.definitions import (
     ContestType,
     LeaderboardTieBreakStrategy,
 )
-from generalresearch.models.thl.contest.examples import (
-    _example_leaderboard_contest,
-    _example_leaderboard_contest_create,
-    _example_leaderboard_contest_user_view,
-)
 from generalresearch.models.thl.leaderboard import (
     Leaderboard,
     LeaderboardCode,
@@ -51,7 +47,6 @@ class LeaderboardContestCreate(ContestBase):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_leaderboard_contest_create,
     )
 
     contest_type: Literal[ContestType.LEADERBOARD] = Field(
@@ -78,9 +73,9 @@ class LeaderboardContestCreate(ContestBase):
         ranks = {x.leaderboard_rank for x in self.prizes}
         assert None not in ranks, "Must have leaderboard_rank defined"
         assert min(ranks) == 1, "Must start with rank 1"
-        assert ranks == set(
-            range(min(ranks), max(ranks) + 1)
-        ), "cannot skip prize leaderboard_ranks"
+        assert ranks == set(range(min(ranks), max(ranks) + 1)), (
+            "cannot skip prize leaderboard_ranks"
+        )
         return self
 
     @model_validator(mode="after")
@@ -91,9 +86,9 @@ class LeaderboardContestCreate(ContestBase):
 
     @model_validator(mode="after")
     def check_end_condition(self) -> Self:
-        assert (
-            not self.end_condition.target_entry_amount
-        ), "target_entry_amount not valid in leaderboard contest"
+        assert not self.end_condition.target_entry_amount, (
+            "target_entry_amount not valid in leaderboard contest"
+        )
         # the ends_at will get set automatically from the leaderboard_key
         return self
 
@@ -125,12 +120,45 @@ class LeaderboardContestCreate(ContestBase):
             parts | {"row_count": 0, "bpid": parts["product_id"]}
         )
 
+    @classmethod
+    def example(cls) -> LeaderboardContestCreate:
+        product_id = "1108d053e4fa47c5b0dbdcd03a7981e7"
+
+        return cls(
+            name="Prizes for top survey takers this week",
+            description="$15 1st place, $10 2nd, $5 3rd place US weekly",
+            contest_type=ContestType.LEADERBOARD,
+            prizes=[
+                ContestPrize(
+                    name="$15 Cash",
+                    estimated_cash_value=USDCent(15_00),
+                    cash_amount=USDCent(15_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=1,
+                ),
+                ContestPrize(
+                    name="$10 Cash",
+                    estimated_cash_value=USDCent(10_00),
+                    cash_amount=USDCent(10_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=2,
+                ),
+                ContestPrize(
+                    name="$5 Cash",
+                    estimated_cash_value=USDCent(5_00),
+                    cash_amount=USDCent(5_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=3,
+                ),
+            ],
+            leaderboard_key=f"leaderboard:{product_id}:us:weekly:2025-05-26:complete_count",
+        )
+
 
 class LeaderboardContest(LeaderboardContestCreate, Contest):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_leaderboard_contest,
         arbitrary_types_allowed=True,
     )
 
@@ -144,15 +172,16 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
 
     @model_validator(mode="after")
     def validate_product_lb_key(self) -> Self:
-        assert (
-            self.product_id == self.leaderboard_key_parts["product_id"]
-        ), "leaderboard_key product_id is invalid"
+        assert self.product_id == self.leaderboard_key_parts["product_id"], (
+            "leaderboard_key product_id is invalid"
+        )
         if self.country_isos:
+            assert len(self.country_isos) == 1, (
+                "Can only set 1 country_iso in a leaderboard contest"
+            )
             assert (
-                len(self.country_isos) == 1
-            ), "Can only set 1 country_iso in a leaderboard contest"
-            assert (
-                list(self.country_isos)[0] == self.leaderboard_key_parts["country_iso"]
+                next(iter(self.country_isos))
+                == self.leaderboard_key_parts["country_iso"]
             ), "leaderboard_key country_iso must match the country_isos"
         else:
             self.country_isos = {self.leaderboard_key_parts["country_iso"]}
@@ -161,9 +190,9 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
     @model_validator(mode="after")
     def validate_tie_break(self) -> Self:
         if self.tie_break_strategy == LeaderboardTieBreakStrategy.SPLIT_PRIZE_POOL:
-            assert all(
-                p.kind == ContestPrizeKind.CASH for p in self.prizes
-            ), "All prizes must be cash due to the tie-break strategy"
+            assert all(p.kind == ContestPrizeKind.CASH for p in self.prizes), (
+                "All prizes must be cash due to the tie-break strategy"
+            )
         return self
 
     @model_validator(mode="after")
@@ -193,10 +222,12 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
         return lbm
 
     def should_end(self) -> tuple[bool, ContestEndReason | None]:
-        if self.status == ContestStatus.ACTIVE:
-            if self.end_condition.ends_at:
-                if datetime.now(tz=timezone.utc) >= self.end_condition.ends_at:
-                    return True, ContestEndReason.ENDS_AT
+        if (
+            self.status == ContestStatus.ACTIVE
+            and self.end_condition.ends_at
+            and datetime.now(tz=UTC) >= self.end_condition.ends_at
+        ):
+            return True, ContestEndReason.ENDS_AT
 
         return False, None
 
@@ -244,12 +275,46 @@ class LeaderboardContest(LeaderboardContestCreate, Contest):
         )
         return d
 
+    @classmethod
+    def example(cls) -> LeaderboardContest:
+        product_id = "1108d053e4fa47c5b0dbdcd03a7981e7"
+
+        return cls(
+            name="Prizes for top survey takers this week",
+            description="$15 1st place, $10 2nd, $5 3rd place US weekly",
+            contest_type=ContestType.LEADERBOARD,
+            prizes=[
+                ContestPrize(
+                    name="$15 Cash",
+                    estimated_cash_value=USDCent(15_00),
+                    cash_amount=USDCent(15_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=1,
+                ),
+                ContestPrize(
+                    name="$10 Cash",
+                    estimated_cash_value=USDCent(10_00),
+                    cash_amount=USDCent(10_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=2,
+                ),
+                ContestPrize(
+                    name="$5 Cash",
+                    estimated_cash_value=USDCent(5_00),
+                    cash_amount=USDCent(5_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=3,
+                ),
+            ],
+            leaderboard_key=f"leaderboard:{product_id}:us:weekly:2025-05-26:complete_count",
+            product_id=product_id,
+        )
+
 
 class LeaderboardContestUserView(LeaderboardContest, ContestUserView):
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
-        json_schema_extra=_example_leaderboard_contest_user_view,
     )
 
     @computed_field(description="The current rank of this user in this contest")
@@ -276,7 +341,7 @@ class LeaderboardContestUserView(LeaderboardContest, ContestUserView):
         if self.user_winnings:
             return False, "User already won"
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         if self.leaderboard_model.period_end_utc < now:
             return False, "Contest is over"
         if self.leaderboard_model.period_start_utc > now:
@@ -289,3 +354,39 @@ class LeaderboardContestUserView(LeaderboardContest, ContestUserView):
             return False, "contest is over"
 
         return True, ""
+
+    @classmethod
+    def example(cls) -> LeaderboardContestUserView:
+        product_id = "1108d053e4fa47c5b0dbdcd03a7981e7"
+
+        return cls(
+            name="Prizes for top survey takers this week",
+            description="$15 1st place, $10 2nd, $5 3rd place US weekly",
+            contest_type=ContestType.LEADERBOARD,
+            prizes=[
+                ContestPrize(
+                    name="$15 Cash",
+                    estimated_cash_value=USDCent(15_00),
+                    cash_amount=USDCent(15_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=1,
+                ),
+                ContestPrize(
+                    name="$10 Cash",
+                    estimated_cash_value=USDCent(10_00),
+                    cash_amount=USDCent(10_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=2,
+                ),
+                ContestPrize(
+                    name="$5 Cash",
+                    estimated_cash_value=USDCent(5_00),
+                    cash_amount=USDCent(5_00),
+                    kind=ContestPrizeKind.CASH,
+                    leaderboard_rank=3,
+                ),
+            ],
+            leaderboard_key=f"leaderboard:{product_id}:us:weekly:2025-05-26:complete_count",
+            product_id=product_id,
+            product_user_id="test-user",
+        )

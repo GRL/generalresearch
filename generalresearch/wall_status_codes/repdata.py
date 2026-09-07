@@ -3,11 +3,11 @@ Status codes are in a xlsx file. See thl-repdata readme
 """
 
 from collections import defaultdict
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from generalresearch.models.thl.definitions import Status, StatusCode1
 
-status_codes_name: Dict[str, str] = {
+status_codes_name: dict[str, str] = {
     "2": "Search Failed",
     "3": "Activity Failed",
     "4": "Review Failed",
@@ -26,7 +26,7 @@ status_codes_name: Dict[str, str] = {
     "6003": "In-Survey maximum exceeded (Research Desk)",
 }
 # See: 02, and 13 are de-dupes
-rd_threat_name: Dict[str, str] = {
+rd_threat_name: dict[str, str] = {
     "02": "Duplicate entrant into survey",
     "03": "Emulator Usage",
     "04": "VPN usage detected",
@@ -46,8 +46,8 @@ rd_threat_name: Dict[str, str] = {
     "18": "MaxMind Failure",
 }
 
-status_map = defaultdict(lambda: Status.FAIL, **{"complete": Status.COMPLETE})
-status_code_map: Dict[StatusCode1, List[str]] = {
+status_map = defaultdict(lambda: Status.FAIL, complete=Status.COMPLETE)
+status_code_map: dict[StatusCode1, list[str]] = {
     StatusCode1.COMPLETE: ["1000"],
     StatusCode1.BUYER_FAIL: ["2000", "4000"],
     StatusCode1.BUYER_QUALITY_FAIL: ["3000"],
@@ -58,10 +58,10 @@ status_code_map: Dict[StatusCode1, List[str]] = {
     StatusCode1.PS_OVERQUOTA: ["5001", "6001", "6002", "6003"],
 }
 
-status_class = dict()
+status_class = {}
 for k, v in status_code_map.items():
     k: StatusCode1
-    v: List[str]
+    v: list[str]
 
     for vv in v:
         vv: str
@@ -70,9 +70,9 @@ for k, v in status_code_map.items():
 
 def annotate_status_code(
     ext_status_code_1: str,
-    ext_status_code_2: Optional[str] = None,
-    ext_status_code_3: Optional[str] = None,
-) -> Tuple[Status, StatusCode1, Optional[Any]]:
+    ext_status_code_2: str | None = None,
+    ext_status_code_3: str | None = None,
+) -> tuple[Status, StatusCode1, Any | None]:
     """
     :params ext_status_code_1: the redirect urls category (as defined in url param 549f3710b)
         {'term', 'overquota', 'fraud', 'complete'}

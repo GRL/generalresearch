@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Collection
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -17,10 +17,10 @@ from pydantic import (
 from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.definitions import PayoutStatus
-from generalresearch.models.thl.wallet import PayoutType
 from generalresearch.models.thl.wallet.cashout_method import (
     CashMailOrderData,
 )
+from generalresearch.models.thl.wallet.definitions import PayoutType
 
 
 class PayoutEvent(BaseModel, validate_assignment=True):
@@ -50,9 +50,7 @@ class PayoutEvent(BaseModel, validate_assignment=True):
     #   populated from the db and so does not need to be set (there is no
     #   `description` field in event_payout)
     description: str | None = Field(default=None)
-    created: AwareDatetimeISO = Field(
-        default_factory=lambda: datetime.now(tz=timezone.utc)
-    )
+    created: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
     # In the smallest unit of the currency being transacted. For USD, this
     #   is cents.
@@ -131,13 +129,16 @@ class PayoutEvent(BaseModel, validate_assignment=True):
         else:
             raise ValueError("this shouldn't happen")
 
-    def model_dump_mysql(self, *args, **kwargs) -> dict[str, Any]:
-        d = self.model_dump(mode="json", *args, **kwargs)
+    def model_dump_mysql(self) -> dict[str, Any]:
+        d = self.model_dump(mode="json")
+
         if "created" in d:
             d["created"] = self.created.replace(tzinfo=None)
         if d.get("request_data") is not None:
             d["request_data"] = json.dumps(self.request_data)
         if d.get("order_data") is not None:
+            assert self.order_data
+
             if isinstance(self.order_data, dict):
                 d["order_data"] = json.dumps(self.order_data)
             else:
@@ -159,7 +160,7 @@ class BPPayoutEvent(BaseModel):
 
     created: AwareDatetimeISO = Field(
         description="When the Brokerage Product was paid out",
-        default_factory=lambda: datetime.now(tz=timezone.utc),
+        default_factory=lambda: datetime.now(tz=UTC),
     )
 
     amount: USDCent = Field(

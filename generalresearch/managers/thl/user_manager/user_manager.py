@@ -5,13 +5,16 @@ import operator
 from collections.abc import Collection
 from datetime import datetime
 from threading import Lock
+from typing import TYPE_CHECKING
 
 from cachetools import TTLCache, cachedmethod
 from pydantic import RedisDsn
 
 from generalresearch.managers.base import Permission
 from generalresearch.managers.thl.product import ProductManager
-from generalresearch.managers.thl.user_manager import UserDoesntExistError
+from generalresearch.managers.thl.user_manager.exceptions import (
+    UserDoesntExistError,
+)
 from generalresearch.managers.thl.user_manager.mysql_user_manager import (
     MysqlUserManager,
 )
@@ -22,10 +25,14 @@ from generalresearch.managers.thl.user_manager.redis_user_manager import (
     RedisUserManager,
 )
 from generalresearch.models.custom_types import UUIDStr
-from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.user import User
-from generalresearch.pg_helper import PostgresConfig
 from generalresearch.utils.copying_cache import deepcopy_return
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.userhealth import AuditLogManager
+    from generalresearch.models.thl.product import Product
+    from generalresearch.models.thl.user import User
+    from generalresearch.models.thl.userhealth import AuditLog
+    from generalresearch.pg_helper import PostgresConfig
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -116,18 +123,17 @@ class UserManager:
 
     def audit_log(
         self,
+        alm: AuditLogManager,
         user: User,
         level: int,
         event_type: str,
         event_msg: str | None = None,
         event_value: float | None = None,
-    ) -> None:
-        from generalresearch.managers.thl.userhealth import AuditLogManager
+    ) -> AuditLog:
         from generalresearch.models.thl.userhealth import AuditLogLevel
 
-        alm = AuditLogManager(pg_config=self.mysql_user_manager.pg_config)
         assert user.user_id is not None
-        alm.create(
+        return alm.create(
             user_id=user.user_id,
             level=AuditLogLevel(level),
             event_type=event_type,
@@ -183,6 +189,7 @@ class UserManager:
         # We can use the read-replica here b/c when we create a user we'll
         #   put it in the in-memory cache
         mysql_user_manager = self.mysql_user_manager_rr or self.mysql_user_manager
+        assert mysql_user_manager
         user = mysql_user_manager.get_user_from_mysql(
             product_id=product_id,
             product_user_id=product_user_id,
@@ -269,6 +276,8 @@ class UserManager:
         """
         Given a bp_user_id and a product_id, get or create a User
         """
+        from generalresearch.models.thl.user import User
+
         assert Permission.CREATE in self.sql_permissions
         assert self.mysql_user_manager is not None
         assert self.redis_user_manager is not None, (
@@ -279,6 +288,7 @@ class UserManager:
             "Need user_manager_limiter to get_or_create_user"
         )
         # Attempt to create common_struct solely for validation purposes
+
         if not User.is_valid_ubp(
             product_id=product_id, product_user_id=product_user_id
         ):
@@ -316,6 +326,7 @@ class UserManager:
         # if product.id not in {}:
         #     self.user_manager_limiter.raise_allow_user_create(product=product)
 
+        assert self.mysql_user_manager
         user = self.mysql_user_manager.create_user(
             product_user_id=product_user_id,
             product_id=product.id,
@@ -328,6 +339,7 @@ class UserManager:
 
     def product_id_exists(self, product_id: str) -> bool:
         mysql_user_manager = self.mysql_user_manager_rr or self.mysql_user_manager
+        assert mysql_user_manager
         return mysql_user_manager.product_id_exists(product_id)
 
     def block_user(self, user: User) -> bool:
@@ -360,6 +372,7 @@ class UserManager:
         Currently, this sets a key in the userprofile_userstat table.
         TODO: this should be a property of the user?
         """
+        assert self.mysql_user_manager
         return self.mysql_user_manager.is_whitelisted(user=user)
 
     def fetch_by_bpuids(
@@ -370,6 +383,7 @@ class UserManager:
     ) -> list[User]:
         assert product_id, "must pass product_id"
         assert len(product_user_ids) > 0, "must pass 1 or more product_user_ids"
+        assert self.mysql_user_manager_rr
         return self.mysql_user_manager_rr.fetch_by_bpuids(
             product_id=product_id, product_user_ids=product_user_ids
         )
@@ -383,6 +397,7 @@ class UserManager:
         assert (user_ids or user_uuids) and not (user_ids and user_uuids), (
             "Must pass ONE of user_ids, user_uuids"
         )
+        assert self.mysql_user_manager_rr
         return self.mysql_user_manager_rr.fetch(
             user_ids=user_ids, user_uuids=user_uuids
         )

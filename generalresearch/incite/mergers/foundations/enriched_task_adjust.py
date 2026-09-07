@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from typing import Any, Literal
 
 import dask.dataframe as dd
@@ -8,10 +7,12 @@ import pandas as pd
 from distributed import Client
 from sentry_sdk import capture_exception
 
+from generalresearch.incite import LOG
 from generalresearch.incite.collections.thl_web import (
     TaskAdjustmentDFCollection,
 )
-from generalresearch.incite.mergers import (
+from generalresearch.incite.exceptions import BuildError, BuildItemsError
+from generalresearch.incite.mergers.base import (
     MergeCollection,
     MergeCollectionItem,
     MergeType,
@@ -26,8 +27,6 @@ from generalresearch.incite.schemas.mergers.foundations.enriched_task_adjust imp
     EnrichedTaskAdjustSchema,
 )
 from generalresearch.pg_helper import PostgresConfig
-
-LOG = logging.getLogger("incite")
 
 
 class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
@@ -55,13 +54,13 @@ class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
         LOG.warning(f"EnrichedReconMergeItem.build({ir})")
 
         # --- Task Adjustments ---
-        LOG.warning(f"EnrichedReconMergeItem: get session_collection")
+        LOG.warning("EnrichedReconMergeItem: get session_collection")
         task_adj_coll_items = [
             w for w in task_adj_coll.items if w.interval.overlaps(ir)
         ]
 
         if len(task_adj_coll_items) == 0:
-            raise Exception("TaskAdjColl item collection failed")
+            raise BuildItemsError("TaskAdjColl item collection failed")
 
         ddf: dd.DataFrame | None = task_adj_coll.ddf(
             items=task_adj_coll_items,
@@ -83,6 +82,8 @@ class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
                 ("started", "<", end),
             ],
         )
+
+        assert isinstance(ddf, pd.DataFrame)
         # Naked compute... don't log
         # LOG.info(f"TaskAdjustmentDetailMergeCollectionItem.rows: {len(ddf.index)}")
 
@@ -91,7 +92,7 @@ class EnrichedTaskAdjustMergeItem(MergeCollectionItem):
         ew_items = [ew for ew in enriched_wall.items if ew.interval.overlaps(ir)]
 
         if len(ew_items) == 0:
-            raise Exception(
+            raise BuildItemsError(
                 "EnrichedWall item collection failed for EnrichedTaskAdjColl"
             )
 
@@ -209,6 +210,5 @@ class EnrichedTaskAdjustMerge(MergeCollection):
                 enriched_wall=enriched_wall,
                 pg_config=pg_config,
             )
-        except (Exception,) as e:
+        except BuildError as e:
             capture_exception(error=e)
-            pass

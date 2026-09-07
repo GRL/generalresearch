@@ -1,4 +1,5 @@
 import logging
+from typing import TYPE_CHECKING
 
 from redis import Redis
 
@@ -7,7 +8,9 @@ from generalresearch.models.thl.leaderboard import (
     LeaderboardCode,
     LeaderboardFrequency,
 )
-from generalresearch.models.thl.session import Session
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.session import Session
 
 logger = logging.getLogger()
 

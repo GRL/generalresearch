@@ -12,17 +12,12 @@ https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
 
 import json
 import pkgutil
-from typing import Set
 
 
 class Localelator:
     """
     EVERYTHING IS LOWERCASE!!! (except this comment)
     """
-
-    lang_alpha2_to_alpha3b = dict()
-    lang_alpha3_to_alpha3b = dict()
-    languages = set()
 
     def __init__(self):
         d = json.loads(pkgutil.get_data(__name__, "iso639-3.json"))
@@ -43,11 +38,11 @@ class Localelator:
             pkgutil.get_data(__name__, "country_default_lang.json")
         )
 
-    def get_all_languages(self) -> Set[str]:
+    def get_all_languages(self) -> set[str]:
         # returns only the ISO 639-2/B (three-letter codes)
         return set(self.lang_alpha2_to_alpha3b.values())
 
-    def get_all_countries(self) -> Set[str]:
+    def get_all_countries(self) -> set[str]:
         # returns only the ISO 3166-1 alpha-2 (two-letter codes)
         return set(self.country_alpha3_to_alpha2.values())
 

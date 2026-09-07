@@ -1,26 +1,25 @@
 from __future__ import annotations
 
-import logging
 import math
 import socket
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from redis.client import PubSub, Redis
 
+from generalresearch.incite.base import LOG
 from generalresearch.managers.base import RedisManager
-from generalresearch.models import Source
 from generalresearch.models.custom_types import UUIDStr
+from generalresearch.models.definitions import Source
 from generalresearch.models.events import (
     AggregateBySource,
     EventEnvelope,
     EventMessage,
     EventType,
     MaxGaugeBySource,
-    ServerToClientMessage,
     ServerToClientMessageAdapter,
     SessionEnterPayload,
     SessionFinishPayload,
@@ -30,11 +29,14 @@ from generalresearch.models.events import (
     TaskStatsSnapshot,
 )
 from generalresearch.models.thl.definitions import Status
-from generalresearch.models.thl.session import Session, Wall
-from generalresearch.models.thl.user import User
 
 if TYPE_CHECKING:
     from influxdb import InfluxDBClient
+
+    from generalresearch.models.events import ServerToClientMessage
+    from generalresearch.models.thl.session import Session, Wall
+    from generalresearch.models.thl.user import User
+
 else:
     InfluxDBClient = object
 
@@ -141,7 +143,7 @@ class UserStatsManager(RedisManager):
         pipe.execute()
 
     def mark_user_active(self, user: User) -> None:
-        now = datetime.now(tz=timezone.utc).isoformat()
+        now = datetime.now(tz=UTC).isoformat()
         r = self.redis_client
 
         pipe = r.pipeline(transaction=False)
@@ -175,7 +177,7 @@ class UserStatsManager(RedisManager):
         # This call is idempotent; it can be called multiple times (for the
         # same user) and won't falsely increase a counter; it will just
         # reset the expiration for this user (times out after 60 min)
-        now = datetime.now(tz=timezone.utc).isoformat()
+        now = datetime.now(tz=UTC).isoformat()
         r = self.redis_client
         pipe = r.pipeline(transaction=False)
 
@@ -216,16 +218,18 @@ class UserStatsManager(RedisManager):
 
 
 class TaskStatsManager(RedisManager):
-    task_stats = [
-        "task_created_count_last_1h",
-        "task_created_count_last_24h",
-        "live_task_count",
-        "live_tasks_max_payout",
-        "TaskStatsManager:latest",
-    ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.task_stats = [
+            "task_created_count_last_1h",
+            "task_created_count_last_24h",
+            "live_task_count",
+            "live_tasks_max_payout",
+            "TaskStatsManager:latest",
+        ]
+
         self.SUM_HASH_LUA = self.redis_client.register_script(SUM_HASH_LUA_SCRIPT)
         self.MAX_HASH_LUA = self.redis_client.register_script(MAX_HASH_LUA_SCRIPT)
 
@@ -343,8 +347,8 @@ class TaskStatsManager(RedisManager):
             by_source=live_tasks_max_payout_by_source,
         )
 
-        task_created_count_last_1h = dict()
-        task_created_count_last_24h = dict()
+        task_created_count_last_1h = {}
+        task_created_count_last_24h = {}
         for source in sources:
             task_created_count_last_1h[source] = pipe_res.pop(0)
             task_created_count_last_24h[source] = pipe_res.pop(0)
@@ -381,25 +385,25 @@ class SessionStatsManager(RedisManager):
     older than 1 hr (in the 1 hr bucket) will expire.
     """
 
-    # Must be ordered. Don't change this
-    global_keys = [
-        "session_enters_last_1h",
-        "session_enters_last_24h",
-        "session_fails_last_1h",
-        "session_fails_last_24h",
-        "session_completes_last_1h",
-        "session_completes_last_24h",
-        "sum_payouts_last_1h",
-        "sum_payouts_last_24h",
-        "sum_user_payouts_last_1h",
-        "sum_user_payouts_last_24h",
-        # "session_fail_loi_sum_last_1h",
-        "session_fail_loi_sum_last_24h",
-        # "session_complete_loi_sum_last_1h",
-        "session_complete_loi_sum_last_24h",
-    ]
-
     def __init__(self, *args, **kwargs):
+        # Must be ordered. Don't change this
+        self.global_keys = [
+            "session_enters_last_1h",
+            "session_enters_last_24h",
+            "session_fails_last_1h",
+            "session_fails_last_24h",
+            "session_completes_last_1h",
+            "session_completes_last_24h",
+            "sum_payouts_last_1h",
+            "sum_payouts_last_24h",
+            "sum_user_payouts_last_1h",
+            "sum_user_payouts_last_24h",
+            # "session_fail_loi_sum_last_1h",
+            "session_fail_loi_sum_last_24h",
+            # "session_complete_loi_sum_last_1h",
+            "session_complete_loi_sum_last_24h",
+        ]
+
         super().__init__(*args, **kwargs)
         self.SUM_HASH_LUA = self.redis_client.register_script(SUM_HASH_LUA_SCRIPT)
 
@@ -435,8 +439,8 @@ class SessionStatsManager(RedisManager):
             pipe.hincrby(name, key, 1)
             pipe.hexpire(name, ttl, key, nx=True)
             # BP-specific tracker
-            pipe.hincrby(name + ":" + user.product_id, key, 1)
-            pipe.hexpire(name + ":" + user.product_id, ttl, key, nx=True)
+            pipe.hincrby(f"{name}:{user.product_id}", key, 1)
+            pipe.hexpire(f"{name}:{user.product_id}", ttl, key, nx=True)
 
             # We're not returning this, but keep the sums, so we can
             # calculate the avg
@@ -444,8 +448,8 @@ class SessionStatsManager(RedisManager):
             value = round(session.elapsed.total_seconds())
             pipe.hincrby(name, key, value)
             pipe.hexpire(name, ttl, key, nx=True)
-            pipe.hincrby(name + ":" + user.product_id, key, value)
-            pipe.hexpire(name + ":" + user.product_id, ttl, key, nx=True)
+            pipe.hincrby(f"{name}:{user.product_id}", key, value)
+            pipe.hexpire(f"{name}:{user.product_id}", ttl, key, nx=True)
 
         pipe.execute()
 
@@ -476,31 +480,31 @@ class SessionStatsManager(RedisManager):
             pipe.hincrby(name, key, 1)
             pipe.hexpire(name, ttl, key, nx=True)
             # BP-specific tracker
-            pipe.hincrby(name + ":" + user.product_id, key, 1)
-            pipe.hexpire(name + ":" + user.product_id, ttl, key, nx=True)
+            pipe.hincrby(f"{name}:{user.product_id}", key, 1)
+            pipe.hexpire(f"{name}:{user.product_id}", ttl, key, nx=True)
 
             name = "sum_payouts_" + name_postfix
             amount = round(session.payout * 100)
             pipe.hincrby(name, key, amount)
             pipe.hexpire(name, ttl, key, nx=True)
-            pipe.hincrby(name + ":" + user.product_id, key, amount)
-            pipe.hexpire(name + ":" + user.product_id, ttl, key, nx=True)
+            pipe.hincrby(f"{name}:{user.product_id}", key, amount)
+            pipe.hexpire(f"{name}:{user.product_id}", ttl, key, nx=True)
 
             if session.user_payout:
                 name = "sum_user_payouts_" + name_postfix
                 amount = round(session.user_payout * 100)
                 pipe.hincrby(name, key, amount)
                 pipe.hexpire(name, ttl, key, nx=True)
-                pipe.hincrby(name + ":" + user.product_id, key, amount)
-                pipe.hexpire(name + ":" + user.product_id, ttl, key, nx=True)
+                pipe.hincrby(f"{name}:{user.product_id}", key, amount)
+                pipe.hexpire(f"{name}:{user.product_id}", ttl, key, nx=True)
 
             # We're not returning this, but keep the sums, so we can calculate the avg
             name = "session_complete_loi_sum_" + name_postfix
             value = round(session.elapsed.total_seconds())
             pipe.hincrby(name, key, value)
             pipe.hexpire(name, ttl, key, nx=True)
-            pipe.hincrby(name + ":" + user.product_id, key, value)
-            pipe.hexpire(name + ":" + user.product_id, ttl, key, nx=True)
+            pipe.hincrby(f"{name}:{user.product_id}", key, value)
+            pipe.hexpire(f"{name}:{user.product_id}", ttl, key, nx=True)
 
         pipe.execute()
 
@@ -563,6 +567,7 @@ class SessionStatsManager(RedisManager):
         res["session_avg_user_payout_last_24h"] = None
         res["session_complete_avg_loi_last_24h"] = None
         res["session_fail_avg_loi_last_24h"] = None
+
         if res["session_completes_last_24h"]:
             res["session_avg_payout_last_24h"] = math.ceil(
                 res["sum_payouts_last_24h"] / res["session_completes_last_24h"]
@@ -630,7 +635,7 @@ class EventManager(StatsManager):
 
     def get_active_subscribers(self) -> set[UUIDStr]:
         res = self.redis_client.pubsub_channels(f"{self.cache_prefix}:event-channel:*")
-        product_ids = {x.rsplit(":", 1)[-1] for x in res}
+        product_ids = {str(x.rsplit(":", 1)[-1]) for x in res}
         return product_ids
 
     def stats_worker(self):
@@ -638,7 +643,7 @@ class EventManager(StatsManager):
             try:
                 self.stats_worker_task()
             except Exception as e:
-                logging.exception(e)
+                LOG.exception(e)
             finally:
                 time.sleep(60)
 
@@ -654,14 +659,14 @@ class EventManager(StatsManager):
         lock_key = f"{self.cache_prefix}:event-channel-lock"
         res = self.redis_client.set(lock_key, 1, ex=120, nx=True)
         if not res:
-            logging.debug("failed to acquire stats_worker_task lock")
+            LOG.debug("failed to acquire stats_worker_task lock")
             return
 
-        logging.info("Acquired stats_worker_task lock")
+        LOG.info("Acquired stats_worker_task lock")
 
         for product_id in self.get_active_subscribers():
             if time.monotonic() - now > 120:
-                logging.exception("stats_worker_task is taking too long")
+                LOG.exception("stats_worker_task is taking too long")
                 break
             channel = self.get_channel_name(product_id)
             msg = self.get_stats_message(product_id=product_id)
@@ -680,7 +685,7 @@ class EventManager(StatsManager):
 
         return
 
-    def make_influx_point(self, channel: str, numsub: int):
+    def make_influx_point(self, channel: str, numsub: int) -> dict[str, Any]:
         return {
             "measurement": "redis_pubsub_subscribers",
             "tags": {"hostname": socket.gethostname(), "channel": channel},
@@ -724,7 +729,6 @@ class EventManager(StatsManager):
             )
         )
         self.publish_event(msg, product_id=user.product_id)
-        return
 
     def handle_task_finish(self, wall: Wall, session: Session, user: User):
         self.mark_user_active(user=user)
@@ -818,7 +822,6 @@ class EventSubscriber(RedisManager):
         p.subscribe(self.get_channel_name())
         self.pubsub_client = r
         self.pubsub = p
-        return
 
     def get_channel_name(self):
         return f"{self.cache_prefix}:event-channel:{self.product_id}"

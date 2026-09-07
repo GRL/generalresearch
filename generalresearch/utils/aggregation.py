@@ -1,8 +1,8 @@
 from collections import defaultdict
-from typing import Any, Dict, List
+from typing import Any
 
 
-def group_by_year(records: List[Dict], datetime_field: str) -> Dict[int, List[Any]]:
+def group_by_year(records: list[dict], datetime_field: str) -> dict[int, list[Any]]:
     """Memory efficient - processes records one at a time"""
     by_year = defaultdict(list)
 
