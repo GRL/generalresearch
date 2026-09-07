@@ -185,7 +185,6 @@ class EnrichedSessionMergeItem(MergeCollectionItem):
                 client,
                 ddf=ddf,
                 is_partial=False,
-                client_resources=client_resources,
             )
 
 

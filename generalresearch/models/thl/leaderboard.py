@@ -78,14 +78,16 @@ class Leaderboard(BaseModel):
     weekly, and monthly leaderboard.
     """
 
-    id: UUIDStr = Field(
+    id: UUIDStr | None = Field(
         description="Unique ID for this leaderboard",
         examples=["845b0074ad533df580ebb9c80cc3bce1"],
+        default=None,
     )
 
-    name: str = Field(
+    name: str | None = Field(
         description="Descriptive name for the leaderboard based on the board_code",
         examples=["Number of Completes"],
+        default=None,
     )
 
     board_code: LeaderboardCode = Field(

@@ -83,7 +83,8 @@ def _create_session(
 
 
 @pytest.fixture(scope="function")
-def setup_leaderboards(thl_redis: RedisConfig) -> Callable[..., None]:
+def setup_leaderboards(thl_redis_config: RedisConfig) -> Callable[..., None]:
+    thl_redis = thl_redis_config.create_redis_client()
 
     def _inner():
         complete_count = {
@@ -138,10 +139,10 @@ def setup_leaderboards(thl_redis: RedisConfig) -> Callable[..., None]:
 
 
 class TestLeaderboards:
-
     def test_leaderboard_manager(
-        self, setup_leaderboards: Callable[..., None], thl_redis: RedisConfig
+        self, setup_leaderboards: Callable[..., None], thl_redis_config: RedisConfig
     ):
+        thl_redis = thl_redis_config.create_redis_client()
         setup_leaderboards()
 
         country_iso = "us"
@@ -153,7 +154,8 @@ class TestLeaderboards:
             freq=freq,
             product_id=product_id,
             country_iso=country_iso,
-            within_time=datetime(2025, 2, 5, 0, 0, 0, tzinfo=UTC),
+            # This is supposed to not have a timezone. @max don't change it
+            within_time=datetime(2025, 2, 5, 0, 0, 0),
         )
         lb = m.get_leaderboard()
         assert lb.period_start_local == datetime(
@@ -182,8 +184,9 @@ class TestLeaderboards:
         ]
 
     def test_leaderboard_manager_bpuid(
-        self, setup_leaderboards: Callable[..., None], thl_redis: RedisConfig
+        self, setup_leaderboards: Callable[..., None], thl_redis_config: RedisConfig
     ):
+        thl_redis = thl_redis_config.create_redis_client()
         setup_leaderboards()
 
         country_iso = "us"
@@ -216,8 +219,9 @@ class TestLeaderboards:
         self,
         setup_leaderboards: Callable[..., None],
         session_factory: Callable[..., Session],
-        thl_redis: RedisConfig,
+        thl_redis_config: RedisConfig,
     ):
+        thl_redis = thl_redis_config.create_redis_client()
         setup_leaderboards()
 
         hit_leaderboards(redis_client=thl_redis, session=session_factory())
@@ -265,8 +269,9 @@ class TestLeaderboards:
         self,
         setup_leaderboards: Callable[..., None],
         session_factory: Callable[..., None],
-        thl_redis: RedisConfig,
+        thl_redis_config: RedisConfig,
     ):
+        thl_redis = thl_redis_config.create_redis_client()
         setup_leaderboards()
 
         session = session_factory(product_user_id="zzz")
@@ -283,7 +288,8 @@ class TestLeaderboards:
         assert lb.row_count == 8
         assert LeaderboardRow(bpuid="zzz", value=1, rank=6) in lb.rows
 
-    def test_leaderboard_country(self, thl_redis: RedisConfig):
+    def test_leaderboard_country(self, thl_redis_config: RedisConfig):
+        thl_redis = thl_redis_config.create_redis_client()
         m = LeaderboardManager(
             redis_client=thl_redis,
             board_code=LeaderboardCode.COMPLETE_COUNT,

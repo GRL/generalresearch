@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class TestCategory:
 
     @pytest.fixture
-    def beauty_fitness(self, thl_web_rw: PostgresConfig) -> Category:
+    def beauty_fitness(self) -> Category:
 
         return Category(
             uuid="12c1e96be82c4642a07a12a90ce6f59e",
@@ -41,7 +41,7 @@ class TestCategory:
             uuid="aacff523c8e246888215611ec3b823c0",
             adwords_vertical_id="235",
             label="Hair Loss",
-            path=f"{hair_care}/Hair Loss",
+            path=f"{hair_care.path}/Hair Loss",
         )
 
     @pytest.fixture

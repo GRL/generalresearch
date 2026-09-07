@@ -29,13 +29,13 @@ class TestLeaderboardContestCRUD:
 
     def test_create(
         self,
-        contest_create: LeaderboardContestCreate,
+        leaderboard_contest_create: LeaderboardContestCreate,
         product_user_wallet_yes: Product,
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
         c = contest_manager.create(
-            product_id=product_user_wallet_yes.uuid, contest_create=contest_create
+            product_id=product_user_wallet_yes.uuid, contest_create=leaderboard_contest_create
         )
         c_out = contest_manager.get(c.uuid)
         assert c == c_out
@@ -51,13 +51,13 @@ class TestLeaderboardContestCRUD:
     def test_enter(
         self,
         user_with_wallet: User,
-        contest_in_db: LeaderboardContest,
+        leaderboard_contest_in_db: LeaderboardContest,
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
         user_manager: UserManager,
         thl_redis: RedisConfig,
     ):
-        contest = contest_in_db
+        contest = leaderboard_contest_in_db
         user = user_with_wallet
 
         c: LeaderboardContest = contest_manager.get(contest_uuid=contest.uuid)
@@ -84,14 +84,14 @@ class TestLeaderboardContestCRUD:
     def test_contest_ends(
         self,
         user_with_wallet: User,
-        contest_in_db: LeaderboardContest,
+        leaderboard_contest_in_db: LeaderboardContest,
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
         user_manager: UserManager,
         thl_redis: RedisConfig,
     ):
         # The contest should be over. We need to trigger it.
-        contest = contest_in_db
+        contest = leaderboard_contest_in_db
         contest._redis_client = thl_redis
         contest._user_manager = user_manager
         user = user_with_wallet
