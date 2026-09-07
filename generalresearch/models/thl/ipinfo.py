@@ -139,8 +139,7 @@ class IPInformation(BaseModel):
 
     registered_country_iso: CountryISOLike | None = Field(
         default=None,
-        description="The ISO code of the country where the IP address is "
-        "registered.",
+        description="The ISO code of the country where the IP address is registered.",
         examples=[fake.country_code().lower()],
     )
     is_anonymous: bool | None = Field(
@@ -161,7 +160,7 @@ class IPInformation(BaseModel):
     domain: str | None = Field(default=None, max_length=255)
     isp: str | None = Field(
         default=None,
-        description="The Internet Service Provider associated with the " "IP address.",
+        description="The Internet Service Provider associated with the IP address.",
         examples=["Comcast"],
     )
 
@@ -249,7 +248,7 @@ class IPInformation(BaseModel):
 
     # --- ORM ---
     def model_dump_mysql(self):
-        d = self.model_dump(mode="json", exclude={"geoname"})
+        d = self.model_dump(mode="json")
         d["updated"] = self.updated
         return d
 
@@ -262,13 +261,3 @@ class IPInformation(BaseModel):
 
 class GeoIPInformation(IPInformation, IPGeoname):
     model_config = ConfigDict(extra="ignore")
-
-    geoname_id: PositiveInt  # type: ignore[reportIncompatibleVariableOverride]
-
-    @field_validator("geoname_id", mode="before")
-    @classmethod
-    def _coerce_geoname_id(cls, v: PositiveInt | None):
-        if v is None:
-            raise ValueError("GeoIPInformation can't be constructed")
-
-        return v

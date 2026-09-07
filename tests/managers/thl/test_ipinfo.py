@@ -55,10 +55,10 @@ class TestIPInformationManager:
 
     def test_create(
         self,
-        ip_geoname_factory: Callable[..., IPGeoname],
+        ip_information_factory: Callable[..., IPInformation],
         ip_information_manager: IPInformationManager,
     ):
-        instance = ip_geoname_factory()
+        instance = ip_information_factory()
         assert isinstance(instance, IPInformation)
 
         res = ip_information_manager.fetch_ip_information(filter_ips=[instance.ip])

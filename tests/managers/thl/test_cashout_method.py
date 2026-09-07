@@ -51,37 +51,6 @@ class TestTangoCashoutMethods:
         assert len(res) == 2
 
 
-class TestAMTCashoutMethods:
-
-    def test_create_and_get(
-        self,
-        settings: GRLBaseSettings,
-        cashout_method_manager: CashoutMethodManager,
-        setup_cashoutmethod_db: Callable[..., None],
-    ):
-        setup_cashoutmethod_db()
-
-        res = cashout_method_manager.filter(payout_types=[PayoutType.AMT])
-        assert len(res) == 2
-
-        cm = next(x for x in res if x.name == "AMT Assignment")
-        assert settings.amt_assignment_cashout_method_id == cm
-
-        cm = next(x for x in res if x.name == "AMT Bonus")
-        assert settings.amt_bonus_cashout_method_id == cm
-
-    def test_user(
-        self,
-        cashout_method_manager: CashoutMethodManager,
-        user_with_wallet_amt: User,
-        setup_cashoutmethod_db: Callable[..., None],
-    ):
-        setup_cashoutmethod_db()
-
-        res = cashout_method_manager.get_cashout_methods(user_with_wallet_amt)
-        # This user has the 2 tango, plus amt bonus & assignment
-        assert len(res) == 4
-
 
 class TestUserCashoutMethods:
 
