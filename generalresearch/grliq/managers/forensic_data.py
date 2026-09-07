@@ -17,13 +17,11 @@ from generalresearch.grliq.models.forensic_result import (
 from generalresearch.models.custom_types import UUIDStr
 
 if TYPE_CHECKING:
-
     from generalresearch.models.thl.user import User
     from generalresearch.pg_helper import PostgresConfig
 
 
 class GrlIqDataManager:
-
     def __init__(self, postgres_config: PostgresConfig):
         self.postgres_config = postgres_config
 
@@ -36,7 +34,15 @@ class GrlIqDataManager:
         is_attempt_allowed: bool | None = None,
     ) -> GrlIqData:
 
-        data = iq_data.model_dump_sql(exclude={"events", "mouse_events", "timing_data"})
+        data = iq_data.model_dump_sql(
+            exclude={
+                "events",
+                "mouse_events",
+                "timing_data",
+                "results",
+                "category_result",
+            }
+        )
 
         data["result_data"] = None
         if result_data:
@@ -476,16 +482,16 @@ class GrlIqDataManager:
             product_ids = None
 
         if product_ids:
-            assert (
-                users is None and user is None and product_id is None
-            ), "user, users, product_id, and product_ids are mutually exclusive"
+            assert users is None and user is None and product_id is None, (
+                "user, users, product_id, and product_ids are mutually exclusive"
+            )
             params["product_ids"] = list(set(product_ids))
             filters.append("d.product_id = ANY(%(product_ids)s::UUID[])")
 
         if product_id:
-            assert (
-                users is None and user is None and product_ids is None
-            ), "user, users, product_id, and product_ids are mutually exclusive"
+            assert users is None and user is None and product_ids is None, (
+                "user, users, product_id, and product_ids are mutually exclusive"
+            )
             params["product_id"] = product_id
             filters.append("d.product_id = %(product_id)s")
 
@@ -506,12 +512,12 @@ class GrlIqDataManager:
             )
 
         if created_between:
-            assert (
-                created_after is None
-            ), "Cannot pass both created_after and created_between"
-            assert (
-                created_before is None
-            ), "Cannot pass both created_before and created_between"
+            assert created_after is None, (
+                "Cannot pass both created_after and created_between"
+            )
+            assert created_before is None, (
+                "Cannot pass both created_before and created_between"
+            )
             params["created_after"] = created_between[0]
             params["created_before"] = created_between[1]
             filters.append(
@@ -519,9 +525,9 @@ class GrlIqDataManager:
             )
 
         if user:
-            assert (
-                product_ids is None and users is None
-            ), "user, users, and product_ids are mutually exclusive"
+            assert product_ids is None and users is None, (
+                "user, users, and product_ids are mutually exclusive"
+            )
             params["product_id"] = user.product_id
             params["product_user_id"] = user.product_user_id
             filters.append(
@@ -529,9 +535,9 @@ class GrlIqDataManager:
             )
 
         if users:
-            assert (
-                product_ids is None and user is None
-            ), "user, users, and product_ids are mutually exclusive"
+            assert product_ids is None and user is None, (
+                "user, users, and product_ids are mutually exclusive"
+            )
             user_args = ", ".join(
                 [f"(%(bp_{i})s, %(bpuid_{i})s)" for i in range(len(users))]
             )
@@ -649,9 +655,9 @@ class GrlIqDataManager:
 
         if product_ids:
             # It doesn't use the (product_id, created_at) index with multiple product_ids
-            assert (
-                offset == 0
-            ), "Cannot paginate using product_ids, use product_id instead"
+            assert offset == 0, (
+                "Cannot paginate using product_ids, use product_id instead"
+            )
 
         filter_str, params = self.make_filter_str(
             session_uuid=session_uuid,
@@ -682,7 +688,6 @@ class GrlIqDataManager:
             res: list[dict[str, Any]] = c.fetchall()  # type: ignore
 
         for x in res:
-
             if "data" in x:
                 self.temporary_add_missing_fields(x["data"])
                 x["data"]["id"] = x["id"]

@@ -90,7 +90,7 @@ def grliq_data_factory(
         """
 
         if save:
-            res: GrlIqData = grliq_data_list[int(is_attempt_allowed)]["data"]
+            res: dict = grliq_data_list[int(is_attempt_allowed)]
 
             product_id = product_id or uuid4().hex
             product_user_id = product_user_id or uuid4().hex

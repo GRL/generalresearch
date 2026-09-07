@@ -498,7 +498,7 @@ def unsaved_ip_geoname(ip_geoname_factory: Callable[..., IPGeoname]) -> IPGeonam
 
 @pytest.fixture
 def ip_information_factory(
-    ipinformation_manager: IPInformationManager,
+    ip_information_manager: IPInformationManager,
 ) -> Callable[..., IPInformation]:
 
     def _inner(
@@ -530,7 +530,7 @@ def ip_information_factory(
     ) -> IPInformation:
 
         if save:
-            return ipinformation_manager.create(
+            return ip_information_manager.create(
                 ip=ip or fake.ipv4_public(),
                 geoname_id=geoname_id,
                 country_iso=country_iso or fake.country_code(),
