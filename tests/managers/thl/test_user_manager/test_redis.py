@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class TestUserManagerRedis:
 
     def test_get_notset(self, redis_user_manager: RedisUserManager, user: User):
-        redis_user_manager.clear_user_inmemory_cache(user=user)
+        redis_user_manager.clear_user(user=user)
         assert redis_user_manager.get_user(user_id=user.user_id) is None
 
     def test_get_user_id(self, redis_user_manager: RedisUserManager, user: User):

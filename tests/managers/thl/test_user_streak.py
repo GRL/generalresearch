@@ -112,10 +112,8 @@ def create_session_fail(
     session_manager: SessionManager,
     start: datetime,
     user: User,
-    session_factory: Callable[..., Session],
-    wall_factory: Callable[..., Wall],
 ):
-    session = session_factory(started=start, country_iso="us", user=user)
+    session = session_manager.create(started=start, country_iso="us", user=user)
     session_manager.finish_with_status(
         session,
         finished=start + timedelta(minutes=1),
@@ -128,10 +126,8 @@ def create_session_complete(
     session_manager: SessionManager,
     start: datetime,
     user: User,
-    session_factory: Callable[..., Session],
-    wall_factory: Callable[..., Wall],
 ):
-    session = session_factory(started=start, country_iso="us", user=user)
+    session = session_manager.create(started=start, country_iso="us", user=user)
     session_manager.finish_with_status(
         session,
         finished=start + timedelta(minutes=1),
@@ -153,7 +149,7 @@ def test_user_streaks_active_broken(
     user: User,
     session_manager: SessionManager,
     broken_active_streak: list[UserStreak],
-    session_factory: Callable[..., Session],
+    bare_session_factory: Callable[..., Session],
     wall_factory: Callable[..., Wall],
 ):
     # Testing active streak, but broken (not today or yesterday)
@@ -161,7 +157,7 @@ def test_user_streaks_active_broken(
     end1 = start1 + timedelta(minutes=1)
 
     # abandon counts as inactive
-    session = session_factory(started=start1, country_iso="us", user=user)
+    session = bare_session_factory(started=start1, country_iso="us", user=user)
     streak = user_streak_manager.get_user_streaks(user_id=user.user_id)
     assert streak == []
 

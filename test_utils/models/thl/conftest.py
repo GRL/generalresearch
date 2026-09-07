@@ -496,6 +496,7 @@ def unsaved_ip_geoname(ip_geoname_factory: Callable[..., IPGeoname]) -> IPGeonam
 
 # --- IP Information ---
 
+
 @pytest.fixture
 def ip_information_factory(
     ip_information_manager: IPInformationManager,
@@ -833,13 +834,8 @@ def audit_log_factory(audit_log_manager: AuditLogManager) -> Callable[..., Audit
 
 
 @pytest.fixture()
-def audit_log(auditlog_factory: Callable[..., AuditLog]) -> AuditLog:
-    return auditlog_factory(save=True)
-
-
-@pytest.fixture()
-def unsaved_audit_log(auditlog_factory: Callable[..., AuditLog]) -> AuditLog:
-    return auditlog_factory(save=False)
+def audit_log(audit_log_factory: Callable[..., AuditLog], user: User) -> AuditLog:
+    return audit_log_factory(user_id=user.user_id)
 
 
 # --- ---

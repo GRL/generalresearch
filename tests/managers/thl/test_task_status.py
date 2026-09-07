@@ -39,7 +39,7 @@ start3 = datetime(2023, 2, 3, tzinfo=UTC)
 finish3 = start3 + timedelta(minutes=5)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def bp1(
     product_factory: Callable[..., Product], product_manager: ProductManager
 ) -> Product:
@@ -50,7 +50,7 @@ def bp1(
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def bp2(
     product_factory: Callable[..., Product], product_manager: ProductManager
 ) -> Product:
@@ -66,7 +66,7 @@ def bp2(
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 def bp3(
     product_factory: Callable[..., Product], product_manager: ProductManager
 ) -> Product:

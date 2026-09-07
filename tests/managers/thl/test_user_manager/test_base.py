@@ -305,7 +305,7 @@ class TestUserManagerMethods:
         assert len(res) == 0
 
         msg = uuid4().hex
-        user_manager.audit_log(user=user, level=30, event_type=msg)
+        user_manager.audit_log(audit_log_manager, user=user, level=30, event_type=msg)
 
         res = audit_log_manager.filter_by_user_id(user_id=user.user_id)
         assert len(res) == 1

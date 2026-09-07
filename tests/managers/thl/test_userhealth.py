@@ -319,7 +319,7 @@ class TestUserIpHistoryManager:
         ip_geoname: IPGeoname,
     ):
         ip = fake.ipv4_public()
-        ip_information_factory(ip=ip, geoname=ip_geoname, is_anonymous=True)
+        ip_information_factory(ip=ip, geoname_id=ip_geoname.geoname_id, is_anonymous=True)
         ipr1: IPRecord = ip_record_factory(user_id=user.user_id, ip=ip)
 
         ipr = user_iphistory_manager.get_user_latest_ip_record(user=user)
@@ -330,7 +330,7 @@ class TestUserIpHistoryManager:
         assert ipr.information.lookup_prefix == "/32"
 
         ip = fake.ipv6()
-        ip_information_factory(ip=ip, geoname=ip_geoname)
+        ip_information_factory(ip=ip, geoname_id=ip_geoname.geoname_id)
         ipr2: IPRecord = ip_record_factory(user_id=user.user_id, ip=ip)
 
         ipr = user_iphistory_manager.get_user_latest_ip_record(user=user)
@@ -386,7 +386,7 @@ class TestUserIpHistoryManager:
         assert ipr.information is None
         assert not ipr.is_anonymous
 
-        ip_information_factory(ip=ip, geoname=ip_geoname, is_anonymous=True)
+        ip_information_factory(ip=ip, geoname_id=ip_geoname.geoname_id, is_anonymous=True)
         iph = user_iphistory_manager.get_user_ip_history(user_id=user.user_id)
         assert isinstance(iph, UserIPHistory)
         assert isinstance(iph.ips, list)
@@ -414,7 +414,7 @@ class TestUserIpHistoryManager:
         assert ipr.information is None
         assert not ipr.is_anonymous
 
-        ip_information_factory(ip=ip, geoname=ip_geoname, is_anonymous=True)
+        ip_information_factory(ip=ip, geoname_id=ip_geoname.geoname_id, is_anonymous=True)
         iph = user_iphistory_manager.get_user_ip_history(user_id=user.user_id)
         assert isinstance(iph, UserIPHistory)
         assert isinstance(iph.ips, list)

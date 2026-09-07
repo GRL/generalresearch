@@ -240,7 +240,7 @@ def mysql_user_manager(thl_web_rw: PostgresConfig) -> MysqlUserManager:
 
 @pytest.fixture(scope="session")
 def redis_user_manager(thl_redis_config: RedisConfig) -> RedisUserManager:
-    return RedisUserManager(redis_dsn=thl_redis_config)
+    return RedisUserManager(redis_dsn=thl_redis_config.dsn)
 
 
 @pytest.fixture(scope="session")
