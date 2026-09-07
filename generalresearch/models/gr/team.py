@@ -273,7 +273,7 @@ class Team(BaseModel):
         self.prefetch_products(product_manager=product_manager)
         self.prefetch_gr_users(gr_user_manager=gr_user_manager)
         self.prefetch_businesses(gr_business_manager=gr_business_manager)
-        self.prefetch_memberships(membership_manager=gr_membership_manager)
+        self.prefetch_memberships(gr_membership_manager=gr_membership_manager)
 
         rc = redis_config.create_redis_client()
         mapping = self.model_dump(mode="json")

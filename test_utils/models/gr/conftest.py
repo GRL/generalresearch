@@ -91,7 +91,6 @@ def gr_business_address_factory(
 
     def _inner(
         business_id: PositiveInt,
-        save: bool = True,
         uuid: UUIDStr | None = None,
         line_1: str | None = None,
         line_2: str | None = None,
@@ -110,36 +109,26 @@ def gr_business_address_factory(
         phone_number = None
         country = country or "US"
 
-        if save:
-            return gr_business_address_manager.create(
-                business_id=business_id,
-                uuid=uuid,
-                line_1=line_1,
-                line_2=line_2,
-                city=city,
-                state=state,
-                postal_code=postal_code,
-                phone_number=phone_number,
-                country=country,
-            )
-        else:
-            raise ValueError("Unsaved BusinessAddress not supported yet")
+        return gr_business_address_manager.create(
+            business_id=business_id,
+            uuid=uuid,
+            line_1=line_1,
+            line_2=line_2,
+            city=city,
+            state=state,
+            postal_code=postal_code,
+            phone_number=phone_number,
+            country=country,
+        )
 
     return _inner
 
 
 @pytest.fixture
 def gr_business_address(
-    gr_business_address_factory: Callable[..., BusinessAddress],
+    gr_business_address_factory: Callable[..., BusinessAddress], gr_business: Business
 ) -> BusinessAddress:
-    return gr_business_address_factory(save=True)
-
-
-@pytest.fixture
-def unsaved_gr_business_address(
-    gr_business_address_factory: Callable[..., BusinessAddress],
-) -> BusinessAddress:
-    return gr_business_address_factory(save=False)
+    return gr_business_address_factory(business_id=gr_business.id)
 
 
 # --- Business ---

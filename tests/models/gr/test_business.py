@@ -58,7 +58,6 @@ if TYPE_CHECKING:
 
 
 class TestBusinessBankAccount:
-
     def test_init(
         self,
         gr_business: Business,
@@ -93,13 +92,11 @@ class TestBusinessBankAccount:
 
 
 class TestBusinessAddress:
-
-    def test_init(self, business_address: BusinessAddress):
-        assert isinstance(business_address, BusinessAddress)
+    def test_init(self, gr_business_address: BusinessAddress):
+        assert isinstance(gr_business_address, BusinessAddress)
 
 
 class TestBusinessContact:
-
     def test_init(self):
 
         bc = BusinessContact(name="abc", email="test@abc.com")
@@ -173,9 +170,6 @@ class TestBusiness:
         assert "Ledger Accounts: 2" in res3
 
         # -- need some tx to make these interesting
-        business_payout_event_manager.set_account_lookup_table(
-            thl_lm=thl_ledger_manager
-        )
         session_with_tx_factory(
             user=u1,
             wall_req_cpi=Decimal("2.50"),
@@ -185,8 +179,6 @@ class TestBusiness:
             product=p1,
             amount=USDCent(50),
             created=start + timedelta(days=4),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
 
         ledger_collection.initial_load(client=None, sync=True)
@@ -207,9 +199,7 @@ class TestBusiness:
         assert "Available Balance: 141" in res4
 
     def test_addresses(
-        self,
-        gr_business: Business,
-        gr_db: PostgresConfig,
+        self, gr_business: Business, gr_db: PostgresConfig, gr_business_address
     ):
         from generalresearch.models.gr.business import BusinessAddress
 
@@ -223,8 +213,8 @@ class TestBusiness:
     def test_teams(
         self,
         gr_business: Business,
-        team: Team,
-        team_manager: TeamManager,
+        gr_team: Team,
+        gr_team_manager: TeamManager,
         gr_db: PostgresConfig,
     ):
         assert gr_business.teams is None
@@ -233,7 +223,7 @@ class TestBusiness:
         assert isinstance(gr_business.teams, list)
         assert len(gr_business.teams) == 0
 
-        team_manager.add_business(team=team, business=gr_business)
+        gr_team_manager.add_business(team=gr_team, business=gr_business)
         assert len(gr_business.teams) == 0
         gr_business.prefetch_teams(pg_config=gr_db)
         assert len(gr_business.teams) == 1
@@ -266,6 +256,7 @@ class TestBusiness:
     def test_bank_accounts(
         self,
         gr_business: Business,
+        gr_business_bank_account,
         gr_business_bank_account_manager: BusinessBankAccountManager,
     ):
         assert gr_business.products is None
@@ -341,13 +332,8 @@ class TestBusiness:
         create_main_accounts()
         p = product_factory(business=gr_business)
         thl_ledger_manager.get_account_or_create_bp_wallet(product=p)
-        business_payout_event_manager.set_account_lookup_table(
-            thl_lm=thl_ledger_manager
-        )
 
-        brokerage_product_payout_event_factory(
-            product=p, amount=USDCent(123), skip_wallet_balance_check=True
-        )
+        brokerage_product_payout_event_factory(product=p, amount=USDCent(123))
 
         gr_business.prebuild_payouts(
             bpem=business_payout_event_manager,
@@ -359,18 +345,13 @@ class TestBusiness:
         brokerage_product_payout_event_factory(
             product=p,
             amount=USDCent(123),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
-        )
-        business_payout_event_manager.set_account_lookup_table(
-            thl_lm=thl_ledger_manager
         )
         gr_business.prebuild_payouts(
             bpem=business_payout_event_manager,
         )
         assert isinstance(gr_business.payouts, list)
-        assert len(gr_business.payouts) == 1
-        assert len(gr_business.payouts[0].bp_payouts) == 2
+        assert len(gr_business.payouts) == 2
+        assert len(gr_business.payouts[0].bp_payouts) == 1
         assert sum([p.amount for p in gr_business.payouts]) == 246
 
     def test_payouts_totals(
@@ -390,29 +371,20 @@ class TestBusiness:
 
         p1: Product = product_factory(business=gr_business)
         thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
-        business_payout_event_manager.set_account_lookup_table(
-            thl_lm=thl_ledger_manager
-        )
 
         brokerage_product_payout_event_factory(
             product=p1,
             amount=USDCent(1),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
 
         brokerage_product_payout_event_factory(
             product=p1,
             amount=USDCent(25),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
 
         brokerage_product_payout_event_factory(
             product=p1,
             amount=USDCent(50),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
 
         gr_business.prebuild_payouts(
@@ -420,8 +392,10 @@ class TestBusiness:
         )
 
         assert isinstance(gr_business.payouts, list)
-        assert len(gr_business.payouts) == 1
-        assert len(gr_business.payouts[0].bp_payouts) == 3
+        assert len(gr_business.payouts) == 3
+        assert len(gr_business.payouts[0].bp_payouts) == 1
+        assert len(gr_business.payouts[1].bp_payouts) == 1
+        assert len(gr_business.payouts[2].bp_payouts) == 1
         assert gr_business.payouts_total == USDCent(76)
         assert gr_business.payouts_total_str == "$0.76"
 
@@ -467,7 +441,6 @@ class TestBusiness:
 
 
 class TestBusinessBalance:
-
     @pytest.fixture
     def start(self) -> datetime:
         return datetime(year=2018, month=3, day=14, hour=0, tzinfo=UTC)
@@ -678,16 +651,12 @@ class TestBusinessBalance:
             product=u1.product,
             amount=USDCent(5),
             created=start + timedelta(days=4),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
 
         brokerage_product_payout_event_factory(
             product=u2.product,
             amount=USDCent(50),
             created=start + timedelta(days=4),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
 
         ledger_collection.initial_load(client=None, sync=True)
@@ -773,16 +742,12 @@ class TestBusinessBalance:
             product=u1.product,
             amount=USDCent(250),
             created=start + timedelta(days=3),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
 
         brokerage_product_payout_event_factory(
             product=u2.product,
             amount=USDCent(50),
             created=start + timedelta(days=4),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
 
         adj_to_fail_with_tx_factory(session=s1, created=start + timedelta(days=5))
@@ -889,8 +854,6 @@ class TestBusinessBalance:
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
             created=start + timedelta(days=1, minutes=1),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
         adj_to_fail_with_tx_factory(
             session=s1,
@@ -1042,16 +1005,12 @@ class TestBusinessBalance:
             product=u1.product,
             amount=USDCent(250),
             created=start + timedelta(days=3),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
 
         brokerage_product_payout_event_factory(
             product=u2.product,
             amount=USDCent(50),
             created=start + timedelta(days=4),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
 
         session_with_tx_factory(
@@ -1177,7 +1136,6 @@ class TestBusinessBalance:
 
 
 class TestBusinessMethods:
-
     @pytest.fixture(scope="function")
     def start(self, utc_90days_ago: datetime) -> datetime:
         s = utc_90days_ago.replace(microsecond=0)
@@ -1269,7 +1227,7 @@ class TestBusinessMethods:
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
-        team: Team,
+        gr_team: Team,
         client_no_amm: DaskClient,
         mnt_filepath: GRLDatasets,
         ledger_manager: LedgerManager,
@@ -1282,7 +1240,7 @@ class TestBusinessMethods:
         create_main_accounts: Callable[..., None],
         session_with_tx_factory: Callable[..., Session],
         ledger_collection,
-        team_manager: TeamManager,
+        gr_team_manager: TeamManager,
         pop_ledger_merge: PopLedgerMerge,
         gr_redis_config: RedisConfig,
         utc_60days_ago: datetime,
@@ -1290,9 +1248,9 @@ class TestBusinessMethods:
     ):
         from generalresearch.models.gr.business import Business
 
-        p1 = product_factory(team=team, business=gr_business)
+        p1 = product_factory(team=gr_team, business=gr_business)
         u1 = user_factory(product=p1)
-        team_manager.add_business(team=team, business=gr_business)
+        gr_team_manager.add_business(team=gr_team, business=gr_business)
 
         # Business needs tx & incite to build balance
         delete_ledger_db()
@@ -1345,7 +1303,7 @@ class TestBusinessMethods:
         assert isinstance(business2.teams, list)
         assert p1.uuid in [p.uuid for p in business2.products]
         assert len(business2.teams) == 1
-        assert team.uuid in [t.uuid for t in business2.teams]
+        assert gr_team.uuid in [t.uuid for t in business2.teams]
 
         assert isinstance(business2.balance, BusinessBalances)
         assert business2.balance.payout == 48

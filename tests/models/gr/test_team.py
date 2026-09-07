@@ -61,6 +61,7 @@ class TestTeam:
         self,
         gr_team: Team,
         gr_user: GRUser,
+        gr_membership,
         gr_user_factory: Callable[..., GRUser],
         gr_membership_manager: MembershipManager,
     ):
@@ -105,7 +106,7 @@ class TestTeam:
     def test_businesses(
         self,
         gr_team: Team,
-        business: Business,
+        gr_business: Business,
         team_manager: TeamManager,
         gr_business_manager: BusinessManager,
     ):
@@ -116,12 +117,12 @@ class TestTeam:
         assert isinstance(gr_team.businesses, list)
         assert len(gr_team.businesses) == 0
 
-        team_manager.add_business(team=gr_team, business=business)
+        team_manager.add_business(team=gr_team, business=gr_business)
         assert len(gr_team.businesses) == 0
         gr_team.prefetch_businesses(gr_business_manager=gr_business_manager)
         assert len(gr_team.businesses) == 1
         assert isinstance(gr_team.businesses[0], Business)
-        assert gr_team.businesses[0].uuid == business.uuid
+        assert gr_team.businesses[0].uuid == gr_business.uuid
 
     def test_products(
         self,
@@ -174,7 +175,6 @@ class TestTeamMethods:
             gr_user_manager=gr_user_manager,
             gr_business_manager=gr_business_manager,
             gr_membership_manager=gr_membership_manager,
-            thl_web_rr=thl_web_rr,
             redis_config=gr_redis_config,
             client=client_no_amm,
             ds=mnt_filepath,
@@ -192,7 +192,7 @@ class TestTeamMethods:
         thl_web_rr: PostgresConfig,
         product_factory: Callable[..., Product],
         gr_team: Team,
-        membership_factory: Callable[..., Membership],
+        gr_membership_factory: Callable[..., Membership],
         gr_redis_config: RedisConfig,
         mnt_filepath: GRLDatasets,
         mnt_gr_api_dir: Path,
@@ -206,14 +206,13 @@ class TestTeamMethods:
         from generalresearch.models.gr.team import Team
 
         p1 = product_factory(team=gr_team)
-        membership_factory(team=gr_team, gr_user=gr_user)
+        gr_membership_factory(gr_team=gr_team, gr_user=gr_user)
 
         gr_team.set_cache(
             product_manager=product_manager,
             gr_user_manager=gr_user_manager,
             gr_business_manager=gr_business_manager,
             gr_membership_manager=gr_membership_manager,
-            thl_web_rr=thl_web_rr,
             redis_config=gr_redis_config,
             client=client_no_amm,
             ds=mnt_filepath,

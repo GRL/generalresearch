@@ -100,14 +100,14 @@ class TestLeaderboardContest(TestContest):
     def test_win(
         self,
         leaderboard_contest: LeaderboardContest,
-        thl_redis: Redis,
+        thl_redis_client: Redis,
         user_1: User,
         user_2: User,
         user_3: User,
     ):
         model = leaderboard_contest.leaderboard_model
         lbm = LeaderboardManager(
-            redis_client=thl_redis,
+            redis_client=thl_redis_client,
             board_code=model.board_code,
             country_iso=model.country_iso,
             freq=model.freq,

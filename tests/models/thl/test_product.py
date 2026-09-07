@@ -713,8 +713,6 @@ class TestProductFinancials:
             product=p1,
             amount=USDCent(50),
             created=start + timedelta(days=3),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
         assert (
             len(
@@ -754,7 +752,7 @@ class TestProductFinancials:
         )
         assert p1.payouts is not None
         assert len(p1.payouts) == 1
-        assert p1.payouts_total == 50
+        assert p1.payouts_total == USDCent(50)
         assert p1.payouts_total_str == "$0.50"
 
         # -- Now pay ou another!.
@@ -763,8 +761,6 @@ class TestProductFinancials:
             product=p1,
             amount=USDCent(5),
             created=start + timedelta(days=4),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
         assert (
             len(
@@ -862,8 +858,6 @@ class TestProductBalance:
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
             created=start + timedelta(days=1, minutes=1),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
@@ -922,8 +916,6 @@ class TestProductBalance:
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
             created=datetime.now(tz=UTC),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
@@ -1134,8 +1126,6 @@ class TestProductCache:
             amount=USDCent(71),
             ext_ref_id=uuid4().hex,
             created=start + timedelta(days=1, minutes=1),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
         )
 
         # 3. Recon

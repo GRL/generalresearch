@@ -205,6 +205,7 @@ class TestGRUserMethods:
         product_factory: Callable[..., Product],
         gr_team: Team,
         gr_redis_config: RedisConfig,
+        gr_membership,
     ):
         product_factory(team=gr_team)
         client = gr_redis_config.create_redis_client()
@@ -246,6 +247,7 @@ class TestGRUserMethods:
         product_factory: Callable[..., Product],
         gr_team: Team,
         gr_redis_config: RedisConfig,
+        gr_membership,
     ):
         product_factory(team=gr_team)
 

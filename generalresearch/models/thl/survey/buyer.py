@@ -177,9 +177,10 @@ class BuyerCountryStat(BaseModel):
     )
 
     # ---- Scoring ----
-    score: float = Field(
+    score: float | None = Field(
         description="Composite score calculated from all of the individual features",
         examples=[-5.329389837486194],
+        default=None,
     )
 
     @model_validator(mode="after")

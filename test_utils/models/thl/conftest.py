@@ -14,7 +14,10 @@ from grip_client.enums import AccessType
 from pydantic import PositiveInt
 
 from generalresearch.currency import USDCent
-from generalresearch.managers.thl.payout import UserPayoutEventManager
+from generalresearch.managers.thl.payout import (
+    BusinessPayoutEventManager,
+    UserPayoutEventManager,
+)
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     IPvAnyAddressStr,
@@ -38,9 +41,6 @@ if TYPE_CHECKING:
         IPInformationManager,
     )
     from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
-    from generalresearch.managers.thl.payout import (
-        BrokerageProductPayoutEventManager,
-    )
     from generalresearch.managers.thl.product import ProductManager
     from generalresearch.managers.thl.session import SessionManager
     from generalresearch.managers.thl.user_manager.user_manager import UserManager
@@ -777,7 +777,7 @@ def unsaved_user_payout_event(
 @pytest.fixture
 def brokerage_product_payout_event_factory(
     thl_ledger_manager: ThlLedgerManager,
-    brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+    business_payout_event_manager: BusinessPayoutEventManager,
     product_factory: Callable[..., Product],
 ) -> Callable[..., BrokerageProductPayoutEvent]:
 
@@ -791,7 +791,7 @@ def brokerage_product_payout_event_factory(
         product = product or product_factory()
         amount = amount or USDCent(randint(1, 99_99))
 
-        return brokerage_product_payout_event_manager.create_bp_payout_event(
+        return business_payout_event_manager.create_bp_payout_event(
             thl_ledger_manager=thl_ledger_manager,
             product=product,
             amount=amount,
