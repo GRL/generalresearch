@@ -27,19 +27,14 @@ from generalresearch.models.thl.definitions import (
 from generalresearch.models.thl.pagination import Page
 from generalresearch.models.thl.payout_format import (
     PayoutFormatOptionalField,
+    PayoutFormatType,
 )
+from generalresearch.models.thl.product import PayoutTransformation
 from generalresearch.models.thl.session import WallOut
 from generalresearch.models.thl.utils import decimal_to_int_cents
 
 if TYPE_CHECKING:
-
-    from generalresearch.models.thl.payout_format import (
-        PayoutFormatType,
-    )
-    from generalresearch.models.thl.product import (
-        PayoutTransformation,
-        Product,
-    )
+    from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.session import Session
 
 # API uses the ints, b/c this is what the grpc returned originally ...
@@ -69,8 +64,7 @@ class TaskStatusResponse(BaseModel):
     product_user_id: str = Field(
         min_length=3,
         max_length=128,
-        description="A unique identifier for each user, which is set by the "
-        "Supplier",
+        description="A unique identifier for each user, which is set by the Supplier",
         examples=["app-user-9329ebd"],
     )
 

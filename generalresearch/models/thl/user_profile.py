@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING, Annotated, Any, Self
+from typing import Annotated, Any, Self
 
 from pydantic import (
     BaseModel,
@@ -15,11 +15,8 @@ from pydantic.json_schema import SkipJsonSchema
 
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.definitions import MAX_INT32, Source
-
-if TYPE_CHECKING:
-
-    from generalresearch.models.thl.user import User
-    from generalresearch.models.thl.user_streak import UserStreak
+from generalresearch.models.thl.user import User
+from generalresearch.models.thl.user_streak import UserStreak
 
 
 class UserMetadata(BaseModel):

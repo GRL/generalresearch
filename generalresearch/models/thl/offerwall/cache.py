@@ -1,20 +1,18 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
-
-if TYPE_CHECKING:
-    from generalresearch.models.definitions import Source
-    from generalresearch.models.thl.offerwall import OfferWallRequest
-    from generalresearch.models.thl.offerwall.base import (
-        OfferwallBase,
-        ScoredTaskResult,
-        TaskResult,
-    )
+from generalresearch.models.definitions import Source
+from generalresearch.models.thl.offerwall import OfferWallRequest
+from generalresearch.models.thl.offerwall.base import (
+    OfferwallBase,
+    ScoredTaskResult,
+    TaskResult,
+)
 
 
 class GetOfferWallCache(BaseModel):

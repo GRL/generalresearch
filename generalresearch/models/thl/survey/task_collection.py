@@ -3,14 +3,12 @@ from __future__ import annotations
 import copy
 import json
 import logging
-from typing import TYPE_CHECKING
 
 import pandas as pd
 import pandera.pandas as pa
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-if TYPE_CHECKING:
-    from generalresearch.models.thl.survey import MarketplaceTask
+from generalresearch.models.thl.survey import MarketplaceTask
 
 logging.basicConfig()
 logger = logging.getLogger()

@@ -25,31 +25,27 @@ from generalresearch.models.legacy.bucket import (
     Bucket as LegacyBucket,
 )
 from generalresearch.models.legacy.bucket import (
+    CategoryAssociation,
     DurationSummary,
+    Eligibility,
     PayoutSummary,
     PayoutSummaryDecimal,
+    SurveyEligibilityCriterion,
 )
 from generalresearch.models.legacy.definitions import OfferwallReason
+from generalresearch.models.thl.locales import CountryISO
 from generalresearch.models.thl.offerwall import (
     OFFERWALL_TYPE_CLASS,
+    OfferWallType,
+    OfferWallTypeClass,
 )
 from generalresearch.models.thl.offerwall.bucket import (
     generate_offerwall_entry_url,
 )
+from generalresearch.models.thl.profiling.upk_question import UpkQuestion
 from generalresearch.models.thl.soft_pair import SoftPairResultType
 
 if TYPE_CHECKING:
-    from generalresearch.models.legacy.bucket import (
-        CategoryAssociation,
-        Eligibility,
-        SurveyEligibilityCriterion,
-    )
-    from generalresearch.models.thl.locales import CountryISO
-    from generalresearch.models.thl.offerwall import (
-        OfferWallType,
-        OfferWallTypeClass,
-    )
-    from generalresearch.models.thl.profiling.upk_question import UpkQuestion
     from generalresearch.models.thl.user import User
 
 
@@ -277,9 +273,9 @@ class TaskResult(BaseModel):
                         if fname
                     ]
                 )
-                assert all(
-                    x in {"domain", "mid"} for x in fmt_str
-                ), "unrecognized format variable"
+                assert all(x in {"domain", "mid"} for x in fmt_str), (
+                    "unrecognized format variable"
+                )
         else:
             assert self.entry_link is None, f"entry link not allowed for {self.source}"
         return self

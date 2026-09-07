@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -15,16 +15,12 @@ from pydantic import (
 )
 
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
-from generalresearch.models.definitions import MAX_INT32
+from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.models.thl.locales import CountryISO, LanguageISO
-
-if TYPE_CHECKING:
-    from generalresearch.models.definitions import Source
-    from generalresearch.models.thl.profiling.upk_question import UpkQuestion
+from generalresearch.models.thl.profiling.upk_question import UpkQuestion
 
 
 class UserQuestionAnswer(BaseModel):
-
     model_config = ConfigDict(validate_assignment=True)
 
     user_id: PositiveInt | None = Field(lt=MAX_INT32, default=None)
@@ -56,9 +52,9 @@ class UserQuestionAnswer(BaseModel):
         if calc_answers is None:
             return None
 
-        assert all(
-            ":" in k for k in calc_answers
-        ), "calc_answers expects the keys to be in format source:question_code"
+        assert all(":" in k for k in calc_answers), (
+            "calc_answers expects the keys to be in format source:question_code"
+        )
         return calc_answers
 
     def model_dump_mysql(self, session_id: str | None = None) -> dict[str, Any]:
@@ -97,12 +93,12 @@ class UserQuestionAnswer(BaseModel):
         """
         try:
             assert question.id == self.question_id, "mismatched question id"
-            assert (
-                question.country_iso == self.country_iso
-            ), "country_iso doesn't match question's country"
-            assert (
-                question.language_iso == self.language_iso
-            ), "language_iso doesn't match question's language"
+            assert question.country_iso == self.country_iso, (
+                "country_iso doesn't match question's country"
+            )
+            assert question.language_iso == self.language_iso, (
+                "language_iso doesn't match question's language"
+            )
             question._validate_question_answer(self.answer)
         except AssertionError as e:
             return False, str(e)
@@ -142,9 +138,9 @@ class MarketplaceResearchProfileQuestion(BaseModel):
 
     @model_validator(mode="after")
     def validate_keys(self):
-        assert (
-            ":" not in self.question_code
-        ), "question_code expected to not be in curie format"
+        assert ":" not in self.question_code, (
+            "question_code expected to not be in curie format"
+        )
         return self
 
     @property

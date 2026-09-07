@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from pydantic import (
     BaseModel,
@@ -15,9 +15,7 @@ from generalresearch.models.custom_types import (
     LanguageISOLike,
     UUIDStr,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.profiling.upk_question import UpkQuestion
+from generalresearch.models.thl.profiling.upk_question import UpkQuestion
 
 
 class Question(BaseModel):

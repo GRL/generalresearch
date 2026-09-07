@@ -3,17 +3,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field, PositiveInt
 
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.definitions import MAX_INT32, Source
+from generalresearch.models.thl.definitions import WallAdjustedStatus
+from generalresearch.models.thl.user_identifiers import BPUIDStr
 from generalresearch.utils.enum import ReprEnumMeta
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.definitions import WallAdjustedStatus
-    from generalresearch.models.thl.user import BPUIDStr
 
 """
 Typically used internally. These affect a user's quality standing.

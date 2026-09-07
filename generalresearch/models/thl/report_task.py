@@ -8,9 +8,8 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict, Field
 
 from generalresearch.models.thl.definitions import ReportValue
+from generalresearch.models.thl.user_identifiers import BPUIDStr
 
-if TYPE_CHECKING:
-    from generalresearch.models.thl.user import BPUIDStr
 
 # If a report is made with multiple values, we'll take the one with the
 # highest priority

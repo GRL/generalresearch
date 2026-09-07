@@ -4,7 +4,7 @@ import logging
 import math
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 from uuid import UUID, uuid3
 from zoneinfo import ZoneInfo
 
@@ -21,11 +21,8 @@ from pydantic import (
 
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.legacy.api_status import StatusResponse
+from generalresearch.models.thl.locales import CountryISO
 from generalresearch.utils.enum import ReprEnumMeta
-
-if TYPE_CHECKING:
-    from generalresearch.models.thl.locales import CountryISO
-
 
 logger = logging.getLogger()
 
@@ -269,9 +266,9 @@ class Leaderboard(BaseModel):
             .to_pydatetime()
             .replace(tzinfo=self.timezone)
         )
-        assert (
-            period_start_local == self.period_start_local
-        ), f"invalid period_start_local {self.period_start_local}. The period starts at {period_start_local}"
+        assert period_start_local == self.period_start_local, (
+            f"invalid period_start_local {self.period_start_local}. The period starts at {period_start_local}"
+        )
         if self.period_end_local is not None:
             assert self.period_end_local == period_end_local, "invalid period"
         else:

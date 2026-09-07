@@ -2,19 +2,15 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, PositiveInt, model_validator
 
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
-from generalresearch.models.definitions import MAX_INT32
+from generalresearch.models.definitions import MAX_INT32, Source
 from generalresearch.models.thl.definitions import (
     WallAdjustedStatus,
 )
-
-if TYPE_CHECKING:
-    from generalresearch.models.definitions import Source
 
 
 class TaskAdjustmentEvent(BaseModel):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import Annotated, Any
 
 from pydantic import (
     BaseModel,
@@ -24,14 +24,10 @@ from generalresearch.models.custom_types import (
     PropertyCode,
     SurveyKey,
 )
-from generalresearch.models.thl.definitions import StatusCode1
+from generalresearch.models.definitions import Source
+from generalresearch.models.thl.category import Category
+from generalresearch.models.thl.definitions import Status, StatusCode1
 from generalresearch.models.thl.pagination import Page
-
-if TYPE_CHECKING:
-
-    from generalresearch.models.definitions import Source
-    from generalresearch.models.thl.category import Category
-    from generalresearch.models.thl.definitions import Status
 
 
 class SurveyCategoryModel(BaseModel):
@@ -100,12 +96,12 @@ class Survey(BaseModel):
     @model_validator(mode="after")
     def category_strengths(self):
         if any(s.strength is not None for s in self.categories):
-            assert all(
-                s.strength is not None for s in self.categories
-            ), "If any category strength is not None, all should be set"
-            assert (
-                abs(sum(s.strength for s in self.categories) - 1) <= 0.01
-            ), "Strengths should some to 1"
+            assert all(s.strength is not None for s in self.categories), (
+                "If any category strength is not None, all should be set"
+            )
+            assert abs(sum(s.strength for s in self.categories) - 1) <= 0.01, (
+                "Strengths should some to 1"
+            )
         return self
 
     def model_dump_sql(self):
