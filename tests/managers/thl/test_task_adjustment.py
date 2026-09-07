@@ -53,9 +53,9 @@ def session_fail(
     session_factory: Callable[..., Session],
     wall_factory: Callable[..., Wall],
 ) -> Session:
-    session = session_factory(started=datetime.now(UTC), user=user)
+    session = session_manager.create(started=datetime.now(UTC), user=user)
     wall1 = wall_factory(
-        session_id=session.id,
+        session=session,
         user=user,
         source=Source.DYNATA,
         req_survey_id="72723",
@@ -68,11 +68,13 @@ def session_fail(
         status_code_1=StatusCode1.PS_FAIL,
         finished=wall1.started + timedelta(seconds=randint(a=60 * 2, b=60 * 10)),
     )
-    session.wall_events.append(wall1)
     return session
 
 
 class TestHandleRecons:
+    @pytest.fixture(autouse=True)
+    def setup(self, create_main_accounts):
+        create_main_accounts()
 
     def test_complete_to_recon(
         self,
@@ -92,9 +94,9 @@ class TestHandleRecons:
         current_amount = thl_ledger_manager.get_account_filtered_balance(
             revenue_account, "thl_wall", wall_uuid
         )
-        assert (
-            current_amount == 123
-        ), "this is the amount of revenue from this task complete"
+        assert current_amount == 123, (
+            "this is the amount of revenue from this task complete"
+        )
 
         bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
             s.user.product
@@ -195,9 +197,9 @@ class TestHandleRecons:
         current_amount = thl_ledger_manager.get_account_filtered_balance(
             revenue_account, "thl_wall", mid
         )
-        assert (
-            current_amount == 0
-        ), "this is the amount of revenue from this task complete"
+        assert current_amount == 0, (
+            "this is the amount of revenue from this task complete"
+        )
 
         bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
             session_fail.user.product
@@ -345,9 +347,9 @@ class TestHandleRecons:
             user_wallet_account, "thl_session", mid
         )
         assert amount == 47, "this is the amount paid to the user"
-        assert (
-            thl_ledger_manager.get_account_balance(commission_account) == 6
-        ), "earned commission"
+        assert thl_ledger_manager.get_account_balance(commission_account) == 6, (
+            "earned commission"
+        )
 
         task_adjustment_manager.handle_single_recon(
             ledger_manager=thl_ledger_manager,
@@ -367,6 +369,6 @@ class TestHandleRecons:
             user_wallet_account, "thl_session", mid
         )
         assert amount == 0
-        assert (
-            thl_ledger_manager.get_account_balance(commission_account) == 0
-        ), "earned commission"
+        assert thl_ledger_manager.get_account_balance(commission_account) == 0, (
+            "earned commission"
+        )
