@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 from collections import defaultdict
 from collections.abc import Callable, Collection
@@ -10,7 +8,6 @@ from uuid import UUID
 
 import numpy as np
 import pandas as pd
-from generalresearch.models.thl.wallet.definitions import PayoutType
 from pydantic import AwareDatetime, PositiveInt
 
 from generalresearch.config import (
@@ -32,6 +29,7 @@ from generalresearch.managers.thl.ledger_manager.ledger import (
     LedgerManager,
 )
 from generalresearch.models.custom_types import UUIDStr
+from generalresearch.models.thl.contest.contest_entry import ContestEntry
 from generalresearch.models.thl.contest.definitions import (
     ContestPrizeKind,
     ContestType,
@@ -58,6 +56,7 @@ from generalresearch.models.thl.payout_format import format_payout_format
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import Session, Status, Wall
 from generalresearch.models.thl.user import User
+from generalresearch.models.thl.wallet.definitions import PayoutType
 from generalresearch.models.thl.wallet.user_wallet import (
     UserDisplayedWalletBalance,
     UserLedgerWallet,
@@ -66,8 +65,7 @@ from generalresearch.models.thl.wallet.user_wallet import (
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.session import SessionManager
-    from generalresearch.models.thl.contest.contest import ContestWinner
-
+    from generalresearch.models.thl.contest.contest import Contest, ContestWinner
 
 logging.basicConfig()
 logger = logging.getLogger("LedgerManager")

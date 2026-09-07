@@ -442,12 +442,12 @@ class Wall(WallBase):
     def to_json(self) -> str:
         # We have to handle the computed_fields manually. I'm not sure if there is a better way
         #   to do this natively in pydantic...
-        d = self.model_dump(mode="json", exclude={"elapsed"})
+        d = self.model_dump(mode="json", exclude_computed_fields=True)
         return json.dumps(d)
 
     def model_dump_mysql(self) -> dict[str, Any]:
         # Generate a dictionary representation of the model, with special handling for datetimes
-        d = self.model_dump(mode="json", exclude={"elapsed"})
+        d = self.model_dump(mode="json", exclude_computed_fields=True)
         d["started"] = self.started.replace(tzinfo=None)
         if self.finished:
             d["finished"] = self.finished.replace(tzinfo=None)
