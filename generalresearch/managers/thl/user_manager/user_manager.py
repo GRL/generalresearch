@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import logging
+import operator
 from collections.abc import Collection
 from datetime import datetime
-from functools import lru_cache
+from threading import Lock
 from typing import TYPE_CHECKING
 
+from cachetools import TTLCache, cachedmethod
 from pydantic import RedisDsn
 
 from generalresearch.managers.base import Permission
@@ -26,7 +28,6 @@ from generalresearch.models.custom_types import UUIDStr
 from generalresearch.utils.copying_cache import deepcopy_return
 
 if TYPE_CHECKING:
-
     from generalresearch.managers.thl.userhealth import AuditLogManager
     from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.user import User
@@ -41,9 +42,9 @@ auditlog = logging.getLogger("auditlog")
 class UserManager:
     def __init__(
         self,
-        redis: RedisDsn | None = None,
-        pg_config: PostgresConfig | None = None,
-        pg_config_rr: PostgresConfig | None = None,
+        redis: RedisDsn,
+        pg_config: PostgresConfig,
+        pg_config_rr: PostgresConfig,
         sql_permissions: Collection[Permission] | None = None,
         cache_prefix: str | None = None,
         redis_timeout: float | None = None,
@@ -53,9 +54,9 @@ class UserManager:
             sql_permissions = []
 
         if pg_config is not None:
-            assert (
-                pg_config_rr is not None
-            ), "you should pass RR credentials also for fast lookups"
+            assert pg_config_rr is not None, (
+                "you should pass RR credentials also for fast lookups"
+            )
 
         assert Permission.DELETE not in sql_permissions, "delete not allowed"
         if Permission.UPDATE in sql_permissions or Permission.CREATE in sql_permissions:
@@ -86,10 +87,39 @@ class UserManager:
         self.product_manager = ProductManager(
             pg_config=pg_config, permissions=[Permission.READ]
         )
+        self.get_user_cache = TTLCache(maxsize=10000, ttl=30)
+        self.get_user_cache_lock = Lock()
 
     def set_last_seen(self, user: User) -> None:
         assert Permission.UPDATE in self.sql_permissions, "permission error"
         return self.mysql_user_manager._set_last_seen(user)
+
+    def change_product_user_id(self, *, user: User, new_product_user_id: str) -> User:
+        """Change a user's supplier-provided ID and refresh user lookup caches.
+
+        This does not rewrite historical or derived data that copied the old ID,
+        such as leaderboards and activity counters.
+        """
+        assert Permission.UPDATE in self.sql_permissions, "permission error"
+        assert self.mysql_user_manager is not None
+        assert user.product_id is not None
+        assert user.product_user_id is not None
+
+        if new_product_user_id == user.product_user_id:
+            return user
+        if not User.is_valid_ubp(
+            product_id=user.product_id, product_user_id=new_product_user_id
+        ):
+            raise ValueError("invalid product_id/product_user_id")
+
+        updated_user = self.mysql_user_manager._change_product_user_id(
+            user=user, new_product_user_id=new_product_user_id
+        )
+
+        self.cache_clear()
+        if self.redis_user_manager:
+            self.redis_user_manager.clear_user(user)
+        return updated_user
 
     def audit_log(
         self,
@@ -102,6 +132,7 @@ class UserManager:
     ) -> AuditLog:
         from generalresearch.models.thl.userhealth import AuditLogLevel
 
+        assert user.user_id is not None
         return alm.create(
             user_id=user.user_id,
             level=AuditLogLevel(level),
@@ -110,14 +141,17 @@ class UserManager:
             event_value=event_value,
         )
 
-    def cache_clear(self):
-        # Generally this is used in testing. This clears the .get_user's lru_cache.
-        # There is no way of clearing only a specific key from the cache.
+    def cache_clear(self) -> None:
+        # Generally this is used in testing. This clears get_user's TTL cache.
         # It does not clear any redis caches; that has to be done separately.
-        self.get_user.__wrapped__.cache_clear()
+        with self.get_user_cache_lock:
+            self.get_user_cache.clear()
 
     @deepcopy_return
-    @lru_cache(maxsize=10000)
+    @cachedmethod(
+        operator.attrgetter("get_user_cache"),
+        lock=operator.attrgetter("get_user_cache_lock"),
+    )
     def get_user(
         self,
         *,
@@ -128,20 +162,20 @@ class UserManager:
     ) -> User:
         """
         Retrieve User from (product_id & product_user_id) or (user_id), or (uuid).
-        Looks up in lru_cache, then (redis, memcached), then mysql.
+        Looks up in the 30-second TTL cache, then (redis, memcached), then mysql.
         Raises UserDoesntExistError if user is not found.
         (the * makes all arguments keyword-only arguments)
         """
-        assert (
-            (product_id and product_user_id) or user_id or user_uuid
-        ), "Must pass either (product_id, product_user_id), or user_id, or uuid"
+        assert (product_id and product_user_id) or user_id or user_uuid, (
+            "Must pass either (product_id, product_user_id), or user_id, or uuid"
+        )
         if product_id or product_user_id:
-            assert (
-                product_id and product_user_id
-            ), "Must pass both product_id and product_user_id"
-        assert (
-            sum(map(bool, [product_id or product_id, user_id, user_uuid])) == 1
-        ), "Must pass only 1 of (product_id, product_user_id), or user_id, or uuid"
+            assert product_id and product_user_id, (
+                "Must pass both product_id and product_user_id"
+            )
+        assert sum(map(bool, [product_id or product_id, user_id, user_uuid])) == 1, (
+            "Must pass only 1 of (product_id, product_user_id), or user_id, or uuid"
+        )
         user = self.get_user_inmemory_cache(
             product_id=product_id,
             product_user_id=product_user_id,
@@ -242,18 +276,18 @@ class UserManager:
         """
         Given a bp_user_id and a product_id, get or create a User
         """
+        from generalresearch.models.thl.user import User
+
         assert Permission.CREATE in self.sql_permissions
         assert self.mysql_user_manager is not None
-        assert (
-            self.redis_user_manager is not None
-        ), "need at least redis to synchronize user creation"
+        assert self.redis_user_manager is not None, (
+            "need at least redis to synchronize user creation"
+        )
 
-        assert (
-            self.user_manager_limiter is not None
-        ), "Need user_manager_limiter to get_or_create_user"
+        assert self.user_manager_limiter is not None, (
+            "Need user_manager_limiter to get_or_create_user"
+        )
         # Attempt to create common_struct solely for validation purposes
-
-        from generalresearch.models.thl.user import User
 
         if not User.is_valid_ubp(
             product_id=product_id, product_user_id=product_user_id
@@ -277,9 +311,9 @@ class UserManager:
         created: datetime | None = None,
     ) -> User:
 
-        assert (
-            self.user_manager_limiter is not None
-        ), "Need user_manager_limiter to create_user"
+        assert self.user_manager_limiter is not None, (
+            "Need user_manager_limiter to create_user"
+        )
         assert product_id or product, "Needs a product_id or a Product instance"
 
         if product is None:
@@ -327,8 +361,7 @@ class UserManager:
 
         # If we change something about a user, we should update the in-memory caches
         self.set_user_inmemory_cache(user)
-        # There is no way to clear a single key from the lru_cache...
-        # https://bugs.python.org/issue28178
+        # Clear local cached copies so the blocked state is returned immediately.
         self.cache_clear()
         return True
 
@@ -361,9 +394,9 @@ class UserManager:
         user_ids: Collection[int] | None = None,
         user_uuids: Collection[str] | None = None,
     ) -> list[User]:
-        assert (user_ids or user_uuids) and not (
-            user_ids and user_uuids
-        ), "Must pass ONE of user_ids, user_uuids"
+        assert (user_ids or user_uuids) and not (user_ids and user_uuids), (
+            "Must pass ONE of user_ids, user_uuids"
+        )
         assert self.mysql_user_manager_rr
         return self.mysql_user_manager_rr.fetch(
             user_ids=user_ids, user_uuids=user_uuids

@@ -76,7 +76,6 @@ class RedisUserManager:
             p.execute()
 
     def clear_user(self, user: User) -> None:
-        # this should only be used by tests
         with self.client.pipeline(transaction=False) as p:
             p.delete(f"{self.cache_prefix}:uuid:{user.uuid}")
             p.delete(f"{self.cache_prefix}:user_id:{user.user_id}")

@@ -67,6 +67,10 @@ class LeaderboardRow(BaseModel):
         examples=[7],
     )
 
+    display_name: str | None = Field(
+        description="Optional public name chosen by the user", default=None
+    )
+
     def censor(self):
         censor_idx = math.ceil(len(self.bpuid) / 2)
         self.bpuid = self.bpuid[:censor_idx] + ("*" * len(self.bpuid[censor_idx:]))

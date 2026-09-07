@@ -55,6 +55,7 @@ class ContestEntry(BaseModel):
     )
 
     # user_id used internally, for DB joins/index
+    # todo: this should be a UserRef
     user: User = Field(exclude=True)
 
     @model_validator(mode="before")
@@ -65,9 +66,9 @@ class ContestEntry(BaseModel):
         entry_type = data.get("entry_type")
 
         if entry_type == ContestEntryType.COUNT:
-            assert isinstance(amount, int) and not isinstance(
-                amount, USDCent
-            ), "amount must be int in ContestEntryType.COUNT"
+            assert isinstance(amount, int) and not isinstance(amount, USDCent), (
+                "amount must be int in ContestEntryType.COUNT"
+            )
 
         elif entry_type == ContestEntryType.CASH:
             # This may be coming from the DB, in which case it is an int.

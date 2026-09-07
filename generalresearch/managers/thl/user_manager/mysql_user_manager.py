@@ -1,20 +1,21 @@
 from __future__ import annotations
 
 import logging
+import operator
 from collections.abc import Collection
 from datetime import UTC, datetime
-from functools import lru_cache
+from threading import Lock
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
 import psycopg
+from cachetools import LRUCache, cachedmethod
 from psycopg import sql
 
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.user import User
 
 if TYPE_CHECKING:
-
     from generalresearch.pg_helper import PostgresConfig
 
 logging.basicConfig()
@@ -26,6 +27,8 @@ class MysqlUserManager:
     def __init__(self, pg_config: PostgresConfig, is_read_replica: bool):
         self.pg_config = pg_config
         self.is_read_replica = is_read_replica
+        self.product_id_exists_cache = LRUCache(maxsize=5000)
+        self.product_id_exists_cache_lock = Lock()
 
     def _set_last_seen(self, user: User) -> None:
         # Don't call this directly. Use UserManager.set_last_seen()
@@ -40,6 +43,39 @@ class MysqlUserManager:
             params=[now, user.user_id],
         )
 
+    def _change_product_user_id(self, *, user: User, new_product_user_id: str) -> User:
+        """Change a user's supplier-provided ID in the primary database."""
+        assert not self.is_read_replica
+        assert user.user_id is not None
+        assert user.product_id is not None
+        assert user.product_user_id is not None
+
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(
+                query="""
+                    UPDATE thl_user
+                    SET product_user_id = %(new_product_user_id)s
+                    WHERE id = %(user_id)s
+                        AND product_id = %(product_id)s
+                        AND product_user_id = %(old_product_user_id)s
+                    RETURNING id AS user_id, product_id, product_user_id,
+                              uuid, blocked, created, last_seen
+                    """,
+                params={
+                    "new_product_user_id": new_product_user_id,
+                    "user_id": user.user_id,
+                    "product_id": user.product_id,
+                    "old_product_user_id": user.product_user_id,
+                },
+            )
+            row = c.fetchone()
+
+        if row is None:
+            raise RuntimeError(
+                "User was not updated; it may have been changed concurrently"
+            )
+        return User.from_db(row)
+
     def get_user_from_mysql(
         self,
         *,
@@ -53,16 +89,16 @@ class MysqlUserManager:
         logger.info(
             f"get_user_from_mysql: {product_id}, {product_user_id}, {user_id}, {user_uuid}"
         )
-        assert (
-            (product_id and product_user_id) or user_id or user_uuid
-        ), "Must pass either (product_id, product_user_id), or user_id, or uuid"
+        assert (product_id and product_user_id) or user_id or user_uuid, (
+            "Must pass either (product_id, product_user_id), or user_id, or uuid"
+        )
         if product_id or product_user_id:
-            assert (
-                product_id and product_user_id
-            ), "Must pass both product_id and product_user_id"
-        assert (
-            sum(map(bool, [product_id or product_id, user_id, user_uuid])) == 1
-        ), "Must pass only 1 of (product_id, product_user_id), or user_id, or uuid"
+            assert product_id and product_user_id, (
+                "Must pass both product_id and product_user_id"
+            )
+        assert sum(map(bool, [product_id or product_id, user_id, user_uuid])) == 1, (
+            "Must pass only 1 of (product_id, product_user_id), or user_id, or uuid"
+        )
 
         # Using RR: Assume we check redis first for newly created users
         if can_use_read_replica is False:
@@ -176,8 +212,11 @@ class MysqlUserManager:
 
         return user
 
-    @lru_cache(maxsize=5_000)
-    def product_id_exists(self, product_id: str):
+    @cachedmethod(
+        operator.attrgetter("product_id_exists_cache"),
+        lock=operator.attrgetter("product_id_exists_cache_lock"),
+    )
+    def product_id_exists(self, product_id: str) -> bool:
         # 'id' is the primary key, there can only be 0 or 1
         query = """
         SELECT id 
@@ -228,9 +267,9 @@ class MysqlUserManager:
         assert product_id, "must pass product_id"
         assert len(product_user_ids) > 0, "must pass 1 or more product_user_ids"
         assert len(product_user_ids) <= 500, "limit 500 product_user_ids"
-        assert isinstance(
-            product_user_ids, (list, set)
-        ), "must pass a collection of product_user_ids"
+        assert isinstance(product_user_ids, (list, set)), (
+            "must pass a collection of product_user_ids"
+        )
         res = self.pg_config.execute_sql_query(
             query="""
             SELECT id AS user_id, product_id, product_user_id, 
@@ -253,14 +292,14 @@ class MysqlUserManager:
         user_ids: Collection[int] | None = None,
         user_uuids: Collection[str] | None = None,
     ) -> list[User]:
-        assert (user_ids or user_uuids) and not (
-            user_ids and user_uuids
-        ), "Must pass ONE of user_ids, user_uuids"
+        assert (user_ids or user_uuids) and not (user_ids and user_uuids), (
+            "Must pass ONE of user_ids, user_uuids"
+        )
         if user_ids:
+            assert isinstance(user_ids, (list, set)), (
+                "must pass a collection of user_ids"
+            )
             assert len(user_ids) <= 500, "limit 500 user_ids"
-            assert isinstance(
-                user_ids, (list, set)
-            ), "must pass a collection of user_ids"
 
             res = self.pg_config.execute_sql_query(
                 query="""
@@ -273,10 +312,10 @@ class MysqlUserManager:
                 params={"user_ids": user_ids},
             )
         else:
+            assert isinstance(user_uuids, (list, set)), (
+                "must pass a collection of user_uuids"
+            )
             assert len(user_uuids) <= 500, "limit 500 user_uuids"
-            assert isinstance(
-                user_uuids, (list, set)
-            ), "must pass a collection of user_uuids"
             res = self.pg_config.execute_sql_query(
                 query="""
                 SELECT id AS user_id, product_id, product_user_id, 
