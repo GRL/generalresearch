@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 
 
 class TestLeaderboardContestCRUD:
-
     def test_create(
         self,
         leaderboard_contest_create: LeaderboardContestCreate,
@@ -35,7 +34,8 @@ class TestLeaderboardContestCRUD:
         contest_manager: ContestManager,
     ):
         c = contest_manager.create(
-            product_id=product_user_wallet_yes.uuid, contest_create=leaderboard_contest_create
+            product_id=product_user_wallet_yes.uuid,
+            contest_create=leaderboard_contest_create,
         )
         c_out = contest_manager.get(c.uuid)
         assert c == c_out
@@ -55,8 +55,9 @@ class TestLeaderboardContestCRUD:
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
         user_manager: UserManager,
-        thl_redis: RedisConfig,
+        thl_redis_config: RedisConfig,
     ):
+        thl_redis = thl_redis_config.create_redis_client()
         contest = leaderboard_contest_in_db
         user = user_with_wallet
 
@@ -88,8 +89,9 @@ class TestLeaderboardContestCRUD:
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
         user_manager: UserManager,
-        thl_redis: RedisConfig,
+        thl_redis_config: RedisConfig,
     ):
+        thl_redis = thl_redis_config.create_redis_client()
         # The contest should be over. We need to trigger it.
         contest = leaderboard_contest_in_db
         contest._redis_client = thl_redis

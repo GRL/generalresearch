@@ -203,16 +203,16 @@ class TestProductManager:
     def test_get_by_uuid1(
         self,
         product_manager: ProductManager,
-        team: Team,
+        gr_team: Team,
         product: Product,
         product_factory: Callable[..., Product],
     ):
-        p1 = product_factory(team=team)
+        p1 = product_factory(team=gr_team)
         instance = product_manager.get_by_uuid(product_uuid=p1.uuid)
         assert instance.id == p1.id
 
         # No Team and no user_create_config
-        assert instance.team_id == team.uuid
+        assert instance.team_id == gr_team.uuid
 
         # user_create_config can't be None, so ensure the default was set.
         assert isinstance(instance.user_create_config, UserCreateConfig)

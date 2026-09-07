@@ -47,8 +47,9 @@ class TestRaffleContest:
 
     def test_should_end(
         self,
-        contest: RaffleContest,
+        raffle_contest: RaffleContest,
     ):
+        contest = raffle_contest
         # contest is active and has no entries
         should, msg = contest.should_end()
         assert not should, msg
@@ -71,12 +72,12 @@ class TestRaffleContestCRUD:
 
     def test_create(
         self,
-        contest_create: RaffleContestCreate,
+        raffle_contest_create: RaffleContestCreate,
         product_user_wallet_yes: Product,
         contest_manager: ContestManager,
     ):
         c = contest_manager.create(
-            product_id=product_user_wallet_yes.uuid, contest_create=contest_create
+            product_id=product_user_wallet_yes.uuid, contest_create=raffle_contest_create
         )
         c_out = contest_manager.get(c.uuid)
         assert c == c_out
@@ -92,15 +93,15 @@ class TestRaffleContestCRUD:
     def test_enter(
         self,
         user_with_money: User,
-        contest_in_db: RaffleContest,
+        raffle_contest_in_db: RaffleContest,
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
         # Raffle ends at $1.00. User enters for $0.60
         print(user_with_money.product_id)
-        print(contest_in_db.product_id)
-        print(contest_in_db.uuid)
-        contest = contest_in_db
+        print(raffle_contest_in_db.product_id)
+        print(raffle_contest_in_db.uuid)
+        contest = raffle_contest_in_db
 
         user_wallet = thl_ledger_manager.get_account_or_create_user_wallet(
             user=user_with_money
@@ -145,13 +146,13 @@ class TestRaffleContestCRUD:
     def test_enter_ends(
         self,
         user_with_money: User,
-        contest_in_db: RaffleContest,
+        raffle_contest_in_db: RaffleContest,
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
         # User enters contest, which brings the total amount above the limit,
         #   and the contest should end, with a winner selected
-        contest = contest_in_db
+        contest = raffle_contest_in_db
 
         bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet_by_uuid(
             user_with_money.product_id
@@ -209,13 +210,13 @@ class TestRaffleContestCRUD:
     def test_enter_ends_cash_prize(
         self,
         user_with_money: User,
-        contest_factory: Callable[..., Contest],
+        raffle_contest_factory: Callable[..., Contest],
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
         # Same as test_enter_ends, but the prize is cash. Just
         #   testing the ledger methods
-        c = contest_factory(
+        c = raffle_contest_factory(
             prizes=[
                 ContestPrize(
                     name="$1.00 bonus",
@@ -268,11 +269,11 @@ class TestRaffleContestCRUD:
     def test_enter_failure(
         self,
         user_with_wallet: User,
-        contest_in_db: RaffleContest,
+        raffle_contest_in_db: RaffleContest,
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
-        c = contest_in_db
+        c = raffle_contest_in_db
         user = user_with_wallet
 
         # Tries to enter $0
@@ -310,12 +311,12 @@ class TestRaffleContestCRUD:
     def test_enter_not_eligible(
         self,
         user_with_money: User,
-        contest_factory: Callable[..., Contest],
+        raffle_contest_factory: Callable[..., Contest],
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
         # Max entry amount per user $0.10. Contest still ends at $1.00
-        c = contest_factory(
+        c = raffle_contest_factory(
             entry_rule=ContestEntryRule(
                 max_entry_amount_per_user=USDCent(10),
                 max_daily_entries_per_user=USDCent(8),
@@ -380,7 +381,7 @@ class TestRaffleContestUserViews:
     def test_list_user_eligible_country(
         self,
         user_with_wallet: User,
-        contest_factory: Callable[..., Contest],
+        raffle_contest_factory: Callable[..., Contest],
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
@@ -391,7 +392,7 @@ class TestRaffleContestUserViews:
         assert len(cs) == 0
 
         # Create a contest. It'll be in the US/CA
-        contest_factory(country_isos={"us", "ca"})
+        raffle_contest_factory(country_isos={"us", "ca"})
 
         # Not eligible in mexico
         cs = contest_manager.get_many_by_user_eligible(
@@ -404,7 +405,7 @@ class TestRaffleContestUserViews:
         assert len(cs) == 1
 
         # Create another, any country
-        contest_factory(country_isos=None)
+        raffle_contest_factory(country_isos=None)
         cs = contest_manager.get_many_by_user_eligible(
             user=user_with_wallet, country_iso="mx"
         )
@@ -417,11 +418,11 @@ class TestRaffleContestUserViews:
     def test_list_user_eligible(
         self,
         user_with_money: User,
-        contest_factory: Callable[..., Contest],
+        raffle_contest_factory: Callable[..., Contest],
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
-        c = contest_factory(
+        c = raffle_contest_factory(
             end_condition=ContestEndCondition(target_entry_amount=USDCent(10)),
             entry_rule=ContestEntryRule(
                 max_entry_amount_per_user=USDCent(1),
@@ -467,11 +468,11 @@ class TestRaffleContestUserViews:
     def test_list_user_winnings(
         self,
         user_with_money: User,
-        contest_factory: Callable[..., Contest],
+        raffle_contest_factory: Callable[..., Contest],
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
-        c = contest_factory(
+        c = raffle_contest_factory(
             end_condition=ContestEndCondition(target_entry_amount=USDCent(100)),
         )
         entry = ContestEntry(
@@ -507,11 +508,11 @@ class TestRaffleContestCRUDCount:
     def test_enter(
         self,
         user_with_wallet: User,
-        contest_factory: Callable[..., Contest],
+        raffle_contest_factory: Callable[..., Contest],
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
-        c = contest_factory(entry_type=ContestEntryType.COUNT)
+        c = raffle_contest_factory(entry_type=ContestEntryType.COUNT)
         entry = ContestEntry(
             entry_type=ContestEntryType.COUNT,
             user=user_with_wallet,

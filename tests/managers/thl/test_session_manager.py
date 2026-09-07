@@ -118,20 +118,20 @@ class TestSessionManagerFilter:
         self,
         product_factory: Callable[..., Product],
         user_factory: Callable[..., User],
-        team: Team,
+        gr_team: Team,
         session_manager: SessionManager,
         utc_hour_ago: datetime,
         thl_web_rr: PostgresConfig,
     ):
-        p1 = product_factory(team=team)
+        p1 = product_factory(team=gr_team)
 
         for _ in range(5):
             u = user_factory(product=p1)
             session_manager.create(started=utc_hour_ago, user=u, uuid_id=uuid4().hex)
 
-        team.prefetch_products(thl_pg_config=thl_web_rr)
-        assert len(team.product_uuids) == 1
-        res = session_manager.filter(product_uuids=team.product_uuids)
+        gr_team.prefetch_products(thl_pg_config=thl_web_rr)
+        assert len(gr_team.product_uuids) == 1
+        res = session_manager.filter(product_uuids=gr_team.product_uuids)
         assert len(res) == 5
 
     def test_business(

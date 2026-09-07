@@ -20,17 +20,16 @@ if TYPE_CHECKING:
     from generalresearch.models.thl.contest.milestone import (
         MilestoneContestCreate,
     )
-    from generalresearch.models.thl.contest.raffle import RaffleContest
     from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.user import User
 
 
 class TestMilestoneContest:
-
     def test_should_end(
         self,
-        contest: MilestoneContest,
+        milestone_contest: MilestoneContest,
     ):
+        contest = milestone_contest
         # contest is active and has no entries
         should, msg = contest.should_end()
         assert not should, msg
@@ -51,15 +50,15 @@ class TestMilestoneContest:
 
 
 class TestMilestoneContestCRUD:
-
     def test_create(
         self,
-        contest_create: MilestoneContestCreate,
+        milestone_contest_create: MilestoneContestCreate,
         product_user_wallet_yes: Product,
         contest_manager: ContestManager,
     ):
         c = contest_manager.create(
-            product_id=product_user_wallet_yes.uuid, contest_create=contest_create
+            product_id=product_user_wallet_yes.uuid,
+            contest_create=milestone_contest_create,
         )
         c_out = contest_manager.get(c.uuid)
         assert c == c_out
@@ -75,13 +74,13 @@ class TestMilestoneContestCRUD:
     def test_enter(
         self,
         user_with_wallet: User,
-        contest_in_db: MilestoneContest,
+        milestone_contest_in_db: MilestoneContest,
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
         # Users CANNOT directly enter a milestone contest through the api,
         #   but we'll call this manager method when a trigger is hit.
-        contest = contest_in_db
+        contest = milestone_contest_in_db
         user = user_with_wallet
 
         contest_manager.enter_milestone_contest(
@@ -131,13 +130,13 @@ class TestMilestoneContestCRUD:
     def test_enter_win(
         self,
         user_with_wallet: User,
-        contest_in_db: MilestoneContest,
+        milestone_contest_in_db: MilestoneContest,
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
         # User enters contest, which brings the USER'S total amount above the limit,
         #   and the user reaches the milestone
-        contest = contest_in_db
+        contest = milestone_contest_in_db
         user = user_with_wallet
 
         user_wallet = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
@@ -196,13 +195,13 @@ class TestMilestoneContestCRUD:
         self,
         user_factory: Callable[..., User],
         product_user_wallet_yes: Product,
-        contest_in_db: MilestoneContest,
+        milestone_contest_in_db: MilestoneContest,
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
         # Multiple users reach the milestone. Contest ends after 5 wins.
         users = [user_factory(product=product_user_wallet_yes) for _ in range(5)]
-        contest = contest_in_db
+        contest = milestone_contest_in_db
 
         for u in users:
             contest_manager.enter_milestone_contest(
@@ -220,7 +219,7 @@ class TestMilestoneContestCRUD:
     def test_trigger(
         self,
         user_with_wallet: User,
-        contest_in_db: MilestoneContest,
+        milestone_contest_in_db: MilestoneContest,
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
@@ -235,7 +234,7 @@ class TestMilestoneContestCRUD:
 
         # Assert this contest got entered
         c: MilestoneUserView = contest_manager.get_milestone_user_view(
-            contest_uuid=contest_in_db.uuid, user=user_with_wallet
+            contest_uuid=milestone_contest_in_db.uuid, user=user_with_wallet
         )
         assert c.user_amount == 1
 
@@ -244,7 +243,7 @@ class TestMilestoneContestUserViews:
     def test_list_user_eligible_country(
         self,
         user_with_wallet: User,
-        raffle_contest_factory: Callable[..., RaffleContest],
+        milestone_contest_factory: Callable[..., MilestoneContest],
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
@@ -255,7 +254,7 @@ class TestMilestoneContestUserViews:
         assert len(cs) == 0
 
         # Create a contest. It'll be in the US/CA
-        raffle_contest_factory(country_isos={"us", "ca"})
+        milestone_contest_factory(country_isos={"us", "ca"})
 
         # Not eligible in mexico
         cs = contest_manager.get_many_by_user_eligible(
@@ -268,7 +267,7 @@ class TestMilestoneContestUserViews:
         assert len(cs) == 1
 
         # Create another, any country
-        raffle_contest_factory(country_isos=None)
+        milestone_contest_factory(country_isos=None)
         cs = contest_manager.get_many_by_user_eligible(
             user=user_with_wallet, country_iso="mx"
         )
@@ -281,12 +280,12 @@ class TestMilestoneContestUserViews:
     def test_list_user_eligible(
         self,
         user_with_money: User,
-        raffle_contest_factory: Callable[..., RaffleContest],
+        milestone_contest_factory: Callable[..., MilestoneContest],
         thl_ledger_manager: ThlLedgerManager,
         contest_manager: ContestManager,
     ):
         # User reaches milestone after 1 complete
-        c = raffle_contest_factory(target_amount=1)
+        c = milestone_contest_factory(target_amount=1)
         user = user_with_money
 
         cs = contest_manager.get_many_by_user_eligible(
