@@ -460,6 +460,7 @@ class ThlLedgerManager(LedgerManager):
         if user.product.user_wallet_enabled:
             bp_pay -= user_pay
             user_account = self.get_account_or_create_user_wallet(user)
+            ext_description = f"BP & User Payment {session.uuid}"
 
             if bp_pay:
                 entries.append(
@@ -502,8 +503,6 @@ class ThlLedgerManager(LedgerManager):
                                 ),
                             ]
                         )
-                ext_description = f"BP & User Payment {session.uuid}"
-
         else:
             entries.append(
                 LedgerEntry(
@@ -2084,8 +2083,14 @@ class ThlLedgerManager(LedgerManager):
         """Return every ledger wallet owned by a user, across currencies."""
         assert user.user_id, "User must be saved"
         user.prefetch_product(self.pg_config)
+        assert user.product.user_wallet_enabled, "only user_wallet managed"
         payout_format = user.product.payout_config.payout_format
         assert payout_format is not None, "Product must have a payout format"
+
+        self.get_account_or_create_user_wallet(user)
+        if user.product.user_wallet_config.failed_attempt_credit_enabled:
+            self.get_account_or_create_user_attempt_credit(user)
+
         user_account_types = {
             AccountType.USER_WALLET.value,
             AccountType.USER_ATTEMPT_CREDIT.value,

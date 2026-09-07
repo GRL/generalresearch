@@ -22,7 +22,10 @@ from generalresearch.models.thl.definitions import (
     WALL_ALLOWED_STATUS_STATUS_CODE,
 )
 from generalresearch.models.thl.ledger import (
+    AccountType,
     Direction,
+    LedgerAccount,
+    LedgerEntry,
     TransactionType,
 )
 from generalresearch.models.thl.payout import UserPayoutEvent
@@ -764,6 +767,355 @@ class TestThlLedgerTxManager:
 
         # Assert the balance came out of their user wallet
         assert ledger_manager.get_account_balance(account=user_account) == rand_amount
+
+    def test_create_tx_attempt_credit(
+        self,
+        bare_session_factory: Callable[..., Session],
+        product_factory: Callable[..., Product],
+        user_factory: Callable[..., User],
+        payout_config: PayoutConfig,
+        thl_ledger_manager: ThlLedgerManager,
+        utc_hour_ago: datetime,
+    ):
+        product = product_factory(
+            payout_config=payout_config,
+            user_wallet_config=UserWalletConfig(
+                enabled=True, failed_attempt_credit=Decimal("0.05")
+            ),
+        )
+        user = user_factory(product=product)
+        session = bare_session_factory(user=user, started=utc_hour_ago)
+        session.update(
+            status=Status.FAIL,
+            status_code_1=StatusCode1.BUYER_FAIL,
+            finished=utc_hour_ago + timedelta(minutes=5),
+        )
+
+        tx = thl_ledger_manager.create_tx_attempt_credit(session)
+
+        assert tx.tag == (
+            f"{thl_ledger_manager.currency.value}:"
+            f"{TransactionType.USER_ATTEMPT_CREDIT.value}:{session.uuid}"
+        )
+        assert tx.ext_description == f"Attempt Credit {session.uuid}"
+        assert [entry.amount for entry in tx.entries] == [5, 5]
+        assert [entry.direction for entry in tx.entries] == [
+            Direction.DEBIT,
+            Direction.CREDIT,
+        ]
+        assert thl_ledger_manager.get_session_attempt_credit(session.uuid) == 5
+        assert thl_ledger_manager.get_user_attempt_credit_balance(user) == 5
+
+        with pytest.raises(
+            LedgerTransactionConditionFailedError, match=r"^duplicate tag$"
+        ):
+            thl_ledger_manager.create_tx_attempt_credit(session, skip_flag_check=True)
+
+        assert thl_ledger_manager.get_user_attempt_credit_balance(user) == 5
+
+    def test_create_tx_attempt_credit_rejects_ineligible_session(
+        self,
+        bare_session_factory: Callable[..., Session],
+        product_factory: Callable[..., Product],
+        user_factory: Callable[..., User],
+        payout_config: PayoutConfig,
+        thl_ledger_manager: ThlLedgerManager,
+        utc_hour_ago: datetime,
+    ):
+        product = product_factory(
+            payout_config=payout_config,
+            user_wallet_config=UserWalletConfig(
+                enabled=True, failed_attempt_credit=Decimal("0.05")
+            ),
+        )
+        user = user_factory(product=product)
+        session = bare_session_factory(user=user, started=utc_hour_ago)
+        session.update(
+            status=Status.FAIL,
+            status_code_1=StatusCode1.SESSION_START_FAIL,
+            finished=utc_hour_ago + timedelta(minutes=5),
+        )
+
+        with pytest.raises(AssertionError, match="not eligible"):
+            thl_ledger_manager.create_tx_attempt_credit(session)
+
+        assert thl_ledger_manager.get_session_attempt_credit(session.uuid) is None
+        assert thl_ledger_manager.get_user_attempt_credit_balance(user) == 0
+
+    def test_bp_payment_settles_attempt_credit(
+        self,
+        bare_session_factory: Callable[..., Session],
+        session_factory: Callable[..., Session],
+        session_manager: SessionManager,
+        product_factory: Callable[..., Product],
+        user_factory: Callable[..., User],
+        payout_config: PayoutConfig,
+        thl_ledger_manager: ThlLedgerManager,
+        utc_hour_ago: datetime,
+    ):
+        product = product_factory(
+            payout_config=payout_config,
+            user_wallet_config=UserWalletConfig(
+                enabled=True, failed_attempt_credit=Decimal("0.05")
+            ),
+        )
+        user = user_factory(product=product)
+        failed_session = bare_session_factory(user=user, started=utc_hour_ago)
+        failed_session.update(
+            status=Status.FAIL,
+            status_code_1=StatusCode1.BUYER_FAIL,
+            finished=utc_hour_ago + timedelta(minutes=5),
+        )
+        thl_ledger_manager.create_tx_attempt_credit(failed_session)
+
+        completed_session = session_factory(user=user)
+        _, status_code_1 = completed_session.determine_session_status()
+        _, _, bp_pay, user_pay = completed_session.determine_payments()
+        assert user_pay is not None and user_pay >= Decimal("0.05")
+        session_manager.finish_with_status(
+            session=completed_session,
+            status=Status.COMPLETE,
+            status_code_1=status_code_1,
+            finished=completed_session.wall_events[-1].finished,
+            payout=bp_pay,
+            user_payout=user_pay,
+        )
+
+        thl_ledger_manager.create_tx_bp_payment(completed_session)
+
+        assert thl_ledger_manager.get_user_attempt_credit_balance(user) == 0
+        assert thl_ledger_manager.get_user_wallet_balance(user) == round(user_pay * 100)
+        assert thl_ledger_manager.check_ledger_balanced()
+
+    def test_bp_payment_with_zero_attempt_credit_balance(
+        self,
+        session_factory: Callable[..., Session],
+        session_manager: SessionManager,
+        product_factory: Callable[..., Product],
+        user_factory: Callable[..., User],
+        payout_config: PayoutConfig,
+        thl_ledger_manager: ThlLedgerManager,
+    ):
+        product = product_factory(
+            payout_config=payout_config,
+            user_wallet_config=UserWalletConfig(
+                enabled=True, failed_attempt_credit=Decimal("0.05")
+            ),
+        )
+        user = user_factory(product=product)
+        completed_session = session_factory(user=user)
+        _, status_code_1 = completed_session.determine_session_status()
+        _, _, bp_pay, user_pay = completed_session.determine_payments()
+        assert user_pay is not None
+        session_manager.finish_with_status(
+            session=completed_session,
+            status=Status.COMPLETE,
+            status_code_1=status_code_1,
+            finished=completed_session.wall_events[-1].finished,
+            payout=bp_pay,
+            user_payout=user_pay,
+        )
+
+        thl_ledger_manager.create_tx_bp_payment(completed_session)
+
+        assert thl_ledger_manager.get_user_attempt_credit_balance(user) == 0
+        assert thl_ledger_manager.get_user_wallet_balance(user) == round(user_pay * 100)
+        assert thl_ledger_manager.check_ledger_balanced()
+
+    def test_bp_payment_partially_settles_attempt_credit(
+        self,
+        bare_session_factory: Callable[..., Session],
+        session_factory: Callable[..., Session],
+        session_manager: SessionManager,
+        product_factory: Callable[..., Product],
+        user_factory: Callable[..., User],
+        payout_config: PayoutConfig,
+        thl_ledger_manager: ThlLedgerManager,
+        utc_hour_ago: datetime,
+    ):
+        attempt_credit = Decimal("1.00")
+        product = product_factory(
+            payout_config=payout_config,
+            user_wallet_config=UserWalletConfig(
+                enabled=True, failed_attempt_credit=attempt_credit
+            ),
+        )
+        user = user_factory(product=product)
+        failed_session = bare_session_factory(user=user, started=utc_hour_ago)
+        failed_session.update(
+            status=Status.FAIL,
+            status_code_1=StatusCode1.BUYER_FAIL,
+            finished=utc_hour_ago + timedelta(minutes=5),
+        )
+        thl_ledger_manager.create_tx_attempt_credit(failed_session)
+
+        completed_session = session_factory(user=user)
+        _, status_code_1 = completed_session.determine_session_status()
+        _, _, bp_pay, user_pay = completed_session.determine_payments()
+        assert user_pay is not None
+        attempt_credit_cents = round(attempt_credit * 100)
+        user_pay_cents = round(user_pay * 100)
+        assert 0 < user_pay_cents < attempt_credit_cents
+        session_manager.finish_with_status(
+            session=completed_session,
+            status=Status.COMPLETE,
+            status_code_1=status_code_1,
+            finished=completed_session.wall_events[-1].finished,
+            payout=bp_pay,
+            user_payout=user_pay,
+        )
+
+        thl_ledger_manager.create_tx_bp_payment(completed_session)
+
+        assert thl_ledger_manager.get_user_attempt_credit_balance(user) == (
+            attempt_credit_cents - user_pay_cents
+        )
+        assert thl_ledger_manager.get_user_wallet_balance(user) == user_pay_cents
+        assert thl_ledger_manager.check_ledger_balanced()
+
+    def test_get_user_wallets_with_attempt_credit_and_custom_currency(
+        self,
+        bare_session_factory: Callable[..., Session],
+        product_factory: Callable[..., Product],
+        user_factory: Callable[..., User],
+        payout_config: PayoutConfig,
+        ledger_manager: LedgerManager,
+        thl_ledger_manager: ThlLedgerManager,
+        currency: LedgerCurrency,
+        utc_hour_ago: datetime,
+        session_factory,
+        session_manager,
+    ):
+        product = product_factory(
+            payout_config=payout_config,
+            user_wallet_config=UserWalletConfig(
+                enabled=True, failed_attempt_credit=Decimal("0.05")
+            ),
+        )
+        user = user_factory(product=product)
+
+        wallets = thl_ledger_manager.get_user_wallets(user)
+
+        assert wallets.wallets[0].amount == 0
+        assert wallets.displayed_balances[0].amount == 0
+
+        failed_session = bare_session_factory(user=user, started=utc_hour_ago)
+        failed_session.update(
+            status=Status.FAIL,
+            status_code_1=StatusCode1.BUYER_FAIL,
+            finished=utc_hour_ago + timedelta(minutes=5),
+        )
+        thl_ledger_manager.create_tx_attempt_credit(failed_session)
+
+        wallets = thl_ledger_manager.get_user_wallets(user)
+        assert wallets.wallets[0].amount == 5
+        assert wallets.wallets[0].redeemable_amount == 0
+        assert wallets.displayed_balances[0].amount == 5
+        assert wallets.displayed_balances[0].amount_string == "$0.05"
+
+        gold_stars_currency = uuid4().hex
+        gold_stars_wallet = ledger_manager.create_account(
+            LedgerAccount(
+                display_name="Gold Stars",
+                qualified_name=(
+                    f"{gold_stars_currency}:{AccountType.USER_WALLET.value}:{user.uuid}"
+                ),
+                normal_balance=Direction.CREDIT,
+                account_type=AccountType.USER_WALLET,
+                reference_type="user",
+                reference_uuid=user.uuid,
+                currency=gold_stars_currency,
+            )
+        )
+        gold_stars_source = ledger_manager.create_account(
+            LedgerAccount(
+                display_name="Gold Stars Source",
+                qualified_name=(
+                    f"{gold_stars_currency}:"
+                    f"{AccountType.BP_WALLET.value}:{product.uuid}"
+                ),
+                normal_balance=Direction.CREDIT,
+                account_type=AccountType.BP_WALLET,
+                reference_type="bp",
+                reference_uuid=product.uuid,
+                currency=gold_stars_currency,
+            )
+        )
+        ledger_manager.create_tx(
+            entries=[
+                LedgerEntry(
+                    direction=Direction.DEBIT,
+                    account_uuid=gold_stars_source.uuid,
+                    amount=25,
+                ),
+                LedgerEntry(
+                    direction=Direction.CREDIT,
+                    account_uuid=gold_stars_wallet.uuid,
+                    amount=25,
+                ),
+            ],
+            tag=f"{gold_stars_currency}:gold_stars:{user.uuid}",
+        )
+
+        wallets = thl_ledger_manager.get_user_wallets(user)
+        wallets_by_type = {
+            (wallet.account_type, wallet.currency): wallet for wallet in wallets.wallets
+        }
+        displayed_by_currency = {
+            balance.currency: balance for balance in wallets.displayed_balances
+        }
+
+        assert (
+            wallets_by_type[
+                (AccountType.USER_ATTEMPT_CREDIT, thl_ledger_manager.currency)
+            ].amount
+            == 5
+        )
+        assert (
+            wallets_by_type[
+                (AccountType.USER_WALLET, thl_ledger_manager.currency)
+            ].amount
+            == 0
+        )
+        assert displayed_by_currency[currency.value].amount == 5
+        assert displayed_by_currency[currency.value].amount_string == "$0.05"
+        assert displayed_by_currency[gold_stars_currency].amount == 25
+        assert displayed_by_currency[gold_stars_currency].amount_string is None
+
+        s = session_factory(user=user, wall_req_cpi=Decimal(1))
+        _, status_code_1 = s.determine_session_status()
+        _, _, bp_pay, user_pay = s.determine_payments()
+        assert user_pay is not None
+        session_manager.finish_with_status(
+            session=s,
+            status=Status.COMPLETE,
+            status_code_1=status_code_1,
+            finished=s.wall_events[-1].finished,
+            payout=bp_pay,
+            user_payout=user_pay,
+        )
+        thl_ledger_manager.create_tx_bp_payment(s)
+
+        wallets = thl_ledger_manager.get_user_wallets(user)
+        wallets_by_type = {
+            (wallet.account_type, wallet.currency): wallet for wallet in wallets.wallets
+        }
+        displayed_by_currency = {
+            balance.currency: balance for balance in wallets.displayed_balances
+        }
+        assert displayed_by_currency[currency.value].amount == 0 + 38
+        assert (
+            wallets_by_type[
+                (AccountType.USER_ATTEMPT_CREDIT, thl_ledger_manager.currency)
+            ].amount
+            == 0
+        )
+        assert (
+            wallets_by_type[
+                (AccountType.USER_WALLET, thl_ledger_manager.currency)
+            ].amount
+            == 38
+        )
 
 
 class TestThlLedgerTxManagerFlows:
