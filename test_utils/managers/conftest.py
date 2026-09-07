@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import random
 from collections.abc import Callable
+from datetime import datetime
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import pytest
 
@@ -12,6 +15,11 @@ from generalresearch.managers.thl.user_streak import (
     UserStreakManager,
 )
 from generalresearch.models.definitions import Source
+from generalresearch.models.thl.wallet.cashout_method import (
+    CashoutMethod,
+    TangoCashoutMethodData,
+)
+from generalresearch.models.thl.wallet.definitions import Currency, PayoutType
 
 if TYPE_CHECKING:
     from generalresearch.managers.spectrum.survey import SpectrumSurveyManager
@@ -19,7 +27,6 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.ipinfo import (
         GeoIpInfoManager,
         IPGeonameManager,
-        IPInformationManager,
     )
     from generalresearch.managers.thl.userhealth import (
         AuditLogManager,
@@ -27,7 +34,6 @@ if TYPE_CHECKING:
         UserIpHistoryManager,
     )
     from generalresearch.models.thl.user import User
-    from generalresearch.models.thl.wallet.cashout_method import CashoutMethod
     from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig
     from generalresearch.sql_helper import SqlHelper
@@ -164,15 +170,57 @@ def setup_cashoutmethod_db(
         for x in example_tango_cashout_methods:
             cashout_method_manager.create(x)
 
-    # TODO: convert these ids into instances to use.
-    # settings.amt_bonus_cashout_method_id
-    # settings.amt_assignment_cashout_method_id
+    return _inner
 
-    # cashout_method_manager.create(AMT_ASSIGNMENT_CASHOUT_METHOD)
-    # cashout_method_manager.create(AMT_BONUS_CASHOUT_METHOD)
-    # raise NotImplementedError("Need to implement setup_cashoutmethod_db")
+
+@pytest.fixture(scope="session")
+def random_ext_id_factory(base: str = "U02") -> Callable[..., str]:
+
+    def _inner() -> str:
+        suffix = random.randint(0, 99999)
+        return f"{base}{suffix:05d}"
 
     return _inner
+
+
+@pytest.fixture(scope="session")
+def example_tango_cashout_methods(
+    random_ext_id_factory: Callable[..., str],
+) -> list[CashoutMethod]:
+    return [
+        CashoutMethod(
+            id=uuid4().hex,
+            last_updated=datetime.fromisoformat("2021-06-23T20:45:38.239182Z"),
+            is_live=True,
+            type=PayoutType.TANGO,
+            ext_id='U025035',
+            name="Safeway eGift Card $25",
+            data=TangoCashoutMethodData(
+                value_type="fixed", countries=["US"], utid='U025035'
+            ),
+            user=None,
+            image_url="https://d30s7yzk2az89n.cloudfront.net/images/brands/b694446-1200w-326ppi.png",
+            original_currency=Currency.USD,
+            min_value=2500,
+            max_value=2500,
+        ),
+        CashoutMethod(
+            id=uuid4().hex,
+            last_updated=datetime.fromisoformat("2021-06-23T20:45:38.239182Z"),
+            is_live=True,
+            type=PayoutType.TANGO,
+            ext_id='U006961',
+            name="Amazon.it Gift Certificate",
+            data=TangoCashoutMethodData(
+                value_type="variable", countries=["IT"], utid="U006961"
+            ),
+            user=None,
+            image_url="https://d30s7yzk2az89n.cloudfront.net/images/brands/b405753-1200w-326ppi.png",
+            original_currency=Currency.EUR,
+            min_value=1,
+            max_value=10000,
+        ),
+    ]
 
 
 # === THL: Marketplaces ===

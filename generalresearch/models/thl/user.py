@@ -2,19 +2,16 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Annotated, Any, Self
+from typing import TYPE_CHECKING, Any, Self
 from uuid import UUID, uuid4
 
 from pydantic import (
-    AfterValidator,
     AwareDatetime,
     BaseModel,
     ConfigDict,
     Field,
     PositiveInt,
-    StringConstraints,
     field_validator,
     model_validator,
 )
@@ -29,6 +26,7 @@ from generalresearch.models.thl.ipinfo import GeoIPInformation
 from generalresearch.models.thl.ledger import LedgerTransaction
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.user_identifiers import BPUIDStr
+from generalresearch.models.thl.user_ref import UserRef
 from generalresearch.models.thl.userhealth import AuditLog
 
 if TYPE_CHECKING:
@@ -193,6 +191,16 @@ class User(BaseModel):
         d["user_id"] = self.user_id
         return json.dumps(d)
 
+    def to_user_ref(self) -> UserRef:
+        assert self.user_id is not None
+        assert self.product_id is not None
+        assert self.product_user_id is not None
+        return UserRef(
+            user_id=self.user_id,
+            product_id=self.product_id,
+            product_user_id=self.product_user_id,
+        )
+
     def set_sentry_user(self):
         # https://docs.sentry.io/platforms/python/enriching-events/identify-user/
         set_user(
@@ -294,8 +302,6 @@ class User(BaseModel):
             created=res["created"],
             last_seen=res["last_seen"],
         )
-
-
 
 
 User.model_rebuild()
