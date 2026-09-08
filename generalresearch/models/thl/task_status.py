@@ -227,9 +227,9 @@ class TaskStatusResponse(BaseModel):
     def sanitize_kwargs(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
         if v and "clicked_timestamp" in v:
             try:
-                clicked_timestamp = datetime.strptime(  # noqa
-                    date_string=v["clicked_timestamp"],
-                    format="%Y-%m-%d %H:%M:%S.%f",
+                clicked_timestamp = datetime.strptime(
+                    v["clicked_timestamp"],
+                    "%Y-%m-%d %H:%M:%S.%f",
                 )
                 v["clicked_timestamp"] = (
                     clicked_timestamp.isoformat(timespec="microseconds") + "Z"
