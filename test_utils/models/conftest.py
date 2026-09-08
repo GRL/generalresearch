@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from decimal import Decimal
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -72,6 +73,21 @@ def product_amt_true(
 
     return product_factory(
         user_wallet_config=UserWalletConfig(amt=True, enabled=True),
+        payout_config=payout_config,
+    )
+
+
+@pytest.fixture
+def product_failed_attempt_credit(
+    product_factory: Callable[..., Product],
+    payout_config: PayoutConfig,
+) -> Product:
+    from generalresearch.models.thl.product import UserWalletConfig
+
+    return product_factory(
+        user_wallet_config=UserWalletConfig(
+            enabled=True, failed_attempt_credit=Decimal("0.05")
+        ),
         payout_config=payout_config,
     )
 

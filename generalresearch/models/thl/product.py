@@ -20,7 +20,6 @@ from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 from uuid import uuid4
 
 import pandas as pd
-from dask.distributed import Client
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -68,6 +67,8 @@ from generalresearch.models.utils import decimal_to_usd_cents
 from generalresearch.redis_helper import RedisConfig
 
 if TYPE_CHECKING:
+    from dask.distributed import Client
+
     from generalresearch.incite.base import GRLDatasets
     from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
@@ -412,7 +413,12 @@ class UserWalletConfig(BaseModel):
         default=False, description="If enabled, the users' wallets are managed."
     )
 
-    # This field could go in supported_payout_types ---v
+    balance_type: Literal["wallet_balance", "redeemable_balance"] = Field(
+        default="wallet_balance",
+        description="The balance used as the user's displayed balance.",
+    )
+
+    # Deprecated
     amt: bool = Field(default=False, description="Uses Amazon Mechanical Turk")
 
     supported_payout_types: set[PayoutType] = Field(
@@ -427,13 +433,23 @@ class UserWalletConfig(BaseModel):
         examples=[Decimal("10.00")],
     )
 
+    failed_attempt_credit: Decimal | None = Field(
+        default=None,
+        gt=0,
+        description=(
+            "Conditional credit awarded for an eligible failed attempt. "
+            "None disables failed-attempt credits."
+        ),
+        examples=[Decimal("0.05"), None],
+    )
+
     @field_serializer("supported_payout_types", when_used="json")
     def serialize_supported_payout_types_in_order(
         self, supported_payout_types: set[PayoutType]
     ) -> list[PayoutType]:
         return sorted(supported_payout_types)
 
-    @field_validator("min_cashout", mode="after")
+    @field_validator("min_cashout", "failed_attempt_credit", mode="after")
     @classmethod
     def check_payout_decimal_places(cls, v: Decimal) -> Decimal:
         if v is not None:
@@ -456,6 +472,10 @@ class UserWalletConfig(BaseModel):
             if self.min_cashout is None:
                 self.min_cashout = Decimal("0.01")
         return self
+
+    @property
+    def failed_attempt_credit_enabled(self) -> bool:
+        return self.failed_attempt_credit is not None
 
 
 class PayoutTransformationPercentArgs(BaseModel):

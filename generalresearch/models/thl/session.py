@@ -434,20 +434,20 @@ class Wall(WallBase):
 
     # --- Properties ---
 
-    @computed_field
+    @computed_field()
     @property
-    def elapsed(self) -> timedelta:
+    def elapsed(self) -> timedelta | None:
         return self.finished - self.started if self.finished else None
 
     def to_json(self) -> str:
         # We have to handle the computed_fields manually. I'm not sure if there is a better way
         #   to do this natively in pydantic...
-        d = self.model_dump(mode="json", exclude={"elapsed"})
+        d = self.model_dump(mode="json", exclude_computed_fields=True)
         return json.dumps(d)
 
     def model_dump_mysql(self) -> dict[str, Any]:
         # Generate a dictionary representation of the model, with special handling for datetimes
-        d = self.model_dump(mode="json", exclude={"elapsed"})
+        d = self.model_dump(mode="json", exclude_computed_fields=True)
         d["started"] = self.started.replace(tzinfo=None)
         if self.finished:
             d["finished"] = self.finished.replace(tzinfo=None)
@@ -819,12 +819,39 @@ class Session(BaseModel):
         self.model_config["validate_assignment"] = True
         self.__class__.model_validate(self)
 
-    def model_dump_mysql(self) -> dict[str, str | int | datetime | float | None]:
+    def is_attempt_credit_eligible(self) -> bool:
+        """Return whether this session qualifies for attempt credit.
+        The status of the BP's user_wallet_config.failed_attempt_credit_enabled does
+        not matter here.
+        """
+        now = datetime.now(tz=UTC)
+        min_session_length = timedelta(minutes=1)
+
+        if self.status is None:
+            return now - self.started >= min_session_length
+
+        ineligible_status_codes = {
+            StatusCode1.SESSION_START_FAIL,
+            StatusCode1.SESSION_START_QUALITY_FAIL,
+            StatusCode1.SESSION_CONTINUE_QUALITY_FAIL,
+            StatusCode1.BUYER_QUALITY_FAIL,
+            StatusCode1.PS_BLOCKED,
+            StatusCode1.PS_QUALITY,
+        }
+        return (
+            self.status == Status.FAIL
+            and self.status_code_1 not in ineligible_status_codes
+            and self.finished is not None
+            and self.elapsed >= min_session_length
+        )
+
+    def model_dump_mysql(
+        self, **kwargs
+    ) -> dict[str, str | int | datetime | float | None]:
 
         # Generate a dictionary representation of the model, with special
         #   handling for datetimes, and nested models such as User & Bucket
-
-        d = self.model_dump(mode="json")
+        d = self.model_dump(mode="json", **kwargs)
         d["started"] = self.started.replace(tzinfo=None)
 
         if self.finished:

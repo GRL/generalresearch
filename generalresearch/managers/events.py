@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import math
 import socket
 import threading
@@ -10,7 +11,6 @@ from typing import TYPE_CHECKING, Any
 
 from redis.client import PubSub, Redis
 
-from generalresearch.incite.base import LOG
 from generalresearch.managers.base import RedisManager
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.definitions import Source
@@ -39,6 +39,8 @@ if TYPE_CHECKING:
 
 else:
     InfluxDBClient = object
+
+LOG = logging.getLogger(__name__)
 
 # Sums all the values in a single hashmap
 SUM_HASH_LUA_SCRIPT = """
@@ -218,7 +220,6 @@ class UserStatsManager(RedisManager):
 
 
 class TaskStatsManager(RedisManager):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -595,7 +596,6 @@ class SessionStatsManager(RedisManager):
 
 
 class StatsManager(UserStatsManager, SessionStatsManager, TaskStatsManager):
-
     def get_stats_message(self, product_id: UUIDStr) -> StatsMessage:
         res = self.get_session_stats(product_id=product_id)
         res.update(self.get_user_stats(product_id=product_id))

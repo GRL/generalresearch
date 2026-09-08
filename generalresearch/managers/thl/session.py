@@ -117,6 +117,12 @@ class SessionManager(PostgresManager):
         assert len(res) == 1
         return self.session_from_mysql(res[0])
 
+    def get_latest_for_user(self, user_id: int) -> Session | None:
+        """Return the most recently started session for a product user."""
+        res, _ = self.filter_paginated(user_id=user_id, order_by="-started", size=1)
+        if res:
+            return res[0]
+
     def get_from_id(self, session_id: int) -> Session:
         query = """
         SELECT  

@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 import logging
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt
 
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.legacy.api_status import StatusResponse
-from generalresearch.models.thl.payout_format import PayoutFormatField, PayoutFormatType
+from generalresearch.models.thl.ledger import AccountType
+from generalresearch.models.thl.payout_format import (
+    PayoutFormatField,
+    PayoutFormatType,
+)
 
 logger = logging.getLogger()
 
@@ -37,3 +43,40 @@ class UserWalletBalance(BaseModel):
 
 class UserWalletBalanceResponse(StatusResponse):
     wallet: UserWalletBalance = Field()
+
+
+class UserLedgerWallet(UserWalletBalance):
+    """A user-owned ledger account exposed by the wallets endpoint."""
+
+    payout_format: PayoutFormatType | None = Field(default=None)
+    amount_string: str | None = Field(default=None)
+    redeemable_amount_string: str | None = Field(default=None)
+
+    account_uuid: UUIDStr = Field(
+        description="A unique identifier for this Ledger Account",
+        examples=["c3c3566b5b1b4961b63a5670a2dc923d"],
+    )
+    account_type: Literal[
+        AccountType.USER_WALLET,
+        AccountType.USER_ATTEMPT_CREDIT,
+    ]
+    currency: str = Field(default="USD", max_length=32)
+    display_name: str = Field(
+        max_length=64,
+        description="Human-readable description of the Ledger Account",
+    )
+
+
+class UserDisplayedWalletBalance(BaseModel):
+    """Combined user-visible balance for one ledger currency."""
+
+    currency: str = Field(max_length=32)
+    amount: int = Field(
+        description="Displayed balance in the currency's smallest ledger unit."
+    )
+    amount_string: str | None = None
+
+
+class UserLedgerWallets(BaseModel):
+    wallets: list[UserLedgerWallet] = Field(default_factory=list)
+    displayed_balances: list[UserDisplayedWalletBalance] = Field(default_factory=list)

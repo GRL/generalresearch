@@ -1,6 +1,5 @@
-from __future__ import annotations
-
 import logging
+from collections import defaultdict
 from collections.abc import Callable, Collection
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -30,6 +29,7 @@ from generalresearch.managers.thl.ledger_manager.ledger import (
     LedgerManager,
 )
 from generalresearch.models.custom_types import UUIDStr
+from generalresearch.models.thl.contest.contest_entry import ContestEntry
 from generalresearch.models.thl.contest.definitions import (
     ContestPrizeKind,
     ContestType,
@@ -51,20 +51,21 @@ from generalresearch.models.thl.ledger import (
 from generalresearch.models.thl.ledger import (
     TransactionMetadataColumns as tmc,
 )
+from generalresearch.models.thl.payout import UserPayoutEvent
+from generalresearch.models.thl.payout_format import format_payout_format
 from generalresearch.models.thl.product import Product
-from generalresearch.models.thl.session import Status
+from generalresearch.models.thl.session import Session, Status, Wall
+from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet.definitions import PayoutType
+from generalresearch.models.thl.wallet.user_wallet import (
+    UserDisplayedWalletBalance,
+    UserLedgerWallet,
+    UserLedgerWallets,
+)
 
 if TYPE_CHECKING:
-    
+    from generalresearch.managers.thl.session import SessionManager
     from generalresearch.models.thl.contest.contest import Contest, ContestWinner
-    from generalresearch.models.thl.contest.raffle import (
-        ContestEntry,
-    )
-    from generalresearch.models.thl.ledger import LedgerTransaction
-    from generalresearch.models.thl.payout import UserPayoutEvent
-    from generalresearch.models.thl.session import Session, Wall
-    from generalresearch.models.thl.user import User
 
 logging.basicConfig()
 logger = logging.getLogger("LedgerManager")
@@ -72,7 +73,6 @@ logger.setLevel(logging.INFO)
 
 
 class ThlLedgerManager(LedgerManager):
-
     def get_account_or_create_user_wallet(self, user: User) -> LedgerAccount:
         """
         TODO: In the future we could create a user wallet account with a
@@ -81,12 +81,36 @@ class ThlLedgerManager(LedgerManager):
         """
 
         assert user.user_id, "User must be saved"
+        assert self.currency is not None, "Must set currency"
+        account_type = AccountType.USER_WALLET
 
         account = LedgerAccount(
             display_name=f"User Wallet {user.uuid}",
-            qualified_name=f"{self.currency.value}:user_wallet:{user.uuid}",
+            qualified_name=f"{self.currency.value}:{account_type.value}:{user.uuid}",
             normal_balance=Direction.CREDIT,
-            account_type=AccountType.USER_WALLET,
+            account_type=account_type,
+            reference_type="user",
+            reference_uuid=user.uuid,
+            currency=self.currency,
+        )
+
+        return self.get_account_or_create(account=account)
+
+    def get_account_or_create_user_attempt_credit(self, user: User) -> LedgerAccount:
+        """
+        A wallet to hold a user's conditional credits which are
+        applied against future task earnings
+        """
+
+        assert user.user_id, "User must be saved"
+        assert self.currency is not None, "Must set currency"
+        account_type = AccountType.USER_ATTEMPT_CREDIT
+
+        account = LedgerAccount(
+            display_name=f"User Attempt Credit {user.uuid}",
+            qualified_name=f"{self.currency.value}:{account_type.value}:{user.uuid}",
+            normal_balance=Direction.CREDIT,
+            account_type=account_type,
             reference_type="user",
             reference_uuid=user.uuid,
             currency=self.currency,
@@ -253,9 +277,9 @@ class ThlLedgerManager(LedgerManager):
         if time_end is None:
             time_end = datetime.now(tz=UTC)
 
-        assert all(
-            isinstance(item, str) for item in account_uuids
-        ), "Must pass account_uuid as str"
+        assert all(isinstance(item, str) for item in account_uuids), (
+            "Must pass account_uuid as str"
+        )
 
         params = {
             "time_start": time_start,
@@ -363,13 +387,15 @@ class ThlLedgerManager(LedgerManager):
         f = lambda: self.create_tx_bp_payment_(session=session, created=created)
 
         condition = generate_condition_bp_payment(session)
-        lock_key = f"{self.currency.value}:thl_session:{session.uuid}"
+        lock_key = f"{self.currency.value}:user_uuid:{session.user.uuid}"
+        flag_key = f"{self.currency.value}:bp_payment:{session.uuid}"
 
         return self.create_tx_protected(
             lock_key=lock_key,
             condition=condition,
             create_tx_func=f,
             skip_flag_check=force,
+            flag_key=flag_key,
         )
 
     def create_tx_bp_payment_(
@@ -434,6 +460,7 @@ class ThlLedgerManager(LedgerManager):
         if user.product.user_wallet_enabled:
             bp_pay -= user_pay
             user_account = self.get_account_or_create_user_wallet(user)
+            ext_description = f"BP & User Payment {session.uuid}"
 
             if bp_pay:
                 entries.append(
@@ -452,8 +479,30 @@ class ThlLedgerManager(LedgerManager):
                         amount=user_pay,
                     )
                 )
-            ext_description = f"BP & User Payment {session.uuid}"
+                if user.product.user_wallet_config.failed_attempt_credit_enabled:
+                    settlement_amount = self.get_user_attempt_credit_to_settle(
+                        user=user, user_pay=user_pay
+                    )
 
+                    if settlement_amount:
+                        attempt_credit_account = (
+                            self.get_account_or_create_user_attempt_credit(user)
+                        )
+
+                        entries.extend(
+                            [
+                                LedgerEntry(
+                                    direction=Direction.DEBIT,
+                                    account_uuid=attempt_credit_account.uuid,
+                                    amount=settlement_amount,
+                                ),
+                                LedgerEntry(
+                                    direction=Direction.CREDIT,
+                                    account_uuid=bp_wallet_account.uuid,
+                                    amount=settlement_amount,
+                                ),
+                            ]
+                        )
         else:
             entries.append(
                 LedgerEntry(
@@ -995,8 +1044,8 @@ class ThlLedgerManager(LedgerManager):
         user: User,
         payout_event: UserPayoutEvent,
         created: datetime | None = None,
-        skip_flag_check: bool | None = False,
-        skip_wallet_balance_check: bool | None = False,
+        skip_flag_check: bool = False,
+        skip_wallet_balance_check: bool = False,
     ) -> LedgerTransaction:
         """
         The funds move from the user's wallet into the BP's "pending"
@@ -1008,9 +1057,9 @@ class ThlLedgerManager(LedgerManager):
             requesting from their USD wallet. No other currencies are
             supported now.
         """
-        assert (
-            user.product.user_wallet_enabled
-        ), "Can only call this on an wallet enabled BPs"
+        assert user.product.user_wallet_enabled, (
+            "Can only call this on an wallet enabled BPs"
+        )
         amount = USDCent(payout_event.amount)
 
         amt_str = f"${int(amount) / 100:,.2f}"
@@ -1033,9 +1082,9 @@ class ThlLedgerManager(LedgerManager):
             bonus for task complete to the user. The 20% commission will
             be taken from the BP's wallet once the tx is completed.
             """
-            assert (
-                user.product.user_wallet_amt
-            ), "Can only call this on an AMT-enabled BPs"
+            assert user.product.user_wallet_amt, (
+                "Can only call this on an AMT-enabled BPs"
+            )
 
         f = lambda: self.create_tx_user_payout_request_(
             user=user,
@@ -1048,7 +1097,6 @@ class ThlLedgerManager(LedgerManager):
         if payout_event.payout_type == PayoutType.AMT_HIT:
             # We allow the user's balance to reach up to -$1.00.
             min_balance = -100 + amount
-
         if skip_wallet_balance_check:
             min_balance = None
 
@@ -1082,9 +1130,9 @@ class ThlLedgerManager(LedgerManager):
         are taken from the BP's pending wallet, the commission will be
         recorded, and the cash debited.
         """
-        assert (
-            user.product.user_wallet_enabled
-        ), "Can only call this on an wallet enabled BPs"
+        assert user.product.user_wallet_enabled, (
+            "Can only call this on an wallet enabled BPs"
+        )
 
         # Before we even do anything, we should check that a ledger tx exists for the request
         request_tag = f"{self.currency.value}:user_payout:{payout_event.uuid}:request"
@@ -1110,9 +1158,9 @@ class ThlLedgerManager(LedgerManager):
             PayoutType.AMT_HIT,
             PayoutType.AMT_BONUS,
         }:
-            assert (
-                user.product.user_wallet_amt
-            ), "Can only call this on an AMT-enabled BP"
+            assert user.product.user_wallet_amt, (
+                "Can only call this on an AMT-enabled BP"
+            )
             bp_expense_account = self.get_account_or_create_bp_expense(
                 product=user.product, expense_name="amt"
             )
@@ -1174,9 +1222,9 @@ class ThlLedgerManager(LedgerManager):
         created: datetime | None = None,
         skip_flag_check: bool | None = False,
     ) -> LedgerTransaction:
-        assert (
-            user.product.user_wallet_enabled
-        ), "Can only call this on an wallet enabled BPs"
+        assert user.product.user_wallet_enabled, (
+            "Can only call this on an wallet enabled BPs"
+        )
 
         # Before we even do anything, we should check that a ledger tx exists for the request
         request_tag = f"{self.currency.value}:user_payout:{payout_event.uuid}:request"
@@ -1401,9 +1449,9 @@ class ThlLedgerManager(LedgerManager):
 
         :param source_account: Is this paid from the bp's wallet? or from us?
         """
-        assert (
-            user.product.user_wallet_enabled
-        ), "Can only call this on an wallet enabled BPs"
+        assert user.product.user_wallet_enabled, (
+            "Can only call this on an wallet enabled BPs"
+        )
         assert user.product, "user.prefetch_product()"
 
         # This tag should uniquely id this tx.
@@ -1472,6 +1520,120 @@ class ThlLedgerManager(LedgerManager):
             created=created,
         )
 
+    def create_tx_attempt_credit(
+        self,
+        session: Session,
+        created: datetime | None = None,
+        skip_flag_check: bool = False,
+    ) -> LedgerTransaction:
+        """Record conditional credit for an eligible session attempt.
+
+        Eligibility is determined by the caller. This method verifies that the
+        session failed and records the credit exactly once per session.
+        """
+        user = session.user
+        assert user is not None, "Session must have a user"
+        product = user.product
+        assert product is not None, "user.prefetch_product()"
+        assert product.user_wallet_enabled, "Product does not have user_wallet enabled"
+        config = product.user_wallet_config
+        assert config.failed_attempt_credit_enabled, (
+            "Product does not have failed_attempt_credit enabled"
+        )
+        amount = USDCent(round(config.failed_attempt_credit * 100))
+
+        assert session.is_attempt_credit_eligible(), (
+            "Session is not eligible for attempt credit"
+        )
+
+        tag = f"{self.currency.value}:{TransactionType.USER_ATTEMPT_CREDIT.value}:{session.uuid}"
+        condition = generate_condition_tag_exists(tag)
+
+        def create() -> LedgerTransaction:
+            bp_account = self.get_account_or_create_bp_wallet(product)
+            attempt_credit_account = self.get_account_or_create_user_attempt_credit(
+                user
+            )
+            metadata = {
+                tmc.USER.value: user.uuid,
+                tmc.SESSION.value: session.uuid,
+                tmc.TX_TYPE.value: TransactionType.USER_ATTEMPT_CREDIT.value,
+            }
+            entries = [
+                LedgerEntry(
+                    direction=Direction.DEBIT,
+                    account_uuid=bp_account.uuid,
+                    amount=amount,
+                ),
+                LedgerEntry(
+                    direction=Direction.CREDIT,
+                    account_uuid=attempt_credit_account.uuid,
+                    amount=amount,
+                ),
+            ]
+            return self.create_tx(
+                entries=entries,
+                metadata=metadata,
+                tag=tag,
+                ext_description=f"Attempt Credit {session.uuid}",
+                created=created,
+            )
+
+        return self.create_tx_protected(
+            lock_key=f"{self.currency.value}:user_uuid:{user.uuid}",
+            flag_key=tag,
+            condition=condition,
+            create_tx_func=create,
+            skip_flag_check=skip_flag_check,
+        )
+
+    def claim_latest_attempt_credit(
+        self,
+        user: User,
+        session_manager: SessionManager,
+        skip_flag_check: bool = False,
+    ) -> LedgerTransaction:
+        """Claim attempt credit for a product user's most recent session.
+        This must be for an abandoned session, as when a session if finished
+        and is eligible for an attempt credit, then the credit is automatically
+        given."""
+        assert user.user_id is not None
+        session = session_manager.get_latest_for_user(user_id=user.user_id)
+        if session is None:
+            raise ValueError("User has no session to claim attempt credit for")
+        if session.status is not None:
+            raise ValueError("User's latest session is already finalized")
+
+        assert user.product
+        session.user.product = user.product
+        return self.create_tx_attempt_credit(
+            session=session,
+            skip_flag_check=skip_flag_check,
+        )
+
+    def get_session_attempt_credit(
+        self,
+        session_uuid: UUIDStr,
+    ) -> int | None:
+        tag = (
+            f"{self.currency.value}:"
+            f"{TransactionType.USER_ATTEMPT_CREDIT.value}:"
+            f"{session_uuid}"
+        )
+        tx = self.get_tx_by_tag_if_exists(tag)
+        if not tx:
+            return None
+
+        credit_entries = [
+            entry for entry in tx.entries if entry.direction == Direction.CREDIT
+        ]
+        if len(credit_entries) != 1:
+            raise ValueError(
+                f"Expected one credit entry for attempt-credit transaction {tx.id}"
+            )
+
+        return credit_entries[0].amount
+
     def create_tx_user_enter_contest(
         self,
         contest_uuid: UUIDStr,
@@ -1482,13 +1644,13 @@ class ThlLedgerManager(LedgerManager):
         User is requesting to enter a Raffle Contest. We'll DEBIT
         funds from their wallet and CREDIT the contest wallet.
         """
-        assert (
-            contest_entry.entry_type == ContestEntryType.CASH
-        ), "Can only call this for CASH Contests"
+        assert contest_entry.entry_type == ContestEntryType.CASH, (
+            "Can only call this for CASH Contests"
+        )
         user = contest_entry.user
-        assert (
-            user.product.user_wallet_enabled
-        ), "Can only call this on an wallet enabled BPs"
+        assert user.product.user_wallet_enabled, (
+            "Can only call this on an wallet enabled BPs"
+        )
         assert user.product, "user.prefetch_product()"
         amount = contest_entry.amount
         entry_uuid = contest_entry.uuid
@@ -1572,9 +1734,9 @@ class ThlLedgerManager(LedgerManager):
         Any remaining money goes back into the BP's wallet ? todo
         """
         if contest.contest_type in {ContestType.RAFFLE, ContestType.MILESTONE}:
-            assert (
-                contest.entry_type == ContestEntryType.CASH
-            ), "Can only call this for CASH Contests"
+            assert contest.entry_type == ContestEntryType.CASH, (
+                "Can only call this for CASH Contests"
+            )
 
         contest_account = self.get_account_or_create_contest_wallet_by_uuid(
             contest_uuid=contest.uuid
@@ -1829,9 +1991,9 @@ class ThlLedgerManager(LedgerManager):
         :returns wallet balance in integer cents
         """
         user.prefetch_product(self.pg_config)
-        assert (
-            user.product.user_wallet_config.enabled
-        ), "Can't get wallet balance on non-managed account."
+        assert user.product.user_wallet_config.enabled, (
+            "Can't get wallet balance on non-managed account."
+        )
 
         now = datetime.now(tz=UTC)
         wallet = self.get_account_or_create_user_wallet(user)
@@ -1886,7 +2048,9 @@ class ThlLedgerManager(LedgerManager):
             wall["user_payout"] = wall["user_payout"].astype(float)
             wall["user_payout_int"] = wall["user_payout"] * 100
             wall["days_since_complete"] = (now - wall["finished"]).dt.days
-            wall["pct_rdm"] = wall["days_since_complete"].apply(self.get_redeemable_pct)
+            wall["pct_rdm"] = wall["days_since_complete"].apply(
+                self._get_redeemable_pct
+            )
             wall.loc[wall["pct_rdm"] > 0.95, "pct_rdm"] = 1
             wall["redeemable"] = wall["pct_rdm"] * wall["user_payout_int"]
             # Calculate money needed to save in reserve to cover the difference
@@ -1903,7 +2067,7 @@ class ThlLedgerManager(LedgerManager):
             assert redeemable_balance <= user_wallet_balance
         return redeemable_balance
 
-    def get_redeemable_pct(
+    def _get_redeemable_pct(
         self, days_since_complete: float, user_trust: float = 0.0
     ) -> float:
         """
@@ -1927,6 +2091,140 @@ class ThlLedgerManager(LedgerManager):
         # x = [timedelta(days=d) for d in range(60)]
         # plt.plot([d.days for d in x], [self.get_redeemable_amount(d) for d in x])
         return pct_rdm
+
+    def get_user_attempt_credit_balance(self, user: User) -> int:
+        """Return the user's outstanding conditional attempt credit in cents."""
+        assert user.user_id, "User must be saved"
+        account = self.get_account_or_create_user_attempt_credit(user)
+        return self.get_account_balance(account)
+
+    def get_user_wallets(self, user: User) -> UserLedgerWallets:
+        """Return every ledger wallet owned by a user, across currencies."""
+        assert user.user_id, "User must be saved"
+        user.prefetch_product(self.pg_config)
+        assert user.product.user_wallet_enabled, "only user_wallet managed"
+        payout_format = user.product.payout_config.payout_format
+        assert payout_format is not None, "Product must have a payout format"
+
+        self.get_account_or_create_user_wallet(user)
+        if user.product.user_wallet_config.failed_attempt_credit_enabled:
+            self.get_account_or_create_user_attempt_credit(user)
+
+        user_account_types = {
+            AccountType.USER_WALLET.value,
+            AccountType.USER_ATTEMPT_CREDIT.value,
+        }
+
+        rows = self.pg_config.execute_sql_query(
+            query="""
+                SELECT
+                    uuid, display_name, qualified_name, account_type,
+                    normal_balance, reference_type, reference_uuid, currency
+                FROM ledger_account
+                WHERE reference_type = 'user'
+                  AND reference_uuid = %(reference_uuid)s
+                  AND account_type = ANY(%(account_types)s)
+                ORDER BY currency, account_type, qualified_name;
+            """,
+            params={
+                "reference_uuid": user.uuid,
+                "account_types": list(user_account_types),
+            },
+        )
+        accounts = [LedgerAccount.model_validate(row) for row in rows]
+
+        wallets = []
+        displayed_amounts: dict[str, int] = defaultdict(int)
+        for account in accounts:
+            if (
+                user.product_id == JAMES_BILLINGS_BPID
+                and account.account_type == AccountType.USER_WALLET
+            ):
+                balance = self.get_account_balance_timerange(
+                    account=account,
+                    time_start=JAMES_BILLINGS_TX_CUTOFF,
+                )
+            else:
+                balance = self.get_account_balance(account)
+
+            if account.account_type == AccountType.USER_ATTEMPT_CREDIT:
+                redeemable_balance = 0
+            elif account.currency == self.currency.value:
+                redeemable_balance = self.get_user_redeemable_wallet_balance(
+                    user=user,
+                    user_wallet_balance=balance,
+                )
+            else:
+                # We don't have redeemable logic for other currencies
+                redeemable_balance = max(balance, 0)
+
+            # A Product has only one payout_format. It is not clear which
+            #  currency it is to be applied to. If we have a non USD currency,
+            #  we'd need multiple payout formats.
+            account_payout_format = (
+                payout_format if account.currency == self.currency.value else None
+            )
+
+            wallet = UserLedgerWallet(
+                account_uuid=account.uuid,
+                account_type=account.account_type,
+                currency=account.currency,
+                display_name=account.display_name,
+                amount=balance,
+                redeemable_amount=redeemable_balance,
+                payout_format=account_payout_format,
+                amount_string=(
+                    format_payout_format(account_payout_format, balance)
+                    if account_payout_format is not None
+                    else None
+                ),
+                redeemable_amount_string=(
+                    format_payout_format(account_payout_format, redeemable_balance)
+                    if account_payout_format is not None
+                    else None
+                ),
+            )
+            wallets.append(wallet)
+
+            if (
+                account.account_type == AccountType.USER_ATTEMPT_CREDIT
+                or user.product.user_wallet_config.balance_type == "wallet_balance"
+            ):
+                displayed_amount = wallet.amount
+            else:
+                displayed_amount = wallet.redeemable_amount
+            displayed_amounts[account.currency] += displayed_amount
+
+        displayed_balances = [
+            UserDisplayedWalletBalance(
+                currency=currency,
+                amount=amount,
+                amount_string=(
+                    format_payout_format(payout_format, amount)
+                    if currency == self.currency.value
+                    else None
+                ),
+            )
+            for currency, amount in sorted(displayed_amounts.items())
+        ]
+
+        return UserLedgerWallets(
+            wallets=wallets,
+            displayed_balances=displayed_balances,
+        )
+
+    def get_user_attempt_credit_to_settle(
+        self,
+        user: User,
+        user_pay: int,
+    ) -> int:
+        """Return how much pending credit a task payment of amount `user_pay` should consume."""
+        assert user_pay >= 0
+
+        credit_balance = self.get_user_attempt_credit_balance(user)
+        assert credit_balance >= 0, "Attempt-credit balance cannot be negative"
+
+        return min(credit_balance, user_pay)
 
     def get_user_txs(
         self,

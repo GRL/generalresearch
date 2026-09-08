@@ -16,7 +16,7 @@ import pytest
 from _pytest.config import Config
 from dotenv import load_dotenv
 from pydantic import MariaDBDsn, PostgresDsn, TypeAdapter
-from pytest import FixtureRequest, TempPathFactory
+from pytest import TempPathFactory
 
 from generalresearch.currency import USDCent
 from generalresearch.models.custom_types import InternalHostname, PostgresDict
@@ -218,19 +218,17 @@ def gr_repo(
 @pytest.fixture(scope="session")
 def django_settings_file(
     postgres_instance_dict: PostgresDict,
-) -> Callable[..., Path]:
+    tmp_path_factory: TempPathFactory,
+) -> Callable[..., tuple[str, Path]]:
 
-    def _inner(
-        settings_dir: Path, extra_installed_apps: list[str] | None = None
-    ) -> Path:
+    def _inner(extra_installed_apps: list[str] | None = None) -> tuple[str, Path]:
         installed_apps = [
             "django.contrib.postgres",
             "django.contrib.contenttypes",
         ] + (extra_installed_apps or [])
-        """
-            This returns the directory path of where the settings file is in,
-            not the path of the settings file itself
-        """
+
+        settings_dir = tmp_path_factory.mktemp("django-settings")
+        settings_module = "test_settings"
 
         settings_content = f"""DATABASES = {{
     "default": {{
@@ -250,21 +248,19 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 """
-        settings_file_path = settings_dir / "test_settings.py"
-        settings_file_path.unlink(missing_ok=True)
-        settings_file_path.write_text(settings_content)
+        settings_file_path = settings_dir / f"{settings_module}.py"
+        settings_file_path.write_text(settings_content, encoding="utf-8")
 
-        return settings_dir
+        return settings_module, settings_dir
 
     return _inner
 
 
 @pytest.fixture(scope="session")
 def django_db_factory(
-    request: FixtureRequest,
     postgres_instance: PostgresDsn,
     gr_repo: Callable[..., Path],
-    django_settings_file: Callable[..., Path],
+    django_settings_file: Callable[..., tuple[str, Path]],
     postgres_instance_dict: PostgresDict,
     tmp_path_factory: TempPathFactory,
 ) -> Callable[..., PostgresDsn | None]:
@@ -280,17 +276,10 @@ def django_db_factory(
             return postgres_instance
         _ran[django_project] = True
 
-        # This is the generalresearch project root path, it's
-        #   1 directory up from test_utils/, or tests/
-        base_dir = Path(request.config.rootpath).parent
-
         if django_project == "generalresearch.thl_django":
-            _cwd = base_dir
+            _cwd = None
             _manage_path = "generalresearch.thl_django.app.manage"
-            _settings_dir = base_dir / "generalresearch/thl_django/app"
-            _settings_module = "generalresearch.thl_django.app.test_settings"
-            django_settings_file(
-                settings_dir=_settings_dir,
+            _settings_module, _settings_dir = django_settings_file(
                 extra_installed_apps=[
                     "generalresearch.thl_django",
                 ],
@@ -299,19 +288,25 @@ def django_db_factory(
         elif django_project == "gr.common":
             _cwd = gr_repo()
             _manage_path = "gr.app.manage"
-            _settings_dir = gr_repo() / "gr/app"
-            _settings_module = "gr.app.test_settings"
-            django_settings_file(
-                settings_dir=_settings_dir, extra_installed_apps=["gr.common"]
+            _settings_module, _settings_dir = django_settings_file(
+                extra_installed_apps=["gr.common"]
             )
 
         else:
             raise ValueError("Not implemented yet.")
 
-        assert _settings_dir
+        pythonpath = str(_settings_dir)
+        if existing_pythonpath := os.environ.get("PYTHONPATH"):
+            pythonpath += os.pathsep + existing_pythonpath
 
-        env = {"DJANGO_SETTINGS_MODULE": str(_settings_module)}
-        res1 = subprocess.run(
+        env = {
+            **os.environ,
+            "DJANGO_SETTINGS_MODULE": _settings_module,
+            "PYTHONPATH": pythonpath,
+        }
+
+        # we check right after. if we check now, we won't print if bad
+        res1 = subprocess.run(  # noqa: PLW1510
             [
                 sys.executable,
                 "-m",
@@ -319,11 +314,10 @@ def django_db_factory(
                 "makemigrations",
                 f"--settings={_settings_module}",
             ],
-            cwd=str(_cwd),
+            cwd=str(_cwd) if _cwd is not None else None,
             env=env,
             capture_output=True,
             text=True,
-            check=True,
         )
 
         if res1.returncode != 0:
@@ -331,7 +325,7 @@ def django_db_factory(
             print("STDERR:", res1.stderr)
         res1.check_returncode()
 
-        res2 = subprocess.run(
+        res2 = subprocess.run(  # noqa: PLW1510
             [
                 sys.executable,
                 "-m",
@@ -340,10 +334,9 @@ def django_db_factory(
                 f"--settings={_settings_module}",
             ],
             env=env,
-            cwd=str(_cwd),
+            cwd=str(_cwd) if _cwd is not None else None,
             capture_output=True,
             text=True,
-            check=True,
         )
 
         if res2.returncode != 0:
@@ -483,7 +476,6 @@ def clear_directory(path: Path | str):
     dir_path = Path(path)
 
     for entry in os.listdir(dir_path):
-
         full_path = os.path.join(path, entry)
         if os.path.isfile(full_path) or os.path.islink(full_path):
             os.unlink(full_path)  # remove file or symlink
