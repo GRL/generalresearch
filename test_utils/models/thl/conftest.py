@@ -700,6 +700,14 @@ def user_with_wallet_amt(
     return user_factory(save=True, product=product_amt_true)
 
 
+@pytest.fixture
+def user_failed_attempt_credit(
+    user_factory: Callable[..., User], product_failed_attempt_credit: Product
+) -> User:
+    # A user on a product with user wallet enabled, failed_attempt_credit enabled
+    return user_factory(save=True, product=product_failed_attempt_credit)
+
+
 # --- User Payout Event ---
 
 

@@ -225,6 +225,7 @@ def user_manager(
         pg_config=thl_web_rw,
         pg_config_rr=thl_web_rr,
         redis=settings.redis,
+        sql_permissions=[Permission.CREATE, Permission.UPDATE, Permission.READ],
     )
 
     # rc = thl_redis_config.create_redis_client()
