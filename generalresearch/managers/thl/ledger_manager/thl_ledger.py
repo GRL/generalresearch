@@ -2234,12 +2234,39 @@ class ThlLedgerManager(LedgerManager):
         page: int = 1,
         size: int = 50,
         order_by: str | None = "created,tag",
+        account_uuid: UUIDStr | None = None,
+        qualified_name: str | None = None,
     ) -> UserLedgerTransactions:
+        """Return user-facing transactions for one of the user's ledger accounts.
+
+        The account can be selected by UUID or qualified name. If neither is
+        supplied, this defaults to the user's primary wallet.
+        """
+        assert user.product_id is not None
         user.prefetch_product(self.pg_config)
-        user_account = self.get_account_or_create_user_wallet(user)
+        assert account_uuid is None or qualified_name is None, (
+            "Pass either account_uuid or qualified_name, not both"
+        )
+
+        if account_uuid is not None:
+            user_account = self.get_account_by_uuid(account_uuid)
+        elif qualified_name is not None:
+            user_account = self.get_account(qualified_name)
+        else:
+            user_account = self.get_account_or_create_user_wallet(user)
+
+        assert user_account is not None
+        assert user_account.reference_type == "user", (
+            "Account must be a user ledger account"
+        )
+        assert user_account.reference_uuid == user.uuid, "Account must be owned by user"
         exclude_txs_before = None
 
-        if user.product_id == JAMES_BILLINGS_BPID:
+        if (
+            user.product_id == JAMES_BILLINGS_BPID
+            and user_account.account_type == AccountType.USER_WALLET
+            and user_account.currency == self.currency.value
+        ):
             time_start = (
                 max([JAMES_BILLINGS_TX_CUTOFF, time_start])
                 if time_start is not None
@@ -2263,7 +2290,11 @@ class ThlLedgerManager(LedgerManager):
             user_account=user_account,
             txs=txs,
             product_id=user.product_id,
-            payout_format=user.product.payout_config.payout_format,
+            payout_format=(
+                user.product.payout_config.payout_format
+                if user_account.currency == self.currency.value
+                else None
+            ),
             summary=summary,
             page=page,
             size=size,
