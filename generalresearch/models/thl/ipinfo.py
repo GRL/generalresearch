@@ -5,7 +5,6 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Literal, Self
 
 from faker import Faker
-from grip_client.enums import AccessType
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -20,6 +19,7 @@ from generalresearch.models.custom_types import (
     CountryISOLike,
     IPvAnyAddressStr,
 )
+from generalresearch.models.thl.maxmind.definitions import UserType
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ipinfo import IPGeonameManager
@@ -174,11 +174,11 @@ class IPInformation(BaseModel):
         default=None,
         description="A score indicating the likelihood that the IP address is static.",
     )
-    user_type: AccessType | None = Field(
+    user_type: UserType | None = Field(
         default=None,
         description="The type of user associated with the IP address "
         "(e.g., 'residential', 'business').",
-        examples=[AccessType.RESIDENTIAL],
+        examples=[UserType.RESIDENTIAL],
     )
     postal_code: str | None = Field(
         default=None,
