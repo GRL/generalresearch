@@ -8,9 +8,14 @@ from uuid import UUID, uuid4
 
 from pydantic import NonNegativeInt
 
+from generalresearch.currency import USDCent
 from generalresearch.managers.base import PostgresManager
 from generalresearch.models.thl.user_ref import UserRef
-from generalresearch.models.thl.wallet.definitions import PayoutType
+from generalresearch.models.thl.wallet.definitions import (
+    SUPPORTED_CURRENCIES,
+    Currency,
+    PayoutType,
+)
 
 if TYPE_CHECKING:
     from generalresearch.models.thl.user import User
@@ -86,7 +91,7 @@ class CashoutMethodManager(PostgresManager):
             name="Cash in Mail",
             description="USPS delivery of cash",
             id=uuid4().hex,
-            currency="USD",
+            currency=Currency.USD,
             image_url="https://www.shutterstock.com/shutterstock/photos/2175413929/display_1500/stock-vector-opened"
             "-envelope-with-money-dollar-bills-salary-earning-and-savings-concept-d-web-vector-2175413929.jpg",
             min_value=500,  # $5.00
@@ -131,7 +136,7 @@ class CashoutMethodManager(PostgresManager):
             name="PayPal",
             description="Cashout via PayPal",
             id=uuid4().hex,
-            currency="USD",
+            currency=Currency.USD,
             image_url="https://cdn.mmfwcl.com/images/brands/p439786-1200w-326ppi.png",
             min_value=100,  # $1.00
             max_value=25_000,  # $250.00
@@ -280,7 +285,69 @@ class CashoutMethodManager(PostgresManager):
             if (x.type == PayoutType.AMT and product.user_wallet_config.amt)
             or (x.type != PayoutType.AMT)
         ]
+        # This is b/c there might be some Tango cards in here for currency we don't support
+        cms = [
+            x
+            for x in cms
+            if x.original_currency is None
+            or x.original_currency in SUPPORTED_CURRENCIES
+        ]
         return cms
+
+    def get_user_cashout_methods(
+        self,
+        user: User,
+        country_iso: str,
+        usd_exchange_rate: dict[Currency, float],
+    ):
+        """
+        Get the cashout methods allowed for this user. Does not check financial stuff at all.
+        This checks the user's country for filtering purposes.
+        Gets cashoutmethods from accounting_cashoutmethod, along with a consistent UUID.
+        If BP has a min_cashout, modifies the cashout method's min_value based on the BP's min cashout.
+        :return: Dict with keys: the UIID, values: Dict with keys: 'id', 'provider', 'ext_id', 'data',
+            where 'data' is provider-specific JSON data containing details about the cashout method.
+
+        The available cashout methods is based off the user's latest IP address -> country, and
+          also (in the future) a risk assessment (maybe riskier user aren't allowed certain
+          methods). Also, a user may have different minimums based off "stuff".
+        # country_iso = get_user_latest_country(user_iph_manager, user) or "us"
+        If a user requests their cashout methods before they ever enter a survey, we won't have
+          saved their IP address, and this will fail. I think this call should just default to US.
+        assert country_iso, "unknown country from IP address"
+        """
+
+        # BP can set their own min in USD or equivalent
+        user.prefetch_product(pg_config=self.pg_config)
+        product = user.product
+        min_value_usd = product.user_wallet_config.min_cashout or 0
+        min_value = USDCent(round(min_value_usd * 100))
+
+        cms = self.get_cashout_methods(user=user)
+
+        for x in cms:
+            # assets in non-USD need to be converted to USD here
+            if x.original_currency is not None:
+                if x.original_currency == Currency.USD:
+                    x.usd_exchange_rate = 1.0
+                else:
+                    x.usd_exchange_rate = usd_exchange_rate[x.original_currency]
+                # If the user has foreign cards available, we need to show their min_value in USD
+                x.min_value_usd = USDCent(round(x.min_value * x.usd_exchange_rate))
+                x.max_value_usd = USDCent(round(x.max_value * x.usd_exchange_rate))
+                # Adjust min_value for BP
+                x.min_value = max(x.min_value_usd, min_value)
+
+        cms = [
+            cm
+            for cm in cms
+            if (
+                cm.type == PayoutType.TANGO and country_iso.lower() in cm.data.countries
+            )
+            or cm.type != PayoutType.TANGO
+        ]
+
+        return {x.id: x for x in cms}
 
     @staticmethod
     def format_from_db(x: dict[str, Any], user: User | None = None) -> CashoutMethod:
@@ -302,5 +369,6 @@ class CashoutMethodManager(PostgresManager):
         x["data"]["type"] = x["type"]
         if user and x["type"] in {PayoutType.PAYPAL, PayoutType.CASH_IN_MAIL}:
             x["user"] = user.to_user_ref()
-
+        x["original_currency"] = x.get("currency") or Currency.USD
+        x["currency"] = Currency.USD
         return CashoutMethod.model_validate(x)

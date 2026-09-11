@@ -1,127 +1,128 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from datetime import timedelta
+from decimal import Decimal
+from threading import Lock
+from typing import Any
 
-from generalresearch.config import (
-    is_debug,
+from cachetools import TTLCache, cachedmethod
+
+from generalresearch.currency import USDCent
+from generalresearch.managers.thl.cashout_method import CashoutMethodManager
+from generalresearch.managers.thl.tango_api import TangoClient
+from generalresearch.models.thl.wallet.definitions import (
+    CURRENCY_FORMATTER,
+    Currency,
+    PayoutType,
 )
-from generalresearch.managers.thl.tango_api import TangoOrderRequest
-from generalresearch.models.thl.definitions import PayoutStatus
-
-if TYPE_CHECKING:
-    from generalresearch.managers.thl.ledger_manager.thl_ledger import (
-        ThlLedgerManager,
-    )
-    from generalresearch.managers.thl.payout import PayoutEventManager
-    from generalresearch.managers.thl.tango_api import TangoClient
-    from generalresearch.models.thl.payout import UserPayoutEvent
-    from generalresearch.models.thl.user import User
 
 
-def complete_tango_order(
-    user: User,
-    payout_event: UserPayoutEvent,
-    payout_event_manager: PayoutEventManager,
-    ledger_manager: ThlLedgerManager,
-    tango_client: TangoClient,
-):
-    """
-    We approved the Tango card redemption. Actually request the card.
-
-    (Note: we're skipping the PENDING -> APPROVED -> COMPLETE order for tango.
-        When a tango request gets APPROVED, we COMPLETE it (or FAIL!) in the
-        same step)
-    """
-    assert payout_event.status in {
-        PayoutStatus.PENDING,
-        PayoutStatus.FAILED,
-    }, "attempting to manage payout that is not pending (or you can retry a failed order)"
-    request = payout_event.request_data
-    ref_id = request["externalRefID"]
-    # amount_usd = Decimal(payout_event.request_data["amount_usd"])
-
-    # Note: tango uses the ref_id to uniquify orders, so locking is not actually needed as long
-    #   as the ref_id is the same.
-    try:
-        order = create_tango_order(
-            request_data=payout_event.request_data,
-            ref_id=ref_id,
-            tango_client=tango_client,
+class TangoManager:
+    def __init__(
+        self,
+        tango_client: TangoClient,
+        tango_account_id: str,
+        tango_customer_id: str,
+        cashout_method_manager: CashoutMethodManager,
+    ) -> None:
+        self.tango_client = tango_client
+        self.tango_account_id = tango_account_id
+        self.tango_customer_id = tango_customer_id
+        self.cashout_method_manager = cashout_method_manager
+        self.supported_currencies = frozenset({currency.value for currency in Currency})
+        self._exchange_rate_cache = TTLCache(
+            maxsize=1, ttl=timedelta(minutes=30).total_seconds()
         )
+        self._name_cache = TTLCache(
+            maxsize=1000, ttl=timedelta(minutes=30).total_seconds()
+        )
+        self._exchange_rate_lock = Lock()
+        self._name_lock = Lock()
 
-    except AssertionError:
-        # todo: its possible the order went through, but something else was wrong
-        # we should try to retrieve the order by its ref_id and confirm it really
-        # failed...
-        payout_event_manager.update(payout_event, status=PayoutStatus.FAILED)
-        return payout_event
-
-    # update TangoPayoutEvent with the order data
-    payout_event_manager.update(
-        payout_event,
-        status=order["status"],
-        ext_ref_id=order["referenceOrderID"],
-        order_data=order,
+    @cachedmethod(
+        cache=lambda self: self._exchange_rate_cache,
+        lock=lambda self: self._exchange_rate_lock,
     )
-
-    ledger_manager.create_tx_user_payout_complete(user, payout_event=payout_event)
-
-    return payout_event
-
-
-def create_tango_order(
-    request_data: dict[str, Any], ref_id: str, tango_client: TangoClient
-) -> dict[str, Any]:
-    """
-    Create a tango gift card order.
-    Throws exception if anything is not right.
-    - https://integration-www.tangocard.com/raas_api_console/v2/
-    - https://www.apimatic.io/apidocs/tangocard/v/2_3_4#/python
-
-    :param utid: Card identifier
-    :param amount: requested card value in USD
-    :param ref_id: TangoPayoutEvent.uuid
-    :return:
-    """
-    # make sure we don't create more than one tango order for a single PayoutEvent
-    assert tango_client.get_order_if_exists(ref_id) is None
-    amount = request_data["amount"]
-    request_data.pop("amount_usd", None)
-    request_data.pop("description", None)
-
-    if is_debug():
+    def get_exchange_rates(self) -> dict[Currency, float]:
+        """Return supported foreign-currency-to-USD Tango exchange rates."""
+        rates = self.tango_client.get_exchange_rates()["exchangeRates"]
         return {
-            "status": "COMPLETE",
-            "referenceOrderID": "test",
-            "reward": {
-                "credentials": {
-                    "Security Code": "XXXX-XXXX",
-                    "Redemption URL": "https://codes.rewardcodes.com/r2/1/XXXX",
-                },
-                "credentialList": [
-                    {
-                        "type": "text",
-                        "label": "Security Code",
-                        "value": "XXXX-XXXX",
-                    },
-                    {
-                        "type": "url",
-                        "label": "Redemption URL",
-                        "value": "https://codes.rewardcodes.com/r2/1/XXXX",
-                    },
-                ],
-                "redemptionInstructions": "do your thang fam",
-            },
+            Currency(rate["baseCurrency"]): rate["baseFx"]
+            for rate in rates
+            if rate["rewardCurrency"] == "USD"
+            and rate["baseCurrency"] in self.supported_currencies
         }
 
-    request = TangoOrderRequest.model_validate(request_data)
-    order = tango_client.create_order(request)
+    def get_order_detail(self, tango_order_id: str) -> dict[str, Any]:
+        return self.tango_client.get_order(tango_order_id)
 
-    amount_f: float = float(amount)
-    assert order["status"] == "COMPLETE"
-    assert abs(order["amountCharged"]["total"] - amount_f) < 0.0200001
-    assert order["amountCharged"]["currencyCode"] == "USD"
-    if order["denomination"]["currencyCode"] == "USD":
-        assert order["denomination"]["value"] == amount_f
+    def make_request(
+        self, amount_usd: Decimal, cashout_method: Any, external_ref_id: str
+    ) -> dict[str, Any]:
+        """Build the data needed to place a Tango order."""
+        assert type(amount_usd) is Decimal
+        utid = cashout_method.data.utid
+        amount: Decimal | float = amount_usd
+        currency = cashout_method.original_currency
+        currency_code = getattr(currency, "value", currency)
+        if currency_code and currency_code != "USD":
+            amount = round(float(amount) / self.get_exchange_rates()[currency_code], 2)
+        return {
+            "accountIdentifier": self.tango_account_id,
+            "customerIdentifier": self.tango_customer_id,
+            "utid": utid,
+            "amount": str(amount),
+            "amount_usd": str(amount_usd),
+            "campaign": "300large",
+            "sendEmail": False,
+            "externalRefID": external_ref_id,
+            "description": self.get_name(utid),
+        }
 
-    return order
+    @cachedmethod(
+        cache=lambda self: self._name_cache,
+        lock=lambda self: self._name_lock,
+    )
+    def get_name(self, utid: str) -> str:
+        methods = self.cashout_method_manager.filter(
+            ext_id=utid, payout_types=[PayoutType.TANGO], is_live=None
+        )
+        cashout_method = next(iter(methods), None)
+        return cashout_method.name if cashout_method else "Tango Gift Card"
+
+    def get_expected_redemption_value(
+        self, cashout_method_id: str, amount: USDCent
+    ) -> tuple[int, Currency]:
+        """
+        Convert USD cents to a Tango card's smallest currency unit.
+        for e.g.: A user wants a variable value CAD visa card. He redeems $10 USD (amount=1000),
+            this function returns the amount that will be redeemed in CAD.
+        :param cashout_method_id: ID of tango card. expected to be non USD. If USD, just returns the amount.
+        :param amount: amount the user is redeeming from their wallet in USD integer cents.
+        :return: amount that will be redeemed through tango on their foreign card, in the card's
+            (specified by the UTID) foreign currency (in integer units of the lowest denomination)
+        # example CAD visa: U121653
+        """
+        assert type(amount) is USDCent
+        res = self.cashout_method_manager.filter(uuid=cashout_method_id, is_live=True)
+        if not res:
+            raise ValueError(f"no cashout method found for {cashout_method_id!r}")
+        cashout_method = res[0]
+        assert cashout_method.type == PayoutType.TANGO
+        assert cashout_method.original_currency is not None
+
+        currency = cashout_method.original_currency
+        if currency == Currency.USD:
+            return int(amount), currency
+
+        foreign_amount = round(int(amount) / self.get_exchange_rates()[currency])
+        return foreign_amount, currency
+
+    def format_currency(self, amount: int, currency: Currency):
+        return CURRENCY_FORMATTER[currency](amount)
+
+    def clear_caches(self) -> None:
+        with self._exchange_rate_lock:
+            self._exchange_rate_cache.clear()
+        with self._name_lock:
+            self._name_cache.clear()

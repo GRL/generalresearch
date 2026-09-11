@@ -57,6 +57,8 @@ class Currency(StrEnum):
     # Mexican Peso
     MXN = "MXN"
 
+SUPPORTED_CURRENCIES = {currency.value for currency in Currency}
+
 
 CURRENCY_FORMATTER = {
     "USD": lambda x: f"${x / 100:,.2f}",

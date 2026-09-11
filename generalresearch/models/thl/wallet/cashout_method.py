@@ -58,8 +58,8 @@ class CashoutMethodBase(BaseModel):
 
     id: UUIDStr = Field(description="Unique ID for this cashout method")
 
-    currency: Literal["USD"] = Field(
-        default="USD",
+    currency: Literal[Currency.USD] = Field(
+        default=Currency.USD,
         description="The currency of the cashout. Only USD is supported.",
     )
     original_currency: Currency | None = Field(
