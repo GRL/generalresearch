@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from decimal import Decimal
 from threading import Lock
 from typing import Any
 
@@ -10,6 +9,11 @@ from cachetools import TTLCache, cachedmethod
 from generalresearch.currency import USDCent
 from generalresearch.managers.thl.cashout_method import CashoutMethodManager
 from generalresearch.managers.thl.tango_api import TangoClient
+from generalresearch.models.thl.wallet.cashout_method import (
+    TangoCashoutMethodData,
+    CashoutMethod,
+    TangoCashoutMethodRequestData,
+)
 from generalresearch.models.thl.wallet.definitions import (
     CURRENCY_FORMATTER,
     Currency,
@@ -57,27 +61,26 @@ class TangoManager:
         return self.tango_client.get_order(tango_order_id)
 
     def make_request(
-        self, amount_usd: Decimal, cashout_method: Any, external_ref_id: str
-    ) -> dict[str, Any]:
+        self, amount: USDCent, cashout_method: CashoutMethod, payout_event_id: str
+    ) -> TangoCashoutMethodRequestData:
         """Build the data needed to place a Tango order."""
-        assert type(amount_usd) is Decimal
+        assert type(amount) is USDCent
         utid = cashout_method.data.utid
-        amount: Decimal | float = amount_usd
         currency = cashout_method.original_currency
-        currency_code = getattr(currency, "value", currency)
-        if currency_code and currency_code != "USD":
-            amount = round(float(amount) / self.get_exchange_rates()[currency_code], 2)
-        return {
-            "accountIdentifier": self.tango_account_id,
-            "customerIdentifier": self.tango_customer_id,
-            "utid": utid,
-            "amount": str(amount),
-            "amount_usd": str(amount_usd),
-            "campaign": "300large",
-            "sendEmail": False,
-            "externalRefID": external_ref_id,
-            "description": self.get_name(utid),
-        }
+        if currency and currency != Currency.USD:
+            amount = round(float(amount) / self.get_exchange_rates()[currency], 2)
+        return TangoCashoutMethodRequestData.model_validate(
+            {
+                "accountIdentifier": self.tango_account_id,
+                "customerIdentifier": self.tango_customer_id,
+                "utid": utid,
+                "amount": str(amount),
+                "campaign": "300large",
+                "sendEmail": False,
+                "externalRefID": payout_event_id,
+                "description": self.get_name(utid),
+            }
+        )
 
     @cachedmethod(
         cache=lambda self: self._name_cache,

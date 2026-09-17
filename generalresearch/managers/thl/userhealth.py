@@ -6,7 +6,6 @@ from datetime import UTC, datetime, timedelta
 from itertools import zip_longest
 from typing import TYPE_CHECKING, Any
 
-import faker
 from pydantic import NonNegativeInt, PositiveInt
 
 from generalresearch.decorators import LOG
@@ -14,16 +13,17 @@ from generalresearch.managers.base import (
     PostgresManager,
     PostgresManagerWithRedis,
 )
-from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
 from generalresearch.models.thl.user_iphistory import (
     IPRecord,
     UserIPHistory,
     UserIPRecord,
 )
+from generalresearch.models.thl.user_ref import UserRef
 from generalresearch.models.thl.userhealth import AuditLog
 
 if TYPE_CHECKING:
     from generalresearch.managers.base import Permission
+    from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
     from generalresearch.models.custom_types import IPvAnyAddressStr
     from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.user import User
@@ -31,46 +31,18 @@ if TYPE_CHECKING:
     from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig
 
-fake = faker.Faker()
-
 
 class UserIpHistoryManager(PostgresManagerWithRedis):
-    def __init__(
-        self,
-        pg_config: PostgresConfig,
-        redis_config: RedisConfig,
-        permissions: Collection[Permission] | None = None,
-        cache_prefix: str | None = None,
-    ):
-        super().__init__(
-            pg_config=pg_config,
-            redis_config=redis_config,
-            permissions=permissions,
-            cache_prefix=cache_prefix,
-        )
-        self.geoipinfo_manager = GeoIpInfoManager(
-            pg_config=pg_config,
-            redis_config=redis_config,
-            cache_prefix=cache_prefix,
-        )
-
     def get_redis_key(self, user_id: int) -> str:
-        return f"generalreserach:user-ip-history:{user_id}"
+        return f"generalreserach:user-ip-history-v2:{user_id}"
 
     def get_user_ip_records_sql(self, user_id: int) -> list[UserIPRecord]:
         # The IP metadata is ONLY for the 'ip', NOT for any forwarded ips.
         # This might get called immediately after a write, so use the non-rr
         res = self.pg_config.execute_sql_query(
             query="""
-                SELECT iph.ip, iph.created, iph.user_id,
-                    geo.subdivision_1_iso,
-                    ipinfo.country_iso,
-                    ipinfo.is_anonymous
+                SELECT iph.ip, iph.created
                 FROM userhealth_iphistory iph
-                LEFT JOIN thl_ipinformation AS ipinfo
-                    ON iph.ip = ipinfo.ip
-                LEFT JOIN thl_geoname AS geo
-                    ON ipinfo.geoname_id = geo.geoname_id
                 WHERE iph.user_id = %s
                 AND created > NOW() - INTERVAL '28 days'
                 ORDER BY iph.created DESC 
@@ -95,76 +67,96 @@ class UserIpHistoryManager(PostgresManagerWithRedis):
         value = iph.model_dump_json()
         self.redis_client.set(self.get_redis_key(user_id), value, ex=3 * 24 * 3600)
 
-    def recreate_user_ip_history_cache(self, user_id: int) -> None:
-        self.delete_user_ip_history_cache(user_id=user_id)
-        records = self.get_user_ip_records_sql(user_id=user_id)
+    def recreate_user_ip_history_cache(self, user: UserRef) -> None:
+        self.delete_user_ip_history_cache(user_id=user.user_id)
+        records = self.get_user_ip_records_sql(user_id=user.user_id)
         # todo: we may get dns records from somewhere else here ...
-        iph = UserIPHistory(user_id=user_id, ips=records)
-        self.set_user_ip_history_cache(user_id=user_id, iph=iph)
+        iph = UserIPHistory(user=user, ips=records)
+        self.set_user_ip_history_cache(user_id=user.user_id, iph=iph)
 
-    def get_user_ip_history(self, user_id: int) -> UserIPHistory:
-        assert isinstance(user_id, int)
-        iph = self.get_user_ip_history_cache(user_id=user_id)
+    def get_user_ip_history(
+        self, user: UserRef | User, geoip_info_manager: GeoIpInfoManager | None = None
+    ) -> UserIPHistory:
+        user = user if isinstance(user, UserRef) else user.to_user_ref()
+
+        iph = self.get_user_ip_history_cache(user_id=user.user_id)
         if iph:
             LOG.debug(f"get_user_ip_history got in cache: {iph.model_dump_json()}")
-
         else:
             LOG.debug("get_user_ip_history cache not found, using mysql")
-            records = self.get_user_ip_records_sql(user_id=user_id)
+            records = self.get_user_ip_records_sql(user_id=user.user_id)
             # todo: we may get dns records from somewhere else here ...
-            iph = UserIPHistory(user_id=user_id, ips=records)
-            self.set_user_ip_history_cache(user_id=user_id, iph=iph)
-
-        iph.enrich_ips(pg_config=self.pg_config, redis_config=self.redis_config)
+            iph = UserIPHistory(user=user, ips=records)
+            self.set_user_ip_history_cache(user_id=user.user_id, iph=iph)
+        if geoip_info_manager:
+            iph.enrich_ips(geoip_info_manager=geoip_info_manager)
         return iph
 
-    def get_user_latest_ip(self, user: User, exclude_anon: bool = False) -> str | None:
-        record = self.get_user_latest_ip_record(user=user, exclude_anon=exclude_anon)
+    def get_user_latest_ip_record(
+        self,
+        user: UserRef | User,
+        exclude_anon: bool = False,
+        geoip_info_manager: GeoIpInfoManager | None = None,
+    ) -> UserIPRecord | None:
+        iphistory = self.get_user_ip_history(
+            user=user, geoip_info_manager=geoip_info_manager
+        )
+        if not iphistory or not iphistory.ips:
+            return None
+
+        # Note: UserIPHistory.ips is sorted by 'created DESC' !!!
+        # This logic was changed at some point? Or the py-utils
+        # get_user_latest_ip_record was changed. Please be careful here...
+        if exclude_anon:
+            assert geoip_info_manager is not None, "Must pass geoip_info_manager"
+            for ipr in iphistory.ips:
+                if not ipr.information.is_anonymous:
+                    return ipr
+        else:
+            ipr = iphistory.ips[0]
+            return ipr
+
+    def get_user_latest_ip(
+        self,
+        user: UserRef | User,
+        exclude_anon: bool = False,
+        geoip_info_manager: GeoIpInfoManager | None = None,
+    ) -> str | None:
+        record = self.get_user_latest_ip_record(
+            user=user, exclude_anon=exclude_anon, geoip_info_manager=geoip_info_manager
+        )
         if record:
             return record.ip
         return None
 
-    def get_user_latest_ip_record(
-        self, user: User, exclude_anon: bool = False
-    ) -> UserIPRecord | None:
-        iphistory = self.get_user_ip_history(user_id=user.user_id)
-
-        if iphistory.ips:
-            if exclude_anon:
-                return next(
-                    filter(
-                        lambda x: not x.information.is_anonymous,
-                        iphistory.ips[::-1],
-                    ),
-                    None,
-                )
-            else:
-                return iphistory.ips[-1]
-
-        return None
-
     def get_user_latest_country(
-        self, user: User, exclude_anon: bool = False
+        self,
+        user: UserRef | User,
+        geoip_info_manager: GeoIpInfoManager,
+        exclude_anon: bool = False,
     ) -> str | None:
         """Get the country the user is in, based off their latest ip."""
-        ipr = self.get_user_latest_ip_record(user, exclude_anon=exclude_anon)
+        ipr = self.get_user_latest_ip_record(
+            user, geoip_info_manager=geoip_info_manager, exclude_anon=exclude_anon
+        )
         # The ipr.information should exist, but it is possible the user has
         #   no IP history at all, so the record is None
         return ipr.country_iso if ipr is not None else None
 
-    def is_user_anonymous(self, user: User) -> bool | None:
+    def is_user_anonymous(
+        self, user: UserRef | User, geoip_info_manager: GeoIpInfoManager
+    ) -> bool | None:
         # Get the user's latest ip. is it marked as anonymous?
-        # Note: it is possible we only did a "basic" lookup of this IP so
-        #   we don't know if they are anonymous. Default to False
         # Return None if the user has no IP history at all
-        ipr = self.get_user_latest_ip_record(user)
+        ipr = self.get_user_latest_ip_record(
+            user, geoip_info_manager=geoip_info_manager
+        )
         if ipr:
             return ipr.is_anonymous if ipr.is_anonymous is not None else False
         return None
 
 
 class IPRecordManager(PostgresManagerWithRedis):
-
     def __init__(
         self,
         pg_config: PostgresConfig,
@@ -187,7 +179,7 @@ class IPRecordManager(PostgresManagerWithRedis):
 
     def create_unpack(
         self,
-        user_id: PositiveInt,
+        user: UserRef,
         ip: IPvAnyAddressStr,
         forwarded_ips: list[str],
     ) -> IPRecord:
@@ -196,11 +188,11 @@ class IPRecordManager(PostgresManagerWithRedis):
 
         padded = list(forwarded_ips) + [None] * (6 - len(forwarded_ips))
 
-        return self.create(user_id, ip, *padded)
+        return self.create(user, ip, *padded)
 
     def create(
         self,
-        user_id: PositiveInt,
+        user: UserRef,
         ip: IPvAnyAddressStr,
         forwarded_ip1: IPvAnyAddressStr,
         forwarded_ip2: IPvAnyAddressStr,
@@ -211,7 +203,7 @@ class IPRecordManager(PostgresManagerWithRedis):
     ) -> IPRecord:
 
         data = {
-            "user_id": user_id,
+            "user_id": user.user_id,
             "ip": ipaddress.ip_address(ip).exploded,
             "created": datetime.now(tz=UTC),
         }
@@ -253,11 +245,12 @@ class IPRecordManager(PostgresManagerWithRedis):
             """,
             params=data,
         )
-        self.recreate_user_ip_history_cache(user_id=user_id)
+        self.recreate_user_ip_history_cache(user=user)
 
         return IPRecord.from_mysql(data)
 
-    def get_user_latest_ip_record(self, user: User) -> IPRecord | None:
+    def get_user_latest_ip_record(self, user: UserRef | User) -> IPRecord | None:
+        user = user if isinstance(user, UserRef) else user.to_user_ref()
         res = self.filter_ip_records(user_ids=[user.user_id], limit=1)
         if res:
             return res[0]
@@ -317,14 +310,11 @@ class IPRecordManager(PostgresManagerWithRedis):
 
         return [IPRecord.from_mysql(i) for i in res]
 
-    def recreate_user_ip_history_cache(self, user_id: int):
-        return self.user_ip_history_manager.recreate_user_ip_history_cache(
-            user_id=user_id
-        )
+    def recreate_user_ip_history_cache(self, user: UserRef):
+        return self.user_ip_history_manager.recreate_user_ip_history_cache(user=user)
 
 
 class AuditLogManager(PostgresManager):
-
     def create(
         self,
         user_id: PositiveInt,

@@ -214,6 +214,8 @@ class CashMailCashoutMethodData(BaseModel):
         description="Delivery address where payment should be sent"
     )
 
+class CashMailCashoutMethodRequestData(CashMailCashoutMethodData):
+    pass
 
 class PaypalCashoutMethodData(BaseModel):
     type: Literal[PayoutType.PAYPAL] = Field(default=PayoutType.PAYPAL)
@@ -223,6 +225,22 @@ class PaypalCashoutMethodData(BaseModel):
         examples=["test@example.com"],
     )
 
+class PaypalCashoutMethodRequestData(BaseModel):
+    email: EmailStr = Field(
+        description="Email address of the paypal user",
+        examples=["test@example.com"],
+    )
+    interface: Literal["api"] = Field(default="api")
+
+class TangoCashoutMethodRequestData(BaseModel):
+    accountIdentifier: str = Field()
+    customerIdentifier: str = Field()
+    utid: str = Field(description="tango utid")
+    amount: USDCent = Field(description="Amount to be paid out")
+    campaign: Literal["300large"]
+    sendEmail: bool = Field(default=False)
+    externalRefID: str = Field(description="External Ref ID")
+    description: str = Field()
 
 class TangoCashoutMethodData(BaseModel):
     type: Literal[PayoutType.TANGO] = Field(default=PayoutType.TANGO)

@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
 from generalresearch.managers.thl.wallet.approve import (
     approve_amt_cashout,
     approve_paypal_order,
@@ -34,6 +35,7 @@ def manage_pending_cashout(
     user_ip_history_manager: UserIpHistoryManager,
     user_manager: UserManager,
     ledger_manager: ThlLedgerManager,
+    geoip_info_manager:GeoIpInfoManager,
     order_data: dict[str, Any] | CashMailOrderData | None = None,
     tango_client: TangoClient | None = None,
 ) -> UserPayoutEvent:
@@ -63,7 +65,7 @@ def manage_pending_cashout(
         "manage_pending_cashout called on user without managed wallet"
     )
     assert not user.blocked, "manage_pending_cashout: Blocked user"
-    assert not user_ip_history_manager.is_user_anonymous(user), (
+    assert not user_ip_history_manager.is_user_anonymous(user,geoip_info_manager=geoip_info_manager), (
         "manage_pending_cashout: Anonymous user"
     )
 
