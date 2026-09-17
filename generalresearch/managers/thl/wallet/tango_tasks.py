@@ -12,8 +12,8 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
-    from generalresearch.managers.thl.payout import PayoutEventManager
     from generalresearch.managers.thl.tango_api import TangoClient
+    from generalresearch.managers.thl.wallet.user_payout import UserPayoutEventManager
     from generalresearch.models.thl.payout import UserPayoutEvent
     from generalresearch.models.thl.user import User
 
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 def complete_tango_order(
     user: User,
     payout_event: UserPayoutEvent,
-    payout_event_manager: PayoutEventManager,
+    user_payout_event_manager: UserPayoutEventManager,
     ledger_manager: ThlLedgerManager,
     tango_client: TangoClient,
 ):
@@ -35,7 +35,9 @@ def complete_tango_order(
     assert payout_event.status in {
         PayoutStatus.PENDING,
         PayoutStatus.FAILED,
-    }, "attempting to manage payout that is not pending (or you can retry a failed order)"
+    }, (
+        "attempting to manage payout that is not pending (or you can retry a failed order)"
+    )
     request = payout_event.request_data
     ref_id = request["externalRefID"]
     # amount_usd = Decimal(payout_event.request_data["amount_usd"])
@@ -53,11 +55,11 @@ def complete_tango_order(
         # todo: its possible the order went through, but something else was wrong
         # we should try to retrieve the order by its ref_id and confirm it really
         # failed...
-        payout_event_manager.update(payout_event, status=PayoutStatus.FAILED)
+        user_payout_event_manager.update(payout_event, status=PayoutStatus.FAILED)
         return payout_event
 
     # update TangoPayoutEvent with the order data
-    payout_event_manager.update(
+    user_payout_event_manager.update(
         payout_event,
         status=order["status"],
         ext_ref_id=order["referenceOrderID"],

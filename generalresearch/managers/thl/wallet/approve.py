@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from generalresearch.models.thl.definitions import PayoutStatus
@@ -9,6 +7,8 @@ if TYPE_CHECKING:
         ThlLedgerManager,
     )
     from generalresearch.managers.thl.payout import PayoutEventManager
+    from generalresearch.managers.thl.paypal import PayPalPayoutManager
+    from generalresearch.managers.thl.wallet.user_payout import UserPayoutEventManager
     from generalresearch.models.thl.payout import UserPayoutEvent
     from generalresearch.models.thl.user import User
 
@@ -34,7 +34,9 @@ def approve_amt_cashout(
 
 
 def approve_paypal_order(
-    payout_event: UserPayoutEvent, payout_event_manager: PayoutEventManager
+    payout_event: UserPayoutEvent,
+    user_payout_event_manager: UserPayoutEventManager,
+    paypal_client: PayPalPayoutManager | None = None,
 ):
     """
     The order has been approved, but it hasn't actually been sent.
@@ -46,17 +48,18 @@ def approve_paypal_order(
         "attempting to manage payout that is not pending (or you can retry a failed order)"
     )
 
-    payout_event_manager.update(payout_event, status=PayoutStatus.APPROVED)
-
     interface = payout_event.request_data.get("interface")
     if interface == "api":
         # todo: Use the Payouts API to sent this payout, and then update the DB
-        pass
+        paypal_client.attempt_paypal_payout(
+            payout_event=payout_event,
+            user_payout_event_manager=user_payout_event_manager,
+        )
 
     else:
         # Flow monitoring for payouts where the type is paypal, the status is
         # approved, and the interface is web, and then it'll send the payout and
         # update the status to complete (and create a ledger item for the fee)
-        pass
+        user_payout_event_manager.update(payout_event, status=PayoutStatus.APPROVED)
 
     return payout_event

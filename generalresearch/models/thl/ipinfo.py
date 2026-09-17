@@ -133,6 +133,18 @@ class IPInformation(BaseModel):
         description="The ISO code of the country associated with the IP address.",
         examples=[fake.country_code().lower()],
     )
+    country_name: str | None = Field(default=None, max_length=64)
+
+    subdivision_1_iso: str | None = Field(
+        default=None,
+        description="The ISO code of the primary subdivision (e.g., state or province).",
+        max_length=3,
+    )
+    subdivision_1_name: str | None = Field(
+        default=None,
+        description="The name of the primary subdivision (e.g., state or province).",
+        max_length=255,
+    )
 
     is_anonymous: bool | None = Field(
         default=None,

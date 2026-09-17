@@ -29,7 +29,6 @@ from generalresearch.models.thl.locales import CountryISO
 from generalresearch.models.thl.user_identifiers import BPUIDStr
 from generalresearch.models.thl.user_ref import UserRef
 from generalresearch.models.thl.wallet.definitions import Currency, PayoutType
-from generalresearch.utils.enum import ReprEnumMeta
 
 logger = logging.getLogger()
 
@@ -119,11 +118,12 @@ class CashoutMethodBase(BaseModel):
     #         return None
     #     return self.min_value * self.usd_exchange_rate
 
-    def validate_requested_amount(self, amount: PositiveInt):
+    def validate_requested_amount(self, amount: USDCent):
         """
         Check if 'amount' is a valid amount that can be requested.
         :param amount: The amount to be requested in USD Cents
         """
+        amount = int(amount)
         if amount <= 0:
             raise ValueError("Amount must be positive")
         if not self.min_value <= amount <= self.max_value:
@@ -214,8 +214,10 @@ class CashMailCashoutMethodData(BaseModel):
         description="Delivery address where payment should be sent"
     )
 
+
 class CashMailCashoutMethodRequestData(CashMailCashoutMethodData):
     pass
+
 
 class PaypalCashoutMethodData(BaseModel):
     type: Literal[PayoutType.PAYPAL] = Field(default=PayoutType.PAYPAL)
@@ -225,12 +227,14 @@ class PaypalCashoutMethodData(BaseModel):
         examples=["test@example.com"],
     )
 
+
 class PaypalCashoutMethodRequestData(BaseModel):
     email: EmailStr = Field(
         description="Email address of the paypal user",
         examples=["test@example.com"],
     )
     interface: Literal["api"] = Field(default="api")
+
 
 class TangoCashoutMethodRequestData(BaseModel):
     accountIdentifier: str = Field()
@@ -241,6 +245,7 @@ class TangoCashoutMethodRequestData(BaseModel):
     sendEmail: bool = Field(default=False)
     externalRefID: str = Field(description="External Ref ID")
     description: str = Field()
+
 
 class TangoCashoutMethodData(BaseModel):
     type: Literal[PayoutType.TANGO] = Field(default=PayoutType.TANGO)
@@ -408,33 +413,6 @@ example_foreign_value = {
 }
 
 
-class RedemptionCurrency(StrEnum, metaclass=ReprEnumMeta):
-    """
-    Supported Currencies for Foreign Redemptions
-    """
-
-    # US Dollars. Smallest Unit: Cents.
-    USD = "USD"
-    # Canadian Dollars. Smallest Unit: Cents.
-    CAD = "CAD"
-    # British Pounds. Smallest Unit: Pence.
-    GBP = "GBP"
-    # Euros. Smallest Unit: Cents.
-    EUR = "EUR"
-    # Indian Rupees. Smallest Unit: Paise.
-    INR = "INR"
-    # Australian Dollars. Smallest Unit: Cents.
-    AUD = "AUD"
-    # Polish Zloty. Smallest Unit: Grosz.
-    PLN = "PLN"
-    # Swedish Krona. Smallest Unit: Öre.
-    SEK = "SEK"
-    # Singapore Dollars. Smallest Unit: Cents.
-    SGD = "SGD"
-    # Mexican Pesos. Smallest Unit: Centavos.
-    MXN = "MXN"
-
-
 class CashoutMethodForeignValue(BaseModel):
     """
     Shows the expected value of a redemption in a foreign currency.
@@ -445,8 +423,8 @@ class CashoutMethodForeignValue(BaseModel):
     value: NonNegativeInt = Field(
         description="Value of the redemption in the currency's smallest unit."
     )
-    currency: RedemptionCurrency = Field(
-        description=RedemptionCurrency.as_openapi_with_value_descriptions()
+    currency: Currency = Field(
+        description=Currency.as_openapi_with_value_descriptions()
     )
     value_string: str = Field(
         description="A string representation of the value in the currency."

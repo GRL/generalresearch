@@ -12,12 +12,14 @@ from generalresearch.currency import USDCent
 from generalresearch.managers.base import PostgresManager
 from generalresearch.models.thl.user_ref import UserRef
 from generalresearch.models.thl.wallet.definitions import (
+    CURRENCY_FORMATTER,
     SUPPORTED_CURRENCIES,
     Currency,
     PayoutType,
 )
 
 if TYPE_CHECKING:
+    from generalresearch.managers.thl.wallet.tango import TangoManager
     from generalresearch.models.thl.user import User
     from generalresearch.models.thl.wallet.cashout_method import (
         CashMailCashoutMethodData,
@@ -75,8 +77,8 @@ class CashoutMethodManager(PostgresManager):
         )
 
     def create_cash_in_mail_cashout_method(
-        self, data: CashMailCashoutMethodData, user: User
-    ) -> str:
+        self, data: CashMailCashoutMethodData, user: UserRef | User
+    ) -> CashoutMethod:
         """
         Each user can create 1 or more "cash in mail" cashout method. This
             stores their address and possible shipping requests ? Each address
@@ -86,6 +88,8 @@ class CashoutMethodManager(PostgresManager):
         """
         # todo: validate shipping address?
         from generalresearch.models.thl.wallet.cashout_method import CashoutMethod
+
+        user = user if isinstance(user, UserRef) else user.to_user_ref()
 
         cm = CashoutMethod(
             name="Cash in Mail",
@@ -98,7 +102,7 @@ class CashoutMethodManager(PostgresManager):
             max_value=25000,  # $250.00
             data=data,
             type=PayoutType.CASH_IN_MAIL,
-            user=user.to_user_ref(),
+            user=user,
             ext_id=data.delivery_address.md5sum(),
         )
 
@@ -113,24 +117,24 @@ class CashoutMethodManager(PostgresManager):
         if res:
             # Already exists with the same address
             assert len(res) == 1
-            return res[0].id
+            return res[0]
 
         self.create(cm)
 
-        return cm.id
+        return cm
 
     def create_paypal_cashout_method(
-        self, data: PaypalCashoutMethodData, user: User
-    ) -> str:
+        self, data: PaypalCashoutMethodData, user: UserRef | User
+    ) -> CashoutMethod:
         """
         If it already exists, and the emails are the same, do nothing. If the
-        email is different, raises an error
+        email is different, it raises an error
 
-        :param data:
-        :param user:
         :return: the uuid of the created cashout method
         """
         from generalresearch.models.thl.wallet.cashout_method import CashoutMethod
+
+        user = user if isinstance(user, UserRef) else user.to_user_ref()
 
         cm = CashoutMethod(
             name="PayPal",
@@ -142,7 +146,7 @@ class CashoutMethodManager(PostgresManager):
             max_value=25_000,  # $250.00
             data=data,
             type=PayoutType.PAYPAL,
-            user=user.to_user_ref(),
+            user=user,
             ext_id=data.email,
         )
         # Make sure this user doesn't already have one
@@ -151,7 +155,7 @@ class CashoutMethodManager(PostgresManager):
             assert len(res) == 1
             if res[0].data.email == data.email:
                 # Already exists with the same email, just return it
-                return res[0].id
+                return res[0]
             else:
                 raise ValueError(
                     "User already has a cashout method of this type. "
@@ -159,7 +163,7 @@ class CashoutMethodManager(PostgresManager):
                 )
         else:
             self.create(cm)
-            return cm.id
+            return cm
 
     @staticmethod
     def make_filter_str(
@@ -350,7 +354,9 @@ class CashoutMethodManager(PostgresManager):
         return {x.id: x for x in cms}
 
     @staticmethod
-    def format_from_db(x: dict[str, Any], user: User | None = None) -> CashoutMethod:
+    def format_from_db(
+        x: dict[str, Any], user: User | UserRef | None = None
+    ) -> CashoutMethod:
         x["id"] = UUID(x["id"]).hex
 
         # The data column here is inconsistent. Pulling keys from the mysql 'data' col
@@ -368,7 +374,42 @@ class CashoutMethodManager(PostgresManager):
         x["data"].update(x.pop("_data_"))
         x["data"]["type"] = x["type"]
         if user and x["type"] in {PayoutType.PAYPAL, PayoutType.CASH_IN_MAIL}:
-            x["user"] = user.to_user_ref()
+            user = user if isinstance(user, UserRef) else user.to_user_ref()
+            x["user"] = user
         x["original_currency"] = x.get("currency") or Currency.USD
         x["currency"] = Currency.USD
         return CashoutMethod.model_validate(x)
+
+    def get_expected_foreign_redemption_value(
+        self, cashout_method_id: str, amount: USDCent, tango_manager: TangoManager
+    ) -> tuple[int, Currency]:
+        """
+        Convert USD cents to a Tango card's smallest currency unit.
+        for e.g.: A user wants a variable value CAD visa card. He redeems $10 USD (amount=1000),
+            this function returns the amount that will be redeemed in CAD.
+        :param cashout_method_id: ID of tango card. expected to be non USD. If USD, just returns the amount.
+        :param amount: amount the user is redeeming from their wallet in USD integer cents.
+        :return: amount that will be redeemed through tango on their foreign card, in the card's
+            (specified by the UTID) foreign currency (in integer units of the lowest denomination)
+        # example CAD visa: U121653
+        """
+        assert type(amount) is USDCent
+        # We don't **need** the method to be live? They can see the rate but won't
+        #  be able to request it.
+        res = self.filter(uuid=cashout_method_id, is_live=None)
+        assert len(res) == 1, f"No cashout method found with id {cashout_method_id}"
+        cm = res[0]
+        if cm.type == PayoutType.TANGO:
+            assert cm.original_currency is not None
+            if cm.original_currency == Currency.USD:
+                return int(amount), Currency.USD
+            foreign_amount = round(
+                int(amount) / tango_manager.get_exchange_rates()[cm.original_currency]
+            )
+            return foreign_amount, cm.original_currency
+        else:
+            # todo: bitcoin... etc
+            return int(amount), Currency.USD
+
+    def format_currency(self, amount: int, currency: Currency):
+        return CURRENCY_FORMATTER[currency](amount)

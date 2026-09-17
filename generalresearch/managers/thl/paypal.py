@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from collections.abc import Mapping
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Mapping
+from typing import Any
 
 import requests
 
@@ -10,16 +11,11 @@ from generalresearch.currency import USDCent
 from generalresearch.managers.thl.ledger_manager.thl_ledger import (
     ThlLedgerManager,
 )
-from generalresearch.managers.thl.payout import UserPayoutEventManager
 from generalresearch.managers.thl.user_manager.user_manager import UserManager
+from generalresearch.managers.thl.wallet.user_payout import UserPayoutEventManager
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.payout import UserPayoutEvent
-from generalresearch.models.thl.user import User
-from generalresearch.models.thl.wallet import PayoutType
-from generalresearch.models.thl.wallet.cashout_method import (
-    CashoutMethod,
-    PaypalCashoutMethodData,
-)
+from generalresearch.models.thl.wallet.definitions import PayoutType
 
 PAYPAL_SANDBOX_URL = "https://api-m.sandbox.paypal.com"
 PAYPAL_PROD_URL = "https://api-m.paypal.com"
@@ -59,7 +55,7 @@ class PayPalPayoutManager:
         self._access_token_expires_at: datetime | None = None
 
     def _get_access_token(self) -> str:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         if (
             self._access_token
             and self._access_token_expires_at
@@ -204,83 +200,55 @@ class PayPalPayoutManager:
         )
         return result.get("verification_status") == "SUCCESS"
 
+    def attempt_paypal_payout(
+        self,
+        *,
+        payout_event: UserPayoutEvent,
+        user_payout_event_manager: UserPayoutEventManager,
+        note: str | None = None,
+        email_subject: str | None = None,
+    ) -> UserPayoutEvent:
+        """Submit a one-item PayPal payout.
 
-def create_paypal_payout(
-    *,
-    user: User,
-    cashout_method: CashoutMethod,
-    amount_cents: USDCent,
-    user_payout_event_manager: UserPayoutEventManager,
-    ledger_manager: ThlLedgerManager,
-    paypal: PayPalPayoutManager,
-    note: str | None = None,
-    email_subject: str | None = None,
-) -> UserPayoutEvent:
-    """Create, reserve funds for, and submit a one-item PayPal payout.
+        The payout-event UUID is used as both sender IDs, making a retry at
+        PayPal idempotent for 30 days. The PayPal-generated batch ID is persisted
+        in ``ext_ref_id`` and the initial API response is kept in ``order_data``.
 
-    The payout-event UUID is used as both sender IDs, making a retry at
-    PayPal idempotent for 30 days. The PayPal-generated batch ID is persisted
-    in ``ext_ref_id`` and the initial API response is kept in ``order_data``.
-
-    If submission raises, the payout event and its ledger reservation remain
-    in place. This is intentional: a timeout or 5xx response is ambiguous and
-    rolling back could allow the same money to be paid twice. The exception
-    includes the payout-event UUID for reconciliation or a same-ID retry.
-    """
-    if cashout_method.type != PayoutType.PAYPAL:
-        raise ValueError("cashout_method must be a PayPal cashout method")
-    if not isinstance(cashout_method.data, PaypalCashoutMethodData):
-        raise ValueError("cashout_method does not contain PayPal data")
-    if (
-        user.user_id is None
-        or cashout_method.user is None
-        or cashout_method.user.user_id != user.user_id
-    ):
-        raise ValueError("cashout_method does not belong to user")
-
-    cashout_method.validate_requested_amount(amount_cents)
-    user_account = ledger_manager.get_account_or_create_user_wallet(user=user)
-    payout_event = user_payout_event_manager.create(
-        debit_account_uuid=user_account.uuid,
-        cashout_method_uuid=cashout_method.id,
-        payout_type=PayoutType.PAYPAL,
-        amount=amount_cents,
-        status=PayoutStatus.PENDING,
-        account_reference_type="user",
-        account_reference_uuid=user.uuid,
-        description=cashout_method.name,
-        request_data={
-            "interface": "api",
-            "recipient_email": str(cashout_method.data.email),
-        },
-    )
-    ledger_manager.create_tx_user_payout_request(
-        user=user,
-        payout_event=payout_event,
-    )
-
-    try:
-        paypal_response = paypal.send_payment(
-            recipient_email=str(cashout_method.data.email),
-            amount_cents=amount_cents,
-            sender_batch_id=payout_event.uuid,
-            sender_item_id=payout_event.uuid,
-            note=note,
-            email_subject=email_subject,
+        If submission raises, the payout event and its ledger reservation remain
+        in place. This is intentional: a timeout or 5xx response is ambiguous and
+        rolling back could allow the same money to be paid twice. The exception
+        includes the payout-event UUID for reconciliation or a same-ID retry.
+        """
+        assert payout_event.payout_type == PayoutType.PAYPAL, (
+            "payout_event must be PayPal"
         )
-        payout_batch_id = paypal_response["batch_header"]["payout_batch_id"]
-    except Exception as exc:
-        raise PayPalError(
-            f"PayPal submission failed for payout event {payout_event.uuid}"
-        ) from exc
+        assert payout_event.status == PayoutStatus.PENDING, "status must be PENDING"
+        amount_cents = USDCent(payout_event.amount)
+        recipient_email = payout_event.request_data["email"]
 
-    user_payout_event_manager.update(
-        payout_event=payout_event,
-        status=PayoutStatus.PENDING,
-        ext_ref_id=payout_batch_id,
-        order_data=paypal_response,
-    )
-    return payout_event
+        try:
+            paypal_response = self.send_payment(
+                recipient_email=str(recipient_email),
+                amount_cents=amount_cents,
+                sender_batch_id=payout_event.uuid,
+                sender_item_id=payout_event.uuid,
+                note=note,
+                email_subject=email_subject,
+            )
+            payout_batch_id = paypal_response["batch_header"]["payout_batch_id"]
+        except Exception as exc:
+            user_payout_event_manager.update(payout_event, status=PayoutStatus.FAILED)
+            raise PayPalError(
+                f"PayPal submission failed for payout event {payout_event.uuid}"
+            ) from exc
+
+        user_payout_event_manager.update(
+            payout_event=payout_event,
+            status=PayoutStatus.APPROVED,
+            ext_ref_id=payout_batch_id,
+            order_data=paypal_response,
+        )
+        return payout_event
 
 
 def handle_paypal_payout_webhook(
@@ -360,8 +328,7 @@ def handle_paypal_payout_webhook(
         user = user_manager.get_user(user_uuid=payout_event.account_reference_uuid)
         user.prefetch_product(pg_config=ledger_manager.pg_config)
         complete_tag = (
-            f"{ledger_manager.currency.value}:user_payout:"
-            f"{payout_event.uuid}:complete"
+            f"{ledger_manager.currency.value}:user_payout:{payout_event.uuid}:complete"
         )
         complete_transactions = ledger_manager.get_tx_ids_by_tag(complete_tag)
         if len(complete_transactions) > 1:

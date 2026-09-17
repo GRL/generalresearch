@@ -11,6 +11,7 @@ from redis import Redis
 from generalresearch.currency import USDCent
 from generalresearch.managers.thl.cashout_method import CashoutMethodManager
 from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
+from generalresearch.managers.thl.ledger_manager.exceptions import LedgerTransactionCreateError
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.managers.thl.payout import PayoutEventManager
 from generalresearch.managers.thl.userhealth import UserIpHistoryManager
@@ -20,12 +21,12 @@ from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet.cashout_method import (
+    CashMailCashoutMethodRequestData,
     CashMailOrderData,
     CashoutMethod,
     CashoutRequestInfo,
     PaypalCashoutMethodRequestData,
     TangoCashoutMethodRequestData,
-    CashMailCashoutMethodRequestData,
 )
 from generalresearch.models.thl.wallet.definitions import PayoutType
 
@@ -70,7 +71,7 @@ class UserPayoutEventManager(PayoutEventManager):
         pe = self.get_by_uuid(pe_uuid=pe_uuid)
 
         transaction_info = {}
-        order: dict[str, Any] = pe.order_data
+        order: dict[str, Any] | CashMailOrderData = pe.order_data
         if pe.payout_type == PayoutType.TANGO and pe.status == PayoutStatus.COMPLETE:
             reward = order["reward"]
             if "credentialList" in reward:
@@ -85,7 +86,7 @@ class UserPayoutEventManager(PayoutEventManager):
             pe.payout_type == PayoutType.CASH_IN_MAIL
             and pe.status == PayoutStatus.COMPLETE
         ):
-            transaction_info = pe.order_data.model_dump(mode="json")
+            transaction_info = order.model_dump(mode="json")
 
         return CashoutRequestInfo(
             id=pe_uuid,
@@ -249,10 +250,9 @@ class UserPayoutEventManager(PayoutEventManager):
 
         return payout_event
 
-    def user_request_redeem(
+    def try_user_request_redeem(
         self,
         user: User,
-        country_iso: str,
         cashout_method_id: str,
         amount: USDCent,
         tango_manager: TangoManager,
@@ -260,7 +260,36 @@ class UserPayoutEventManager(PayoutEventManager):
         ledger_manager: ThlLedgerManager,
         user_ip_history_manager: UserIpHistoryManager,
         geoip_info_manager: GeoIpInfoManager,
-            redis_client: Redis,
+        redis_client: Redis,
+        slack_client: slack.WebClient | None = None,
+    ) -> tuple[UserPayoutEvent | None, str | None]:
+        try:
+            return self.user_request_redeem(
+                user=user,
+                cashout_method_id=cashout_method_id,
+                amount=amount,
+                tango_manager=tango_manager,
+                cashout_method_manager=cashout_method_manager,
+                ledger_manager=ledger_manager,
+                user_ip_history_manager=user_ip_history_manager,
+                geoip_info_manager=geoip_info_manager,
+                redis_client=redis_client,
+                slack_client=slack_client,
+            ), None
+        except (AssertionError, LedgerTransactionCreateError) as e:
+            return None, str(e)
+
+    def user_request_redeem(
+        self,
+        user: User,
+        cashout_method_id: str,
+        amount: USDCent,
+        tango_manager: TangoManager,
+        cashout_method_manager: CashoutMethodManager,
+        ledger_manager: ThlLedgerManager,
+        user_ip_history_manager: UserIpHistoryManager,
+        geoip_info_manager: GeoIpInfoManager,
+        redis_client: Redis,
         slack_client: slack.WebClient | None = None,
     ) -> UserPayoutEvent:
         """
@@ -271,6 +300,12 @@ class UserPayoutEventManager(PayoutEventManager):
         """
         now = datetime.now(tz=UTC)
         user.prefetch_product(pg_config=self.pg_config)
+
+        country_iso = user_ip_history_manager.get_user_latest_country(
+            user, geoip_info_manager
+        )
+        assert country_iso, "user has no country"
+
         usd_exchange_rates = tango_manager.get_exchange_rates()
         cashout_methods = cashout_method_manager.get_user_cashout_methods(
             user, country_iso=country_iso, usd_exchange_rate=usd_exchange_rates
@@ -311,22 +346,23 @@ class UserPayoutEventManager(PayoutEventManager):
         assert not user_ip_history_manager.is_user_anonymous(
             user, geoip_info_manager=geoip_info_manager
         ), "Anonymous user requesting redemption"
-        ipr = user_ip_history_manager.get_user_latest_ip_record(
-            user, geoip_info_manager=geoip_info_manager
-        )
-        if ipr is not None and ipr.country_iso in banned_countries:
+        if country_iso in banned_countries:
             raise AssertionError("Banned country requesting redemption")
 
         wallet_balance = ledger_manager.get_user_wallet_balance(user)
         if product.user_wallet_config.balance_type == "wallet_balance":
             redeemable_amount = wallet_balance
         elif product.user_wallet_config.balance_type == "redeemable_balance":
-            redeemable_amount = ledger_manager.get_user_redeemable_wallet_balance(user, wallet_balance)
+            redeemable_amount = ledger_manager.get_user_redeemable_wallet_balance(
+                user, wallet_balance
+            )
         else:
-            raise ValueError(f"unexpected balance_type={product.user_wallet_config.balance_type}")
+            raise ValueError(
+                f"unexpected balance_type={product.user_wallet_config.balance_type}"
+            )
 
         assert amount <= redeemable_amount, (
-            f"User requesting more than their redeemable balance ({amount} > {redeemable_amount}}"
+            f"User requesting more than their redeemable balance ({amount} > {redeemable_amount})"
         )
 
         # Simple dedupe mechanism. Don't allow more than 1 per user_id per minute per cashout_method.
@@ -356,9 +392,15 @@ class UserPayoutEventManager(PayoutEventManager):
                 amount, cashout_method, pe_uuid
             )
         elif payout_type == PayoutType.PAYPAL:
-            request_data: PaypalCashoutMethodRequestData = make_request_paypal(cashout_method)
+            request_data: PaypalCashoutMethodRequestData = make_request_paypal(
+                cashout_method
+            )
         elif payout_type == PayoutType.CASH_IN_MAIL:
-            request_data: CashMailCashoutMethodRequestData = CashMailCashoutMethodRequestData.model_validate(cashout_method.data.model_dump())
+            request_data: CashMailCashoutMethodRequestData = (
+                CashMailCashoutMethodRequestData.model_validate(
+                    cashout_method.data.model_dump()
+                )
+            )
         else:
             raise ValueError(f"unknown {payout_type=}")
 
@@ -376,9 +418,6 @@ class UserPayoutEventManager(PayoutEventManager):
 
         ledger_manager.create_tx_user_payout_request(user, payout_event=pe, created=now)
         return pe
-
-
-
 
 
 def make_request_paypal(
