@@ -11,11 +11,6 @@ from uuid import uuid4
 import pandas as pd
 import pytest
 from dask.distributed import Client as DaskClient
-
-# noinspection PyUnresolvedReferences
-from distributed.utils_test import (
-    client_no_amm,
-)
 from pytest import approx
 
 from generalresearch.currency import USDCent
@@ -699,6 +694,7 @@ class TestBusinessBalance:
         pop_ledger_merge: PopLedgerMerge,
         adj_to_fail_with_tx_factory: Callable[..., None],
         delete_df_collection: Callable[..., None],
+        client_no_amm: DaskClient,
     ):
         """
         - Product 1 $2.50 Complete

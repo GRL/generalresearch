@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from itertools import product as iter_product
 from random import randint
 from typing import TYPE_CHECKING
@@ -839,16 +840,22 @@ class TestBusinessBalanceData:
         delete_df_collection(coll=ledger_collection)
         rm_ledger_collection()
 
+        # We're expecting 5 time periods x 5 $.50 complete (minus 5% commission = $0.48)
+        #  = $12.00
         for _ in range(5):
             u: User = user_factory(product=product, created=ledger_collection.start)
 
             for item in ledger_collection.items:
+                # A time may be randomly outside the date range, as the
+                # session_with_tx_factory adds time to each wall event it creates
                 item_time = fake.date_time_between(
                     start_date=item.start,
-                    end_date=item.finish,
+                    end_date=item.finish - timedelta(minutes=10),
                     tzinfo=UTC,
                 )
-                session_with_tx_factory(started=item_time, user=u)
+                session_with_tx_factory(
+                    started=item_time, user=u, wall_req_cpi=Decimal("0.50")
+                )
                 item.initial_load(overwrite=True)
 
         # Confirm any of the items are archived
