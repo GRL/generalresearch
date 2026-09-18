@@ -14,10 +14,9 @@ from grip_client.enums import AccessType
 from pydantic import PositiveInt
 
 from generalresearch.currency import USDCent
-from generalresearch.managers.thl.payout import (
-    BusinessPayoutEventManager,
-    UserPayoutEventManager,
-)
+from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
+from generalresearch.managers.thl.payout import BusinessPayoutEventManager
+from generalresearch.managers.thl.wallet.user_payout import UserPayoutEventManager
 from generalresearch.models.custom_types import (
     AwareDatetimeISO,
     IPvAnyAddressStr,
@@ -29,6 +28,7 @@ from generalresearch.models.thl.definitions import (
     PayoutStatus,
     Status,
 )
+from generalresearch.models.thl.ipinfo import GeoIPInformation
 from generalresearch.models.thl.payout import UserPayoutEvent
 from generalresearch.models.thl.user import User
 from generalresearch.models.thl.userhealth import AuditLogLevel
@@ -36,10 +36,6 @@ from generalresearch.models.thl.wallet.definitions import PayoutType
 from generalresearch.pg_helper import PostgresConfig
 
 if TYPE_CHECKING:
-    from generalresearch.managers.thl.ipinfo import (
-        IPGeonameManager,
-        IPInformationManager,
-    )
     from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
     from generalresearch.managers.thl.product import ProductManager
     from generalresearch.managers.thl.session import SessionManager
@@ -50,7 +46,6 @@ if TYPE_CHECKING:
     from generalresearch.models.gr.business import Business
     from generalresearch.models.gr.team import Team
     from generalresearch.models.legacy.bucket import Bucket
-    from generalresearch.models.thl.ipinfo import IPGeoname, IPInformation
     from generalresearch.models.thl.payout import BrokerageProductPayoutEvent
     from generalresearch.models.thl.product import (
         PayoutConfig,
@@ -438,143 +433,44 @@ def unsaved_product(product_factory: Callable[..., Product]) -> Product:
     return product_factory(save=False)
 
 
-# --- IP Geoname ---
+# --- GeoIP Information ---
 
 
 @pytest.fixture
-def ip_geoname_factory(
-    ip_geoname_manager: IPGeonameManager,
-) -> Callable[..., IPGeoname]:
+def geoip_information_factory(
+    geoip_info_manager: GeoIpInfoManager,
+) -> Callable[..., GeoIPInformation]:
 
     def _inner(
-        save: bool = True,
-        geoname_id: PositiveInt | None = None,
-        continent_code: str | None = None,
-        continent_name: str | None = None,
+        ip: IPvAnyAddressStr | None = None,
         country_iso: str | None = None,
         country_name: str | None = None,
-        subdivision_1_iso: str | None = None,
-        subdivision_1_name: str | None = None,
-        subdivision_2_iso: str | None = None,
-        subdivision_2_name: str | None = None,
-        city_name: str | None = None,
-        metro_code: int | None = None,
-        time_zone: str | None = None,
-        is_in_european_union: bool | None = None,
-    ) -> IPGeoname:
-        if save:
-            return ip_geoname_manager.create(
-                geoname_id=geoname_id or randint(1, 999_999_999),
-                continent_code=continent_code or "na",
-                continent_name=continent_name or "North America",
-                country_iso=country_iso or "us",
-                country_name=country_name or "United States",
-                subdivision_1_iso=subdivision_1_iso or "fl",
-                subdivision_1_name=subdivision_1_name or "Florida",
-                subdivision_2_iso=subdivision_2_iso,
-                subdivision_2_name=subdivision_2_name,
-                city_name=city_name,
-                metro_code=metro_code,
-                time_zone=time_zone,
-                is_in_european_union=is_in_european_union,
-            )
-        else:
-            raise ValueError("Unsaved IPGeoname not yet supported")
-
-    return _inner
-
-
-@pytest.fixture()
-def ip_geoname(ip_geoname_factory: Callable[..., IPGeoname]) -> IPGeoname:
-    return ip_geoname_factory(save=True)
-
-
-@pytest.fixture()
-def unsaved_ip_geoname(ip_geoname_factory: Callable[..., IPGeoname]) -> IPGeoname:
-    return ip_geoname_factory(save=True)
-
-
-# --- IP Information ---
-
-
-@pytest.fixture
-def ip_information_factory(
-    ip_information_manager: IPInformationManager,
-) -> Callable[..., IPInformation]:
-
-    def _inner(
-        save: bool = True,
-        ip: IPvAnyAddressStr | None = None,
-        geoname_id: PositiveInt | None = None,
-        country_iso: str | None = None,
-        registered_country_iso: str | None = None,
         is_anonymous: bool | None = None,
-        is_anonymous_vpn: bool | None = None,
-        is_hosting_provider: bool | None = None,
-        is_public_proxy: bool | None = None,
-        is_tor_exit_node: bool | None = None,
-        is_residential_proxy: bool | None = None,
         autonomous_system_number: PositiveInt | None = None,
         autonomous_system_organization: str | None = None,
-        domain: str | None = None,
-        isp: str | None = None,
-        mobile_country_code: str | None = None,
-        mobile_network_code: str | None = None,
-        network: str | None = None,
-        organization: str | None = None,
-        static_ip_score: float | None = None,
-        user_type: AccessType | None = None,
-        postal_code: str | None = None,
-        latitude: Decimal | None = None,
-        longitude: Decimal | None = None,
-        accuracy_radius: int | None = None,
-    ) -> IPInformation:
+        access_type: AccessType | None = None,
+    ) -> GeoIPInformation:
 
-        if save:
-            return ip_information_manager.create(
-                ip=ip or fake.ipv4_public(),
-                geoname_id=geoname_id,
-                country_iso=country_iso or fake.country_code(),
-                registered_country_iso=registered_country_iso,
-                is_anonymous=is_anonymous,
-                is_anonymous_vpn=is_anonymous_vpn,
-                is_hosting_provider=is_hosting_provider,
-                is_public_proxy=is_public_proxy,
-                is_tor_exit_node=is_tor_exit_node,
-                is_residential_proxy=is_residential_proxy,
-                autonomous_system_number=autonomous_system_number,
-                autonomous_system_organization=autonomous_system_organization,
-                domain=domain,
-                isp=isp,
-                mobile_country_code=mobile_country_code,
-                mobile_network_code=mobile_network_code,
-                network=network,
-                organization=organization,
-                static_ip_score=static_ip_score,
-                user_type=user_type,
-                postal_code=postal_code,
-                latitude=latitude,
-                longitude=longitude,
-                accuracy_radius=accuracy_radius,
-            )
-        else:
-            raise ValueError("Unsaved IP Information not supported yet")
+        return GeoIPInformation(
+            country_iso=country_iso or fake.country_code("alpha-2"),
+            access_type=access_type,
+            is_anonymous=is_anonymous,
+            autonomous_system_number=autonomous_system_number,
+            autonomous_system_organization=autonomous_system_organization,
+            country_name=country_name,
+            ip=ip or fake.ipv4_public(),
+            subdivision_1_iso=None,
+            subdivision_1_name=None,
+        )
 
     return _inner
 
 
 @pytest.fixture
-def ip_information(
-    ip_information_factory: Callable[..., IPInformation],
-) -> IPInformation:
-    return ip_information_factory(save=True)
-
-
-@pytest.fixture()
-def unsaved_ip_information(
-    ip_information_factory: Callable[..., IPInformation],
-) -> IPInformation:
-    return ip_information_factory(save=False)
+def geoip_information(
+    geoip_information_factory: Callable[..., GeoIPInformation],
+) -> GeoIPInformation:
+    return geoip_information_factory()
 
 
 # --- IP Record ---
@@ -584,7 +480,7 @@ def unsaved_ip_information(
 def ip_record_factory(ip_record_manager: IPRecordManager) -> Callable[..., IPRecord]:
 
     def _inner(
-        user_id: PositiveInt,
+        user: User,
         save: bool = True,
         ip: IPvAnyAddressStr | None = None,
         forwarded_ip1: IPvAnyAddressStr | None = None,
@@ -597,15 +493,13 @@ def ip_record_factory(ip_record_manager: IPRecordManager) -> Callable[..., IPRec
 
         if save:
             return ip_record_manager.create(
-                user_id=user_id,
+                user_id=user.to_user_ref().user_id,
                 ip=ip or fake.ipv4_public(),
-                forwarded_ip1=(forwarded_ip1 or fake.ipv4_public()),
-                forwarded_ip2=(
-                    forwarded_ip2 or fake.ipv6() if random() < 0.5 else None
-                ),
-                forwarded_ip3=(
-                    forwarded_ip3 or fake.ipv4_public() if random() < 0.25 else None
-                ),
+                forwarded_ip1=forwarded_ip1 or fake.ipv4_public(),
+                forwarded_ip2=forwarded_ip2 or fake.ipv6() if random() < 0.5 else None,
+                forwarded_ip3=forwarded_ip3 or fake.ipv4_public()
+                if random() < 0.25
+                else None,
                 forwarded_ip4=forwarded_ip4,
                 forwarded_ip5=forwarded_ip5,
                 forwarded_ip6=forwarded_ip6,

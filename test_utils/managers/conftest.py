@@ -1,18 +1,32 @@
 from __future__ import annotations
 
 import random
+from collections import defaultdict
 from collections.abc import Callable
 from datetime import datetime
 from typing import TYPE_CHECKING
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
+from grip_client.mmdb.models import (
+    GRIPAnonymousRecord,
+    GRIPAsnRecord,
+    GRIPCountryRecord,
+    GRIPMMDBLookupResult,
+)
 
 from generalresearch.managers.thl.cashout_method import (
     CashoutMethodManager,
 )
+from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
 from generalresearch.managers.thl.user_streak import (
     UserStreakManager,
+)
+from generalresearch.managers.thl.userhealth import (
+    AuditLogManager,
+    IPRecordManager,
+    UserIpHistoryManager,
 )
 from generalresearch.models.definitions import Source
 from generalresearch.models.thl.wallet.cashout_method import (
@@ -24,15 +38,6 @@ from generalresearch.models.thl.wallet.definitions import Currency, PayoutType
 if TYPE_CHECKING:
     from generalresearch.managers.spectrum.survey import SpectrumSurveyManager
     from generalresearch.managers.thl.buyer import BuyerManager
-    from generalresearch.managers.thl.ipinfo import (
-        GeoIpInfoManager,
-        IPGeonameManager,
-    )
-    from generalresearch.managers.thl.userhealth import (
-        AuditLogManager,
-        IPRecordManager,
-        UserIpHistoryManager,
-    )
     from generalresearch.models.thl.user import User
     from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig
@@ -51,40 +56,38 @@ def audit_log_manager(thl_web_rw: PostgresConfig) -> AuditLogManager:
     return AuditLogManager(pg_config=thl_web_rw)
 
 
-@pytest.fixture(scope="session")
-def ip_geoname_manager(thl_web_rw: PostgresConfig) -> IPGeonameManager:
-    assert thl_web_rw.dsn.path
-    assert "/unittest-" in thl_web_rw.dsn.path
-
-    from generalresearch.managers.thl.ipinfo import IPGeonameManager
-
-    return IPGeonameManager(pg_config=thl_web_rw)
-
-
-@pytest.fixture(scope="session")
+@pytest.fixture
 def ip_record_manager(
-    thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
+    thl_web_rw: PostgresConfig,
+    thl_redis_config: RedisConfig,
+    geoip_info_manager: GeoIpInfoManager,
 ) -> IPRecordManager:
     assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
     from generalresearch.managers.thl.userhealth import IPRecordManager
 
-    return IPRecordManager(pg_config=thl_web_rw, redis_config=thl_redis_config)
+    return IPRecordManager(
+        pg_config=thl_web_rw,
+        redis_config=thl_redis_config,
+        geoip_info_manager=geoip_info_manager,
+    )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def user_iphistory_manager(
-    thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
+    thl_web_rw: PostgresConfig,
+    thl_redis_config: RedisConfig,
+    geoip_info_manager: GeoIpInfoManager,
 ) -> UserIpHistoryManager:
     assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
-    from generalresearch.managers.thl.userhealth import (
-        UserIpHistoryManager,
+    return UserIpHistoryManager(
+        pg_config=thl_web_rw,
+        redis_config=thl_redis_config,
+        geoip_info_manager=geoip_info_manager,
     )
-
-    return UserIpHistoryManager(pg_config=thl_web_rw, redis_config=thl_redis_config)
 
 
 @pytest.fixture(scope="function")
@@ -96,16 +99,42 @@ def user_iphistory_manager_clear_cache(user_iphistory_manager, user: User):
     user_iphistory_manager.delete_user_ip_history_cache(user_id=user.user_id)
 
 
-@pytest.fixture(scope="session")
-def geoipinfo_manager(
-    thl_web_rw: PostgresConfig, thl_redis_config: RedisConfig
+@pytest.fixture
+def grip_lookup_results() -> dict[str, GRIPMMDBLookupResult]:
+    return defaultdict(
+        lambda: GRIPMMDBLookupResult(
+            country=GRIPCountryRecord(),
+            anonymous=GRIPAnonymousRecord(),
+            asn=GRIPAsnRecord(),
+        ),
+        {
+            "8.8.8.8": GRIPMMDBLookupResult(
+                country=GRIPCountryRecord(country_iso="US"),
+                anonymous=GRIPAnonymousRecord(is_anonymous=False),
+                asn=GRIPAsnRecord(
+                    asn=15169,
+                    network_operator="Google",
+                ),
+            ),
+            "1.1.1.1": GRIPMMDBLookupResult(
+                country=GRIPCountryRecord(country_iso="AU"),
+                anonymous=GRIPAnonymousRecord(is_anonymous=True),
+                asn=GRIPAsnRecord(
+                    asn=13335,
+                    network_operator="Cloudflare",
+                ),
+            ),
+        },
+    )
+
+
+@pytest.fixture(scope="function")
+def geoip_info_manager(
+    grip_lookup_results: dict[str, GRIPMMDBLookupResult],
 ) -> GeoIpInfoManager:
-    assert thl_web_rw.dsn.path
-    assert "/unittest-" in thl_web_rw.dsn.path
-
-    from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
-
-    return GeoIpInfoManager(pg_config=thl_web_rw, redis_config=thl_redis_config)
+    manager = GeoIpInfoManager(grip_token="test-token")
+    manager.grip_mmdb.lookup = Mock(side_effect=grip_lookup_results.__getitem__)
+    return manager
 
 
 @pytest.fixture(scope="session")
@@ -193,10 +222,10 @@ def example_tango_cashout_methods(
             last_updated=datetime.fromisoformat("2021-06-23T20:45:38.239182Z"),
             is_live=True,
             type=PayoutType.TANGO,
-            ext_id='U025035',
+            ext_id="U025035",
             name="Safeway eGift Card $25",
             data=TangoCashoutMethodData(
-                value_type="fixed", countries=["US"], utid='U025035'
+                value_type="fixed", countries=["US"], utid="U025035"
             ),
             user=None,
             image_url="https://d30s7yzk2az89n.cloudfront.net/images/brands/b694446-1200w-326ppi.png",
@@ -209,7 +238,7 @@ def example_tango_cashout_methods(
             last_updated=datetime.fromisoformat("2021-06-23T20:45:38.239182Z"),
             is_live=True,
             type=PayoutType.TANGO,
-            ext_id='U006961',
+            ext_id="U006961",
             name="Amazon.it Gift Certificate",
             data=TangoCashoutMethodData(
                 value_type="variable", countries=["IT"], utid="U006961"

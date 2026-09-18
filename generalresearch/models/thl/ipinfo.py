@@ -10,9 +10,9 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    IPvAnyAddress,
     PositiveInt,
     field_validator,
-    IPvAnyAddress,
 )
 
 from generalresearch.models.custom_types import (
@@ -122,10 +122,12 @@ class IPGeoname(BaseModel):
         return cls.model_validate(d)
 
 
-class IPInformation(BaseModel):
+class GeoIPInformation(BaseModel):
     """
     Fields we'll always pull from GRIP's mmdb files at minimum
     """
+
+    model_config = ConfigDict(extra="ignore")
 
     ip: IPvAnyAddressStr = Field()
 
@@ -162,7 +164,3 @@ class IPInformation(BaseModel):
         "(e.g., 'residential', 'business').",
         examples=[AccessType.RESIDENTIAL],
     )
-
-
-class GeoIPInformation(IPInformation):
-    model_config = ConfigDict(extra="ignore")
