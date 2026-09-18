@@ -270,20 +270,15 @@ def handle_paypal_payout_webhook(
         raise PayPalError("PayPal webhook signature verification failed")
 
     event_type = webhook_event.get("event_type", "")
-    if not event_type.startswith(("PAYMENT.PAYOUTSBATCH.", "PAYMENT.PAYOUTS-ITEM.")):
+    if not event_type.startswith("PAYMENT.PAYOUTS-ITEM."):
         return None
 
     resource = webhook_event.get("resource")
     if not isinstance(resource, dict):
         raise PayPalError("PayPal payout webhook has no resource")
 
-    sender_batch_header = resource.get("sender_batch_header") or {}
     payout_item = resource.get("payout_item") or {}
-    payout_event_uuid = (
-        resource.get("sender_batch_id")
-        or sender_batch_header.get("sender_batch_id")
-        or payout_item.get("sender_item_id")
-    )
+    payout_event_uuid = payout_item.get("sender_item_id")
     if not payout_event_uuid:
         raise PayPalError("PayPal payout webhook has no sender payout ID")
 
