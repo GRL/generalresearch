@@ -13,7 +13,6 @@ from generalresearch.models.thl.wallet.cashout_method import (
 from generalresearch.models.thl.wallet.definitions import PayoutType
 
 if TYPE_CHECKING:
-    from generalresearch.config import GRLBaseSettings
     from generalresearch.managers.thl.cashout_method import (
         CashoutMethodManager,
     )
@@ -24,7 +23,6 @@ if TYPE_CHECKING:
 
 
 class TestTangoCashoutMethods:
-
     def test_create_and_get(
         self,
         cashout_method_manager: CashoutMethodManager,
@@ -51,9 +49,7 @@ class TestTangoCashoutMethods:
         assert len(res) == 2
 
 
-
 class TestUserCashoutMethods:
-
     def test(
         self,
         cashout_method_manager: CashoutMethodManager,

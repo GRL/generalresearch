@@ -23,15 +23,10 @@ if TYPE_CHECKING:
     from generalresearch.config import GRLBaseSettings
     from generalresearch.managers.thl.buyer import BuyerManager
     from generalresearch.managers.thl.category import CategoryManager
-    from generalresearch.managers.thl.ipinfo import (
-        IPGeonameManager,
-        IPInformationManager,
-    )
     from generalresearch.managers.thl.payout import (
         BrokerageProductPayoutEventManager,
         BusinessPayoutEventManager,
         PayoutEventManager,
-        UserPayoutEventManager,
     )
     from generalresearch.managers.thl.product import ProductManager
     from generalresearch.managers.thl.session import SessionManager
@@ -52,6 +47,7 @@ if TYPE_CHECKING:
         WallCacheManager,
         WallManager,
     )
+    from generalresearch.managers.thl.wallet.user_payout import UserPayoutEventManager
 
 # === Msc ===
 
@@ -139,7 +135,7 @@ def user_payout_event_manager(
     assert thl_web_rw.dsn.path
     assert "/unittest-" in thl_web_rw.dsn.path
 
-    from generalresearch.managers.thl.payout import UserPayoutEventManager
+    from generalresearch.managers.thl.wallet.user_payout import UserPayoutEventManager
 
     return UserPayoutEventManager(
         pg_config=thl_web_rw,
@@ -340,29 +336,6 @@ def surveypenalty_manager(thl_redis_config: RedisConfig):
     from generalresearch.managers.thl.survey_penalty import SurveyPenaltyManager
 
     return SurveyPenaltyManager(redis_config=thl_redis_config)
-
-
-# --- IP Geolocation ---
-
-
-@pytest.fixture
-def ip_geoname_manager(thl_web_rw: PostgresConfig) -> IPGeonameManager:
-    from generalresearch.managers.thl.ipinfo import IPGeonameManager
-
-    return IPGeonameManager(pg_config=thl_web_rw)
-
-
-# --- IP Information ---
-
-
-@pytest.fixture(scope="session")
-def ip_information_manager(thl_web_rw: PostgresConfig) -> IPInformationManager:
-    assert thl_web_rw.dsn.path
-    assert "/unittest-" in thl_web_rw.dsn.path
-
-    from generalresearch.managers.thl.ipinfo import IPInformationManager
-
-    return IPInformationManager(pg_config=thl_web_rw)
 
 
 # --- IP Record ---

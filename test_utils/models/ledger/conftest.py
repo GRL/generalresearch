@@ -39,7 +39,6 @@ if TYPE_CHECKING:
         ThlLedgerManager,
     )
     from generalresearch.managers.thl.payout import (
-        BrokerageProductPayoutEventManager,
         BusinessPayoutEventManager,
     )
     from generalresearch.managers.thl.session import SessionManager
@@ -202,7 +201,7 @@ def bp_payout_event(
 
 @pytest.fixture
 def bp_payout_event_factory(
-    brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+    business_payout_event_manager: BusinessPayoutEventManager,
     thl_ledger_manager: ThlLedgerManager,
 ) -> Callable[..., BrokerageProductPayoutEvent]:
 
@@ -210,14 +209,13 @@ def bp_payout_event_factory(
         product: Product, usd_cent: USDCent, ext_ref_id: str | None = None
     ) -> BrokerageProductPayoutEvent:
 
-        return brokerage_product_payout_event_manager.create_bp_payout_event(
+        bus_pe = business_payout_event_manager.create_bp_payout_event(
             thl_ledger_manager=thl_ledger_manager,
             product=product,
             amount=usd_cent,
-            ext_ref_id=ext_ref_id,
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
+            ext_ref_id=ext_ref_id or uuid4().hex,
         )
+        return bus_pe.bp_payouts[0]
 
     return _inner
 
@@ -225,9 +223,9 @@ def bp_payout_event_factory(
 @pytest.fixture
 def currency(ledger_manager: LedgerManager) -> LedgerCurrency:
     # return request.param if hasattr(request, "currency") else LedgerCurrency.TEST
-    assert (
-        ledger_manager.currency
-    ), "LedgerManager must have a currency specified for these tests"
+    assert ledger_manager.currency, (
+        "LedgerManager must have a currency specified for these tests"
+    )
     return ledger_manager.currency
 
 

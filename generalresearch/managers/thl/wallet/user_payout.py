@@ -11,7 +11,9 @@ from redis import Redis
 from generalresearch.currency import USDCent
 from generalresearch.managers.thl.cashout_method import CashoutMethodManager
 from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
-from generalresearch.managers.thl.ledger_manager.exceptions import LedgerTransactionCreateError
+from generalresearch.managers.thl.ledger_manager.exceptions import (
+    LedgerTransactionCreateError,
+)
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.managers.thl.payout import PayoutEventManager
 from generalresearch.managers.thl.userhealth import UserIpHistoryManager

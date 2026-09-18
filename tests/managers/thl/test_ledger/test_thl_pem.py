@@ -30,7 +30,6 @@ if TYPE_CHECKING:
 
 
 class TestThlPayoutEventManager:
-
     def test_get_by_uuid(
         self, brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager
     ):
@@ -50,8 +49,9 @@ class TestThlPayoutEventManager:
         bp_payout_event_factory: Callable[..., BrokerageProductPayoutEvent],
         thl_ledger_manager: ThlLedgerManager,
         brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        create_main_accounts,
     ):
-
+        create_main_accounts()
         N_PRODUCTS = randint(3, 10)
         N_PAYOUT_EVENTS = randint(3, 10)
         amounts = []
@@ -223,7 +223,6 @@ class TestThlPayoutEventManager:
 
 
 class TestBPPayoutEvent:
-
     def test_get_bp_bp_payout_events_for_products(
         self,
         product_factory: Callable[..., Product],

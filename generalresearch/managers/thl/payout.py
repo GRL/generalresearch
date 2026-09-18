@@ -879,7 +879,7 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
         amount: USDCent,
         ext_ref_id: str,
         created: datetime | None = None,
-    ):
+    ) -> BusinessPayoutEvent:
         """
         This should NOT be called directly normally. It is just a shortcut
         for tests. However, instead of just making a naked BP payout,

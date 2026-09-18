@@ -163,7 +163,9 @@ class TestPayout:
         thl_ledger_manager: ThlLedgerManager,
         utc_now: datetime,
         pending_bp_pe: BrokerageProductPayoutEvent,
+        create_main_accounts,
     ):
+        create_main_accounts()
         thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
 
         brokerage_product_payout_event_manager.create_tx_bp_payout_from_payout_event(
@@ -871,6 +873,7 @@ class TestBusinessPayoutEventManager:
         bp1 = business_payout_event_manager.create_from_ach_or_wire(
             business=gr_business,
             amount=USDCent(bb1.available_balance),
+            transaction_id=ach_id1,
             pm=product_manager,
             thl_lm=thl_ledger_manager,
             created=start + timedelta(days=1, hours=5),
@@ -901,22 +904,22 @@ class TestBusinessPayoutEventManager:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
-        business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+        gr_business.prebuild_balance(
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
         )
-        business.prebuild_payouts(
+        gr_business.prebuild_payouts(
             bpem=business_payout_event_manager,
         )
-        assert isinstance(business.payouts, list)
-        assert len(business.payouts) == 2
-        assert len(business.payouts[0].bp_payouts) == 2
-        assert len(business.payouts[1].bp_payouts) == 1
+        assert isinstance(gr_business.payouts, list)
+        assert len(gr_business.payouts) == 2
+        assert len(gr_business.payouts[0].bp_payouts) == 2
+        assert len(gr_business.payouts[1].bp_payouts) == 1
 
-        bb2 = business.balance
+        bb2 = gr_business.balance
 
         # Okay os we have the balance before, and after the Business Payout
         #    of bb1.available_balance worth..

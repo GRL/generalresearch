@@ -806,6 +806,24 @@ class TestThlLedgerTxManager:
         assert thl_ledger_manager.get_session_attempt_credit(session.uuid) == 5
         assert thl_ledger_manager.get_user_attempt_credit_balance(user) == 5
 
+        attempt_credit_account = (
+            thl_ledger_manager.get_account_or_create_user_attempt_credit(user)
+        )
+        user_txs = thl_ledger_manager.get_user_txs(
+            user, account_uuid=attempt_credit_account.uuid
+        )
+        assert user_txs.total == 1
+        assert user_txs.transactions[0].tx_type == TransactionType.USER_ATTEMPT_CREDIT
+        assert user_txs.transactions[0].amount == 5
+        assert user_txs.transactions[0].balance_after == 5
+        assert user_txs.summary.user_attempt_credit.entry_count == 1
+        assert user_txs.summary.user_attempt_credit.total_amount == 5
+
+        user_txs_by_name = thl_ledger_manager.get_user_txs(
+            user, qualified_name=attempt_credit_account.qualified_name
+        )
+        assert user_txs_by_name == user_txs
+
         with pytest.raises(
             LedgerTransactionConditionFailedError, match=r"^duplicate tag$"
         ):
@@ -886,6 +904,15 @@ class TestThlLedgerTxManager:
         assert thl_ledger_manager.get_user_attempt_credit_balance(user) == 0
         assert thl_ledger_manager.get_user_wallet_balance(user) == round(user_pay * 100)
         assert thl_ledger_manager.check_ledger_balanced()
+
+        attempt_credit_account = (
+            thl_ledger_manager.get_account_or_create_user_attempt_credit(user)
+        )
+        user_txs = thl_ledger_manager.get_user_txs(
+            user, account_uuid=attempt_credit_account.uuid
+        )
+        assert [tx.amount for tx in user_txs.transactions] == [5, -5]
+        assert [tx.balance_after for tx in user_txs.transactions] == [5, 0]
 
     def test_bp_payment_with_zero_attempt_credit_balance(
         self,
