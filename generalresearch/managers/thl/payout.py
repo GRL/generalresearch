@@ -145,7 +145,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         amount = USDCent(payout_event.amount)
         product_id = payout_event.product_id
 
-        txs = thl_ledger_manager.get_tx_by_tag(tag)
+        txs = thl_ledger_manager.get_txs_by_tag(tag)
 
         if not txs:
             return False

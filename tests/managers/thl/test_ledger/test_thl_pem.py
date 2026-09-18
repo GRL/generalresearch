@@ -8,12 +8,8 @@ from uuid import UUID, uuid4
 import pytest
 
 from generalresearch.currency import USDCent
-from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.payout import (
     BrokerageProductPayoutEvent,
-)
-from generalresearch.models.thl.wallet.cashout_method import (
-    CashoutRequestInfo,
 )
 
 if TYPE_CHECKING:
@@ -23,6 +19,7 @@ if TYPE_CHECKING:
     )
     from generalresearch.managers.thl.payout import (
         BrokerageProductPayoutEventManager,
+        BusinessPayoutEventManager,
         UserPayoutEventManager,
     )
     from generalresearch.models.thl.payout import UserPayoutEvent
@@ -153,6 +150,7 @@ class TestThlPayoutEventManager:
         create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        business_payout_event_manager: BusinessPayoutEventManager,
         ledger_manager: LedgerManager,
     ):
 
@@ -166,13 +164,13 @@ class TestThlPayoutEventManager:
 
         # Save a Brokerage Product Payout, so we have something in the
         # Payout Event table and the respective ledger TX and Entry rows for it
-        pe = brokerage_product_payout_event_manager.create_bp_payout_event(
+        bus_pe = business_payout_event_manager.create_bp_payout_event(
             thl_ledger_manager=thl_ledger_manager,
             product=product,
             amount=USDCent(rand_amount),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
+            ext_ref_id=uuid4().hex
         )
+        pe = bus_pe.bp_payouts[0]
         assert isinstance(pe, BrokerageProductPayoutEvent)
 
         # Now try to query for it!
@@ -183,7 +181,7 @@ class TestThlPayoutEventManager:
         res = thl_ledger_manager.get_tx_bp_payouts(account_uuids=[uuid4().hex])
         assert len(res) == 0
 
-        # Confirm it added to the users balance. The amount is negative because
+        # Confirm it added to the user's balance. The amount is negative because
         #   money was sent to the Brokerage product: Product, but they didn't have
         #   any activity that earned them money
         bal = ledger_manager.get_account_balance(account=account_bp_wallet)

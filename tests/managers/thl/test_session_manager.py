@@ -117,6 +117,7 @@ class TestSessionManagerFilter:
     def test_team(
         self,
         product_factory: Callable[..., Product],
+            product_manager,
         user_factory: Callable[..., User],
         gr_team: Team,
         session_manager: SessionManager,
@@ -129,7 +130,7 @@ class TestSessionManagerFilter:
             u = user_factory(product=p1)
             session_manager.create(started=utc_hour_ago, user=u, uuid_id=uuid4().hex)
 
-        gr_team.prefetch_products(thl_pg_config=thl_web_rr)
+        gr_team.prefetch_products(product_manager=product_manager)
         assert len(gr_team.product_uuids) == 1
         res = session_manager.filter(product_uuids=gr_team.product_uuids)
         assert len(res) == 5
@@ -142,6 +143,7 @@ class TestSessionManagerFilter:
         session_manager: SessionManager,
         utc_hour_ago: datetime,
         thl_web_rr: PostgresConfig,
+        product_manager,
     ):
         p1 = product_factory(business=gr_business)
 
@@ -149,7 +151,7 @@ class TestSessionManagerFilter:
             u = user_factory(product=p1)
             session_manager.create(started=utc_hour_ago, user=u, uuid_id=uuid4().hex)
 
-        gr_business.prefetch_products(thl_pg_config=thl_web_rr)
+        gr_business.prefetch_products(product_manager=product_manager)
         assert len(gr_business.product_uuids) == 1
         res = session_manager.filter(product_uuids=gr_business.product_uuids)
         assert len(res) == 5

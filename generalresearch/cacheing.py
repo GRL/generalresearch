@@ -1,47 +1,25 @@
-from generalresearch import retry
+from cachetools import TTLCache
 
 
-class RetryCache:
-    # Simple pylibmc.Client wrapper that implements a retry on each method
+class InstrumentedTTLCache(TTLCache):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.hits = 0
+        self.misses = 0
 
-    def __init__(self, client, tries: int = 4, delay: int = 1, backoff: float = 1.5):
-        import pylibmc
+    def __getitem__(self, key):
+        try:
+            value = super().__getitem__(key)
+            self.hits += 1
+            return value
+        except KeyError:
+            self.misses += 1
+            raise
 
-        self.client = client
-        self.f = retry(pylibmc.Error, tries=tries, delay=delay, backoff=backoff)
-
-    def get(self, key):
-        @self.f
-        def _get(key):
-            return self.client.get(key)
-
-        return _get(key)
-
-    def set(self, key, value, timeout=0):
-        @self.f
-        def _set(key, value, timeout):
-            return self.client.set(key, value, time=timeout)
-
-        return _set(key, value, timeout)
-
-    def delete_multi(self, keys):
-        @self.f
-        def _delete_multi(keys):
-            return self.client.delete_multi(keys)
-
-        return _delete_multi(keys)
-
-    def delete(self, key):
-        @self.f
-        def _delete(key):
-            return self.client.delete(key)
-
-        return _delete(key)
-
-
-if __name__ == "__main__":
-    import pylibmc
-
-    CACHE = RetryCache(pylibmc.Client(["127.0.0.1:11211"], binary=True))
-    CACHE.set("foo", "bar")
-    print(CACHE.get("foo"))
+    def cache_info(self):
+        return {
+            "hits": self.hits,
+            "misses": self.misses,
+            "currsize": self.currsize,
+            "maxsize": self.maxsize,
+        }

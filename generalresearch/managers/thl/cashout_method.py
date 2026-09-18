@@ -329,6 +329,16 @@ class CashoutMethodManager(PostgresManager):
 
         cms = self.get_cashout_methods(user=user)
 
+        # Filter out by country before bothering w exchange rates
+        cms = [
+            cm
+            for cm in cms
+            if (
+                cm.type == PayoutType.TANGO and country_iso.lower() in cm.data.countries
+            )
+            or cm.type != PayoutType.TANGO
+        ]
+
         for x in cms:
             # assets in non-USD need to be converted to USD here
             if x.original_currency is not None:
@@ -341,15 +351,6 @@ class CashoutMethodManager(PostgresManager):
                 x.max_value_usd = USDCent(round(x.max_value * x.usd_exchange_rate))
                 # Adjust min_value for BP
                 x.min_value = max(x.min_value_usd, min_value)
-
-        cms = [
-            cm
-            for cm in cms
-            if (
-                cm.type == PayoutType.TANGO and country_iso.lower() in cm.data.countries
-            )
-            or cm.type != PayoutType.TANGO
-        ]
 
         return {x.id: x for x in cms}
 

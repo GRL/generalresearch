@@ -8,15 +8,14 @@ from generalresearch.managers.base import Permission
 from generalresearch.managers.thl.user_manager.redis_user_manager import (
     RedisUserManager,
 )
+from generalresearch.redis_helper import RedisConfig
 
 if TYPE_CHECKING:
-    from generalresearch.config import GRLBaseSettings
     from generalresearch.models.thl.user import User
     from generalresearch.pg_helper import PostgresConfig
 
 
 class TestUserManagerRedis:
-
     def test_get_notset(self, redis_user_manager: RedisUserManager, user: User):
         redis_user_manager.clear_user(user=user)
         assert redis_user_manager.get_user(user_id=user.user_id) is None
@@ -48,10 +47,10 @@ class TestUserManagerRedis:
 
     def test_get_with_cache_prefix(
         self,
-        settings: GRLBaseSettings,
         user: User,
         thl_web_rw: PostgresConfig,
         thl_web_rr: PostgresConfig,
+        thl_redis_config: RedisConfig,
     ):
         """
         Confirm the prefix functionality is working; we do this so it
@@ -67,19 +66,19 @@ class TestUserManagerRedis:
             pg_config=thl_web_rw,
             pg_config_rr=thl_web_rr,
             sql_permissions=[Permission.UPDATE, Permission.CREATE],
-            redis=settings.redis,
-            redis_timeout=settings.redis_timeout,
+            redis=thl_redis_config.dsn,
+            redis_timeout=1,
         )
 
         um2 = UserManager(
             pg_config=thl_web_rw,
             pg_config_rr=thl_web_rr,
             sql_permissions=[Permission.UPDATE, Permission.CREATE],
-            redis=settings.redis,
-            redis_timeout=settings.redis_timeout,
+            redis=thl_redis_config.dsn,
+            redis_timeout=1,
             cache_prefix="user-lookup-v2",
         )
-
+        user = user.to_user_ref()
         um1.get_or_create_user(
             product_id=user.product_id, product_user_id=user.product_user_id
         )

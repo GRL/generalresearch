@@ -628,13 +628,9 @@ def user_payout_event_factory(
 
         debit_account_uuid = debit_account_uuid or uuid4().hex
         cashout_method_uuid = cashout_method_uuid or uuid4().hex
-        # account_reference_type = account_reference_type or f"acct-ref-{uuid4().hex}"
-        # account_reference_uuid = account_reference_uuid or uuid4().hex
-        # cashout_method_uuid = cashout_method_uuid or uuid4().hex
         amount = amount or randint(a=99, b=9_999)
         status = status or rand_choice(list(PayoutStatus))
 
-        description = description or f"desc-{uuid4().hex[:12]}"
         # ext_ref_id = ext_ref_id or f"ext-ref-{uuid4().hex[:8]}"
         payout_type = payout_type or rand_choice(list(PayoutType))
         request_data = request_data or {}
@@ -643,10 +639,7 @@ def user_payout_event_factory(
         return user_payout_event_manager.create(
             uuid=uuid,
             debit_account_uuid=debit_account_uuid,
-            account_reference_type=account_reference_type,
-            account_reference_uuid=account_reference_uuid,
             cashout_method_uuid=cashout_method_uuid,
-            description=description,
             created=created,
             amount=amount,
             status=status,

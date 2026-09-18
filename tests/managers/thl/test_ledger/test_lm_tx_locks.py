@@ -38,7 +38,6 @@ logger = logging.getLogger("LedgerManager")
 
 
 class TestLedgerLocks:
-
     def test_a(
         self,
         user_factory: Callable[..., User],
@@ -108,16 +107,16 @@ class TestLedgerLocks:
         f1 = generate_condition_mp_payment(wall=w1)
         f2 = generate_condition_mp_payment(wall=w2)
         f3 = generate_condition_mp_payment(wall=w3)
-        assert f1(ledger_manager) is False
-        assert f2(lm=ledger_manager) is False
-        assert f3(lm=ledger_manager) is True
+        assert f1(ledger_manager) == (False, "duplicate tag")
+        assert f2(lm=ledger_manager) == (False, "duplicate tag")
+        assert f3(lm=ledger_manager)[0] == True
 
         condition = f3
         create_tx_func = lambda: thl_ledger_manager.create_tx_task_complete_(
             wall=w3, user=user
         )
         assert isinstance(create_tx_func, Callable)
-        assert f3(ledger_manager) is True
+        assert f3(ledger_manager)[0] is True
 
         ledger_manager.redis_client.delete(flag_name)
         ledger_manager.redis_client.delete(lock_name)
@@ -125,13 +124,14 @@ class TestLedgerLocks:
         tx = thl_ledger_manager.create_tx_protected(
             lock_key=lock_key, condition=condition, create_tx_func=create_tx_func
         )
-        assert f3(ledger_manager) is False
+        assert f3(ledger_manager) == (False, "duplicate tag")
 
         # purposely hold the lock open
         tx = None
         ledger_manager.redis_client.set(lock_name, "1")
-        with caplog.at_level(logging.ERROR), pytest.raises(
-            expected_exception=LedgerTransactionCreateLockError
+        with (
+            caplog.at_level(logging.ERROR),
+            pytest.raises(expected_exception=LedgerTransactionCreateLockError),
         ):
             tx = thl_ledger_manager.create_tx_protected(
                 lock_key=lock_key,
@@ -231,8 +231,9 @@ class TestLedgerLocks:
 
         # Purposely hold the lock open
         ledger_manager.redis_client.set(name=lock_name, value="1")
-        with caplog.at_level(logging.DEBUG), pytest.raises(
-            expected_exception=LedgerTransactionCreateLockError
+        with (
+            caplog.at_level(logging.DEBUG),
+            pytest.raises(expected_exception=LedgerTransactionCreateLockError),
         ):
             tx = thl_ledger_manager.create_tx_task_complete(
                 wall=wall3, user=user, created=wall3.started

@@ -303,7 +303,7 @@ class ThlLedgerManager(LedgerManager):
         user: User,
         created: datetime | None = None,
         force: bool = False,
-    ) -> PositiveInt:
+    ) -> LedgerTransaction:
         """
         Create a transaction when we complete a task from a marketplace,
             showing the marketplace paying us for the task complete.

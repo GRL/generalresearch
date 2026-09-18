@@ -226,13 +226,11 @@ class TestIPRecordManager:
         self,
         thl_web_rr: PostgresConfig,
         thl_redis_config: RedisConfig,
-        geoip_info_manager: GeoIpInfoManager,
         ip_record_manager: IPRecordManager,
     ):
         instance = IPRecordManager(
             pg_config=thl_web_rr,
             redis_config=thl_redis_config,
-            geoip_info_manager=geoip_info_manager,
         )
         assert isinstance(instance, IPRecordManager)
         assert isinstance(ip_record_manager, IPRecordManager)
