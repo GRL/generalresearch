@@ -40,7 +40,6 @@ if TYPE_CHECKING:
         UserMetadataManager,
     )
     from generalresearch.managers.thl.userhealth import (
-        AuditLogManager,
         IPRecordManager,
     )
     from generalresearch.managers.thl.wall import (
@@ -160,13 +159,6 @@ def brokerage_product_payout_event_manager(
         permissions=[Permission.CREATE, Permission.READ],
         redis_config=thl_redis_config,
     )
-
-
-@pytest.fixture()
-def audit_log_manager(thl_web_rw: PostgresConfig) -> AuditLogManager:
-    from generalresearch.managers.thl.userhealth import AuditLogManager
-
-    return AuditLogManager(pg_config=thl_web_rw)
 
 
 @pytest.fixture(scope="session")
@@ -336,9 +328,6 @@ def surveypenalty_manager(thl_redis_config: RedisConfig):
     from generalresearch.managers.thl.survey_penalty import SurveyPenaltyManager
 
     return SurveyPenaltyManager(redis_config=thl_redis_config)
-
-
-# --- IP Record ---
 
 
 @pytest.fixture(scope="session")

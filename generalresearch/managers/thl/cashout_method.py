@@ -376,7 +376,7 @@ class CashoutMethodManager(PostgresManager):
         if user and x["type"] in {PayoutType.PAYPAL, PayoutType.CASH_IN_MAIL}:
             user = user if isinstance(user, UserRef) else user.to_user_ref()
             x["user"] = user
-        x["original_currency"] = x.get("currency") or Currency.USD
+        x["original_currency"] = x.get("original_currency") or Currency.USD
         x["currency"] = Currency.USD
         return CashoutMethod.model_validate(x)
 

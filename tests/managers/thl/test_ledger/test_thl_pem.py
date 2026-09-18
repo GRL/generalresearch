@@ -122,38 +122,6 @@ class TestThlPayoutEventManager:
         assert len(res) == (N_PRODUCTS * N_PAYOUT_EVENTS)
         assert sum([i.amount for i in res]) == sum(amounts)
 
-    @pytest.mark.skip
-    def test_get_payout_detail(self, user_payout_event_manager: UserPayoutEventManager):
-        """This fails because the description coming back is None, but then
-        it tries to return a PayoutEvent which validates that the
-        description can't be None
-        """
-        from generalresearch.models.thl.payout import (
-            PayoutType,
-        )
-
-        rand_amount = randint(a=99, b=999)
-
-        pe = user_payout_event_manager.create(
-            debit_account_uuid=uuid4().hex,
-            account_reference_type="str-type-random",
-            account_reference_uuid=uuid4().hex,
-            cashout_method_uuid=uuid4().hex,
-            description="Best payout !",
-            amount=rand_amount,
-            status=PayoutStatus.PENDING,
-            ext_ref_id="123",
-            payout_type=PayoutType.CASH_IN_MAIL,
-            request_data={"foo": 123},
-            order_data={},
-        )
-
-        res = user_payout_event_manager.get_payout_detail(pe_uuid=pe.uuid)
-        assert isinstance(res, CashoutRequestInfo)
-
-    # def test_filter_by(self):
-    #     raise NotImplementedError
-
     def test_create(
         self,
         user_payout_event_factory: Callable[..., UserPayoutEvent],

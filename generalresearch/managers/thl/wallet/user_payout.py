@@ -68,8 +68,8 @@ class UserPayoutEventManager(PayoutEventManager):
         return pe
 
     def get_payout_detail(self, pe_uuid: UUIDStr) -> CashoutRequestInfo:
-        # This gets the payout event, and then extracts information for
-        #   the purposes of returning to the user.
+        # This gets the payout event and then extracts information to return
+        #    to the user.
         pe = self.get_by_uuid(pe_uuid=pe_uuid)
 
         transaction_info = {}
@@ -205,9 +205,6 @@ class UserPayoutEventManager(PayoutEventManager):
         created: AwareDatetimeISO | None = None,
         request_data: dict[str, Any] | None = None,
         # --- Optional: None  ---
-        account_reference_type: str | None = None,
-        account_reference_uuid: UUIDStr | None = None,
-        description: str | None = None,
         ext_ref_id: str | None = None,
         order_data: dict[str, Any] | CashMailOrderData | None = None,
     ) -> UserPayoutEvent:
@@ -215,10 +212,7 @@ class UserPayoutEventManager(PayoutEventManager):
         payout_event = UserPayoutEvent(
             uuid=uuid or uuid4().hex,
             debit_account_uuid=debit_account_uuid,
-            account_reference_type=account_reference_type,
-            account_reference_uuid=account_reference_uuid,
             cashout_method_uuid=cashout_method_uuid,
-            description=description,
             created=created or datetime.now(tz=UTC),
             amount=amount,
             status=status or PayoutStatus.PENDING,
@@ -250,7 +244,7 @@ class UserPayoutEventManager(PayoutEventManager):
                 assert c.rowcount == 1, f"expected 1 row inserted, got {c.rowcount}"
             conn.commit()
 
-        return payout_event
+        return self.get_by_uuid(payout_event.uuid)
 
     def try_user_request_redeem(
         self,
@@ -261,7 +255,6 @@ class UserPayoutEventManager(PayoutEventManager):
         cashout_method_manager: CashoutMethodManager,
         ledger_manager: ThlLedgerManager,
         user_ip_history_manager: UserIpHistoryManager,
-        geoip_info_manager: GeoIpInfoManager,
         redis_client: Redis,
         slack_client: slack.WebClient | None = None,
     ) -> tuple[UserPayoutEvent | None, str | None]:
@@ -274,7 +267,6 @@ class UserPayoutEventManager(PayoutEventManager):
                 cashout_method_manager=cashout_method_manager,
                 ledger_manager=ledger_manager,
                 user_ip_history_manager=user_ip_history_manager,
-                geoip_info_manager=geoip_info_manager,
                 redis_client=redis_client,
                 slack_client=slack_client,
             ), None
@@ -290,7 +282,6 @@ class UserPayoutEventManager(PayoutEventManager):
         cashout_method_manager: CashoutMethodManager,
         ledger_manager: ThlLedgerManager,
         user_ip_history_manager: UserIpHistoryManager,
-        geoip_info_manager: GeoIpInfoManager,
         redis_client: Redis,
         slack_client: slack.WebClient | None = None,
     ) -> UserPayoutEvent:
@@ -303,9 +294,7 @@ class UserPayoutEventManager(PayoutEventManager):
         now = datetime.now(tz=UTC)
         user.prefetch_product(pg_config=self.pg_config)
 
-        country_iso = user_ip_history_manager.get_user_latest_country(
-            user, geoip_info_manager
-        )
+        country_iso = user_ip_history_manager.get_user_latest_country(user)
         assert country_iso, "user has no country"
 
         usd_exchange_rates = tango_manager.get_exchange_rates()
@@ -345,9 +334,7 @@ class UserPayoutEventManager(PayoutEventManager):
         product = user.product
         banned_countries = user.product.user_health_config.banned_countries
 
-        assert not user_ip_history_manager.is_user_anonymous(
-            user, geoip_info_manager=geoip_info_manager
-        ), "Anonymous user requesting redemption"
+        assert not user_ip_history_manager.is_user_anonymous(user), "Anonymous user requesting redemption"
         if country_iso in banned_countries:
             raise AssertionError("Banned country requesting redemption")
 

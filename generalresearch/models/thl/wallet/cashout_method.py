@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import logging
 from datetime import UTC, datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any, Literal, Self
 
@@ -240,7 +241,8 @@ class TangoCashoutMethodRequestData(BaseModel):
     accountIdentifier: str = Field()
     customerIdentifier: str = Field()
     utid: str = Field(description="tango utid")
-    amount: USDCent = Field(description="Amount to be paid out")
+    # This is not necessarily in USD. It is in whatever currency the card is in
+    amount: Decimal = Field(description="Amount to be paid out (in USD, EUR, etc)")
     campaign: Literal["300large"]
     sendEmail: bool = Field(default=False)
     externalRefID: str = Field(description="External Ref ID")

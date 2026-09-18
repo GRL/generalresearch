@@ -34,9 +34,9 @@ if TYPE_CHECKING:
         BrokerageProductPayoutEventManager,
         BusinessPayoutEventManager,
         PayoutEventManager,
-        UserPayoutEventManager,
     )
     from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.managers.thl.wallet.user_payout import UserPayoutEventManager
     from generalresearch.models.gr.business import Business
     from generalresearch.models.thl.ledger import LedgerAccount
     from generalresearch.models.thl.payout import (

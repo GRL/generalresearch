@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from decimal import Decimal
 from threading import Lock
 from typing import TYPE_CHECKING, Any
 
@@ -69,13 +70,14 @@ class TangoManager:
         utid = cashout_method.data.utid
         currency = cashout_method.original_currency
         if currency and currency != Currency.USD:
-            amount = round(float(amount) / self.get_exchange_rates()[currency], 2)
+            amount = round(float(amount) / self.get_exchange_rates()[currency])
+        amount_in_currency = Decimal(float(amount) / 100).quantize(Decimal('0.01'))
         return TangoCashoutMethodRequestData.model_validate(
             {
                 "accountIdentifier": self.tango_account_id,
                 "customerIdentifier": self.tango_customer_id,
                 "utid": utid,
-                "amount": str(amount),
+                "amount": amount_in_currency,
                 "campaign": "300large",
                 "sendEmail": False,
                 "externalRefID": payout_event_id,

@@ -25,7 +25,6 @@ from generalresearch.managers.thl.user_streak import (
 )
 from generalresearch.managers.thl.userhealth import (
     AuditLogManager,
-    IPRecordManager,
     UserIpHistoryManager,
 )
 from generalresearch.models.definitions import Source
@@ -54,24 +53,6 @@ def audit_log_manager(thl_web_rw: PostgresConfig) -> AuditLogManager:
     from generalresearch.managers.thl.userhealth import AuditLogManager
 
     return AuditLogManager(pg_config=thl_web_rw)
-
-
-@pytest.fixture
-def ip_record_manager(
-    thl_web_rw: PostgresConfig,
-    thl_redis_config: RedisConfig,
-    geoip_info_manager: GeoIpInfoManager,
-) -> IPRecordManager:
-    assert thl_web_rw.dsn.path
-    assert "/unittest-" in thl_web_rw.dsn.path
-
-    from generalresearch.managers.thl.userhealth import IPRecordManager
-
-    return IPRecordManager(
-        pg_config=thl_web_rw,
-        redis_config=thl_redis_config,
-        geoip_info_manager=geoip_info_manager,
-    )
 
 
 @pytest.fixture
@@ -123,6 +104,11 @@ def grip_lookup_results() -> dict[str, GRIPMMDBLookupResult]:
                     asn=13335,
                     network_operator="Cloudflare",
                 ),
+            ),
+            "2.2.2.2": GRIPMMDBLookupResult(
+                country=GRIPCountryRecord(country_iso="IT"),
+                anonymous=GRIPAnonymousRecord(is_anonymous=False),
+                asn=GRIPAsnRecord(),
             ),
         },
     )
@@ -214,7 +200,6 @@ def random_ext_id_factory(base: str = "U02") -> Callable[..., str]:
 
 @pytest.fixture(scope="session")
 def example_tango_cashout_methods(
-    random_ext_id_factory: Callable[..., str],
 ) -> list[CashoutMethod]:
     return [
         CashoutMethod(
