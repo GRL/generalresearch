@@ -869,6 +869,24 @@ class LedgerAccountManager(LedgerManagerBasePostgres):
         )
         return res[0] if len(res) == 1 else None
 
+    def get_account_by_uuid(
+        self, account_uuid: UUIDStr, raise_on_error: bool = True
+    ) -> LedgerAccount | None:
+        check_valid_uuid(account_uuid)
+        res = self.pg_config.execute_sql_query(
+            query="""
+                SELECT
+                    uuid, display_name, qualified_name, account_type,
+                    normal_balance, reference_type, reference_uuid, currency
+                FROM ledger_account
+                WHERE uuid = %s;
+            """,
+            params=[account_uuid],
+        )
+        if raise_on_error and len(res) != 1:
+            raise LedgerAccountDoesntExistError
+        return LedgerAccount.model_validate(res[0]) if len(res) == 1 else None
+
     def get_account_many_(
         self, qualified_names: list[str], raise_on_error: bool = True
     ) -> list[dict[str, Any]]:

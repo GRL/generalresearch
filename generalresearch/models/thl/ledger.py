@@ -352,7 +352,7 @@ class LedgerTransaction(BaseModel):
         return d
 
     def to_user_tx(
-        self, user_account: LedgerAccount, product_id: str, payout_format: str
+        self, user_account: LedgerAccount, product_id: str, payout_format: str | None
     ):
         from generalresearch.models.thl.wallet.definitions import PayoutType
 
@@ -386,10 +386,15 @@ class LedgerTransaction(BaseModel):
                 raise ValueError(payout_type)
             return UserLedgerTransactionUserPayout.model_validate(d)
         elif d["tx_type"] == TransactionType.BP_PAYMENT.value:
+            assert len(debits) == 1 or len(credits) == 1
+            d["amount"] = credits[0].amount if credits else debits[0].amount * -1
+            d["tsid"] = self.metadata.get("thl_session")
+            return UserLedgerTransactionTaskComplete.model_validate(d)
+        elif d["tx_type"] == TransactionType.USER_ATTEMPT_CREDIT.value:
             assert len(credits) == 1
             d["amount"] = credits[0].amount
             d["tsid"] = self.metadata.get("thl_session")
-            return UserLedgerTransactionTaskComplete.model_validate(d)
+            return UserLedgerTransactionAttemptCredit.model_validate(d)
         elif d["tx_type"] == TransactionType.USER_BONUS.value:
             assert len(credits) == 1
             d["amount"] = credits[0].amount
@@ -546,11 +551,6 @@ class UserLedgerTransactionTaskComplete(UserLedgerTransaction):
     def create_url(self, product_id: str) -> str | None:
         return f"https://fsb.generalresearch.com/{product_id}/status/{self.tsid}/"
 
-    @model_validator(mode="after")
-    def validate_amount(self):
-        assert self.amount >= 0, f"UserLedgerTransactionTaskComplete: {self.amount=}"
-        return self
-
 
 class UserLedgerTransactionTaskAdjustment(UserLedgerTransaction):
     model_config = ConfigDict(
@@ -578,11 +578,28 @@ class UserLedgerTransactionTaskAdjustment(UserLedgerTransaction):
         return f"https://fsb.generalresearch.com/{product_id}/status/{self.tsid}/"
 
 
+class UserLedgerTransactionAttemptCredit(UserLedgerTransaction):
+    tx_type: Literal[TransactionType.USER_ATTEMPT_CREDIT] = Field(
+        default=TransactionType.USER_ATTEMPT_CREDIT
+    )
+    description: str = Field(default="Attempt Credit", max_length=255)
+    tsid: UUIDStr
+
+    def create_url(self, product_id: str) -> str | None:
+        return f"https://fsb.generalresearch.com/{product_id}/status/{self.tsid}/"
+
+    @model_validator(mode="after")
+    def validate_amount(self):
+        assert self.amount > 0, f"UserLedgerTransactionAttemptCredit: {self.amount=}"
+        return self
+
+
 UserLedgerTransactionType = Annotated[
     UserLedgerTransactionUserPayout
     | UserLedgerTransactionUserBonus
     | UserLedgerTransactionTaskAdjustment
-    | UserLedgerTransactionTaskComplete,
+    | UserLedgerTransactionTaskComplete
+    | UserLedgerTransactionAttemptCredit,
     Field(discriminator="tx_type"),
 ]
 
@@ -611,6 +628,9 @@ class UserLedgerTransactionTypesSummary(BaseModel):
     user_bonus: UserLedgerTransactionTypeSummary = Field(
         default_factory=UserLedgerTransactionTypeSummary
     )
+    user_attempt_credit: UserLedgerTransactionTypeSummary = Field(
+        default_factory=UserLedgerTransactionTypeSummary
+    )
     user_payout_request: UserLedgerTransactionTypeSummary = Field(
         default_factory=UserLedgerTransactionTypeSummary
     )
@@ -623,8 +643,8 @@ class UserLedgerTransactions(Page):
 
     transactions: list[UserLedgerTransactionType] = Field(default_factory=list)
     # The summary is w.r.t an optional time-filter. The transactions are
-    # paginated so the counts won't necesarily match. In other words, the
-    # summary is across all transaction in all pages, not this the transactions
+    # paginated so the counts won't necessarily match. In other words, the
+    # summary is across all transactions in all pages, not this the transactions
     # in this page.
     summary: UserLedgerTransactionTypesSummary = Field()
 
@@ -634,7 +654,7 @@ class UserLedgerTransactions(Page):
         user_account: LedgerAccount,
         txs: list[LedgerTransaction],
         product_id: str,
-        payout_format: str,
+        payout_format: PayoutFormatType | None,
         summary: UserLedgerTransactionTypesSummary,
         page: int,
         size: int,

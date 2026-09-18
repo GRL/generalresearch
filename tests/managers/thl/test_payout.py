@@ -34,9 +34,9 @@ if TYPE_CHECKING:
         BrokerageProductPayoutEventManager,
         BusinessPayoutEventManager,
         PayoutEventManager,
-        UserPayoutEventManager,
     )
     from generalresearch.managers.thl.product import ProductManager
+    from generalresearch.managers.thl.wallet.user_payout import UserPayoutEventManager
     from generalresearch.models.gr.business import Business
     from generalresearch.models.thl.ledger import LedgerAccount
     from generalresearch.models.thl.payout import (
@@ -163,7 +163,9 @@ class TestPayout:
         thl_ledger_manager: ThlLedgerManager,
         utc_now: datetime,
         pending_bp_pe: BrokerageProductPayoutEvent,
+        create_main_accounts,
     ):
+        create_main_accounts()
         thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
 
         brokerage_product_payout_event_manager.create_tx_bp_payout_from_payout_event(
@@ -386,7 +388,7 @@ class TestBusinessPayoutEventManager:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -470,6 +472,7 @@ class TestBusinessPayoutEventManager:
         self, business_payout_event_manager: BusinessPayoutEventManager, request
     ):
         # TODO: Generate this file at random
+        # @max file is not commited
         fp = os.path.join(
             request.config.rootpath, "data/pytest_recoup_proportional.csv"
         )
@@ -688,7 +691,7 @@ class TestBusinessPayoutEventManager:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -860,17 +863,18 @@ class TestBusinessPayoutEventManager:
 
         assert gr_business.payouts is None
         gr_business.prebuild_payouts(
-            thl_pg_config=thl_web_rr,
-            thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
         assert isinstance(gr_business.payouts, list)
         assert len(gr_business.payouts) == 1
         assert gr_business.payouts[0].ext_ref_id == ach_id1
 
+        ach_id2 = uuid4().hex
+
         bp1 = business_payout_event_manager.create_from_ach_or_wire(
             business=gr_business,
             amount=USDCent(bb1.available_balance),
+            transaction_id=ach_id2,
             pm=product_manager,
             thl_lm=thl_ledger_manager,
             created=start + timedelta(days=1, hours=5),
@@ -882,16 +886,12 @@ class TestBusinessPayoutEventManager:
         bp1_tx = brokerage_product_payout_event_manager.check_for_ledger_tx(
             thl_ledger_manager=thl_ledger_manager,
             payout_event=bp1.bp_payouts[0],
-            product_id=bp1.bp_payouts[0].product_id,
-            amount=bp1.bp_payouts[0].amount,
         )
         assert bp1_tx
 
         bp2_tx = brokerage_product_payout_event_manager.check_for_ledger_tx(
             thl_ledger_manager=thl_ledger_manager,
             payout_event=bp1.bp_payouts[1],
-            product_id=bp1.bp_payouts[1].product_id,
-            amount=bp1.bp_payouts[1].amount,
         )
         assert bp2_tx
 
@@ -901,22 +901,22 @@ class TestBusinessPayoutEventManager:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
-        business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+        gr_business.prebuild_balance(
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
         )
-        business.prebuild_payouts(
+        gr_business.prebuild_payouts(
             bpem=business_payout_event_manager,
         )
-        assert isinstance(business.payouts, list)
-        assert len(business.payouts) == 2
-        assert len(business.payouts[0].bp_payouts) == 2
-        assert len(business.payouts[1].bp_payouts) == 1
+        assert isinstance(gr_business.payouts, list)
+        assert len(gr_business.payouts) == 2
+        assert len(gr_business.payouts[0].bp_payouts) == 2
+        assert len(gr_business.payouts[1].bp_payouts) == 1
 
-        bb2 = business.balance
+        bb2 = gr_business.balance
 
         # Okay os we have the balance before, and after the Business Payout
         #    of bb1.available_balance worth..
@@ -993,13 +993,12 @@ class TestBusinessPayoutEventManager:
                     wall_req_cpi=Decimal("50.00"),
                     started=start + timedelta(days=1, hours=2, minutes=1 + idx),
                 )
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
 
         # Now that we paid out the business: Business, let's confirm the updated balances
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -1039,6 +1038,7 @@ class TestBusinessPayoutEventManager:
             pm=product_manager,
             thl_lm=thl_ledger_manager,
             created=start + timedelta(days=1, hours=3),
+            transaction_id=uuid4().hex,
         )
         assert isinstance(bp1, BusinessPayoutEvent)
         assert len(bp1.bp_payouts) == 3
@@ -1054,7 +1054,7 @@ class TestBusinessPayoutEventManager:
         #   balance.available_balance are reflective of having a $250 ACH/Wire
         #   sent to the Business
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -1120,14 +1120,13 @@ class TestBusinessPayoutEventManager:
                     wall_req_cpi=Decimal("7.50"),
                     started=start + timedelta(days=1, hours=1 + iidx, minutes=1 + idx),
                 )
-        payout_event_manager.set_account_lookup_table(thl_lm=thl_ledger_manager)
 
         rm_ledger_collection()
         rm_pop_ledger_merge()
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -1148,7 +1147,7 @@ class TestBusinessPayoutEventManager:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -1172,12 +1171,10 @@ class TestBusinessPayoutEventManager:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
         gr_business.prebuild_payouts(
-            thl_pg_config=thl_web_rr,
-            thl_lm=thl_ledger_manager,
             bpem=business_payout_event_manager,
         )
         gr_business.prebuild_balance(
-            thl_pg_config=thl_web_rr,
+            product_manager=product_manager,
             lm=ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,

@@ -1,160 +1,47 @@
-from collections.abc import Callable
-from typing import TYPE_CHECKING
-
-import faker
-
-from generalresearch.managers.thl.ipinfo import (
-    GeoIpInfoManager,
-    IPGeonameManager,
-    IPInformationManager,
-)
-from generalresearch.models.thl.ipinfo import (
-    GeoIPInformation,
-    IPGeoname,
-    IPInformation,
-)
-
-if TYPE_CHECKING:
-    from generalresearch.pg_helper import PostgresConfig
-    from generalresearch.redis_helper import RedisConfig
-
-fake = faker.Faker()
-
-
-class TestIPGeonameManager:
-
-    def test_init(
-        self, thl_web_rr: PostgresConfig, ip_geoname_manager: IPGeonameManager
-    ):
-
-        instance = IPGeonameManager(pg_config=thl_web_rr)
-        assert isinstance(instance, IPGeonameManager)
-        assert isinstance(ip_geoname_manager, IPGeonameManager)
-
-    def test_create(
-        self,
-        ip_geoname_factory: Callable[..., IPGeoname],
-        ip_geoname_manager: IPGeonameManager,
-    ):
-
-        instance = ip_geoname_factory()
-        assert isinstance(instance, IPGeoname)
-
-        res = ip_geoname_manager.fetch_geoname_ids(filter_ids=[instance.geoname_id])
-        assert res[0].model_dump_json() == instance.model_dump_json()
-
-
-class TestIPInformationManager:
-
-    def test_init(
-        self, thl_web_rr: PostgresConfig, ip_information_manager: IPInformationManager
-    ):
-        instance = IPInformationManager(pg_config=thl_web_rr)
-        assert isinstance(instance, IPInformationManager)
-        assert isinstance(ip_information_manager, IPInformationManager)
-
-    def test_create(
-        self,
-        ip_information_factory: Callable[..., IPInformation],
-        ip_information_manager: IPInformationManager,
-    ):
-        instance = ip_information_factory()
-        assert isinstance(instance, IPInformation)
-
-        res = ip_information_manager.fetch_ip_information(filter_ips=[instance.ip])
-        assert res[0].model_dump_json() == instance.model_dump_json()
-
-    def test_prefetch_geoname(
-        self,
-        ip_information: IPInformation,
-        ip_geoname: IPGeoname,
-        thl_web_rr: PostgresConfig,
-    ):
-        assert isinstance(ip_information, IPInformation)
-
-        assert ip_information.geoname_id == ip_geoname.geoname_id
-        assert ip_information.geoname is None
-
-        ip_information.prefetch_geoname(pg_config=thl_web_rr)
-        assert isinstance(ip_information.geoname, IPGeoname)
+from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
+from generalresearch.models.thl.ipinfo import GeoIPInformation
 
 
 class TestGeoIpInfoManager:
-    def test_init(
-        self,
-        thl_web_rr: PostgresConfig,
-        thl_redis_config: RedisConfig,
-        geoipinfo_manager: GeoIpInfoManager,
-    ):
-        instance = GeoIpInfoManager(pg_config=thl_web_rr, redis_config=thl_redis_config)
-        assert isinstance(instance, GeoIpInfoManager)
-        assert isinstance(geoipinfo_manager, GeoIpInfoManager)
+    def test_get(self, geoip_info_manager: GeoIpInfoManager):
+        result = geoip_info_manager.get("8.8.8.8")
 
-    def test_multi(
-        self,
-        ip_information_factory: Callable[..., IPInformation],
-        ip_geoname: IPGeoname,
-        geoipinfo_manager: GeoIpInfoManager,
-    ):
-        ip = fake.ipv4_public()
-        ip_information_factory(ip=ip, geoname=ip_geoname)
-        ips = [ip]
+        assert result == GeoIPInformation(
+            ip="8.8.8.8",
+            country_iso="us",
+            is_anonymous=False,
+            autonomous_system_number=15169,
+            autonomous_system_organization="Google",
+            access_type=None,
+        )
+        geoip_info_manager.grip_mmdb.lookup.assert_called_once_with("8.8.8.8")
 
-        # This only looks up in redis. They don't exist yet
-        res = geoipinfo_manager.get_cache_multi(ip_addresses=ips)
-        assert res == {ip: None}
+    def test_get_multi(self, geoip_info_manager: GeoIpInfoManager):
+        result = geoip_info_manager.get_multi(["8.8.8.8", "1.1.1.1", "8.8.8.8"])
 
-        # Looks up in redis, if not exists, looks in mysql, then sets
-        #   the caches that didn't exist.
-        res = geoipinfo_manager.get_multi(ip_addresses=ips)
-        assert res[ip] is not None
+        assert result == {
+            "8.8.8.8": GeoIPInformation(
+                ip="8.8.8.8",
+                country_iso="us",
+                is_anonymous=False,
+                autonomous_system_number=15169,
+                autonomous_system_organization="Google",
+                access_type=None,
+            ),
+            "1.1.1.1": GeoIPInformation(
+                ip="1.1.1.1",
+                country_iso="au",
+                is_anonymous=True,
+                autonomous_system_number=13335,
+                autonomous_system_organization="Cloudflare",
+                access_type=None,
+            ),
+        }
+        assert geoip_info_manager.grip_mmdb.lookup.call_count == 2
+        assert {
+            call.args[0] for call in geoip_info_manager.grip_mmdb.lookup.call_args_list
+        } == {"8.8.8.8", "1.1.1.1"}
 
-        ip2 = fake.ipv4_public()
-        ip_information_factory(ip=ip2, geoname=ip_geoname)
-        ips = [ip, ip2]
-        res = geoipinfo_manager.get_cache_multi(ip_addresses=ips)
-        assert res[ip] is not None
-        assert res[ip2] is None
-        res = geoipinfo_manager.get_multi(ip_addresses=ips)
-        assert res[ip] is not None
-        assert res[ip2] is not None
-        res = geoipinfo_manager.get_cache_multi(ip_addresses=ips)
-        assert res[ip] is not None
-        assert res[ip2] is not None
-
-    def test_multi_ipv6(
-        self,
-        ip_information_factory: Callable[..., IPInformation],
-        ip_geoname: IPGeoname,
-        geoipinfo_manager: GeoIpInfoManager,
-    ):
-        ip = fake.ipv6()
-        # Make another IP that will be in the same /64 block.
-        ip2 = ip[:-1] + "a" if ip[-1] != "a" else ip[:-1] + "b"
-        ip_information_factory(ip=ip, geoname=ip_geoname)
-        ips = [ip, ip2]
-        print(f"{ips=}")
-
-        # This only looks up in redis. They don't exist yet
-        res = geoipinfo_manager.get_cache_multi(ip_addresses=ips)
-        assert res == {ip: None, ip2: None}
-
-        # Looks up in redis, if not exists, looks in mysql, then sets
-        #   the caches that didn't exist.
-        res = geoipinfo_manager.get_multi(ip_addresses=ips)
-
-        res1 = res[ip]
-        assert isinstance(res1, GeoIPInformation)
-        assert res1.ip == ip
-        assert res1.lookup_prefix == "/64"
-
-        res2 = res[ip2]
-        assert isinstance(res2, GeoIPInformation)
-        assert res2.ip == ip2
-        assert res2.lookup_prefix == "/64"
-        # they should be the same basically, except for the ip
-
-    def test_doesnt_exist(self, geoipinfo_manager: GeoIpInfoManager):
-        ip = fake.ipv4_public()
-        res = geoipinfo_manager.get_multi(ip_addresses=[ip])
-        assert res == {ip: None}
+    def test_get_multi_empty(self, geoip_info_manager: GeoIpInfoManager):
+        assert geoip_info_manager.get_multi([]) == {}
+        geoip_info_manager.grip_mmdb.lookup.assert_not_called()

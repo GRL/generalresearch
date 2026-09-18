@@ -107,7 +107,7 @@ class TestTeam:
         self,
         gr_team: Team,
         gr_business: Business,
-        team_manager: TeamManager,
+        gr_team_manager: TeamManager,
         gr_business_manager: BusinessManager,
     ):
 
@@ -117,7 +117,7 @@ class TestTeam:
         assert isinstance(gr_team.businesses, list)
         assert len(gr_team.businesses) == 0
 
-        team_manager.add_business(team=gr_team, business=gr_business)
+        gr_team_manager.add_business(team=gr_team, business=gr_business)
         assert len(gr_team.businesses) == 0
         gr_team.prefetch_businesses(gr_business_manager=gr_business_manager)
         assert len(gr_team.businesses) == 1

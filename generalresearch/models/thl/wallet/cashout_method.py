@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import logging
 from datetime import UTC, datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any, Literal, Self
 
@@ -29,7 +30,6 @@ from generalresearch.models.thl.locales import CountryISO
 from generalresearch.models.thl.user_identifiers import BPUIDStr
 from generalresearch.models.thl.user_ref import UserRef
 from generalresearch.models.thl.wallet.definitions import Currency, PayoutType
-from generalresearch.utils.enum import ReprEnumMeta
 
 logger = logging.getLogger()
 
@@ -58,8 +58,8 @@ class CashoutMethodBase(BaseModel):
 
     id: UUIDStr = Field(description="Unique ID for this cashout method")
 
-    currency: Literal["USD"] = Field(
-        default="USD",
+    currency: Literal[Currency.USD] = Field(
+        default=Currency.USD,
         description="The currency of the cashout. Only USD is supported.",
     )
     original_currency: Currency | None = Field(
@@ -119,11 +119,12 @@ class CashoutMethodBase(BaseModel):
     #         return None
     #     return self.min_value * self.usd_exchange_rate
 
-    def validate_requested_amount(self, amount: PositiveInt):
+    def validate_requested_amount(self, amount: USDCent):
         """
         Check if 'amount' is a valid amount that can be requested.
         :param amount: The amount to be requested in USD Cents
         """
+        amount = int(amount)
         if amount <= 0:
             raise ValueError("Amount must be positive")
         if not self.min_value <= amount <= self.max_value:
@@ -215,6 +216,10 @@ class CashMailCashoutMethodData(BaseModel):
     )
 
 
+class CashMailCashoutMethodRequestData(CashMailCashoutMethodData):
+    pass
+
+
 class PaypalCashoutMethodData(BaseModel):
     type: Literal[PayoutType.PAYPAL] = Field(default=PayoutType.PAYPAL)
 
@@ -222,6 +227,26 @@ class PaypalCashoutMethodData(BaseModel):
         description="Email address of the paypal user",
         examples=["test@example.com"],
     )
+
+
+class PaypalCashoutMethodRequestData(BaseModel):
+    email: EmailStr = Field(
+        description="Email address of the paypal user",
+        examples=["test@example.com"],
+    )
+    interface: Literal["api"] = Field(default="api")
+
+
+class TangoCashoutMethodRequestData(BaseModel):
+    accountIdentifier: str = Field()
+    customerIdentifier: str = Field()
+    utid: str = Field(description="tango utid")
+    # This is not necessarily in USD. It is in whatever currency the card is in
+    amount: Decimal = Field(description="Amount to be paid out (in USD, EUR, etc)")
+    campaign: Literal["300large"]
+    sendEmail: bool = Field(default=False)
+    externalRefID: str = Field(description="External Ref ID")
+    description: str = Field()
 
 
 class TangoCashoutMethodData(BaseModel):
@@ -390,33 +415,6 @@ example_foreign_value = {
 }
 
 
-class RedemptionCurrency(StrEnum, metaclass=ReprEnumMeta):
-    """
-    Supported Currencies for Foreign Redemptions
-    """
-
-    # US Dollars. Smallest Unit: Cents.
-    USD = "USD"
-    # Canadian Dollars. Smallest Unit: Cents.
-    CAD = "CAD"
-    # British Pounds. Smallest Unit: Pence.
-    GBP = "GBP"
-    # Euros. Smallest Unit: Cents.
-    EUR = "EUR"
-    # Indian Rupees. Smallest Unit: Paise.
-    INR = "INR"
-    # Australian Dollars. Smallest Unit: Cents.
-    AUD = "AUD"
-    # Polish Zloty. Smallest Unit: Grosz.
-    PLN = "PLN"
-    # Swedish Krona. Smallest Unit: Öre.
-    SEK = "SEK"
-    # Singapore Dollars. Smallest Unit: Cents.
-    SGD = "SGD"
-    # Mexican Pesos. Smallest Unit: Centavos.
-    MXN = "MXN"
-
-
 class CashoutMethodForeignValue(BaseModel):
     """
     Shows the expected value of a redemption in a foreign currency.
@@ -427,8 +425,8 @@ class CashoutMethodForeignValue(BaseModel):
     value: NonNegativeInt = Field(
         description="Value of the redemption in the currency's smallest unit."
     )
-    currency: RedemptionCurrency = Field(
-        description=RedemptionCurrency.as_openapi_with_value_descriptions()
+    currency: Currency = Field(
+        description=Currency.as_openapi_with_value_descriptions()
     )
     value_string: str = Field(
         description="A string representation of the value in the currency."

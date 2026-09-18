@@ -7,9 +7,10 @@ from datetime import datetime
 from threading import Lock
 from typing import TYPE_CHECKING
 
-from cachetools import TTLCache, cachedmethod
+from cachetools import cachedmethod
 from pydantic import RedisDsn
 
+from generalresearch.cacheing import InstrumentedTTLCache
 from generalresearch.managers.base import Permission
 from generalresearch.managers.thl.product import ProductManager
 from generalresearch.managers.thl.user_manager.exceptions import (
@@ -87,7 +88,7 @@ class UserManager:
         self.product_manager = ProductManager(
             pg_config=pg_config, permissions=[Permission.READ]
         )
-        self.get_user_cache = TTLCache(maxsize=10000, ttl=30)
+        self.get_user_cache = InstrumentedTTLCache(maxsize=10000, ttl=30)
         self.get_user_cache_lock = Lock()
 
     def set_last_seen(self, user: User) -> None:
@@ -146,6 +147,10 @@ class UserManager:
         # It does not clear any redis caches; that has to be done separately.
         with self.get_user_cache_lock:
             self.get_user_cache.clear()
+
+    def cache_info(self):
+        with self.get_user_cache_lock:
+            return self.get_user_cache.cache_info()
 
     @deepcopy_return
     @cachedmethod(

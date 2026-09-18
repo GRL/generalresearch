@@ -8,12 +8,8 @@ from uuid import UUID, uuid4
 import pytest
 
 from generalresearch.currency import USDCent
-from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.payout import (
     BrokerageProductPayoutEvent,
-)
-from generalresearch.models.thl.wallet.cashout_method import (
-    CashoutRequestInfo,
 )
 
 if TYPE_CHECKING:
@@ -23,6 +19,7 @@ if TYPE_CHECKING:
     )
     from generalresearch.managers.thl.payout import (
         BrokerageProductPayoutEventManager,
+        BusinessPayoutEventManager,
         UserPayoutEventManager,
     )
     from generalresearch.models.thl.payout import UserPayoutEvent
@@ -30,7 +27,6 @@ if TYPE_CHECKING:
 
 
 class TestThlPayoutEventManager:
-
     def test_get_by_uuid(
         self, brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager
     ):
@@ -50,8 +46,9 @@ class TestThlPayoutEventManager:
         bp_payout_event_factory: Callable[..., BrokerageProductPayoutEvent],
         thl_ledger_manager: ThlLedgerManager,
         brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        create_main_accounts,
     ):
-
+        create_main_accounts()
         N_PRODUCTS = randint(3, 10)
         N_PAYOUT_EVENTS = randint(3, 10)
         amounts = []
@@ -122,38 +119,6 @@ class TestThlPayoutEventManager:
         assert len(res) == (N_PRODUCTS * N_PAYOUT_EVENTS)
         assert sum([i.amount for i in res]) == sum(amounts)
 
-    @pytest.mark.skip
-    def test_get_payout_detail(self, user_payout_event_manager: UserPayoutEventManager):
-        """This fails because the description coming back is None, but then
-        it tries to return a PayoutEvent which validates that the
-        description can't be None
-        """
-        from generalresearch.models.thl.payout import (
-            PayoutType,
-        )
-
-        rand_amount = randint(a=99, b=999)
-
-        pe = user_payout_event_manager.create(
-            debit_account_uuid=uuid4().hex,
-            account_reference_type="str-type-random",
-            account_reference_uuid=uuid4().hex,
-            cashout_method_uuid=uuid4().hex,
-            description="Best payout !",
-            amount=rand_amount,
-            status=PayoutStatus.PENDING,
-            ext_ref_id="123",
-            payout_type=PayoutType.CASH_IN_MAIL,
-            request_data={"foo": 123},
-            order_data={},
-        )
-
-        res = user_payout_event_manager.get_payout_detail(pe_uuid=pe.uuid)
-        assert isinstance(res, CashoutRequestInfo)
-
-    # def test_filter_by(self):
-    #     raise NotImplementedError
-
     def test_create(
         self,
         user_payout_event_factory: Callable[..., UserPayoutEvent],
@@ -185,6 +150,7 @@ class TestThlPayoutEventManager:
         create_main_accounts: Callable[..., None],
         thl_ledger_manager: ThlLedgerManager,
         brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+        business_payout_event_manager: BusinessPayoutEventManager,
         ledger_manager: LedgerManager,
     ):
 
@@ -198,13 +164,13 @@ class TestThlPayoutEventManager:
 
         # Save a Brokerage Product Payout, so we have something in the
         # Payout Event table and the respective ledger TX and Entry rows for it
-        pe = brokerage_product_payout_event_manager.create_bp_payout_event(
+        bus_pe = business_payout_event_manager.create_bp_payout_event(
             thl_ledger_manager=thl_ledger_manager,
             product=product,
             amount=USDCent(rand_amount),
-            skip_wallet_balance_check=True,
-            skip_one_per_day_check=True,
+            ext_ref_id=uuid4().hex
         )
+        pe = bus_pe.bp_payouts[0]
         assert isinstance(pe, BrokerageProductPayoutEvent)
 
         # Now try to query for it!
@@ -215,7 +181,7 @@ class TestThlPayoutEventManager:
         res = thl_ledger_manager.get_tx_bp_payouts(account_uuids=[uuid4().hex])
         assert len(res) == 0
 
-        # Confirm it added to the users balance. The amount is negative because
+        # Confirm it added to the user's balance. The amount is negative because
         #   money was sent to the Brokerage product: Product, but they didn't have
         #   any activity that earned them money
         bal = ledger_manager.get_account_balance(account=account_bp_wallet)
@@ -223,7 +189,6 @@ class TestThlPayoutEventManager:
 
 
 class TestBPPayoutEvent:
-
     def test_get_bp_bp_payout_events_for_products(
         self,
         product_factory: Callable[..., Product],

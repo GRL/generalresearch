@@ -35,27 +35,29 @@ class PayoutType(StrEnum, metaclass=ReprEnumMeta):
     AMT_ASSIGNMENT = "AMT_ASSIGNMENT"
 
 
-class Currency(StrEnum):
-    # United States Dollar
+class Currency(StrEnum, metaclass=ReprEnumMeta):
+    # United States Dollar. Smallest Unit: Cents.
     USD = "USD"
-    # Canadian Dollar
+    # Canadian Dollar. Smallest Unit: Cents.
     CAD = "CAD"
-    # British Pound Sterling
+    # British Pound. Smallest Unit: Pence.
     GBP = "GBP"
-    # Euro
+    # Euro. Smallest Unit: Cents.
     EUR = "EUR"
-    # Indian Rupee
+    # Indian Rupee. Smallest Unit: Paise.
     INR = "INR"
-    # Australian Dollar
+    # Australian Dollar. Smallest Unit: Cents.
     AUD = "AUD"
-    # Polish Zloty
+    # Polish Zloty. Smallest Unit: Grosz.
     PLN = "PLN"
-    # Swedish Krona
+    # Swedish Krona. Smallest Unit: Öre.
     SEK = "SEK"
-    # Singapore Dollar
+    # Singapore Dollar. Smallest Unit: Cents.
     SGD = "SGD"
-    # Mexican Peso
+    # Mexican Peso. Smallest Unit: Centavos.
     MXN = "MXN"
+
+SUPPORTED_CURRENCIES = {currency.value for currency in Currency}
 
 
 CURRENCY_FORMATTER = {

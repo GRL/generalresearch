@@ -1,10 +1,12 @@
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
 from generalresearch.managers.thl.wallet.approve import (
     approve_amt_cashout,
     approve_paypal_order,
 )
+from generalresearch.managers.thl.wallet.tango_tasks import complete_tango_order
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.wallet.definitions import PayoutType
 
@@ -12,10 +14,8 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
-    from generalresearch.managers.thl.payout import (
-        PayoutEventManager,
-        UserPayoutEventManager,
-    )
+    from generalresearch.managers.thl.payout import UserPayoutEventManager
+    from generalresearch.managers.thl.paypal import PayPalPayoutManager
     from generalresearch.managers.thl.tango_api import TangoClient
     from generalresearch.managers.thl.user_manager.user_manager import (
         UserManager,
@@ -34,8 +34,10 @@ def manage_pending_cashout(
     user_ip_history_manager: UserIpHistoryManager,
     user_manager: UserManager,
     ledger_manager: ThlLedgerManager,
+    geoip_info_manager: GeoIpInfoManager,
     order_data: dict[str, Any] | CashMailOrderData | None = None,
     tango_client: TangoClient | None = None,
+    paypal_client: PayPalPayoutManager | None = None,
 ) -> UserPayoutEvent:
     """
     Called by a UI actions performed by Todd. This rejects/approves/cancels
@@ -63,45 +65,45 @@ def manage_pending_cashout(
         "manage_pending_cashout called on user without managed wallet"
     )
     assert not user.blocked, "manage_pending_cashout: Blocked user"
-    assert not user_ip_history_manager.is_user_anonymous(user), (
-        "manage_pending_cashout: Anonymous user"
-    )
+    assert not user_ip_history_manager.is_user_anonymous(
+        user, geoip_info_manager=geoip_info_manager
+    ), "manage_pending_cashout: Anonymous user"
 
     # Just assign it with direct casting/type annotation
-    payout_event_manager: PayoutEventManager = user_payout_event_manager
+    # payout_event_manager: PayoutEventManager = user_payout_event_manager
 
     if new_status == PayoutStatus.APPROVED:
         if pe.payout_type == PayoutType.TANGO:
-            from generalresearch.managers.thl.wallet.tango import (
-                complete_tango_order,
-            )
-
             assert tango_client is not None
 
             complete_tango_order(
                 user=user,
                 payout_event=pe,
-                payout_event_manager=payout_event_manager,
+                user_payout_event_manager=user_payout_event_manager,
                 ledger_manager=ledger_manager,
                 tango_client=tango_client,
             )
 
         elif pe.payout_type == PayoutType.PAYPAL:
+            assert paypal_client is not None
+
             approve_paypal_order(
-                payout_event=pe, payout_event_manager=payout_event_manager
+                payout_event=pe,
+                user_payout_event_manager=user_payout_event_manager,
+                paypal_client=paypal_client,
             )
 
         elif pe.payout_type in {PayoutType.AMT_BONUS, PayoutType.AMT_HIT}:
             approve_amt_cashout(
                 user=user,
                 payout_event=pe,
-                payout_event_manager=payout_event_manager,
+                payout_event_manager=user_payout_event_manager,
                 ledger_manager=ledger_manager,
             )
 
         elif pe.payout_type == PayoutType.CASH_IN_MAIL:
             assert order_data, "must pass order_data"
-            payout_event_manager.update(
+            user_payout_event_manager.update(
                 pe, status=PayoutStatus.APPROVED, order_data=order_data
             )
             ledger_manager.create_tx_user_payout_complete(
@@ -130,24 +132,24 @@ def manage_pending_cashout(
             # uses manual_complete_paypal_order()
             raise ValueError("user custom paypal script for this")
 
-        payout_event_manager.update(pe, status=new_status)
+        user_payout_event_manager.update(pe, status=new_status)
 
         return pe
 
     elif new_status == PayoutStatus.REJECTED:
         # They lose the money in their wallet at this point, no ledger txs occur.
-        payout_event_manager.update(pe, status=new_status)
+        user_payout_event_manager.update(pe, status=new_status)
         return pe
 
     elif new_status == PayoutStatus.CANCELLED:
         # create another ledger item putting the money back into their wallet.
-        payout_event_manager.update(pe, status=new_status)
+        user_payout_event_manager.update(pe, status=new_status)
         ledger_manager.create_tx_user_payout_cancelled(user, payout_event=pe)
         return pe
 
     elif new_status == PayoutStatus.FAILED:
         # We just update the status (like in PayoutStatus.REJECTED). No ledger xs
-        payout_event_manager.update(pe, status=new_status)
+        user_payout_event_manager.update(pe, status=new_status)
         return pe
 
     else:

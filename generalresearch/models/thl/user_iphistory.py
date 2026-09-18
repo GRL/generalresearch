@@ -4,7 +4,6 @@ import ipaddress
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Self
 
-from faker import Faker
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -19,15 +18,12 @@ from generalresearch.models.custom_types import (
     IPvAnyAddressStr,
 )
 from generalresearch.models.thl.ipinfo import GeoIPInformation, normalize_ip
-from generalresearch.models.thl.user import User
+from generalresearch.models.thl.user_ref import UserRef
 
 if TYPE_CHECKING:
     from grip_client.enums import AccessType
 
-    from generalresearch.pg_helper import PostgresConfig
-    from generalresearch.redis_helper import RedisConfig
-
-fake = Faker()
+    from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
 
 
 class UserIPRecord(BaseModel):
@@ -43,30 +39,12 @@ class UserIPRecord(BaseModel):
 
     @property
     def is_anonymous(self) -> bool:
-        # default to False even if insights is not looked up
-        return (
-            self.information.is_anonymous
-            if self.information
-            and self.information.basic is False
-            and self.information.is_anonymous is not None
-            else False
-        )
-
-    @property
-    def user_type(self) -> AccessType | None:
-        return self.information.user_type if self.information else None
+        # Default to false if information is not looked up
+        return (self.information.is_anonymous if self.information else False) or False
 
     @property
     def access_type(self) -> AccessType | None:
-        return self.information.user_type if self.information else None
-
-    @property
-    def subdivision_1_iso(self) -> str | None:
-        return self.information.subdivision_1_iso if self.information else None
-
-    @property
-    def subdivision_2_iso(self) -> str | None:
-        return self.information.subdivision_2_iso if self.information else None
+        return self.information.access_type if self.information else None
 
 
 class IPRecord(BaseModel):
@@ -92,27 +70,6 @@ class IPRecord(BaseModel):
         self, ip: IPvAnyAddressStr, forwarded_ips: list[IPvAnyAddressStr]
     ) -> bool:
         return not (ip == self.ip and forwarded_ips == self.forwarded_ips)
-
-    # --- prefetch_* ---
-    def prefetch_ipinfo(
-        self,
-        pg_config: PostgresConfig,
-        redis_config: RedisConfig,
-        include_forwarded: bool = True,
-    ) -> None:
-        from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
-
-        m = GeoIpInfoManager(pg_config=pg_config, redis_config=redis_config)
-
-        if include_forwarded:
-            ips = {self.ip}
-            ips.update(set(self.forwarded_ips))
-            res = m.get_multi(ips)
-            self.information = res.get(self.ip)
-            for x in self.forwarded_ip_records:
-                x.information = res.get(x.ip)
-        else:
-            self.information = m.get(ip_address=self.ip)
 
     # --- ORM ---
     @classmethod
@@ -146,7 +103,7 @@ class IPRecord(BaseModel):
 class UserIPHistory(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
-    user_id: PositiveInt = Field()
+    user: UserRef = Field()
 
     # In thl-gprc, we run "audit_ip_history()", and so a user should
     #   get blocked after 100 IP switches or 30 unique IPs
@@ -165,9 +122,6 @@ class UserIPHistory(BaseModel):
         default=None, description="These are any IP addresses that came in "
     )
 
-    # -- prefetch_ fields
-    user: User | None = Field(default=None)
-
     @field_validator("ips", mode="after")
     @classmethod
     def ips_timestamp(cls, ips):
@@ -180,30 +134,11 @@ class UserIPHistory(BaseModel):
             reverse=True,
         )
 
-    def prefetch_user(
-        self,
-        pg_config: PostgresConfig,
-        redis_config: RedisConfig,
-        pg_config_rr: PostgresConfig,
-    ) -> None:
-        from generalresearch.managers.thl.user_manager.user_manager import (
-            UserManager,
-        )
-
-        um = UserManager(
-            pg_config=pg_config,
-            pg_config_rr=pg_config_rr,
-            redis=redis_config.dsn,
-        )
-        self.user = um.get_user(user_id=self.user_id)
-
-    def enrich_ips(self, pg_config: PostgresConfig, redis_config: RedisConfig) -> None:
-        from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
-
-        m = GeoIpInfoManager(pg_config=pg_config, redis_config=redis_config)
-
+    def enrich_ips(self, geoip_info_manager: GeoIpInfoManager) -> None:
+        if not self.ips:
+            return
         ip_addresses = {x.ip for x in self.ips if x.information is None}
-        res = m.get_multi(ip_addresses=ip_addresses)
+        res = geoip_info_manager.get_multi(ip_addresses=ip_addresses)
         for x in self.ips:
             if res.get(x.ip):
                 x.information = res[x.ip]

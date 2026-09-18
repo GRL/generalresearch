@@ -206,12 +206,12 @@ class TestLedgerManagerGetTx:
         self, ledger_tx: LedgerTransaction, tag: str, ledger_manager: LedgerManager
     ):
         # (1) search for a random tag
-        res = ledger_manager.get_tx_by_tag(tag="aaa:bbb")
+        res = ledger_manager.get_txs_by_tag(tag="aaa:bbb")
         assert isinstance(res, list)
         assert len(res) == 0
 
         # (2) search for the tag that was used during ledger_transaction creation
-        res = ledger_manager.get_tx_by_tag(tag=tag)
+        res = ledger_manager.get_txs_by_tag(tag=tag)
         assert isinstance(res, list)
         assert len(res) == 1
 

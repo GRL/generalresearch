@@ -56,43 +56,43 @@ class TestUserManager:
 
     def test_get_user_no_inmemory(self):
         self.user_manager.clear_user_inmemory_cache(self.user)
-        self.user_manager.get_user.__wrapped__.cache_clear()
+        self.user_manager.cache_clear()
         u = self.user_manager.get_user(user_id=self.user.user_id)
         # this should hit mysql
         assert u == self.user
 
-        cache_info = self.user_manager.get_user.__wrapped__.cache_info()
-        assert cache_info.hits == 0, cache_info
-        assert cache_info.misses == 1, cache_info
+        cache_info = self.user_manager.cache_info()
+        assert cache_info['hits'] == 0, cache_info
+        assert cache_info['misses'] == 1, cache_info
 
         # this should hit the lru cache
         u = self.user_manager.get_user(user_id=self.user.user_id)
         assert u == self.user
 
-        cache_info = self.user_manager.get_user.__wrapped__.cache_info()
-        assert cache_info.hits == 1, cache_info
-        assert cache_info.misses == 1, cache_info
+        cache_info = self.user_manager.cache_info()
+        assert cache_info['hits'] == 1, cache_info
+        assert cache_info['misses'] == 1, cache_info
 
     def test_get_user_with_inmemory(self):
         # user_manager = self.get_user_manager()
 
         self.user_manager.set_user_inmemory_cache(self.user)
-        self.user_manager.get_user.__wrapped__.cache_clear()
+        self.user_manager.cache_clear()
         u = self.user_manager.get_user(user_id=self.user.user_id)
         # this should hit inmemory cache
         assert u == self.user
 
-        cache_info = self.user_manager.get_user.__wrapped__.cache_info()
-        assert cache_info.hits == 0, cache_info
-        assert cache_info.misses == 1, cache_info
+        cache_info = self.user_manager.cache_info()
+        assert cache_info['hits'] == 0, cache_info
+        assert cache_info['misses'] == 1, cache_info
 
         # this should hit the lru cache
         u = self.user_manager.get_user(user_id=self.user.user_id)
         assert u == self.user
 
-        cache_info = self.user_manager.get_user.__wrapped__.cache_info()
-        assert cache_info.hits == 1, cache_info
-        assert cache_info.misses == 1, cache_info
+        cache_info = self.user_manager.cache_info()
+        assert cache_info['hits'] == 1, cache_info
+        assert cache_info['misses'] == 1, cache_info
 
 
 class TestBlockUserManager:

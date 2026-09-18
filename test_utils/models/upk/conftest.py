@@ -33,6 +33,13 @@ def insert_data_from_csv(
         df["id"] = df["id"].map(lambda x: UUID(x).hex)
     args = df.to_dict("tight")["data"]
 
+    # Fix issue with nullable cols
+    if table_name == 'marketplace_question':
+        for arg in args:
+            for idx, col in enumerate(arg):
+                if pd.isnull(col):
+                    arg[idx] = None
+
     with thl_web_rw.make_connection() as conn:
         with conn.cursor() as c:
             if disable_fk_checks:

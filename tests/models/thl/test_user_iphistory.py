@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 from generalresearch.models.thl.user_iphistory import (
     UserIPHistory,
     UserIPRecord,
 )
+from generalresearch.models.thl.user_ref import UserRef
 
 
 def test_collapse_ip_records():
@@ -33,7 +35,10 @@ def test_collapse_ip_records():
         ),
         UserIPRecord(ip="1.2.3.6", created=now + timedelta(minutes=7)),
     ]
-    iph = UserIPHistory(user_id=1, ips=records)
+    iph = UserIPHistory(
+        user=UserRef(user_id=1, product_user_id=uuid4().hex, product_id=uuid4().hex),
+        ips=records,
+    )
     res = iph.collapse_ip_records()
 
     # We should be left with one of the 1.2.3.5 ipv4s,

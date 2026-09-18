@@ -35,7 +35,10 @@ def generate_condition_mp_payment(wall: Wall) -> Callable[..., tuple[bool, str]]
     def _condition(lm: LedgerManager) -> tuple[bool, str]:
         tag = f"{lm.currency.value}:mp_payment:{wall_uuid}"
         txs = lm.get_tx_ids_by_tag(tag=tag)
-        return len(txs) == 0, "duplicate tag"
+        if len(txs) != 0:
+            return False, "duplicate tag"
+        else:
+            return True, ""
 
     return _condition
 
@@ -49,8 +52,11 @@ def generate_condition_bp_payment(session: Session) -> Callable[..., tuple[bool,
 
     def _condition(lm: LedgerManager) -> tuple[bool, str]:
         tag = f"{lm.currency.value}:bp_payment:{session_uuid}"
-        txs_ids = lm.get_tx_ids_by_tag(tag=tag)
-        return len(txs_ids) == 0, "duplicate tag"
+        txs = lm.get_tx_ids_by_tag(tag=tag)
+        if len(txs) != 0:
+            return False, "duplicate tag"
+        else:
+            return True, ""
 
     return _condition
 
@@ -62,7 +68,10 @@ def generate_condition_tag_exists(tag: str) -> Callable[..., tuple[bool, str]]:
 
     def _condition(lm: LedgerManager) -> tuple[bool, str]:
         txs_ids = lm.get_tx_ids_by_tag(tag=tag)
-        return len(txs_ids) == 0, "duplicate tag"
+        if len(txs_ids) != 0:
+            return False, "duplicate tag"
+        else:
+            return True, ""
 
     return _condition
 
