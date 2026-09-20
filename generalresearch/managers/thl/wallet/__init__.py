@@ -65,9 +65,9 @@ def manage_pending_cashout(
         "manage_pending_cashout called on user without managed wallet"
     )
     assert not user.blocked, "manage_pending_cashout: Blocked user"
-    assert not user_ip_history_manager.is_user_anonymous(
-        user, geoip_info_manager=geoip_info_manager
-    ), "manage_pending_cashout: Anonymous user"
+    assert not user_ip_history_manager.is_user_anonymous(user), (
+        "manage_pending_cashout: Anonymous user"
+    )
 
     # Just assign it with direct casting/type annotation
     # payout_event_manager: PayoutEventManager = user_payout_event_manager
