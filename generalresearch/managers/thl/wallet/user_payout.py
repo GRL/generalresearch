@@ -10,7 +10,6 @@ from redis import Redis
 
 from generalresearch.currency import USDCent
 from generalresearch.managers.thl.cashout_method import CashoutMethodManager
-from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
 from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionCreateError,
 )
@@ -18,6 +17,7 @@ from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerMana
 from generalresearch.managers.thl.payout import PayoutEventManager
 from generalresearch.managers.thl.userhealth import UserIpHistoryManager
 from generalresearch.managers.thl.wallet.tango import TangoManager
+from generalresearch.managers.utils import parse_order_by
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.payout import UserPayoutEvent
@@ -105,11 +105,14 @@ class UserPayoutEventManager(PayoutEventManager):
         amount: int | None = None,
         created: datetime | None = None,
         created_after: datetime | None = None,
-        product_ids: str | None = None,
+        product_ids: Collection[UUIDStr] | None = None,
         bp_user_ids: Collection[str] | None = None,
         cashout_method_uuids: Collection[UUIDStr] | None = None,
         cashout_types: Collection[PayoutType] | None = None,
         statuses: Collection[PayoutStatus] | None = None,
+        page: int | None = None,
+        size: int | None = None,
+        order_by: str = "created",
     ) -> list[UserPayoutEvent]:
         """Try to retrieve payout events by the product_id/user_uuid, amount,
         and optionally timestamp.
@@ -124,46 +127,58 @@ class UserPayoutEventManager(PayoutEventManager):
         Note: what used to be in thl-grpcs "ListCashoutRequests" calling
         "list_cashout_requests" was merged into this.
         """
-        args = []
+        args = {}
         filters = []
 
         if reference_uuid:
             # This could be a product_id or a user_uuid
-            filters.append("la.reference_uuid = %s")
-            args.append(reference_uuid)
-
-        if debit_account_uuids:
+            filters.append("la.reference_uuid = %(reference_uuid)s")
+            args["reference_uuid"] = reference_uuid
+        if debit_account_uuids is not None:
             # Or we could use the bp_wallet or user_wallet's account uuid
             # instead of looking up by the product/user
-            filters.append("ep.debit_account_uuid = ANY(%s)")
-            args.append(debit_account_uuids)
+            filters.append("ep.debit_account_uuid = ANY(%(debit_account_uuids)s)")
+            args["debit_account_uuids"] = list(debit_account_uuids)
         if amount:
-            filters.append("ep.amount = %s")
-            args.append(amount)
+            filters.append("ep.amount = %(amount)s")
+            args["amount"] = amount
         if created:
-            filters.append("ep.created = %s")
-            args.append(created.replace(tzinfo=None))
+            filters.append("ep.created = %(created)s")
+            args["created"] = created
         if created_after:
-            filters.append("ep.created >= %s")
-            args.append(created_after.replace(tzinfo=None))
-        if product_ids:
-            filters.append("product_id = ANY(%s)")
-            args.append(product_ids)
-        if bp_user_ids:
-            filters.append("product_user_id = ANY(%s)")
-            args.append(bp_user_ids)
-        if cashout_method_uuids:
-            filters.append("cashout_method_uuid = ANY(%s)")
-            args.append(cashout_method_uuids)
-        if cashout_types:
-            filters.append("payout_type = ANY(%s)")
-            args.append([x.value for x in cashout_types])
-        if statuses:
-            filters.append("status = ANY(%s)")
-            args.append([x.value for x in statuses])
+            filters.append("ep.created >= %(created_after)s")
+            args["created_after"] = created_after
+        if product_ids is not None:
+            filters.append("u.product_id = ANY(%(product_ids)s)")
+            args["product_ids"] = list(product_ids)
+        if bp_user_ids is not None:
+            filters.append("u.product_user_id = ANY(%(bp_user_ids)s)")
+            args["bp_user_ids"] = list(bp_user_ids)
+        if cashout_method_uuids is not None:
+            filters.append("ep.cashout_method_uuid = ANY(%(cashout_method_uuids)s)")
+            args["cashout_method_uuids"] = list(cashout_method_uuids)
+        if cashout_types is not None:
+            filters.append("ep.payout_type = ANY(%(cashout_types)s)")
+            args["cashout_types"] = [x.value for x in cashout_types]
+        if statuses is not None:
+            filters.append("ep.status = ANY(%(statuses)s)")
+            args["statuses"] = [x.value for x in statuses]
 
         assert len(filters) > 0, "must pass at least 1 filter"
+
+        paginated_filter_str = ""
+        if page is not None:
+            assert type(page) is int
+            assert page >= 1, "page starts at 1"
+            size = size if size is not None else 100
+            assert type(size) is int
+            assert 1 <= size <= 100
+            args["offset"] = (page - 1) * size
+            args["limit"] = size
+            paginated_filter_str = "LIMIT %(limit)s OFFSET %(offset)s"
+
         filter_str = "WHERE " + " AND ".join(filters)
+        order_by_str = parse_order_by(order_by)
 
         res = self.pg_config.execute_sql_query(
             query=f"""
@@ -175,15 +190,22 @@ class UserPayoutEventManager(PayoutEventManager):
                 ep.request_data::jsonb,
                 ac.name as description,
                 la.reference_type as account_reference_type,
-                la.reference_uuid as account_reference_uuid
+                la.reference_uuid as account_reference_uuid,
+                jsonb_build_object(
+                    'user_id', u.id,
+                    'product_id', REPLACE(u.product_id::varchar, '-', ''),
+                    'product_user_id', u.product_user_id
+                ) AS user
             FROM event_payout AS ep
-            LEFT JOIN accounting_cashoutmethod AS ac 
-                ON ep.cashout_method_uuid = ac.id 
-            LEFT JOIN ledger_account AS la
+            LEFT JOIN accounting_cashoutmethod AS ac
+                ON ep.cashout_method_uuid = ac.id
+            JOIN ledger_account AS la
                 ON la.uuid = ep.debit_account_uuid
-            LEFT JOIN thl_user u
+            JOIN thl_user u
                 ON la.reference_uuid = u.uuid
             {filter_str}
+            {order_by_str}
+            {paginated_filter_str}
         """,
             params=args,
         )
@@ -334,7 +356,9 @@ class UserPayoutEventManager(PayoutEventManager):
         product = user.product
         banned_countries = user.product.user_health_config.banned_countries
 
-        assert not user_ip_history_manager.is_user_anonymous(user), "Anonymous user requesting redemption"
+        assert not user_ip_history_manager.is_user_anonymous(user), (
+            "Anonymous user requesting redemption"
+        )
         if country_iso in banned_countries:
             raise AssertionError("Banned country requesting redemption")
 

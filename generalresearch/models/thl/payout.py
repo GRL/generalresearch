@@ -23,6 +23,7 @@ from generalresearch.models.custom_types import (
     UUIDStrCoerce,
 )
 from generalresearch.models.thl.definitions import PayoutStatus
+from generalresearch.models.thl.user_ref import UserRef
 from generalresearch.models.thl.wallet.cashout_method import (
     CashMailOrderData,
 )
@@ -179,6 +180,8 @@ class UserPayoutEvent(PayoutEvent):
     #   populated from the db and so does not need to be set (there is no
     #   `description` field in event_payout)
     description: str | None = Field(default=None)
+
+    user: UserRef | None = Field(default=None)
 
     @field_validator("payout_type", mode="before")
     @classmethod
