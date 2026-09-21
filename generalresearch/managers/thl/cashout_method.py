@@ -347,10 +347,26 @@ class CashoutMethodManager(PostgresManager):
                 else:
                     x.usd_exchange_rate = usd_exchange_rate[x.original_currency]
                 # If the user has foreign cards available, we need to show their min_value in USD
-                x.min_value_usd = USDCent(round(x.min_value * x.usd_exchange_rate))
+                x.min_value_usd = max(
+                    USDCent(round(x.min_value * x.usd_exchange_rate)),
+                    min_value,
+                )
                 x.max_value_usd = USDCent(round(x.max_value * x.usd_exchange_rate))
-                # Adjust min_value for BP
-                x.min_value = max(x.min_value_usd, min_value)
+                # Keep min_value in the method's original currency and use the
+                # same conversion and rounding as TangoManager.make_request.
+                x.min_value = max(
+                    x.min_value,
+                    round(int(min_value) / x.usd_exchange_rate),
+                )
+
+        # A product minimum above the method maximum makes the method unusable.
+        cms = [
+            x
+            for x in cms
+            if x.min_value_usd is None
+            or x.max_value_usd is None
+            or x.min_value_usd <= x.max_value_usd
+        ]
 
         return {x.id: x for x in cms}
 

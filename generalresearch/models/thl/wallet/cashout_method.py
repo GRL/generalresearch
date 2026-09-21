@@ -119,6 +119,18 @@ class CashoutMethodBase(BaseModel):
     #         return None
     #     return self.min_value * self.usd_exchange_rate
 
+    @model_validator(mode="after")
+    def validate_value_ranges(self) -> Self:
+        if self.min_value > self.max_value:
+            raise ValueError("min_value must not exceed max_value")
+        if (
+            self.min_value_usd is not None
+            and self.max_value_usd is not None
+            and self.min_value_usd > self.max_value_usd
+        ):
+            raise ValueError("min_value_usd must not exceed max_value_usd")
+        return self
+
     def validate_requested_amount(self, amount: USDCent):
         """
         Check if 'amount' is a valid amount that can be requested.
@@ -127,10 +139,20 @@ class CashoutMethodBase(BaseModel):
         amount = int(amount)
         if amount <= 0:
             raise ValueError("Amount must be positive")
-        if not self.min_value <= amount <= self.max_value:
+        if self.original_currency not in {None, Currency.USD} and (
+            self.min_value_usd is None or self.max_value_usd is None
+        ):
+            raise ValueError("USD limits are required for a foreign cashout method")
+        min_value = (
+            self.min_value if self.min_value_usd is None else self.min_value_usd
+        )
+        max_value = (
+            self.max_value if self.max_value_usd is None else self.max_value_usd
+        )
+        if not min_value <= amount <= max_value:
             raise ValueError(
                 f"Invalid amount requested: ${amount / 100:.2f}. Must be between"
-                f" ${int(self.min_value) / 100:.2f} and ${int(self.max_value) / 100:.2f}"
+                f" ${int(min_value) / 100:.2f} and ${int(max_value) / 100:.2f}"
             )
         if self.type == PayoutType.CASH_IN_MAIL and amount % 500 != 0:
             raise ValueError("Amount must be in increments of $5.00")
