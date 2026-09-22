@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Collection
 
+import email_normalize
+from pydantic import EmailStr, TypeAdapter
+
 from generalresearch.managers.base import PostgresManager
+from generalresearch.models.custom_types import CanonicalEmailStr
 from generalresearch.models.thl.user_profile import UserMetadata
 
 
@@ -26,6 +30,20 @@ class UserMetadataManager(PostgresManager):
 
         return {x["product_user_id"]: UserMetadata.from_db(**x) for x in res}
 
+    def filter_by_email_aliases(
+        self, email_addresses: Collection[EmailStr]
+    ) -> list[UserMetadata]:
+        """
+        Accepts raw or canonical emails, normalizes them, and then filters
+         by the normalized/canonical email.
+        """
+        validated_emails = TypeAdapter(list[EmailStr]).validate_python(email_addresses)
+        canonical_emails = {
+            email_normalize.normalize(email).normalized_address
+            for email in validated_emails
+        }
+        return self.filter(canonical_emails=canonical_emails)
+
     def filter(
         self,
         user_ids: Collection[int] | None = None,
@@ -33,7 +51,7 @@ class UserMetadataManager(PostgresManager):
         email_sha256s: Collection[str] | None = None,
         email_sha1s: Collection[str] | None = None,
         email_md5s: Collection[str] | None = None,
-        canonical_emails: Collection[str] | None = None,
+        canonical_emails: Collection[CanonicalEmailStr] | None = None,
     ) -> list[UserMetadata]:
         for arg in [
             user_ids,
@@ -66,6 +84,9 @@ class UserMetadataManager(PostgresManager):
             params["email_md5"] = list(set(email_md5s))
             filters.append("email_md5 = ANY(%(email_md5)s)")
         if canonical_emails is not None:
+            canonical_emails = TypeAdapter(list[CanonicalEmailStr]).validate_python(
+                canonical_emails
+            )
             params["canonical_emails"] = list(set(canonical_emails))
             filters.append("canonical_email = ANY(%(canonical_emails)s)")
 

@@ -6,9 +6,11 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
+import email_normalize
 from pydantic import (
     AnyUrl,
     AwareDatetime,
+    EmailStr,
     Field,
     HttpUrl,
     IPvAnyAddress,
@@ -34,6 +36,22 @@ def validate_hostname(v: str) -> str:
 
 
 InternalHostname = Annotated[str, AfterValidator(validate_hostname)]
+
+
+def validate_canonical_email(value: str) -> str:
+    normalized_email = email_normalize.normalize(value).normalized_address
+    if value != normalized_email:
+        raise ValueError(
+            f"canonical email must already be normalized: "
+            f"{value!r} != {normalized_email!r}"
+        )
+    return value
+
+
+CanonicalEmailStr = Annotated[
+    EmailStr,
+    BeforeValidator(validate_canonical_email),
+]
 
 
 class PostgresDict(MultiHostHost):
@@ -62,9 +80,9 @@ def convert_str_dt(v: Any) -> AwareDatetime | None:
 def assert_utc(v: AwareDatetime) -> AwareDatetime:
     if isinstance(v, datetime):
         # We need utcoffset b/c FastAPI parses datetimes using FixedTimezone
-        assert v.tzinfo == UTC or v.tzinfo.utcoffset(v) == timedelta(
-            0
-        ), "Timezone is not UTC"
+        assert v.tzinfo == UTC or v.tzinfo.utcoffset(v) == timedelta(0), (
+            "Timezone is not UTC"
+        )
         v = v.astimezone(UTC)
     return v
 
@@ -98,7 +116,7 @@ LanguageISOLike = Annotated[
 def check_valid_uuid(v: str) -> str:
     try:
         assert UUID(v).hex == v
-    except (ValueError, AssertionError):
+    except ValueError, AssertionError:
         raise ValueError("Invalid UUID")
     return v
 
@@ -106,7 +124,7 @@ def check_valid_uuid(v: str) -> str:
 def is_valid_uuid(v: str) -> bool:
     try:
         assert UUID(v).hex == v
-    except (ValueError, AssertionError):
+    except ValueError, AssertionError:
         return False
     return True
 

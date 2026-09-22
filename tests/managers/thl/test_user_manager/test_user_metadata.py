@@ -141,3 +141,15 @@ class TestUserMetadataManager:
 
         res = user_metadata_manager.filter(canonical_emails=[expected_canonical])
         assert len(res) == 1
+
+        res = user_metadata_manager.filter_by_email_aliases(
+            email_addresses=[f"{local}+789@googlemail.com", expected_canonical]
+        )
+        assert len(res) == 1
+
+        with pytest.raises(
+            ValueError, match="canonical email must already be normalized"
+        ):
+            user_metadata_manager.filter(
+                canonical_emails=[f"{local}+789@googlemail.com"]
+            )
