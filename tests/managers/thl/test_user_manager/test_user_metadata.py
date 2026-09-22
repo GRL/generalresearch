@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
 
 class TestUserMetadataManager:
-
     def test_get_notset(
         self,
         user: User,
@@ -113,3 +112,32 @@ class TestUserMetadataManager:
         with pytest.raises(expected_exception=ValueError) as e:
             res = user_metadata_manager.get(email_address=email_address)
         assert "More than 1 result returned!" in str(e.value)
+
+    def test_canonical(
+        self,
+        product: Product,
+        user_factory: Callable[..., User],
+        user_metadata_manager: UserMetadataManager,
+    ):
+
+        u: User = user_factory(product=product)
+
+        rand_part = uuid4().hex[:12]
+        local = f"Example.{rand_part}"
+        expected_canonical = f"example{rand_part}@gmail.com"
+
+        um = UserMetadata(
+            user_id=u.user_id, email_address=f"{local}+123@googlemail.com"
+        )
+        assert um.canonical_email == expected_canonical
+        user_metadata_manager.update(user_metadata=um)
+
+        um.email_address = f"{local}+456@googlemail.com"
+        user_metadata_manager.update(user_metadata=um)
+
+        um2 = user_metadata_manager.get(email_address=um.email_address)
+        assert um2.email_address == f"{local}+456@googlemail.com"
+        assert um2.canonical_email == expected_canonical
+
+        res = user_metadata_manager.filter(canonical_emails=[expected_canonical])
+        assert len(res) == 1

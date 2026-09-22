@@ -369,10 +369,14 @@ class THLUserMetadata(models.Model):
         to=THLUser, on_delete=models.RESTRICT, null=False, primary_key=True
     )
 
+
     email_address = models.CharField(max_length=320, null=True)
     email_sha256 = models.CharField(max_length=64, null=True)
     email_sha1 = models.CharField(max_length=40, null=True)
     email_md5 = models.CharField(max_length=32, null=True)
+
+    # "Donald.Duck+123@googlemail.com" -> "donaldduck@gmail.com"
+    canonical_email = models.CharField(max_length=320, null=True)
 
     # Not unique within a BP, or anything like that. A user
     #   can set this to whatever they like. No index
@@ -386,6 +390,7 @@ class THLUserMetadata(models.Model):
             models.Index(fields=["email_sha256"]),
             models.Index(fields=["email_sha1"]),
             models.Index(fields=["email_md5"]),
+            models.Index(fields=["canonical_email"]),
         ]
 
 

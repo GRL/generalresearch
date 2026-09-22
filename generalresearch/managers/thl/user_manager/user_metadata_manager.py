@@ -11,8 +11,9 @@ class UserMetadataManager(PostgresManager):
         self, product_id: str, product_user_ids: Collection[str]
     ) -> dict[str, UserMetadata]:
         query = """
-        SELECT email_address, email_sha256, email_sha1, email_md5, display_name,
-            product_user_id, thl_user.id as user_id
+        SELECT email_address, canonical_email, email_sha256,
+               email_sha1, email_md5, display_name,
+               product_user_id, thl_user.id as user_id
         FROM thl_usermetadata
             RIGHT OUTER JOIN thl_user on thl_usermetadata.user_id = thl_user.id
         WHERE product_id = %(product_id)s
@@ -32,6 +33,7 @@ class UserMetadataManager(PostgresManager):
         email_sha256s: Collection[str] | None = None,
         email_sha1s: Collection[str] | None = None,
         email_md5s: Collection[str] | None = None,
+        canonical_emails: Collection[str] | None = None,
     ) -> list[UserMetadata]:
         for arg in [
             user_ids,
@@ -39,6 +41,7 @@ class UserMetadataManager(PostgresManager):
             email_sha256s,
             email_sha1s,
             email_md5s,
+            canonical_emails,
         ]:
             assert arg is None or isinstance(arg, (set, list)), (
                 "must pass a collection of objects"
@@ -47,26 +50,30 @@ class UserMetadataManager(PostgresManager):
         filters = []
         params = {}
 
-        if user_ids:
+        if user_ids is not None:
             params["user_id"] = list(set(user_ids))
             filters.append("user_id = ANY(%(user_id)s)")
-        if email_addresses:
+        if email_addresses is not None:
             params["email_address"] = list(set(email_addresses))
             filters.append("email_address = ANY(%(email_address)s)")
-        if email_sha256s:
+        if email_sha256s is not None:
             params["email_sha256"] = list(set(email_sha256s))
             filters.append("email_sha256 = ANY(%(email_sha256)s)")
-        if email_sha1s:
+        if email_sha1s is not None:
             params["email_sha1"] = list(set(email_sha1s))
             filters.append("email_sha1 = ANY(%(email_sha1)s)")
-        if email_md5s:
+        if email_md5s is not None:
             params["email_md5"] = list(set(email_md5s))
             filters.append("email_md5 = ANY(%(email_md5)s)")
+        if canonical_emails is not None:
+            params["canonical_emails"] = list(set(canonical_emails))
+            filters.append("canonical_email = ANY(%(canonical_emails)s)")
 
         filter_str = "WHERE " + " AND ".join(filters) if filters else ""
         res = self.pg_config.execute_sql_query(
             f"""
-        SELECT user_id, email_address, email_sha256, email_sha1, email_md5, display_name
+        SELECT user_id, email_address, email_sha256, email_sha1,
+            email_md5, display_name, canonical_email
         FROM thl_usermetadata
         {filter_str}
         """,
@@ -146,6 +153,7 @@ class UserMetadataManager(PostgresManager):
                 UPDATE thl_usermetadata
                 SET 
                     email_address = %(email_address)s,
+                    canonical_email = %(canonical_email)s,
                     email_sha256 = %(email_sha256)s,
                     email_sha1 = %(email_sha1)s,
                     email_md5 = %(email_md5)s,
@@ -162,12 +170,12 @@ class UserMetadataManager(PostgresManager):
         return self.pg_config.execute_write(
             query="""
             INSERT INTO thl_usermetadata (
-                user_id, email_address, email_sha256,
-                email_sha1, email_md5, display_name
+                user_id, email_address, canonical_email,
+                email_sha256, email_sha1, email_md5, display_name
             )
             VALUES (
-                %(user_id)s, %(email_address)s, %(email_sha256)s, 
-                %(email_sha1)s, %(email_md5)s, %(display_name)s
+                %(user_id)s, %(email_address)s, %(canonical_email)s, 
+                %(email_sha256)s, %(email_sha1)s, %(email_md5)s, %(display_name)s
             );
         """,
             params=user_metadata.to_db(),

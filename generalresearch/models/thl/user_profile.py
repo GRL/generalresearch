@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from typing import Annotated, Any, Self
 
+import email_normalize
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -24,13 +25,25 @@ class UserMetadata(BaseModel):
 
     user_id: SkipJsonSchema[PositiveInt] = Field(exclude=True, lt=MAX_INT32)
 
-    email_address: EmailStr | None = Field(default=None, examples=["contact@mail.com"])
+    email_address: EmailStr | None = Field(
+        default=None, examples=["Donald.Duck+123@googlemail.com"]
+    )
 
     display_name: str | None = Field(
         default=None,
         max_length=255,
         description="A public name chosen by the user. Can be used in leaderboards or event stream.",
     )
+
+    @computed_field(
+        description="Normalized email address by stripping mailbox-provider-specific behaviors such as plus addressing and period ignoring",
+        examples=["donaldduck@gmail.com"],
+    )
+    def canonical_email(self) -> EmailStr | None:
+        if self.email_address is None:
+            return None
+
+        return email_normalize.normalize(self.email_address).normalized_address
 
     @computed_field
     def email_md5(
@@ -98,6 +111,8 @@ class UserMetadata(BaseModel):
                 "display_name": display_name,
             }
         )
+        if kwargs.get("canonical_email") is not None:
+            assert obj.canonical_email == kwargs["canonical_email"], "canonical email mismatch"
 
         if kwargs.get("email_md5") is not None:
             assert obj.email_md5 == kwargs["email_md5"], "email_md5 mismatch"
