@@ -47,12 +47,19 @@ class UserPayoutEventManager(PayoutEventManager):
                     -- User Payout specific
                     ac.name as description, 
                     la.reference_type as account_reference_type,
-                    la.reference_uuid as account_reference_uuid
+                    la.reference_uuid as account_reference_uuid,
+                    jsonb_build_object(
+                        'user_id', u.id,
+                        'product_id', REPLACE(u.product_id::varchar, '-', ''),
+                        'product_user_id', u.product_user_id
+                    ) AS user
             FROM event_payout AS ep
             LEFT JOIN accounting_cashoutmethod AS ac 
                 ON ep.cashout_method_uuid = ac.id
-            LEFT JOIN ledger_account AS la 
+            JOIN ledger_account AS la 
                 ON la.uuid = ep.debit_account_uuid
+            JOIN thl_user u
+                ON la.reference_uuid = u.uuid
             WHERE ep.uuid = %s
         """,
             params=[pe_uuid],
@@ -96,6 +103,8 @@ class UserPayoutEventManager(PayoutEventManager):
             description=pe.description,
             transaction_info=transaction_info,
             message="",
+            product_id=pe.user.product_id,
+            product_user_id=pe.user.product_user_id,
         )
 
     def filter_by(

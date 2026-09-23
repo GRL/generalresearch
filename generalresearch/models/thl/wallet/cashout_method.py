@@ -420,6 +420,8 @@ class CashoutRequestInfo(BaseModel):
         examples=[PayoutStatus.PENDING],
     )
     transaction_info: dict[str, Any] | None = Field(default=None)
+    product_id: UUIDStr = Field()
+    product_user_id: BPUIDStr = Field()
 
 
 class CashoutRequestResponse(StatusResponse):
