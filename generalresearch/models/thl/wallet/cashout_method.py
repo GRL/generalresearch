@@ -143,12 +143,8 @@ class CashoutMethodBase(BaseModel):
             self.min_value_usd is None or self.max_value_usd is None
         ):
             raise ValueError("USD limits are required for a foreign cashout method")
-        min_value = (
-            self.min_value if self.min_value_usd is None else self.min_value_usd
-        )
-        max_value = (
-            self.max_value if self.max_value_usd is None else self.max_value_usd
-        )
+        min_value = self.min_value if self.min_value_usd is None else self.min_value_usd
+        max_value = self.max_value if self.max_value_usd is None else self.max_value_usd
         if not min_value <= amount <= max_value:
             raise ValueError(
                 f"Invalid amount requested: ${amount / 100:.2f}. Must be between"

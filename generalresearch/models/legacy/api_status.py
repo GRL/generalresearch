@@ -12,7 +12,9 @@ from pydantic import BaseModel, Field
 
 class StatusResponse(BaseModel):
     status: Literal["success", "error"] = Field(
-        description="The status of the API response.", examples=["success"]
+        description="The status of the API response.",
+        examples=["success"],
+        default="success",
     )
     msg: str | None = Field(
         description="An optional message, if the status is error.",

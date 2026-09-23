@@ -20,6 +20,7 @@ from generalresearch.models.thl.wallet.definitions import (
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.wallet.tango import TangoManager
+    from generalresearch.models.thl.product import Product
     from generalresearch.models.thl.user import User
     from generalresearch.models.thl.wallet.cashout_method import (
         CashMailCashoutMethodData,
@@ -246,6 +247,93 @@ class CashoutMethodManager(PostgresManager):
         )
         return [self.format_from_db(x, user=user) for x in res]
 
+    def get_cashout_method(
+        self,
+        cashout_method_id: str,
+        product_id: str,
+        usd_exchange_rate: dict[Currency, float],
+    ) -> CashoutMethod:
+        from generalresearch.managers.thl.product import ProductManager
+
+        product = ProductManager(pg_config=self.pg_config).get_by_uuid(
+            product_uuid=product_id
+        )
+        supported_payout_types = copy(product.user_wallet_config.supported_payout_types)
+        if product.user_wallet_config.amt:
+            supported_payout_types.add(PayoutType.AMT)
+        res = self.pg_config.execute_sql_query(
+            query="""
+                SELECT ac.id::uuid, ac.provider, ac.ext_id,
+                    ac.data::jsonb as _data_, ac.user_id, u.product_user_id
+                FROM accounting_cashoutmethod AS ac
+                LEFT JOIN thl_user AS u
+                    ON ac.user_id = u.id AND u.product_id = %(product_id)s
+                WHERE ac.id = %(cashout_method_id)s
+                AND ac.is_live
+                AND (ac.user_id IS NULL OR u.id IS NOT NULL)
+                AND ac.provider = ANY(%(supported_payout_types)s)
+                LIMIT 1
+            """,
+            params={
+                "cashout_method_id": cashout_method_id,
+                "product_id": product_id,
+                "supported_payout_types": [
+                    payout_type.value for payout_type in supported_payout_types
+                ],
+            },
+        )
+        assert res, (
+            f"No cashout method found with id {cashout_method_id} "
+            f"for product {product_id}"
+        )
+        row = res[0]
+        user = None
+        if row["user_id"] is not None:
+            user = UserRef(
+                user_id=row["user_id"],
+                product_id=product_id,
+                product_user_id=row.pop("product_user_id"),
+            )
+        cashout_method = self.format_from_db(row, user=user)
+        cashout_method = self.apply_currency_adjustments(
+            cashout_method=cashout_method,
+            product=product,
+            usd_exchange_rate=usd_exchange_rate,
+        )
+        assert cashout_method is not None, (
+            f"Cashout method {cashout_method_id} is unavailable for product {product_id}"
+        )
+        return cashout_method
+
+    @staticmethod
+    def apply_currency_adjustments(
+        cashout_method: CashoutMethod,
+        product: Product,
+        usd_exchange_rate: dict[Currency, float],
+    ) -> CashoutMethod | None:
+        min_value_usd = product.user_wallet_config.min_cashout or 0
+        product_min_value = USDCent(round(min_value_usd * 100))
+
+        if cashout_method.original_currency in {None, Currency.USD}:
+            exchange_rate = 1.0
+        else:
+            exchange_rate = usd_exchange_rate[cashout_method.original_currency]
+
+        method_min_value_usd = USDCent(round(cashout_method.min_value * exchange_rate))
+        min_value = max(method_min_value_usd, product_min_value)
+        max_value = USDCent(round(cashout_method.max_value * exchange_rate))
+        if min_value > max_value:
+            return None
+
+        cashout_method.usd_exchange_rate = exchange_rate
+        cashout_method.min_value_usd = min_value
+        cashout_method.max_value_usd = max_value
+        cashout_method.min_value = max(
+            cashout_method.min_value,
+            round(int(product_min_value) / exchange_rate),
+        )
+        return cashout_method
+
     def get_cashout_methods(self, user: User) -> list[CashoutMethod]:
         """
         The provider column is PayoutType. Some are only user-scoped,
@@ -324,8 +412,6 @@ class CashoutMethodManager(PostgresManager):
         # BP can set their own min in USD or equivalent
         user.prefetch_product(pg_config=self.pg_config)
         product = user.product
-        min_value_usd = product.user_wallet_config.min_cashout or 0
-        min_value = USDCent(round(min_value_usd * 100))
 
         cms = self.get_cashout_methods(user=user)
 
@@ -339,34 +425,10 @@ class CashoutMethodManager(PostgresManager):
             or cm.type != PayoutType.TANGO
         ]
 
-        for x in cms:
-            # assets in non-USD need to be converted to USD here
-            if x.original_currency is not None:
-                if x.original_currency == Currency.USD:
-                    x.usd_exchange_rate = 1.0
-                else:
-                    x.usd_exchange_rate = usd_exchange_rate[x.original_currency]
-                # If the user has foreign cards available, we need to show their min_value in USD
-                x.min_value_usd = max(
-                    USDCent(round(x.min_value * x.usd_exchange_rate)),
-                    min_value,
-                )
-                x.max_value_usd = USDCent(round(x.max_value * x.usd_exchange_rate))
-                # Keep min_value in the method's original currency and use the
-                # same conversion and rounding as TangoManager.make_request.
-                x.min_value = max(
-                    x.min_value,
-                    round(int(min_value) / x.usd_exchange_rate),
-                )
-
-        # A product minimum above the method maximum makes the method unusable.
         cms = [
-            x
-            for x in cms
-            if x.min_value_usd is None
-            or x.max_value_usd is None
-            or x.min_value_usd <= x.max_value_usd
+            self.apply_currency_adjustments(x, product, usd_exchange_rate) for x in cms
         ]
+        cms = [x for x in cms if x is not None]
 
         return {x.id: x for x in cms}
 
