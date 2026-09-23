@@ -101,6 +101,8 @@ class UserManager:
         This does not rewrite historical or derived data that copied the old ID,
         such as leaderboards and activity counters.
         """
+        from generalresearch.models.thl.user import User
+
         assert Permission.UPDATE in self.sql_permissions, "permission error"
         assert self.mysql_user_manager is not None
         assert user.product_id is not None
