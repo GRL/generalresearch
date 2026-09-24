@@ -411,6 +411,12 @@ class LedgerTransaction(BaseModel):
                 d["amount"] = credits[0].amount
             d["tsid"] = self.metadata.get("thl_session")
             return UserLedgerTransactionTaskAdjustment.model_validate(d)
+        elif d["tx_type"] == TransactionType.USER_PAYOUT_CANCEL.value:
+            assert len(credits) == 1
+            d["amount"] = credits[0].amount
+            d["payout_id"] = self.metadata["payoutevent"]
+            d["description"] = "Payout Cancelled"
+            return UserLedgerTransactionUserPayoutCancel.model_validate(d)
 
 
 class UserLedgerTransaction(BaseModel):
@@ -492,6 +498,28 @@ class UserLedgerTransactionUserPayout(UserLedgerTransaction):
         assert self.amount < 0, (
             "In a user payout, the amount should be negative. This represents the user's "
             "wallet balance decreasing because this amount was actually dispersed to them."
+        )
+        return self
+
+
+class UserLedgerTransactionUserPayoutCancel(UserLedgerTransaction):
+    tx_type: Literal[TransactionType.USER_PAYOUT_CANCEL] = Field(
+        default=TransactionType.USER_PAYOUT_CANCEL
+    )
+    description: str = Field(default="Payout Cancelled", max_length=255)
+    payout_id: UUIDStr = Field(
+        description="A unique identifier for the payout",
+        examples=["a3848e0a53d64f68a74ced5f61b6eb68"],
+    )
+
+    def create_url(self, product_id: str) -> str | None:
+        return f"https://fsb.generalresearch.com/{product_id}/cashout/{self.payout_id}/"
+
+    @model_validator(mode="after")
+    def validate_amount(self):
+        assert self.amount > 0, (
+            "In a cancelled user payout, the amount should be positive because "
+            "it is returned to the user's wallet."
         )
         return self
 
@@ -598,6 +626,7 @@ class UserLedgerTransactionAttemptCredit(UserLedgerTransaction):
 
 UserLedgerTransactionType = Annotated[
     UserLedgerTransactionUserPayout
+    | UserLedgerTransactionUserPayoutCancel
     | UserLedgerTransactionUserBonus
     | UserLedgerTransactionTaskAdjustment
     | UserLedgerTransactionTaskComplete

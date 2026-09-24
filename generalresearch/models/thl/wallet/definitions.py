@@ -15,6 +15,8 @@ class PayoutType(StrEnum, metaclass=ReprEnumMeta):
     PAYPAL = "PAYPAL"
     # User is paid out via a Tango Gift Card
     TANGO = "TANGO"
+    # Tremendous Gift Card
+    TREMENDOUS = "TREMENDOUS"
     # DWOLLA
     DWOLLA = "DWOLLA"
     # A payment is made to a bank account using ACH
