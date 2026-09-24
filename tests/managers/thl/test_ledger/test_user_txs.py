@@ -139,6 +139,47 @@ def test_user_txs(
     assert sorted([tx.amount for tx in tx_adj_c]) == [-38, 76]
 
 
+def test_user_payout_cancel_to_user_tx(
+    user_factory: Callable[..., User],
+    product_amt_true: Product,
+    create_main_accounts: Callable[..., None],
+    thl_ledger_manager: ThlLedgerManager,
+    delete_ledger_db: Callable[..., None],
+    user_payout_event_manager: UserPayoutEventManager,
+    settings: GRLBaseSettings,
+):
+    delete_ledger_db()
+    create_main_accounts()
+
+    user = user_factory(product=product_amt_true)
+    account = thl_ledger_manager.get_account_or_create_user_wallet(user)
+    pe = user_payout_event_manager.create(
+        uuid=uuid4().hex,
+        debit_account_uuid=account.uuid,
+        cashout_method_uuid=settings.amt_bonus_cashout_method_id,
+        amount=100,
+        payout_type=PayoutType.AMT_BONUS,
+        request_data={},
+    )
+    thl_ledger_manager.create_tx_user_payout_request(
+        user=user,
+        payout_event=pe,
+        skip_wallet_balance_check=True,
+    )
+    thl_ledger_manager.create_tx_user_payout_cancelled(user=user, payout_event=pe)
+
+    txs = thl_ledger_manager.get_user_txs(user)
+    cancel = next(
+        tx
+        for tx in txs.transactions
+        if tx.tx_type == TransactionType.USER_PAYOUT_CANCEL
+    )
+    assert cancel.amount == 100
+    assert cancel.description == "Payout Cancelled"
+    assert cancel.payout_id == pe.uuid
+    assert cancel.url == f"https://fsb.generalresearch.com/{user.product_id}/cashout/{pe.uuid}/"
+
+
 def test_user_txs_pagination(
     user_factory: Callable[..., User],
     product_amt_true: Product,

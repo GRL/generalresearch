@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Self
+from typing import Self
 from uuid import uuid4
 
 from pydantic import (
@@ -114,36 +114,49 @@ class PayoutEvent(BaseModel):
         self.order_data = order_data
 
     def check_status_change_allowed(self, status: PayoutStatus) -> None:
+        # Allowed status changes:
+        # PENDING -> {APPROVED, REJECTED, CANCELLED, FAILED, COMPLETE}
+        # APPROVED -> {FAILED, COMPLETE}
+        # FAILED -> {APPROVED, REJECTED, CANCELLED, COMPLETE}
+        # {REJECTED, CANCELLED, COMPLETE} are final
 
-        # We may not be changing the status when this method gets called. It's
-        #   possible to be called when we're updating other attributes so
-        #   allow immediate bypass if it isn't actually different.
-        if self.status == status:
-            return
-
-        if self.status in {
+        assert self.status not in {
             PayoutStatus.REJECTED,
             PayoutStatus.CANCELLED,
             PayoutStatus.COMPLETE,
-        }:
-            raise ValueError(f"status {self.status} is final. No changes allowed")
+        }, f"status {self.status} is final. No changes allowed"
 
-        if self.status == PayoutStatus.PENDING:
-            assert status != PayoutStatus.PENDING, "status is already PENDING!"
+        # Updating other attributes may leave the status unchanged.
+        if self.status == status:
+            return
 
-        elif self.status == PayoutStatus.APPROVED:
-            assert status in {
+        allowed_status_changes = {
+            PayoutStatus.PENDING: {
+                PayoutStatus.APPROVED,
+                PayoutStatus.REJECTED,
+                PayoutStatus.CANCELLED,
                 PayoutStatus.FAILED,
                 PayoutStatus.COMPLETE,
-            }, f"status APPROVED can only be FAILED or COMPLETED, not {status}"
-
-        elif self.status == PayoutStatus.FAILED:
-            assert status in {
+            },
+            PayoutStatus.APPROVED: {
+                PayoutStatus.FAILED,
+                PayoutStatus.COMPLETE,
+            },
+            PayoutStatus.FAILED: {
+                PayoutStatus.APPROVED,
+                PayoutStatus.REJECTED,
                 PayoutStatus.CANCELLED,
                 PayoutStatus.COMPLETE,
-            }, f"status FAILED can only be CANCELLED or COMPLETED, not {status}"
-        else:
-            raise ValueError("this shouldn't happen")
+            },
+        }
+        assert self.status in allowed_status_changes, (
+            f"status {self.status} cannot transition to {status}"
+        )
+        assert status in allowed_status_changes[self.status], (
+            f"status {self.status} can only be "
+            f"{', '.join(sorted(x.value for x in allowed_status_changes[self.status]))}, "
+            f"not {status}"
+        )
 
     # --- ORM ---
 
