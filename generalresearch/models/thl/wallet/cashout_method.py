@@ -423,6 +423,16 @@ class CashoutRequestInfo(BaseModel):
     product_id: UUIDStr = Field()
     product_user_id: BPUIDStr = Field()
 
+    payout_type: PayoutType = Field(
+        description=PayoutType.as_openapi(), examples=[PayoutType.ACH]
+    )
+    amount: PositiveInt = Field(
+        lt=2**63 - 1,
+        strict=True,
+        description="The USDCent amount int. This cannot be 0 or negative",
+        examples=[531],
+    )
+
 
 class CashoutRequestResponse(StatusResponse):
     cashout: CashoutRequestInfo = Field()

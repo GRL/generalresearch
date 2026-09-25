@@ -100,11 +100,13 @@ class UserPayoutEventManager(PayoutEventManager):
         return CashoutRequestInfo(
             id=pe_uuid,
             status=pe.status,
-            description=pe.description,
+            description=pe.description or "",
             transaction_info=transaction_info,
             message="",
             product_id=pe.user.product_id,
             product_user_id=pe.user.product_user_id,
+            amount=pe.amount,
+            payout_type=pe.payout_type,
         )
 
     def filter_by(
