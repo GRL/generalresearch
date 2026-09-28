@@ -14,6 +14,7 @@ from pydantic import (
     Field,
     NonNegativeInt,
     PositiveInt,
+    computed_field,
     field_validator,
     model_validator,
 )
@@ -29,7 +30,12 @@ from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.locales import CountryISO
 from generalresearch.models.thl.user_identifiers import BPUIDStr
 from generalresearch.models.thl.user_ref import UserRef
-from generalresearch.models.thl.wallet.definitions import Currency, PayoutType
+from generalresearch.models.thl.wallet.definitions import (
+    PAYOUT_TYPE_TO_CATEGORY,
+    Currency,
+    PayoutCategory,
+    PayoutType,
+)
 
 if TYPE_CHECKING:
     from generalresearch.models.thl.payout import UserPayoutEvent
@@ -113,15 +119,6 @@ class CashoutMethodBase(BaseModel):
         "The minimum amount that can be cashed out in one transaction.",
     )
 
-    #
-    # @property
-    # def min_value_usd(self):
-    #     if self.original_currency == Currency.USD:
-    #         return self.min_value
-    #     if self.usd_exchange_rate is None:
-    #         return None
-    #     return self.min_value * self.usd_exchange_rate
-
     @model_validator(mode="after")
     def validate_value_ranges(self) -> Self:
         if self.min_value > self.max_value:
@@ -204,6 +201,10 @@ class CashoutMethodOut(CashoutMethodBase):
             d["product_id"] = cm.user.product_id
             d["product_user_id"] = cm.user.product_user_id
         return cls.model_validate(d)
+
+    @computed_field
+    def category(self) -> PayoutCategory:
+        return PAYOUT_TYPE_TO_CATEGORY[self.type]
 
 
 class USDeliveryAddress(BaseModel):
@@ -431,6 +432,10 @@ class CashoutRequestSummary(BaseModel):
         examples=[531],
     )
     created: AwareDatetimeISO = Field()
+
+    @computed_field
+    def category(self) -> PayoutCategory:
+        return PAYOUT_TYPE_TO_CATEGORY[self.payout_type]
 
     @classmethod
     def from_payout_event(cls, pe: UserPayoutEvent) -> Self:

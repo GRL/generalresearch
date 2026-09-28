@@ -3,6 +3,21 @@ from enum import StrEnum
 from generalresearch.utils.enum import ReprEnumMeta
 
 
+class PayoutCategory(StrEnum, metaclass=ReprEnumMeta):
+    # PayPal, Zelle, ACH, wire, Dwolla, Venmo, cash-in-mail
+    CASH = "CASH"
+    # Tango, Tremendous
+    GIFT_CARD = "GIFT_CARD"
+    # Physical or non-cash prizes
+    PRIZE = "PRIZE"
+    # Blockchain-based transferable assets
+    CRYPTO = "CRYPTO"
+    # Value credited directly to a closed platform ecosystem.
+    # e.g., in-game currency, steam points, airline miles
+    # Could also be called "Virtual Currency"
+    PLATFORM_CREDIT = "PLATFORM_CREDIT"
+
+
 class PayoutType(StrEnum, metaclass=ReprEnumMeta):
     """
     The method in which the requested payout is delivered.
@@ -37,6 +52,21 @@ class PayoutType(StrEnum, metaclass=ReprEnumMeta):
     AMT_ASSIGNMENT = "AMT_ASSIGNMENT"
 
 
+PAYOUT_TYPE_TO_CATEGORY = {
+    PayoutType.PAYPAL: PayoutCategory.CASH,
+    PayoutType.TANGO: PayoutCategory.GIFT_CARD,
+    PayoutType.TREMENDOUS: PayoutCategory.GIFT_CARD,
+    PayoutType.DWOLLA: PayoutCategory.CASH,
+    PayoutType.ACH: PayoutCategory.CASH,
+    PayoutType.WIRE: PayoutCategory.CASH,
+    PayoutType.CASH_IN_MAIL: PayoutCategory.CASH,
+    PayoutType.PRIZE: PayoutCategory.PRIZE,
+    PayoutType.AMT: PayoutCategory.PLATFORM_CREDIT,
+    PayoutType.AMT_BONUS: PayoutCategory.PLATFORM_CREDIT,
+    PayoutType.AMT_HIT: PayoutCategory.PLATFORM_CREDIT,
+    PayoutType.AMT_ASSIGNMENT: PayoutCategory.PLATFORM_CREDIT,
+}
+
 class Currency(StrEnum, metaclass=ReprEnumMeta):
     # United States Dollar. Smallest Unit: Cents.
     USD = "USD"
@@ -58,6 +88,7 @@ class Currency(StrEnum, metaclass=ReprEnumMeta):
     SGD = "SGD"
     # Mexican Peso. Smallest Unit: Centavos.
     MXN = "MXN"
+
 
 SUPPORTED_CURRENCIES = {currency.value for currency in Currency}
 
