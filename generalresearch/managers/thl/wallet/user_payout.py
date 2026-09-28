@@ -5,7 +5,7 @@ from typing import Any
 from uuid import uuid4
 
 import slack
-from pydantic import PositiveInt
+from pydantic import NonNegativeInt, PositiveInt
 from redis import Redis
 
 from generalresearch.currency import USDCent
@@ -109,8 +109,8 @@ class UserPayoutEventManager(PayoutEventManager):
             created=pe.created
         )
 
-    def filter_by(
-        self,
+    @staticmethod
+    def make_filter_str(
         reference_uuid: str | None = None,
         debit_account_uuids: Collection[UUIDStr] | None = None,
         amount: int | None = None,
@@ -121,23 +121,7 @@ class UserPayoutEventManager(PayoutEventManager):
         cashout_method_uuids: Collection[UUIDStr] | None = None,
         cashout_types: Collection[PayoutType] | None = None,
         statuses: Collection[PayoutStatus] | None = None,
-        page: int | None = None,
-        size: int | None = None,
-        order_by: str = "created",
-    ) -> list[UserPayoutEvent]:
-        """Try to retrieve payout events by the product_id/user_uuid, amount,
-        and optionally timestamp.
-
-        WARNING: This is only on the "payout events" table and nothing to
-            do with the Ledger itself. Therefore, the product_ids query
-            doesn't return Brokerage Product Payouts (the ACH or Wire events
-            to Suppliers) as part of the query.
-
-            *** IT IS ONLY FOR USER PAYOUTS ***
-
-        Note: what used to be in thl-grpcs "ListCashoutRequests" calling
-        "list_cashout_requests" was merged into this.
-        """
+    ) -> tuple[str, dict[str, Any]]:
         args = {}
         filters = []
 
@@ -176,6 +160,89 @@ class UserPayoutEventManager(PayoutEventManager):
             args["statuses"] = [x.value for x in statuses]
 
         assert len(filters) > 0, "must pass at least 1 filter"
+        return "WHERE " + " AND ".join(filters), args
+
+    def filter_count(
+        self,
+        reference_uuid: str | None = None,
+        debit_account_uuids: Collection[UUIDStr] | None = None,
+        amount: int | None = None,
+        created: datetime | None = None,
+        created_after: datetime | None = None,
+        product_ids: Collection[UUIDStr] | None = None,
+        bp_user_ids: Collection[str] | None = None,
+        cashout_method_uuids: Collection[UUIDStr] | None = None,
+        cashout_types: Collection[PayoutType] | None = None,
+        statuses: Collection[PayoutStatus] | None = None,
+    ) -> NonNegativeInt:
+        filter_str, args = self.make_filter_str(
+            reference_uuid=reference_uuid,
+            debit_account_uuids=debit_account_uuids,
+            amount=amount,
+            created=created,
+            created_after=created_after,
+            product_ids=product_ids,
+            bp_user_ids=bp_user_ids,
+            cashout_method_uuids=cashout_method_uuids,
+            cashout_types=cashout_types,
+            statuses=statuses,
+        )
+
+        res = self.pg_config.execute_sql_query(
+            query=f"""
+                SELECT COUNT(1) AS cnt
+                FROM event_payout AS ep
+                JOIN ledger_account AS la
+                    ON la.uuid = ep.debit_account_uuid
+                JOIN thl_user u
+                    ON la.reference_uuid = u.uuid
+                {filter_str}
+            """,
+            params=args,
+        )
+        return int(res[0]["cnt"])  # type: ignore
+
+    def filter_by(
+        self,
+        reference_uuid: str | None = None,
+        debit_account_uuids: Collection[UUIDStr] | None = None,
+        amount: int | None = None,
+        created: datetime | None = None,
+        created_after: datetime | None = None,
+        product_ids: Collection[UUIDStr] | None = None,
+        bp_user_ids: Collection[str] | None = None,
+        cashout_method_uuids: Collection[UUIDStr] | None = None,
+        cashout_types: Collection[PayoutType] | None = None,
+        statuses: Collection[PayoutStatus] | None = None,
+        page: int | None = None,
+        size: int | None = None,
+        order_by: str = "created",
+    ) -> list[UserPayoutEvent]:
+        """Try to retrieve payout events by the product_id/user_uuid, amount,
+        and optionally timestamp.
+
+        WARNING: This is only on the "payout events" table and nothing to
+            do with the Ledger itself. Therefore, the product_ids query
+            doesn't return Brokerage Product Payouts (the ACH or Wire events
+            to Suppliers) as part of the query.
+
+            *** IT IS ONLY FOR USER PAYOUTS ***
+
+        Note: what used to be in thl-grpcs "ListCashoutRequests" calling
+        "list_cashout_requests" was merged into this.
+        """
+        filter_str, args = self.make_filter_str(
+            reference_uuid=reference_uuid,
+            debit_account_uuids=debit_account_uuids,
+            amount=amount,
+            created=created,
+            created_after=created_after,
+            product_ids=product_ids,
+            bp_user_ids=bp_user_ids,
+            cashout_method_uuids=cashout_method_uuids,
+            cashout_types=cashout_types,
+            statuses=statuses,
+        )
 
         paginated_filter_str = ""
         if page is not None:
@@ -188,7 +255,6 @@ class UserPayoutEventManager(PayoutEventManager):
             args["limit"] = size
             paginated_filter_str = "LIMIT %(limit)s OFFSET %(offset)s"
 
-        filter_str = "WHERE " + " AND ".join(filters)
         order_by_str = parse_order_by(order_by)
 
         res = self.pg_config.execute_sql_query(

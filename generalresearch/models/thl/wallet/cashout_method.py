@@ -28,6 +28,7 @@ from generalresearch.models.custom_types import (
 from generalresearch.models.legacy.api_status import StatusResponse
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.locales import CountryISO
+from generalresearch.models.thl.pagination import Page
 from generalresearch.models.thl.user_identifiers import BPUIDStr
 from generalresearch.models.thl.user_ref import UserRef
 from generalresearch.models.thl.wallet.definitions import (
@@ -459,7 +460,7 @@ class CashoutRequestResponse(StatusResponse):
     cashout: CashoutRequestDetail = Field()
 
 
-class CashoutRequestsResponse(StatusResponse):
+class CashoutRequestsResponse(StatusResponse, Page):
     cashouts: list[CashoutRequestSummary] = Field()
 
 
