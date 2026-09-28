@@ -5,7 +5,7 @@ import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -30,6 +30,9 @@ from generalresearch.models.thl.locales import CountryISO
 from generalresearch.models.thl.user_identifiers import BPUIDStr
 from generalresearch.models.thl.user_ref import UserRef
 from generalresearch.models.thl.wallet.definitions import Currency, PayoutType
+
+if TYPE_CHECKING:
+    from generalresearch.models.thl.payout import UserPayoutEvent
 
 logger = logging.getLogger()
 
@@ -398,44 +401,61 @@ class CreateCashoutRequest(BaseModel):
     )
 
 
-class CashoutRequestInfo(BaseModel):
+class CashoutRequestSummary(BaseModel):
     """See models.thl.payout: PayoutEvent. We've confused a CashOut and a
     Payout. This is used only in the API response.
     """
 
-    id: UUIDStr | None = Field(
-        description="Unique ID for this cashout. This may be NULL if the "
-        "status is REJECTED or FAILED, which may happen if the "
-        "request is invalid.",
+    id: UUIDStr = Field(
+        description="Unique ID for this cashout",
         examples=["3ceb847aaf9f40f4bd15b2b5e083abf6"],
     )
     description: str = Field(
         description="This is the name of the cashout method.",
         examples=["Visa® Prepaid Card USD"],
     )
-    message: str | None = Field(default=None)
     status: PayoutStatus | None = Field(
         default=PayoutStatus.PENDING,
         description=PayoutStatus.as_openapi(),
         examples=[PayoutStatus.PENDING],
     )
-    transaction_info: dict[str, Any] | None = Field(default=None)
     product_id: UUIDStr = Field()
     product_user_id: BPUIDStr = Field()
 
     payout_type: PayoutType = Field(
         description=PayoutType.as_openapi(), examples=[PayoutType.ACH]
     )
-    amount: PositiveInt = Field(
-        lt=2**63 - 1,
+    amount: USDCent = Field(
         strict=True,
-        description="The USDCent amount int. This cannot be 0 or negative",
+        description="The amount in USD Cents",
         examples=[531],
     )
+    created: AwareDatetimeISO = Field()
+
+    @classmethod
+    def from_payout_event(cls, pe: UserPayoutEvent) -> Self:
+        return cls(
+            id=pe.uuid,
+            description=pe.description or "",
+            status=pe.status,
+            product_id=pe.user.product_id,
+            product_user_id=pe.user.product_user_id,
+            payout_type=pe.payout_type,
+            amount=USDCent(pe.amount),
+            created=pe.created,
+        )
+
+
+class CashoutRequestDetail(CashoutRequestSummary):
+    transaction_info: dict[str, Any] | None = Field(default=None)
 
 
 class CashoutRequestResponse(StatusResponse):
-    cashout: CashoutRequestInfo = Field()
+    cashout: CashoutRequestDetail = Field()
+
+
+class CashoutRequestsResponse(StatusResponse):
+    cashouts: list[CashoutRequestSummary] = Field()
 
 
 example_foreign_value = {

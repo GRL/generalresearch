@@ -23,7 +23,7 @@ from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet.cashout_method import (
     CashMailCashoutMethodData,
     CashMailCashoutMethodRequestData,
-    CashoutRequestInfo,
+    CashoutRequestDetail,
     PaypalCashoutMethodData,
     PaypalCashoutMethodRequestData,
     USDeliveryAddress,
@@ -103,7 +103,7 @@ class TestUserPayoutEventManager:
         )
 
         res = user_payout_event_manager.get_payout_detail(pe_uuid=pe.uuid)
-        assert isinstance(res, CashoutRequestInfo)
+        assert isinstance(res, CashoutRequestDetail)
 
     def test_get_payout_detail_paypal(
         self,
@@ -129,7 +129,7 @@ class TestUserPayoutEventManager:
         )
 
         res = user_payout_event_manager.get_payout_detail(pe_uuid=pe.uuid)
-        assert isinstance(res, CashoutRequestInfo)
+        assert isinstance(res, CashoutRequestDetail)
 
 
 class TestUserRequestRedeem:

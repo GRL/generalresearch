@@ -189,6 +189,7 @@ class TestPayout:
         thl_ledger_manager: ThlLedgerManager,
         product: Product,
         user: User,
+        user_factory,
         user_payout_event_manager: UserPayoutEventManager,
         utc_now: datetime,
     ):
@@ -196,7 +197,8 @@ class TestPayout:
         from generalresearch.models.thl.wallet.definitions import PayoutType
 
         user_account = thl_ledger_manager.get_account_or_create_user_wallet(user=user)
-        bp_account = thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
+        user2 = user_factory(product=user.product)
+        user_account2 = thl_ledger_manager.get_account_or_create_user_wallet(user=user2)
 
         user_payout_event_manager.create(
             status=PayoutStatus.PENDING,
@@ -209,7 +211,7 @@ class TestPayout:
 
         user_payout_event_manager.create(
             status=PayoutStatus.PENDING,
-            debit_account_uuid=bp_account.uuid,
+            debit_account_uuid=user_account2.uuid,
             payout_type=PayoutType.PAYPAL,
             cashout_method_uuid=cashout_method_uuid,
             amount=200,
@@ -222,12 +224,12 @@ class TestPayout:
         assert 1 == len(pes)
 
         pes = user_payout_event_manager.filter_by(
-            debit_account_uuids=[bp_account.uuid], created=utc_now
+            debit_account_uuids=[user_account2.uuid], created=utc_now
         )
         assert 1 == len(pes)
 
         pes = user_payout_event_manager.filter_by(
-            debit_account_uuids=[bp_account.uuid], amount=123
+            debit_account_uuids=[user_account2.uuid], amount=123
         )
         assert 0 == len(pes)
 
@@ -237,7 +239,7 @@ class TestPayout:
         assert 0 == len(pes)
 
         pes = user_payout_event_manager.filter_by(product_ids=[user.product_id])
-        assert 1 == len(pes)
+        assert 2 == len(pes)
 
         pes = user_payout_event_manager.filter_by(
             cashout_types=[PayoutType.PAYPAL],

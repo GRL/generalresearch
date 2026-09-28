@@ -26,7 +26,7 @@ from generalresearch.models.thl.wallet.cashout_method import (
     CashMailCashoutMethodRequestData,
     CashMailOrderData,
     CashoutMethod,
-    CashoutRequestInfo,
+    CashoutRequestDetail,
     PaypalCashoutMethodRequestData,
     TangoCashoutMethodRequestData,
 )
@@ -74,7 +74,7 @@ class UserPayoutEventManager(PayoutEventManager):
 
         return pe
 
-    def get_payout_detail(self, pe_uuid: UUIDStr) -> CashoutRequestInfo:
+    def get_payout_detail(self, pe_uuid: UUIDStr) -> CashoutRequestDetail:
         # This gets the payout event and then extracts information to return
         #    to the user.
         pe = self.get_by_uuid(pe_uuid=pe_uuid)
@@ -97,16 +97,16 @@ class UserPayoutEventManager(PayoutEventManager):
         ):
             transaction_info = order.model_dump(mode="json")
 
-        return CashoutRequestInfo(
+        return CashoutRequestDetail(
             id=pe_uuid,
             status=pe.status,
             description=pe.description or "",
             transaction_info=transaction_info,
-            message="",
             product_id=pe.user.product_id,
             product_user_id=pe.user.product_user_id,
-            amount=pe.amount,
+            amount=USDCent(pe.amount),
             payout_type=pe.payout_type,
+            created=pe.created
         )
 
     def filter_by(
