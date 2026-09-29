@@ -195,9 +195,23 @@ class CashoutMethodOut(CashoutMethodBase):
         "incrementing values.",
     )
 
+    can_redeem: bool | None = Field(
+        default=None,
+        description="Whether the user currently has enough redeemable wallet balance "
+        "to meet this cashout method's minimum value. None when not evaluated for "
+        "a user.",
+    )
+
     @classmethod
-    def from_cashout_method(cls, cm: CashoutMethod) -> Self:
+    def from_cashout_method(
+        cls,
+        cm: CashoutMethod,
+        *,
+        cashout_balance: int | None = None,
+    ) -> Self:
         d = cm.model_dump()
+        if cashout_balance is not None and cm.min_value_usd is not None:
+            d["can_redeem"] = cashout_balance >= int(cm.min_value_usd)
         if cm.user:
             d["product_id"] = cm.user.product_id
             d["product_user_id"] = cm.user.product_user_id

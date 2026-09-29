@@ -59,6 +59,7 @@ class TestGetUserWalletBalance:
         user: User = user_factory(product=schrute_product)
         balance = thl_ledger_manager.get_user_wallet_balance(user=user)
         assert balance == 0
+        assert thl_ledger_manager.get_user_cashout_balance(user=user) == 0
         assert isinstance(user.product, Product)
         balance_string = user.product.format_payout_format(Decimal(balance) / 100)
         assert balance_string == "0 Schrute Bucks"
@@ -97,3 +98,4 @@ class TestGetUserWalletBalance:
             user=user, user_wallet_balance=balance
         )
         assert redeemable_balance == 20 + 100
+        assert thl_ledger_manager.get_user_cashout_balance(user=user) == 20 + 100

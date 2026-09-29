@@ -8,7 +8,7 @@ import slack
 from pydantic import NonNegativeInt, PositiveInt
 from redis import Redis
 
-from generalresearch.currency import USDCent
+from generalresearch.currency import USDCent, format_usd_cent
 from generalresearch.managers.thl.cashout_method import CashoutMethodManager
 from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionCreateError,
@@ -106,7 +106,7 @@ class UserPayoutEventManager(PayoutEventManager):
             product_user_id=pe.user.product_user_id,
             amount=USDCent(pe.amount),
             payout_type=pe.payout_type,
-            created=pe.created
+            created=pe.created,
         )
 
     @staticmethod
@@ -430,7 +430,6 @@ class UserPayoutEventManager(PayoutEventManager):
             f"Amount must be between 0 and $250.00. Got {amount.to_usd_str()}"
         )
 
-        product = user.product
         banned_countries = user.product.user_health_config.banned_countries
 
         assert not user_ip_history_manager.is_user_anonymous(user), (
@@ -439,20 +438,10 @@ class UserPayoutEventManager(PayoutEventManager):
         if country_iso in banned_countries:
             raise AssertionError("Banned country requesting redemption")
 
-        wallet_balance = ledger_manager.get_user_wallet_balance(user)
-        if product.user_wallet_config.balance_type == "wallet_balance":
-            redeemable_amount = wallet_balance
-        elif product.user_wallet_config.balance_type == "redeemable_balance":
-            redeemable_amount = ledger_manager.get_user_redeemable_wallet_balance(
-                user, wallet_balance
-            )
-        else:
-            raise ValueError(
-                f"unexpected balance_type={product.user_wallet_config.balance_type}"
-            )
+        redeemable_amount = ledger_manager.get_user_cashout_balance(user)
 
         assert amount <= redeemable_amount, (
-            f"User requesting more than their redeemable balance ({amount} > {redeemable_amount})"
+            f"User requesting more than their redeemable balance ({amount.to_usd_str()} > {format_usd_cent(redeemable_amount)})"
         )
 
         # Simple dedupe mechanism. Don't allow more than 1 per user_id per minute per cashout_method.
