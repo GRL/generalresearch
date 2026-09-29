@@ -2009,6 +2009,16 @@ class ThlLedgerManager(LedgerManager):
             )
         return self.get_account_balance(wallet)
 
+    def get_user_cashout_balance(self, user: User) -> int:
+        """Return the balance currently available for user cashouts."""
+        wallet_balance = self.get_user_wallet_balance(user)
+        balance_type = user.product.user_wallet_config.balance_type
+        if balance_type == "wallet_balance":
+            return wallet_balance
+        if balance_type == "redeemable_balance":
+            return self.get_user_redeemable_wallet_balance(user, wallet_balance)
+        raise ValueError(f"unexpected balance_type={balance_type}")
+
     def get_user_redeemable_wallet_balance(
         self, user: User, user_wallet_balance: int
     ) -> PositiveInt:

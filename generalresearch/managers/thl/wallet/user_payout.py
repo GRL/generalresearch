@@ -1,6 +1,8 @@
+import logging
 import uuid
 from collections.abc import Collection
 from datetime import UTC, datetime
+from threading import Thread
 from typing import Any
 from uuid import uuid4
 
@@ -8,7 +10,7 @@ import slack
 from pydantic import NonNegativeInt, PositiveInt
 from redis import Redis
 
-from generalresearch.currency import USDCent
+from generalresearch.currency import USDCent, format_usd_cent
 from generalresearch.managers.thl.cashout_method import CashoutMethodManager
 from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionCreateError,
@@ -26,14 +28,147 @@ from generalresearch.models.thl.wallet.cashout_method import (
     CashMailCashoutMethodRequestData,
     CashMailOrderData,
     CashoutMethod,
+    CashoutMethodOut,
     CashoutRequestDetail,
     PaypalCashoutMethodRequestData,
     TangoCashoutMethodRequestData,
 )
 from generalresearch.models.thl.wallet.definitions import PayoutType
 
+logger = logging.getLogger(__name__)
+
 
 class UserPayoutEventManager(PayoutEventManager):
+    CASHOUT_METHOD_REDEMPTION_COUNT_KEY = "cashout-method:redemption-count:v1"
+
+    def update(
+        self,
+        payout_event: UserPayoutEvent,
+        status: PayoutStatus,
+        ext_ref_id: str | None = None,
+        order_data: dict[str, Any] | None = None,
+    ) -> None:
+        was_complete = payout_event.status == PayoutStatus.COMPLETE
+        super().update(
+            payout_event=payout_event,
+            status=status,
+            ext_ref_id=ext_ref_id,
+            order_data=order_data,
+        )
+        if status != PayoutStatus.COMPLETE or was_complete:
+            return
+
+        assert payout_event.cashout_method_uuid is not None
+        key = CashoutMethod.make_redemption_key(
+            payout_event.payout_type,
+            payout_event.cashout_method_uuid,
+        )
+        try:
+            redis_key = self.CASHOUT_METHOD_REDEMPTION_COUNT_KEY
+            if self.redis_client.exists(redis_key):
+                self.redis_client.zincrby(redis_key, 1, key)
+        except Exception:
+            logger.exception(
+                "Unable to increment cashout-method redemption count",
+                extra={"payout_event_uuid": payout_event.uuid},
+            )
+
+    def _query_cashout_method_redemption_counts(self) -> dict[str, int]:
+        rows = self.pg_config.execute_sql_query(
+            query="""
+                SELECT CASE
+                           WHEN ac.user_id IS NOT NULL
+                               THEN 'provider:' || ac.provider
+                           ELSE 'id:' || REPLACE(ep.cashout_method_uuid::text, '-', '')
+                           END AS key,
+                       COUNT(*) AS redemption_count
+                FROM event_payout AS ep
+                JOIN accounting_cashoutmethod AS ac
+                    ON ac.id = ep.cashout_method_uuid
+                JOIN ledger_account AS la
+                    ON la.uuid = ep.debit_account_uuid
+                WHERE ac.provider != 'AMT'
+                  AND la.reference_type = 'user'
+                  AND ep.status = 'COMPLETE'
+                GROUP BY key
+            """
+        )
+        return {row["key"]: int(row["redemption_count"]) for row in rows}
+
+    def rebuild_cashout_method_redemption_counts(self) -> dict[str, int]:
+        counts = self._query_cashout_method_redemption_counts()
+        redis_key = self.CASHOUT_METHOD_REDEMPTION_COUNT_KEY
+        with self.redis_client.pipeline() as pipeline:
+            pipeline.delete(redis_key)
+            pipeline.zadd(redis_key, counts)
+            pipeline.execute()
+        return counts
+
+    def _rebuild_cashout_method_redemption_counts_if_missing(self) -> None:
+        redis_key = self.CASHOUT_METHOD_REDEMPTION_COUNT_KEY
+        lock = self.redis_client.lock(
+            f"{redis_key}:rebuild-lock",
+            timeout=60,
+            blocking_timeout=0,
+        )
+        if not lock.acquire():
+            return
+        try:
+            if not self.redis_client.exists(redis_key):
+                self.rebuild_cashout_method_redemption_counts()
+        except Exception:
+            logger.exception("Unable to rebuild cashout-method redemption counts")
+        finally:
+            lock.release()
+
+    def get_cashout_method_redemption_counts(
+        self, cashout_methods: Collection[CashoutMethod | CashoutMethodOut]
+    ) -> dict[str, int]:
+        methods = list(cashout_methods)
+        redis_key = self.CASHOUT_METHOD_REDEMPTION_COUNT_KEY
+        try:
+            if not self.redis_client.exists(redis_key):
+                Thread(
+                    target=self._rebuild_cashout_method_redemption_counts_if_missing,
+                    daemon=True,
+                ).start()
+                return {method.id: 0 for method in methods}
+
+            with self.redis_client.pipeline() as pipeline:
+                for method in methods:
+                    pipeline.zscore(
+                        redis_key,
+                        CashoutMethod.make_redemption_key(method.type, method.id),
+                    )
+                scores = pipeline.execute()
+            return {
+                method.id: int(score or 0)
+                for method, score in zip(methods, scores, strict=True)
+            }
+        except Exception:
+            logger.exception("Unable to read cashout-method redemption counts")
+            return {method.id: 0 for method in methods}
+
+    def apply_cashout_method_popularity(
+        self,
+        cashout_methods: list[CashoutMethodOut],
+    ) -> list[CashoutMethodOut]:
+        redemption_counts = self.get_cashout_method_redemption_counts(cashout_methods)
+        ranked_methods = sorted(
+            cashout_methods,
+            key=lambda method: (
+                -redemption_counts[method.id],
+                method.name.casefold(),
+                method.id,
+            ),
+        )
+        popularity_ranks = {
+            method.id: rank for rank, method in enumerate(ranked_methods, start=1)
+        }
+        for method in cashout_methods:
+            method.popularity_rank = popularity_ranks[method.id]
+        return ranked_methods
+
     def get_by_uuid(self, pe_uuid: UUIDStr) -> UserPayoutEvent:
 
         res = self.pg_config.execute_sql_query(
@@ -106,7 +241,7 @@ class UserPayoutEventManager(PayoutEventManager):
             product_user_id=pe.user.product_user_id,
             amount=USDCent(pe.amount),
             payout_type=pe.payout_type,
-            created=pe.created
+            created=pe.created,
         )
 
     @staticmethod
@@ -430,7 +565,6 @@ class UserPayoutEventManager(PayoutEventManager):
             f"Amount must be between 0 and $250.00. Got {amount.to_usd_str()}"
         )
 
-        product = user.product
         banned_countries = user.product.user_health_config.banned_countries
 
         assert not user_ip_history_manager.is_user_anonymous(user), (
@@ -439,20 +573,10 @@ class UserPayoutEventManager(PayoutEventManager):
         if country_iso in banned_countries:
             raise AssertionError("Banned country requesting redemption")
 
-        wallet_balance = ledger_manager.get_user_wallet_balance(user)
-        if product.user_wallet_config.balance_type == "wallet_balance":
-            redeemable_amount = wallet_balance
-        elif product.user_wallet_config.balance_type == "redeemable_balance":
-            redeemable_amount = ledger_manager.get_user_redeemable_wallet_balance(
-                user, wallet_balance
-            )
-        else:
-            raise ValueError(
-                f"unexpected balance_type={product.user_wallet_config.balance_type}"
-            )
+        redeemable_amount = ledger_manager.get_user_cashout_balance(user)
 
         assert amount <= redeemable_amount, (
-            f"User requesting more than their redeemable balance ({amount} > {redeemable_amount})"
+            f"User requesting more than their redeemable balance ({amount.to_usd_str()} > {format_usd_cent(redeemable_amount)})"
         )
 
         # Simple dedupe mechanism. Don't allow more than 1 per user_id per minute per cashout_method.
