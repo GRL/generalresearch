@@ -14,13 +14,13 @@ if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
-    from generalresearch.managers.thl.payout import UserPayoutEventManager
     from generalresearch.managers.thl.paypal import PayPalPayoutManager
     from generalresearch.managers.thl.tango_api import TangoClient
     from generalresearch.managers.thl.user_manager.user_manager import (
         UserManager,
     )
     from generalresearch.managers.thl.userhealth import UserIpHistoryManager
+    from generalresearch.managers.thl.wallet.user_payout import UserPayoutEventManager
     from generalresearch.models.thl.payout import UserPayoutEvent
     from generalresearch.models.thl.wallet.cashout_method import (
         CashMailOrderData,
@@ -34,7 +34,6 @@ def manage_pending_cashout(
     user_ip_history_manager: UserIpHistoryManager,
     user_manager: UserManager,
     ledger_manager: ThlLedgerManager,
-    geoip_info_manager: GeoIpInfoManager,
     order_data: dict[str, Any] | CashMailOrderData | None = None,
     tango_client: TangoClient | None = None,
     paypal_client: PayPalPayoutManager | None = None,

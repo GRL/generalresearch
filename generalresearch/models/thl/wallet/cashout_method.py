@@ -178,6 +178,19 @@ class CashoutMethod(CashoutMethodBase):
             )
         return self
 
+    @property
+    def redemption_key(self) -> str:
+        return self.make_redemption_key(self.type, self.id)
+
+    @staticmethod
+    def make_redemption_key(payout_type: PayoutType, cashout_method_id: str) -> str:
+        # The format of the key is dependent on the cashout method provider.
+        # e.g., Paypal has individual cashout methods per user, so they are grouped.
+        # "provider:PAYPAL", "provider:CASH_IN_MAIL", "id:941d489c3ce04eb39a0ddb7f8f75db74"
+        if payout_type in {PayoutType.PAYPAL, PayoutType.CASH_IN_MAIL}:
+            return f"provider:{payout_type.value}"
+        return f"id:{cashout_method_id}"
+
 
 class CashoutMethodOut(CashoutMethodBase):
     product_id: UUIDStr | None = Field(
@@ -201,6 +214,11 @@ class CashoutMethodOut(CashoutMethodBase):
         "to meet this cashout method's minimum value. None when not evaluated for "
         "a user.",
     )
+    popularity_rank: PositiveInt | None = Field(
+        default=None,
+        description="The method's popularity rank among the available methods. "
+        "One is the most popular.",
+    )
 
     @classmethod
     def from_cashout_method(
@@ -208,8 +226,11 @@ class CashoutMethodOut(CashoutMethodBase):
         cm: CashoutMethod,
         *,
         cashout_balance: int | None = None,
+        popularity_rank: int | None = None,
     ) -> Self:
         d = cm.model_dump()
+        if popularity_rank is not None:
+            d["popularity_rank"] = popularity_rank
         if cashout_balance is not None and cm.min_value_usd is not None:
             d["can_redeem"] = cashout_balance >= int(cm.min_value_usd)
         if cm.user:
