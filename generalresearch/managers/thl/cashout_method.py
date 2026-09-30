@@ -142,7 +142,7 @@ class CashoutMethodManager(PostgresManager):
             description="Cashout via PayPal",
             id=uuid4().hex,
             currency=Currency.USD,
-            image_url="https://cdn.mmfwcl.com/images/brands/p439786-1200w-326ppi.png",
+            image_url="https://cdn.generalresearch.com/images/brands/p439786-1200w-326ppi.png",
             min_value=100,  # $1.00
             max_value=25_000,  # $250.00
             data=data,
