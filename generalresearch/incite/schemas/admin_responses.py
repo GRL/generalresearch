@@ -44,7 +44,6 @@ AdminPOPSchema = DataFrameSchema(
                             year=datetime.now(tz=UTC).year + 1,
                             month=1,
                             day=1,
-                            tzinfo=UTC,
                         )
                     )
                 ],
