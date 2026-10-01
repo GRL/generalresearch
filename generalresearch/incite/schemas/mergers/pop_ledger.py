@@ -25,8 +25,8 @@ from generalresearch.models.thl.ledger import Direction, TransactionType
 # If an amount is "very" large, something is def wrong. Defining "very" somewhat arbitrarily here.
 SUSPICIOUSLY_LARGE_NUMBER = (2**32 / 2) - 1  # 2147483647
 
-_tz_min_freq: Callable[[pd.Series], pd.Series] = lambda i: (i.dt.second == 0) & (
-    i.dt.microsecond == 0
+_tz_min_freq: Callable[[pd.Series], pd.Series] = lambda i: (
+    (i.dt.second == 0) & (i.dt.microsecond == 0)
 )
 
 
@@ -61,6 +61,8 @@ PopLedgerSchema = DataFrameSchema(
             nullable=False,
         ),
         "account_id": TxSchema.columns["account_id"],
+        "product_id": TxSchema.columns["product_id"],
+        "product_user_id": TxSchema.columns["product_user_id"],
     },
     checks=[],
     coerce=True,

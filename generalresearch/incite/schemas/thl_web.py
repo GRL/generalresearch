@@ -739,6 +739,16 @@ TxSchema = DataFrameSchema(
             ],
             nullable=False,
         ),
+        "product_id": Column(
+            dtype=str,
+            checks=Check.str_length(min_value=32, max_value=32),
+            nullable=True,
+        ),
+        "product_user_id": Column(
+            dtype=str,
+            checks=Check.str_length(min_value=3, max_value=128),
+            nullable=True,
+        ),
     },
     checks=[],
     coerce=True,

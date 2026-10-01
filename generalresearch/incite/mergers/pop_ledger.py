@@ -19,7 +19,6 @@ from generalresearch.models.thl.ledger import Direction, TransactionType
 
 
 class PopLedgerMergeItem(MergeCollectionItem):
-
     def build(
         self,
         ledger_coll: LedgerDFCollection,
@@ -63,24 +62,35 @@ class PopLedgerMergeItem(MergeCollectionItem):
         # For each time interval and Ledger Account (this is different from a
         # product_id), we want the raw amounts and their respective direction
         # for every type of transaction that is possible
-        x = (
-            df.groupby(by=["time_idx", "account_id", "tx_type", "direction_name"])
-            .amount.sum()
-            .reset_index()
-        )
+        gb_cols = [
+            "time_idx",
+            "account_id",
+            "tx_type",
+            "direction_name",
+            "reference_uuid",
+            "product_id",
+            "product_user_id",
+        ]
+        x = df.groupby(by=gb_cols, dropna=False).amount.sum().reset_index()
 
         # We want to keep the positive and negatives for each type. For example,
         #   for bp_adjustment, we want to know the amount increased and the
         #   amount decreased, not just the net.
         x["tx_type.direction"] = x["tx_type"] + "." + x["direction_name"]
+        identity_cols = [
+            "time_idx",
+            "account_id",
+            "product_id",
+            "product_user_id",
+        ]
         s = (
-            x.pivot_table(
-                index=["time_idx", "account_id"],
-                columns="tx_type.direction",
-                values="amount",
-                aggfunc="sum",
-            )
-            .fillna(0)
+            x.groupby(
+                identity_cols + ["tx_type.direction"],
+                dropna=False,
+                observed=True,
+            )["amount"]
+            .sum()
+            .unstack(fill_value=0)
             .reset_index()
         )
 
@@ -89,7 +99,10 @@ class PopLedgerMergeItem(MergeCollectionItem):
                 [[e.value + ".CREDIT", e.value + ".DEBIT"] for e in TransactionType]
             )
         )
-        s = s.reindex(columns=columns | set(s.columns)).fillna(0)
+        for column in columns.difference(s.columns):
+            s[column] = 0
+        s[list(columns)] = s[list(columns)].fillna(0)
+
         s = s.reset_index(drop=True)
         s.index.name = "id"
         # The "columns were named" tx_type.direction from the above pivot. This

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 import subprocess
 import time
@@ -20,7 +19,6 @@ from dask.distributed import Future
 from distributed import as_completed
 from more_itertools import chunked
 from pandera.pandas import DataFrameSchema
-from psycopg import Cursor
 from pydantic import Field, FilePath, ValidationInfo, field_validator
 from sentry_sdk import capture_exception
 
@@ -313,34 +311,36 @@ class DFCollectionItem(CollectionItemBase):
         coll = self._collection
         pg_config: PostgresConfig = coll.pg_config
 
-        limit = 20000
+        limit = 10000
         offset = 0
         res = []
+        query_base = """
+        SELECT  lt.id AS tx_id, lt.created, lt.ext_description, lt.tag,
+                le.id AS entry_id, le.direction, le.amount, le.account_id,
+                la.display_name, la.qualified_name, la.account_type, 
+                la.normal_balance, la.reference_type, la.reference_uuid, 
+                la.currency, tu.product_id, tu.product_user_id
+        FROM ledger_transaction AS lt
+        LEFT JOIN ledger_entry AS le 
+            ON lt.id = le.transaction_id
+        LEFT JOIN ledger_account AS la 
+            ON la.uuid = le.account_id
+        LEFT JOIN thl_user AS tu
+            ON tu.uuid = la.reference_uuid AND la.reference_type = 'user'
+        WHERE lt.created >= %s AND lt.created < %s
+        AND le.id IS NOT NULL
+        ORDER BY lt.created
+        """
         while True:
-            logging.info(f"{data_type.value}.from_postgres_ledger({limit=}, {offset=})")
-            chunk = pg_config.execute_sql_query(
-                query=f"""
-                SELECT  lt.id AS tx_id, lt.created, lt.ext_description, lt.tag,
-                        le.id AS entry_id, le.direction, le.amount, le.account_id,
-                        la.display_name, la.qualified_name, la.account_type, 
-                        la.normal_balance, la.reference_type, la.reference_uuid, 
-                        la.currency
-                FROM ledger_transaction AS lt
-                LEFT JOIN ledger_entry AS le 
-                    ON lt.id = le.transaction_id
-                LEFT JOIN ledger_account AS la 
-                    ON la.uuid = le.account_id
-                WHERE lt.created >= %s AND lt.created < %s
-                AND le.id IS NOT NULL
-                ORDER BY lt.created
-                LIMIT {limit} OFFSET {offset};
-            """,
-                params=[start, finish],
-            )
-            res.extend(chunk)
-            if not chunk:
-                break
-            offset += limit
+            with pg_config.make_connection() as conn, conn.cursor() as c:
+                query = query_base + f"\nLIMIT {limit} OFFSET {offset};"
+                c.execute(query, params=[start, finish])
+                chunk = c.fetchall()
+                LOG.info(f"{data_type.value}.from_postgres_ledger({limit=}, {offset=})")
+                res.extend(chunk)
+                if not chunk or len(chunk) < limit:
+                    break
+                offset += len(chunk)
 
         if len(res) == 0:
             return None
@@ -357,23 +357,19 @@ class DFCollectionItem(CollectionItemBase):
 
         tx_ids = list(tx_df["tx_id"].unique())
         metadata_res = []
-        # "MySQL server has gone away" if this is too big
-        conn = pg_config.make_connection()
-        c: Cursor = conn.cursor()
-        for chunk in chunked(tx_ids, n=5_000):
-            c.execute(
-                query="""
-                SELECT  ltm.transaction_id AS tx_id, 
-                        ltm.id AS tx_metadata_id,
-                        ltm.key, ltm.value
-                FROM ledger_transactionmetadata AS ltm
-                WHERE ltm.transaction_id = ANY(%s);
-            """,
-                params=[chunk],
-            )
-            metadata_res += c.fetchall()
-
-        conn.close()
+        with pg_config.make_connection() as conn, conn.cursor() as c:
+            for chunk in chunked(tx_ids, n=5_000):
+                c.execute(
+                    query="""
+                        SELECT  ltm.transaction_id AS tx_id, 
+                                ltm.id AS tx_metadata_id,
+                                ltm.key, ltm.value
+                        FROM ledger_transactionmetadata AS ltm
+                        WHERE ltm.transaction_id = ANY(%s);
+                    """,
+                    params=[chunk],
+                )
+                metadata_res += c.fetchall()
 
         tx_meta = (
             pd.DataFrame(
