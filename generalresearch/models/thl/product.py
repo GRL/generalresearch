@@ -7,6 +7,7 @@ import math
 import warnings
 from collections import defaultdict
 from collections.abc import Callable
+from datetime import timedelta
 from decimal import Decimal
 from enum import StrEnum
 from functools import cached_property, partial
@@ -1078,6 +1079,7 @@ class Product(BaseModel, validate_assignment=True):
     # --- Prefetch ---
     def prefetch_bp_account(self, thl_lm: ThlLedgerManager) -> None:
         account = thl_lm.get_account_or_create_bp_wallet(product=self)
+        assert self.id == account.reference_uuid
         self.bp_account = account
 
     # --- Prebuild ---
@@ -1112,6 +1114,12 @@ class Product(BaseModel, validate_assignment=True):
         volume levels.
         """
         LOG.debug(f"Product.prebuild_balance({self.uuid=})")
+        from generalresearch.incite.schemas.mergers.pop_ledger import (
+            numerical_col_names,
+        )
+        from generalresearch.models.thl.finance import ProductBalances
+
+        assert self.bp_account is not None, "Call self.prefetch_bp_account()"
 
         if pop_ledger is None:
             assert ds is not None
@@ -1119,12 +1127,7 @@ class Product(BaseModel, validate_assignment=True):
 
             pop_ledger = plm(ds=ds)
 
-        from generalresearch.incite.schemas.mergers.pop_ledger import (
-            numerical_col_names,
-        )
-        from generalresearch.models.thl.finance import ProductBalances
-
-        account: LedgerAccount = thl_lm.get_account_or_create_bp_wallet(product=self)
+        account: LedgerAccount = self.bp_account
         assert self.id == account.reference_uuid
 
         filters = [
@@ -1177,7 +1180,13 @@ class Product(BaseModel, validate_assignment=True):
     ) -> None:
         from generalresearch.models.thl.finance import PrivateProductBalances
 
-        assert self.balance is not None, "Must call self.prebuild_balance first"
+        assert self.balance is not None, "Must call self.prebuild_balance() first"
+
+        if pop_ledger is None:
+            assert ds is not None
+            from generalresearch.incite.defaults import pop_ledger as plm
+
+            pop_ledger = plm(ds=ds)
 
         commission_account = thl_lm.get_account_or_create_bp_commission_by_uuid(
             self.uuid
@@ -1212,18 +1221,24 @@ class Product(BaseModel, validate_assignment=True):
 
     def prebuild_user_wallet_balances(
         self,
-        thl_lm: ThlLedgerManager,
         client: Client,
         ds: GRLDatasets | None = None,
         pop_ledger: PopLedgerMerge | None = None,
     ) -> None:
+        assert self.user_wallet_enabled
+
+        if pop_ledger is None:
+            assert ds is not None
+            from generalresearch.incite.defaults import pop_ledger as plm
+
+            pop_ledger = plm(ds=ds)
+
         from generalresearch.models.thl.finance import (
             USER_WALLET_CREDIT_COLUMNS,
             USER_WALLET_DEBIT_COLUMNS,
             ProductUserWalletBalances,
         )
 
-        assert self.user_wallet_enabled
         filters = [
             ("product_id", "==", self.uuid),
         ]
@@ -1432,13 +1447,19 @@ class Product(BaseModel, validate_assignment=True):
     ) -> None:
         LOG.debug(f"Product.set_cache({self.uuid=})")
 
-        ex_secs = 60 * 60 * 24 * 3  # 3 days
+        if pop_ledger is None:
+            from generalresearch.incite.defaults import pop_ledger as plm
+
+            pop_ledger = plm(ds=ds)
 
         self.prefetch_bp_account(thl_lm=thl_lm)
 
-        self.prebuild_balance(
-            thl_lm=thl_lm, ds=ds, client=client, pop_ledger=pop_ledger
+        self.prebuild_balance(thl_lm=thl_lm, client=client, pop_ledger=pop_ledger)
+        self.prebuild_private_balance(
+            thl_lm=thl_lm, client=client, pop_ledger=pop_ledger
         )
+        if self.user_wallet_enabled:
+            self.prebuild_user_wallet_balances(client=client, pop_ledger=pop_ledger)
         self.prebuild_payouts(thl_lm=thl_lm, bp_pem=bp_pem)
         self.prebuild_pop_financial(
             thl_lm=thl_lm, ds=ds, client=client, pop_ledger=pop_ledger
@@ -1452,7 +1473,7 @@ class Product(BaseModel, validate_assignment=True):
         # bal = thl_lm.get_account_balance_timerange(time_end=)
 
         rc = redis_config.create_redis_client()
-        rc.set(name=self.cache_key, value=self.model_dump_json(), ex=ex_secs)
+        rc.set(name=self.cache_key, value=self.model_dump_json(), ex=timedelta(days=3))
 
     def determine_bp_payment(self, thl_net: Decimal) -> Decimal:
         """
