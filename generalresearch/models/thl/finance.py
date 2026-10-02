@@ -67,6 +67,21 @@ USER_WALLET_BALANCE_BUCKETS: tuple[int | None, ...] = (
     None,
 )
 
+USER_WALLET_CREDIT_COLUMNS = (
+    "bp_payment.CREDIT",
+    "bp_adjustment.CREDIT",
+    "user_bonus.CREDIT",
+    "user_payout_cancel.CREDIT",
+    "close_contest.CREDIT",
+    "user_milestone.CREDIT",
+)
+USER_WALLET_DEBIT_COLUMNS = (
+    "bp_adjustment.DEBIT",
+    "user_bonus.DEBIT",
+    "user_payout_request.DEBIT",
+    "user_enter_contest.DEBIT",
+)
+
 if TYPE_CHECKING:
     from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.thl.ledger import LedgerAccount
@@ -357,6 +372,47 @@ class UserWalletBalances(BaseModel):
     def balance(self) -> int:
         return self.credit + (self.debit * -1)
 
+    @classmethod
+    def from_pop_ledger(
+        cls,
+        input_data: pd.DataFrame,
+        product_id: UUIDStr,
+        product_user_id: BPUIDStr,
+    ) -> UserWalletBalances:
+        """Build one user's wallet balance from ``PopLedgerSchema`` rows."""
+        amount_columns = [
+            *USER_WALLET_CREDIT_COLUMNS,
+            *USER_WALLET_DEBIT_COLUMNS,
+        ]
+        required_columns = {
+            "time_idx",
+            "product_id",
+            "product_user_id",
+            *amount_columns,
+        }
+        missing_columns = required_columns.difference(input_data.columns)
+        assert not missing_columns, (
+            f"PopLedgerSchema columns missing: {sorted(missing_columns)}"
+        )
+
+        wallet_rows = input_data.loc[
+            input_data["product_id"].eq(product_id)
+            & input_data["product_user_id"].eq(product_user_id)
+        ]
+        wallet_rows = wallet_rows.loc[
+            wallet_rows[amount_columns].sum(axis="columns").gt(0)
+        ]
+
+        data = wallet_rows[amount_columns].sum().to_dict()
+        data.update(
+            product_id=product_id,
+            product_user_id=product_user_id,
+            last_event=(
+                None if wallet_rows.empty else wallet_rows["time_idx"].max()
+            ),
+        )
+        return cls.model_validate(data)
+
 
 class UserWalletBalanceHistogramBucket(BaseModel):
     """One cumulative bucket in the user-wallet balance distribution.
@@ -397,13 +453,33 @@ class ProductUserWalletBalances(BaseModel):
     from the user's wallet before disbursement.
     """
 
+    product_id: UUIDStr = Field(
+        description="Brokerage Product represented by this aggregation.",
+        examples=[uuid4().hex],
+    )
+
     debit: NonNegativeInt = Field(
         default=0,
         description="Sum of ledger debits across the Product's user wallets.",
     )
+    # Note the credit won't equal the net user_task_payments, b/c a user wallet
+    #  could also have credits from things such as contests or bribes.
     credit: NonNegativeInt = Field(
         default=0,
         description="Sum of ledger credits across the Product's user wallets.",
+    )
+
+    user_task_payment: NonNegativeInt = Field(
+        default=0,
+        description="Total task-completion payments credited to user wallets.",
+    )
+    user_task_adjustment_credit: NonNegativeInt = Field(
+        default=0,
+        description="Total positive task adjustments credited to user wallets.",
+    )
+    user_task_adjustment_debit: NonNegativeInt = Field(
+        default=0,
+        description="Total negative task adjustments debited from user wallets.",
     )
 
     outstanding_liability: NonNegativeInt = Field(
@@ -453,6 +529,8 @@ class ProductUserWalletBalances(BaseModel):
         ),
     )
 
+    # We can't determine the amount per payout method without querying the
+    # payout-event table.
     pending_payout_amount: NonNegativeInt = Field(
         default=0,
         description=(
@@ -460,10 +538,14 @@ class ProductUserWalletBalances(BaseModel):
             "cancelled."
         ),
     )
-    pending_payout_count: NonNegativeInt = Field(
-        default=0,
+
+    # We cannot determine the pending payout count, only the balance, b/c individual
+    # txs are aggregated in the POP ledger. We'd have to query the payout-event table.
+    pending_payout_count: NonNegativeInt | None = Field(
+        default=None,
         description=(
-            "Number of payout requests that have not completed or been cancelled."
+            "Number of payout requests that have not completed or been cancelled, "
+            "or null when the source cannot determine pending status."
         ),
     )
 
@@ -496,6 +578,84 @@ class ProductUserWalletBalances(BaseModel):
             "+Inf bucket must equal wallet_balance_count"
         )
         return self
+
+    @classmethod
+    def from_pop_ledger(
+        cls,
+        input_data: pd.DataFrame,
+        product_id: UUIDStr,
+    ) -> ProductUserWalletBalances:
+        """Build a current wallet-liability snapshot from ``PopLedgerSchema`` rows.
+
+        The caller can pass rows for multiple Products. This method selects the
+        requested Product and rows associated with a user, then collapses the
+        minute/account grain to one lifetime balance per ``product_user_id``.
+
+        Pending payout metrics are intentionally left at their defaults. The POP
+        ledger merge drops payout identity, so it cannot distinguish individual
+        payout requests or reliably determine whether each request is still open.
+        """
+        required_columns = {
+            "time_idx",
+            "product_id",
+            "product_user_id",
+            *USER_WALLET_CREDIT_COLUMNS,
+            *USER_WALLET_DEBIT_COLUMNS,
+        }
+        missing_columns = required_columns.difference(input_data.columns)
+        assert not missing_columns, (
+            f"PopLedgerSchema columns missing: {sorted(missing_columns)}"
+        )
+
+        amount_columns = [
+            *USER_WALLET_CREDIT_COLUMNS,
+            *USER_WALLET_DEBIT_COLUMNS,
+        ]
+        wallet_rows = input_data.loc[
+            input_data["product_id"].eq(product_id)
+            & input_data["product_user_id"].notna()
+        ]
+        wallet_rows = wallet_rows.loc[
+            wallet_rows[amount_columns].sum(axis="columns").gt(0)
+        ]
+        if wallet_rows.empty:
+            return cls(product_id=product_id)
+
+        users = wallet_rows.groupby("product_user_id", observed=True)[
+            amount_columns
+        ].sum()
+        credits = users[list(USER_WALLET_CREDIT_COLUMNS)].sum(axis="columns")
+        debits = users[list(USER_WALLET_DEBIT_COLUMNS)].sum(axis="columns")
+        balances = credits - debits
+
+        buckets = [
+            UserWalletBalanceHistogramBucket(
+                upper_bound=upper_bound,
+                cumulative_count=(
+                    len(balances)
+                    if upper_bound is None
+                    else int(balances.le(upper_bound).sum())
+                ),
+            )
+            for upper_bound in USER_WALLET_BALANCE_BUCKETS
+        ]
+
+        return cls(
+            product_id=product_id,
+            debit=int(debits.sum()),
+            credit=int(credits.sum()),
+            user_task_payment=int(users["bp_payment.CREDIT"].sum()),
+            user_task_adjustment_credit=int(users["bp_adjustment.CREDIT"].sum()),
+            user_task_adjustment_debit=int(users["bp_adjustment.DEBIT"].sum()),
+            outstanding_liability=int(balances[balances > 0].sum()),
+            negative_balance_total=abs(int(balances[balances < 0].sum())),
+            positive_wallet_count=int(balances.gt(0).sum()),
+            zero_wallet_count=int(balances.eq(0).sum()),
+            negative_wallet_count=int(balances.lt(0).sum()),
+            wallet_balance_buckets=buckets,
+            oldest_event=wallet_rows["time_idx"].min(),
+            newest_event=wallet_rows["time_idx"].max(),
+        )
 
     @computed_field(
         title="Wallet Balance",
@@ -539,7 +699,6 @@ class ProductBalances(BaseModel):
     plug_credit: SkipJsonSchema[NonNegativeInt] = Field(
         default=0, exclude=True, validation_alias="plug.CREDIT"
     )
-
     plug_debit: SkipJsonSchema[NonNegativeInt] = Field(
         default=0, exclude=True, validation_alias="plug.DEBIT"
     )
@@ -598,6 +757,12 @@ class ProductBalances(BaseModel):
         "The bonus could be as a bribe, winnings for a contest, "
         "leaderboard, etc.",
         examples=[2_745],
+    )
+
+    user_payout_complete_debit: NonNegativeInt = Field(
+        default=0,
+        validation_alias="user_payout_complete.DEBIT",
+        description="Payout processing fees charged to the Product.",
     )
 
     # --- Hidden helper values ---
@@ -674,7 +839,7 @@ class ProductBalances(BaseModel):
     )
     @property
     def expense(self) -> int:
-        return self.user_bonus_credit + (self.user_bonus_debit * -1)
+        return self.user_bonus_credit - self.user_bonus_debit - self.user_payout_complete_debit
 
     # --- Properties: account related ---
     @computed_field(
@@ -861,6 +1026,19 @@ class ProductBalances(BaseModel):
             f"Smart Retainer: ${self.retainer / 100:,.2f}\n"
             f"Available Balance: ${self.available_balance / 100:,.2f}"
         ).replace("$-", "-$")
+
+
+class PrivateProductBalances(ProductBalances):
+    """Product balances with internal revenue visible to administrative APIs."""
+
+    commission: int = Field(
+        default=0,
+        description=(
+            "Net commission revenue earned by GRL from this Brokerage Product. "
+            "Positive adjustments increase this value and reversals decrease it."
+        ),
+        examples=[5_038],
+    )
 
 
 class BusinessBalances(BaseModel):
