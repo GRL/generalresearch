@@ -1212,6 +1212,7 @@ class Product(BaseModel, validate_assignment=True):
                 "bp_adjustment.DEBIT",
             ],
             filters=filters,
+            include_partial=True
         )
         df = client.compute(collections=ddf, sync=True)
         if df.empty:
@@ -1474,9 +1475,10 @@ class Product(BaseModel, validate_assignment=True):
         self.prefetch_bp_account(thl_lm=thl_lm)
 
         self.prebuild_balance(thl_lm=thl_lm, client=client, pop_ledger=pop_ledger)
-        self.prebuild_private_balance(
-            thl_lm=thl_lm, client=client, pop_ledger=pop_ledger
-        )
+        if self.balance:
+            self.prebuild_private_balance(
+                thl_lm=thl_lm, client=client, pop_ledger=pop_ledger
+            )
         if self.user_wallet_enabled:
             self.prebuild_user_wallet_balances(client=client, pop_ledger=pop_ledger)
         self.prebuild_payouts(thl_lm=thl_lm, bp_pem=bp_pem)
