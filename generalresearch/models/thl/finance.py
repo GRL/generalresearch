@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from collections.abc import Iterable
 from datetime import UTC
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -22,12 +23,67 @@ from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.thl.definitions import SessionAdjustedStatus
+from generalresearch.models.thl.user_identifiers import BPUIDStr
 
 payout_example = random.randint(150, 750 * 100)
 adjustment_example = random.randint(-1_000, 50 * 100)
 
-if TYPE_CHECKING:
+# Keep these boundaries stable so Prometheus can aggregate histograms across
+# Products and Grafana can compare the same ranges over time. Values are USD
+# cents; ``None`` represents the required +Inf bucket.
+USER_WALLET_BALANCE_BUCKETS: tuple[int | None, ...] = (
+    -1000_00,
+    -500_00,
+    -250_00,
+    -100_00,
+    -50_00,
+    -25_00,
+    -10_00,
+    -5_00,
+    -1_00,
+    -1,
+    0,
+    1,
+    5,
+    1_00,
+    2_00,
+    3_00,
+    4_00,
+    5_00,
+    6_00,
+    7_00,
+    8_00,
+    9_00,
+    10_00,
+    15_00,
+    20_00,
+    25_00,
+    30_00,
+    40_00,
+    50_00,
+    75_00,
+    100_00,
+    250_00,
+    500_00,
+    None,
+)
 
+USER_WALLET_CREDIT_COLUMNS = (
+    "bp_payment.CREDIT",
+    "bp_adjustment.CREDIT",
+    "user_bonus.CREDIT",
+    "user_payout_cancel.CREDIT",
+    "close_contest.CREDIT",
+    "user_milestone.CREDIT",
+)
+USER_WALLET_DEBIT_COLUMNS = (
+    "bp_adjustment.DEBIT",
+    "user_bonus.DEBIT",
+    "user_payout_request.DEBIT",
+    "user_enter_contest.DEBIT",
+)
+
+if TYPE_CHECKING:
     from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.thl.ledger import LedgerAccount
     from generalresearch.models.thl.product import Product
@@ -183,6 +239,600 @@ class POPFinancial(BaseModel):
         return res
 
 
+class UserWalletBalances(BaseModel):
+    """Cumulative ledger activity and balance for one user's USD wallet.
+
+    All monetary values are integer USD cents and are expressed from the user's
+    perspective: credits increase the wallet balance and debits decrease it.
+    A positive balance is an outstanding liability for the Brokerage Product;
+    a negative balance is tracked separately and must not offset liabilities to
+    other users when producing Product-level totals.
+    """
+
+    model_config = ConfigDict(extra="ignore", populate_by_name=True)
+
+    product_id: UUIDStr = Field(
+        description="Brokerage Product that owns this user wallet.",
+        examples=[uuid4().hex],
+    )
+    product_user_id: BPUIDStr = Field()
+
+    last_event: AwareDatetimeISO | None = Field(
+        default=None,
+        description=(
+            "Timestamp of the most recent ledger event included in these totals, "
+            "or null when the wallet has no events."
+        ),
+    )
+
+    bp_payment_credit: NonNegativeInt = Field(
+        default=0,
+        validation_alias="bp_payment.CREDIT",
+        description="Total task-completion earnings credited to this wallet.",
+        examples=[18_837],
+    )
+
+    adjustment_credit: NonNegativeInt = Field(
+        default=0,
+        validation_alias="bp_adjustment.CREDIT",
+        description="Total positive task reconciliations credited to this wallet.",
+        examples=[2],
+    )
+
+    adjustment_debit: NonNegativeInt = Field(
+        default=0,
+        validation_alias="bp_adjustment.DEBIT",
+        description="Total negative task reconciliations debited from this wallet.",
+        examples=[753],
+    )
+
+    user_bonus_credit: NonNegativeInt = Field(
+        default=0,
+        validation_alias="user_bonus.CREDIT",
+        description="Total non-task bonuses credited to this wallet.",
+        examples=[0],
+    )
+
+    user_bonus_debit: NonNegativeInt = Field(
+        default=0,
+        validation_alias="user_bonus.DEBIT",
+        description="Total bonus reversals debited from this wallet.",
+        examples=[2_745],
+    )
+
+    user_payout_request: NonNegativeInt = Field(
+        default=0,
+        validation_alias="user_payout_request.DEBIT",
+        description=(
+            "Total payout requests debited from this wallet. These amounts are no "
+            "longer part of the unredeemed wallet balance."
+        ),
+        examples=[18_837],
+    )
+
+    user_payout_cancel: NonNegativeInt = Field(
+        default=0,
+        validation_alias="user_payout_cancel.CREDIT",
+        description="Total cancelled payout requests returned to this wallet.",
+        examples=[18_837],
+    )
+
+    user_enter_contest_debit: NonNegativeInt = Field(
+        default=0,
+        validation_alias="user_enter_contest.DEBIT",
+        description="Total cash entries transferred from this wallet to contests.",
+        examples=[500],
+    )
+
+    close_contest_credit: NonNegativeInt = Field(
+        default=0,
+        validation_alias="close_contest.CREDIT",
+        description="Total cash prizes credited when contests closed.",
+        examples=[2_500],
+    )
+
+    user_milestone_credit: NonNegativeInt = Field(
+        default=0,
+        validation_alias="user_milestone.CREDIT",
+        description="Total cash milestone awards credited to this wallet.",
+        examples=[1_000],
+    )
+
+    @computed_field(description="Total debits that decreased this wallet.")
+    @property
+    def debit(self) -> int:
+        return (
+            self.adjustment_debit
+            + self.user_bonus_debit
+            + self.user_payout_request
+            + self.user_enter_contest_debit
+        )
+
+    @computed_field(description="Total credits that increased this wallet.")
+    @property
+    def credit(self) -> int:
+        return (
+            self.bp_payment_credit
+            + self.adjustment_credit
+            + self.user_bonus_credit
+            + self.user_payout_cancel
+            + self.close_contest_credit
+            + self.user_milestone_credit
+        )
+
+    @computed_field(
+        title="Wallet Balance",
+        description=(
+            "Current wallet balance from the user's perspective. A positive value "
+            "is owed to the user; a negative value means the user owes or must earn "
+            "back that amount."
+        ),
+        examples=[5_341],
+    )
+    @property
+    def balance(self) -> int:
+        return self.credit + (self.debit * -1)
+
+    @classmethod
+    def from_pop_ledger(
+        cls,
+        input_data: pd.DataFrame,
+        product_id: UUIDStr,
+        product_user_id: BPUIDStr,
+    ) -> UserWalletBalances:
+        """Build one user's wallet balance from ``PopLedgerSchema`` rows."""
+        amount_columns = [
+            *USER_WALLET_CREDIT_COLUMNS,
+            *USER_WALLET_DEBIT_COLUMNS,
+        ]
+        required_columns = {
+            "time_idx",
+            "product_id",
+            "product_user_id",
+            *amount_columns,
+        }
+        missing_columns = required_columns.difference(input_data.columns)
+        assert not missing_columns, (
+            f"PopLedgerSchema columns missing: {sorted(missing_columns)}"
+        )
+
+        wallet_rows = input_data.loc[
+            input_data["product_id"].eq(product_id)
+            & input_data["product_user_id"].eq(product_user_id)
+        ]
+        wallet_rows = wallet_rows.loc[
+            wallet_rows[amount_columns].sum(axis="columns").gt(0)
+        ]
+
+        data = wallet_rows[amount_columns].sum().to_dict()
+        data.update(
+            product_id=product_id,
+            product_user_id=product_user_id,
+            last_event=(
+                None if wallet_rows.empty else wallet_rows["time_idx"].max()
+            ),
+        )
+        return cls.model_validate(data)
+
+
+class UserWalletBalanceHistogramBucket(BaseModel):
+    """One cumulative bucket in the user-wallet balance distribution.
+
+    Monetary boundaries are integer USD cents. ``upper_bound=None`` represents
+    the required +Inf bucket containing every wallet in the distribution.
+    """
+
+    upper_bound: int | None = Field(
+        description="Inclusive upper boundary, or null for +Inf."
+    )
+    cumulative_count: NonNegativeInt = Field(
+        description="Number of wallets at or below the upper boundary."
+    )
+
+
+def _empty_user_wallet_balance_histogram() -> list[UserWalletBalanceHistogramBucket]:
+    return [
+        UserWalletBalanceHistogramBucket(upper_bound=bound, cumulative_count=0)
+        for bound in USER_WALLET_BALANCE_BUCKETS
+    ]
+
+
+class ProductUserWalletBalances(BaseModel):
+    """Aggregate user-wallet activity for one Brokerage Product.
+
+    All monetary values are integer USD cents.
+
+    These totals should be computed directly by the data layer rather than by
+    materializing every ``UserWalletBalances`` instance. Products may have many
+    thousands of user wallets.
+
+    Positive and negative wallet balances are aggregated separately because
+    a negative user balance MUST not reduce the BP's outstanding liability to
+    users with positive balances.
+
+    Pending payouts are reported separately because a payout request removes funds
+    from the user's wallet before disbursement.
+    """
+
+    product_id: UUIDStr = Field(
+        description="Brokerage Product represented by this aggregation.",
+        examples=[uuid4().hex],
+    )
+
+    debit: NonNegativeInt = Field(
+        default=0,
+        description="Sum of ledger debits across the Product's user wallets.",
+    )
+    # Note the credit won't equal the net user_task_payments, b/c a user wallet
+    #  could also have credits from things such as contests or bribes.
+    credit: NonNegativeInt = Field(
+        default=0,
+        description="Sum of ledger credits across the Product's user wallets.",
+    )
+
+    user_task_payment: NonNegativeInt = Field(
+        default=0,
+        description="Total task-completion payments credited to user wallets.",
+    )
+    user_task_adjustment_credit: NonNegativeInt = Field(
+        default=0,
+        description="Total positive task adjustments credited to user wallets.",
+    )
+    user_task_adjustment_debit: NonNegativeInt = Field(
+        default=0,
+        description="Total negative task adjustments debited from user wallets.",
+    )
+
+    outstanding_liability: NonNegativeInt = Field(
+        default=0,
+        description="Sum of positive user-wallet balances owed by the Product.",
+    )
+    negative_balance_total: NonNegativeInt = Field(
+        default=0,
+        description=(
+            "Absolute sum of negative user-wallet balances. This does not reduce "
+            "outstanding_liability."
+        ),
+    )
+
+    positive_wallet_count: NonNegativeInt = Field(
+        default=0,
+        description="Number of user wallets with a positive balance.",
+    )
+    zero_wallet_count: NonNegativeInt = Field(
+        default=0,
+        description="Number of user wallets with a zero balance.",
+    )
+    negative_wallet_count: NonNegativeInt = Field(
+        default=0,
+        description="Number of user wallets with a negative balance.",
+    )
+
+    wallet_balance_buckets: list[UserWalletBalanceHistogramBucket] = Field(
+        default_factory=_empty_user_wallet_balance_histogram,
+        description=(
+            "Cumulative current-balance buckets for a Prometheus gauge histogram."
+        ),
+    )
+
+    oldest_event: AwareDatetimeISO | None = Field(
+        default=None,
+        description=(
+            "Oldest wallet-event timestamp included in this aggregation, or null "
+            "when no events were included."
+        ),
+    )
+    newest_event: AwareDatetimeISO | None = Field(
+        default=None,
+        description=(
+            "Newest wallet-event timestamp included in this aggregation, or null "
+            "when no events were included."
+        ),
+    )
+
+    # We can't determine the amount per payout method without querying the
+    # payout-event table.
+    pending_payout_amount: NonNegativeInt = Field(
+        default=0,
+        description=(
+            "Total value of requested payouts that have not completed or been "
+            "cancelled."
+        ),
+    )
+
+    # We cannot determine the pending payout count, only the balance, b/c individual
+    # txs are aggregated in the POP ledger. We'd have to query the payout-event table.
+    pending_payout_count: NonNegativeInt | None = Field(
+        default=None,
+        description=(
+            "Number of payout requests that have not completed or been cancelled, "
+            "or null when the source cannot determine pending status."
+        ),
+    )
+
+    @computed_field(description="Number of wallets represented by the histogram.")
+    @property
+    def wallet_balance_count(self) -> int:
+        return (
+            self.positive_wallet_count
+            + self.zero_wallet_count
+            + self.negative_wallet_count
+        )
+
+    @computed_field(description="Sum of balances represented by the histogram.")
+    @property
+    def wallet_balance_sum(self) -> int:
+        return self.balance
+
+    @model_validator(mode="after")
+    def validate_wallet_balance_buckets(self) -> ProductUserWalletBalances:
+        boundaries = tuple(bucket.upper_bound for bucket in self.wallet_balance_buckets)
+        assert boundaries == USER_WALLET_BALANCE_BUCKETS, (
+            "wallet_balance_buckets must use USER_WALLET_BALANCE_BUCKETS"
+        )
+
+        counts = [bucket.cumulative_count for bucket in self.wallet_balance_buckets]
+        assert counts == sorted(counts), (
+            "wallet balance bucket counts must be cumulative"
+        )
+        assert counts[-1] == self.wallet_balance_count, (
+            "+Inf bucket must equal wallet_balance_count"
+        )
+        return self
+
+    @classmethod
+    def from_pop_ledger(
+        cls,
+        input_data: pd.DataFrame,
+        product_id: UUIDStr,
+    ) -> ProductUserWalletBalances:
+        """Build a current wallet-liability snapshot from ``PopLedgerSchema`` rows.
+
+        The caller can pass rows for multiple Products. This method selects the
+        requested Product and rows associated with a user, then collapses the
+        minute/account grain to one lifetime balance per ``product_user_id``.
+
+        Pending payout metrics are intentionally left at their defaults. The POP
+        ledger merge drops payout identity, so it cannot distinguish individual
+        payout requests or reliably determine whether each request is still open.
+        """
+        required_columns = {
+            "time_idx",
+            "product_id",
+            "product_user_id",
+            *USER_WALLET_CREDIT_COLUMNS,
+            *USER_WALLET_DEBIT_COLUMNS,
+        }
+        missing_columns = required_columns.difference(input_data.columns)
+        assert not missing_columns, (
+            f"PopLedgerSchema columns missing: {sorted(missing_columns)}"
+        )
+
+        amount_columns = [
+            *USER_WALLET_CREDIT_COLUMNS,
+            *USER_WALLET_DEBIT_COLUMNS,
+        ]
+        wallet_rows = input_data.loc[
+            input_data["product_id"].eq(product_id)
+            & input_data["product_user_id"].notna()
+        ]
+        wallet_rows = wallet_rows.loc[
+            wallet_rows[amount_columns].sum(axis="columns").gt(0)
+        ]
+        if wallet_rows.empty:
+            return cls(product_id=product_id)
+
+        users = wallet_rows.groupby("product_user_id", observed=True)[
+            amount_columns
+        ].sum()
+        credits = users[list(USER_WALLET_CREDIT_COLUMNS)].sum(axis="columns")
+        debits = users[list(USER_WALLET_DEBIT_COLUMNS)].sum(axis="columns")
+        balances = credits - debits
+
+        buckets = [
+            UserWalletBalanceHistogramBucket(
+                upper_bound=upper_bound,
+                cumulative_count=(
+                    len(balances)
+                    if upper_bound is None
+                    else int(balances.le(upper_bound).sum())
+                ),
+            )
+            for upper_bound in USER_WALLET_BALANCE_BUCKETS
+        ]
+
+        return cls(
+            product_id=product_id,
+            debit=int(debits.sum()),
+            credit=int(credits.sum()),
+            user_task_payment=int(users["bp_payment.CREDIT"].sum()),
+            user_task_adjustment_credit=int(users["bp_adjustment.CREDIT"].sum()),
+            user_task_adjustment_debit=int(users["bp_adjustment.DEBIT"].sum()),
+            outstanding_liability=int(balances[balances > 0].sum()),
+            negative_balance_total=abs(int(balances[balances < 0].sum())),
+            positive_wallet_count=int(balances.gt(0).sum()),
+            zero_wallet_count=int(balances.eq(0).sum()),
+            negative_wallet_count=int(balances.lt(0).sum()),
+            wallet_balance_buckets=buckets,
+            oldest_event=wallet_rows["time_idx"].min(),
+            newest_event=wallet_rows["time_idx"].max(),
+        )
+
+    @computed_field(
+        title="Wallet Balance",
+        description=(
+            "Net balance across all user wallets (credits minus debits). This is a "
+            "net position, not the BP's outstanding liability when any individual "
+            "wallet has a negative balance."
+        ),
+        examples=[5_341],
+    )
+    @property
+    def balance(self) -> int:
+        return self.credit + (self.debit * -1)
+
+    def to_prometheus(self) -> tuple[bytes, str]:
+        """Render this Product as a Prometheus response body and content type."""
+        return self.many_to_prometheus([self])
+
+    @classmethod
+    def many_to_prometheus(
+        cls,
+        snapshots: Iterable[ProductUserWalletBalances],
+    ) -> tuple[bytes, str]:
+        """Render multiple Products in one Prometheus response.
+
+        Each Product is represented by samples sharing the same metric families
+        and distinguished by the ``product_id`` label.
+
+        Usage:
+        balances: list[ProductUserWalletBalances] = ...
+        body, content_type = ProductUserWalletBalances.many_to_prometheus(balances)
+        return HttpResponse(body, content_type=content_type)
+        """
+        from prometheus_client import (
+            CONTENT_TYPE_LATEST,
+            CollectorRegistry,
+            generate_latest,
+        )
+        from prometheus_client.core import (
+            GaugeHistogramMetricFamily,
+            GaugeMetricFamily,
+        )
+
+        products = tuple(snapshots)
+        product_ids = [str(product.product_id) for product in products]
+        if len(product_ids) != len(set(product_ids)):
+            raise ValueError("snapshots must contain unique product_id values")
+
+        class ProductUserWalletCollector:
+            def collect(collector_self):
+                monetary_metrics = (
+                    ("debit_usd", "Ledger debits across user wallets.", "debit"),
+                    ("credit_usd", "Ledger credits across user wallets.", "credit"),
+                    (
+                        "user_task_payment_usd",
+                        "Task-completion payments credited to user wallets.",
+                        "user_task_payment",
+                    ),
+                    (
+                        "user_task_adjustment_credit_usd",
+                        "Positive task adjustments credited to user wallets.",
+                        "user_task_adjustment_credit",
+                    ),
+                    (
+                        "user_task_adjustment_debit_usd",
+                        "Negative task adjustments debited from user wallets.",
+                        "user_task_adjustment_debit",
+                    ),
+                    (
+                        "outstanding_liability_usd",
+                        "Positive user-wallet balances owed by the Product.",
+                        "outstanding_liability",
+                    ),
+                    (
+                        "negative_balance_total_usd",
+                        "Absolute sum of negative user-wallet balances.",
+                        "negative_balance_total",
+                    ),
+                    (
+                        "pending_payout_amount_usd",
+                        "Requested payouts awaiting completion or cancellation.",
+                        "pending_payout_amount",
+                    ),
+                    (
+                        "net_balance_usd",
+                        "Net balance across all user wallets.",
+                        "balance",
+                    ),
+                )
+                for suffix, description, attribute in monetary_metrics:
+                    metric = GaugeMetricFamily(
+                        f"grl_product_user_wallet_{suffix}",
+                        description,
+                        labels=["product_id"],
+                    )
+                    for product in products:
+                        metric.add_metric(
+                            [str(product.product_id)],
+                            int(getattr(product, attribute)) / 100,
+                        )
+                    yield metric
+
+                wallet_counts = GaugeMetricFamily(
+                    "grl_product_user_wallet_count",
+                    "Number of user wallets grouped by balance sign.",
+                    labels=["product_id", "balance_sign"],
+                )
+                for product in products:
+                    product_label = str(product.product_id)
+                    for sign, count in (
+                        ("positive", product.positive_wallet_count),
+                        ("zero", product.zero_wallet_count),
+                        ("negative", product.negative_wallet_count),
+                    ):
+                        wallet_counts.add_metric([product_label, sign], count)
+                yield wallet_counts
+
+                if any(p.pending_payout_count is not None for p in products):
+                    pending_count = GaugeMetricFamily(
+                        "grl_product_user_wallet_pending_payout_count",
+                        "Payout requests awaiting completion or cancellation.",
+                        labels=["product_id"],
+                    )
+                    for product in products:
+                        if product.pending_payout_count is not None:
+                            pending_count.add_metric(
+                                [str(product.product_id)],
+                                product.pending_payout_count,
+                            )
+                    yield pending_count
+
+                for event_name, attribute in (
+                    ("oldest", "oldest_event"),
+                    ("newest", "newest_event"),
+                ):
+                    event_timestamp = GaugeMetricFamily(
+                        f"grl_product_user_wallet_{event_name}_event_timestamp_seconds",
+                        f"Unix timestamp of the {event_name} included wallet event.",
+                        labels=["product_id"],
+                    )
+                    for product in products:
+                        event_time = getattr(product, attribute)
+                        if event_time is not None:
+                            event_timestamp.add_metric(
+                                [str(product.product_id)],
+                                event_time.timestamp(),
+                            )
+                    if event_timestamp.samples:
+                        yield event_timestamp
+
+                histogram = GaugeHistogramMetricFamily(
+                    "grl_product_user_wallet_balance_usd",
+                    "Current user-wallet balance distribution.",
+                    labels=["product_id"],
+                )
+                for product in products:
+                    histogram.add_metric(
+                        [str(product.product_id)],
+                        [
+                            (
+                                "+Inf"
+                                if bucket.upper_bound is None
+                                else str(bucket.upper_bound / 100),
+                                bucket.cumulative_count,
+                            )
+                            for bucket in product.wallet_balance_buckets
+                        ],
+                        product.wallet_balance_sum / 100,
+                    )
+                yield histogram
+
+        registry = CollectorRegistry()
+        registry.register(ProductUserWalletCollector())
+        return generate_latest(registry), CONTENT_TYPE_LATEST
+
+
 class ProductBalances(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
 
@@ -211,7 +861,6 @@ class ProductBalances(BaseModel):
     plug_credit: SkipJsonSchema[NonNegativeInt] = Field(
         default=0, exclude=True, validation_alias="plug.CREDIT"
     )
-
     plug_debit: SkipJsonSchema[NonNegativeInt] = Field(
         default=0, exclude=True, validation_alias="plug.DEBIT"
     )
@@ -270,6 +919,12 @@ class ProductBalances(BaseModel):
         "The bonus could be as a bribe, winnings for a contest, "
         "leaderboard, etc.",
         examples=[2_745],
+    )
+
+    user_payout_complete_debit: NonNegativeInt = Field(
+        default=0,
+        validation_alias="user_payout_complete.DEBIT",
+        description="Payout processing fees charged to the Product.",
     )
 
     # --- Hidden helper values ---
@@ -346,7 +1001,7 @@ class ProductBalances(BaseModel):
     )
     @property
     def expense(self) -> int:
-        return self.user_bonus_credit + (self.user_bonus_debit * -1)
+        return self.user_bonus_credit - self.user_bonus_debit - self.user_payout_complete_debit
 
     # --- Properties: account related ---
     @computed_field(
@@ -499,6 +1154,166 @@ class ProductBalances(BaseModel):
 
         return abs(self.adjustment) / self.payout
 
+    def to_prometheus(self) -> tuple[bytes, str]:
+        """Render this Product as a Prometheus response body and content type."""
+        return self.many_to_prometheus([self])
+
+    @staticmethod
+    def many_to_prometheus(
+        snapshots: Iterable[ProductBalances],
+    ) -> tuple[bytes, str]:
+        """Render Product balance snapshots as one Prometheus response.
+
+        Fields documented as always zero and formatted USD strings are omitted.
+        Every included Product must have a unique ``product_id``.
+        """
+        from prometheus_client import (
+            CONTENT_TYPE_LATEST,
+            CollectorRegistry,
+            generate_latest,
+        )
+        from prometheus_client.core import GaugeMetricFamily
+
+        products = tuple(snapshots)
+        if any(product.product_id is None for product in products):
+            raise ValueError("every snapshot must have a product_id")
+
+        product_ids = [str(product.product_id) for product in products]
+        if len(product_ids) != len(set(product_ids)):
+            raise ValueError("snapshots must contain unique product_id values")
+
+        class ProductBalanceCollector:
+            def collect(collector_self):
+                usd_metrics = (
+                    (
+                        "task_payment_credit_usd",
+                        "Task-completion earnings credited to the Product account.",
+                        "bp_payment_credit",
+                    ),
+                    (
+                        "adjustment_credit_usd",
+                        "Positive task reconciliations credited to the Product.",
+                        "adjustment_credit",
+                    ),
+                    (
+                        "adjustment_debit_usd",
+                        "Negative task reconciliations debited from the Product.",
+                        "adjustment_debit",
+                    ),
+                    (
+                        "supplier_credit_usd",
+                        "Supplier funds received to recoup a negative balance.",
+                        "supplier_credit",
+                    ),
+                    (
+                        "supplier_debit_usd",
+                        "Supplier payments sent by ACH or wire.",
+                        "supplier_debit",
+                    ),
+                    (
+                        "user_bonus_debit_usd",
+                        "Bonuses and other non-task payments sent to user wallets.",
+                        "user_bonus_debit",
+                    ),
+                    (
+                        "user_payout_fee_usd",
+                        "User payout processing fees charged to the Product.",
+                        "user_payout_complete_debit",
+                    ),
+                    (
+                        "issued_payment_usd",
+                        "Amount credited as taken from this Product for payment.",
+                        "issued_payment",
+                    ),
+                    (
+                        "payout_usd",
+                        "Total task payouts earned by the Product.",
+                        "payout",
+                    ),
+                    (
+                        "adjustment_usd",
+                        "Net value of all task adjustments.",
+                        "adjustment",
+                    ),
+                    (
+                        "expense_usd",
+                        "Net Product expenses, including bonuses and payout fees.",
+                        "expense",
+                    ),
+                    (
+                        "net_earnings_usd",
+                        "Task payouts after adjustments and Product expenses.",
+                        "net",
+                    ),
+                    (
+                        "supplier_payment_usd",
+                        "Net supplier payments made by ACH or wire.",
+                        "payment",
+                    ),
+                    (
+                        "balance_usd",
+                        "Product net earnings after supplier payments.",
+                        "balance",
+                    ),
+                    (
+                        "retainer_usd",
+                        "Amount held to cover possible future task adjustments.",
+                        "retainer",
+                    ),
+                    (
+                        "available_balance_usd",
+                        "Product balance currently available for withdrawal.",
+                        "available_balance",
+                    ),
+                    (
+                        "recoup_usd",
+                        "Amount required to recover a negative Product balance.",
+                        "recoup",
+                    ),
+                )
+                for suffix, description, attribute in usd_metrics:
+                    metric = GaugeMetricFamily(
+                        f"grl_product_balance_{suffix}",
+                        description,
+                        labels=["product_id"],
+                    )
+                    for product in products:
+                        metric.add_metric(
+                            [str(product.product_id)],
+                            int(getattr(product, attribute)) / 100,
+                        )
+                    yield metric
+
+                adjustment_ratio = GaugeMetricFamily(
+                    "grl_product_balance_adjustment_ratio",
+                    "Absolute net adjustment divided by total task payouts.",
+                    labels=["product_id"],
+                )
+                for product in products:
+                    adjustment_ratio.add_metric(
+                        [str(product.product_id)],
+                        product.adjustment_percent,
+                    )
+                yield adjustment_ratio
+
+                last_event = GaugeMetricFamily(
+                    "grl_product_balance_last_event_timestamp_seconds",
+                    "Unix timestamp of the most recent included ledger event.",
+                    labels=["product_id"],
+                )
+                for product in products:
+                    if product.last_event is not None:
+                        last_event.add_metric(
+                            [str(product.product_id)],
+                            product.last_event.timestamp(),
+                        )
+                if last_event.samples:
+                    yield last_event
+
+        registry = CollectorRegistry()
+        registry.register(ProductBalanceCollector())
+        return generate_latest(registry), CONTENT_TYPE_LATEST
+
     @staticmethod
     def from_pandas(
         input_data: pd.DataFrame | pd.Series,
@@ -533,6 +1348,19 @@ class ProductBalances(BaseModel):
             f"Smart Retainer: ${self.retainer / 100:,.2f}\n"
             f"Available Balance: ${self.available_balance / 100:,.2f}"
         ).replace("$-", "-$")
+
+
+class PrivateProductBalances(ProductBalances):
+    """Product balances with internal revenue visible to administrative APIs."""
+
+    commission: int = Field(
+        default=0,
+        description=(
+            "Net commission revenue earned by GRL from this Brokerage Product. "
+            "Positive adjustments increase this value and reversals decrease it."
+        ),
+        examples=[5_038],
+    )
 
 
 class BusinessBalances(BaseModel):
