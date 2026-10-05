@@ -85,6 +85,7 @@ if TYPE_CHECKING:
 
 
 PRODUCT_BALANCES_METRICS_CACHE_KEY = "metrics:product_balances"
+PRODUCT_PRIVATE_BALANCES_METRICS_CACHE_KEY = "metrics:private_product_balances"
 PRODUCT_USER_WALLET_BALANCES_METRICS_CACHE_KEY = "metrics:product_user_wallet_balances"
 
 
@@ -1212,7 +1213,7 @@ class Product(BaseModel, validate_assignment=True):
                 "bp_adjustment.DEBIT",
             ],
             filters=filters,
-            include_partial=True
+            include_partial=True,
         )
         df = client.compute(collections=ddf, sync=True)
         if df.empty:
@@ -1479,21 +1480,13 @@ class Product(BaseModel, validate_assignment=True):
             self.prebuild_private_balance(
                 thl_lm=thl_lm, client=client, pop_ledger=pop_ledger
             )
-        if self.user_wallet_enabled:
-            self.prebuild_user_wallet_balances(client=client, pop_ledger=pop_ledger)
+            if self.user_wallet_enabled:
+                self.prebuild_user_wallet_balances(client=client, pop_ledger=pop_ledger)
         self.prebuild_payouts(thl_lm=thl_lm, bp_pem=bp_pem)
         self.prebuild_pop_financial(
             thl_lm=thl_lm, ds=ds, client=client, pop_ledger=pop_ledger
         )
 
-        # Validation steps. Don't save into redis until we confirm against
-        #   the ledger. This allows parquet + db ledger balance checks
-        #   The balance check needs to stop when the last parquet file was
-        #   built, otherwise they'll appear unequal when it's really just
-        #   a delay in the incite merge file not being built yet.
-        # bal = thl_lm.get_account_balance_timerange(time_end=)
-
-        assert self.balance is not None
         rc = redis_config.create_redis_client()
         with rc.pipeline() as pipe:
             pipe.set(
@@ -1501,11 +1494,18 @@ class Product(BaseModel, validate_assignment=True):
                 value=self.model_dump_json(),
                 ex=timedelta(days=3),
             )
-            pipe.hset(
-                name=PRODUCT_BALANCES_METRICS_CACHE_KEY,
-                key=self.uuid,
-                value=self.balance.model_dump_json(),
-            )
+            if self.balance is not None:
+                pipe.hset(
+                    name=PRODUCT_BALANCES_METRICS_CACHE_KEY,
+                    key=self.uuid,
+                    value=self.balance.model_dump_json(),
+                )
+            if self.private_balance is not None:
+                pipe.hset(
+                    name=PRODUCT_PRIVATE_BALANCES_METRICS_CACHE_KEY,
+                    key=self.uuid,
+                    value=self.private_balance.model_dump_json(),
+                )
             if self.user_wallet_balance is not None:
                 pipe.hset(
                     name=PRODUCT_USER_WALLET_BALANCES_METRICS_CACHE_KEY,
