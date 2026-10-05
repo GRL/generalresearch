@@ -85,9 +85,7 @@ if TYPE_CHECKING:
 
 
 PRODUCT_BALANCES_METRICS_CACHE_KEY = "metrics:product_balances"
-PRODUCT_USER_WALLET_BALANCES_METRICS_CACHE_KEY = (
-    "metrics:product_user_wallet_balances"
-)
+PRODUCT_USER_WALLET_BALANCES_METRICS_CACHE_KEY = "metrics:product_user_wallet_balances"
 
 
 # fmt: off
@@ -1165,6 +1163,7 @@ class Product(BaseModel, validate_assignment=True):
                 "If the df is empty, we can also assume that there should be no "
                 "transactions in the ledger."
             )
+            return
 
         df = df.set_index("time_idx")
 
@@ -1215,6 +1214,11 @@ class Product(BaseModel, validate_assignment=True):
             filters=filters,
         )
         df = client.compute(collections=ddf, sync=True)
+        if df.empty:
+            LOG.warning(
+                f"Product({self.uuid=}).prebuild_private_balance empty dataframe"
+            )
+            return
 
         s = df.set_index("time_idx").sum()
 
@@ -1267,6 +1271,12 @@ class Product(BaseModel, validate_assignment=True):
             force_rr_latest=False,
         )
         user_wallet_df = client.compute(ddf, sync=True)
+        if user_wallet_df.empty:
+            LOG.warning(
+                f"Product({self.uuid=}).prebuild_user_wallet_balances empty dataframe"
+            )
+            return
+
         result = ProductUserWalletBalances.from_pop_ledger(
             input_data=user_wallet_df,
             product_id=self.uuid,
