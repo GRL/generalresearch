@@ -1119,7 +1119,9 @@ class Product(BaseModel, validate_assignment=True):
         )
         from generalresearch.models.thl.finance import ProductBalances
 
-        assert self.bp_account is not None, "Call self.prefetch_bp_account()"
+        if self.bp_account is None:
+            self.prefetch_bp_account(thl_lm=thl_lm)
+        assert self.bp_account is not None
 
         if pop_ledger is None:
             assert ds is not None
@@ -1279,6 +1281,7 @@ class Product(BaseModel, validate_assignment=True):
         """
         if self.bp_account is None:
             self.prefetch_bp_account(thl_lm=thl_lm)
+        assert self.bp_account is not None
 
         from generalresearch.incite.schemas.mergers.pop_ledger import (
             numerical_col_names,

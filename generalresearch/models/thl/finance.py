@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import random
+from collections.abc import Iterable
 from datetime import UTC
 from typing import TYPE_CHECKING
 from uuid import uuid4
@@ -670,6 +671,167 @@ class ProductUserWalletBalances(BaseModel):
     def balance(self) -> int:
         return self.credit + (self.debit * -1)
 
+    def to_prometheus(self) -> tuple[bytes, str]:
+        """Render this Product as a Prometheus response body and content type."""
+        return self.many_to_prometheus([self])
+
+    @classmethod
+    def many_to_prometheus(
+        cls,
+        snapshots: Iterable[ProductUserWalletBalances],
+    ) -> tuple[bytes, str]:
+        """Render multiple Products in one Prometheus response.
+
+        Each Product is represented by samples sharing the same metric families
+        and distinguished by the ``product_id`` label.
+
+        Usage:
+        balances: list[ProductUserWalletBalances] = ...
+        body, content_type = ProductUserWalletBalances.many_to_prometheus(balances)
+        return HttpResponse(body, content_type=content_type)
+        """
+        from prometheus_client import (
+            CONTENT_TYPE_LATEST,
+            CollectorRegistry,
+            generate_latest,
+        )
+        from prometheus_client.core import (
+            GaugeHistogramMetricFamily,
+            GaugeMetricFamily,
+        )
+
+        products = tuple(snapshots)
+        product_ids = [str(product.product_id) for product in products]
+        if len(product_ids) != len(set(product_ids)):
+            raise ValueError("snapshots must contain unique product_id values")
+
+        class ProductUserWalletCollector:
+            def collect(collector_self):
+                monetary_metrics = (
+                    ("debit_usd", "Ledger debits across user wallets.", "debit"),
+                    ("credit_usd", "Ledger credits across user wallets.", "credit"),
+                    (
+                        "user_task_payment_usd",
+                        "Task-completion payments credited to user wallets.",
+                        "user_task_payment",
+                    ),
+                    (
+                        "user_task_adjustment_credit_usd",
+                        "Positive task adjustments credited to user wallets.",
+                        "user_task_adjustment_credit",
+                    ),
+                    (
+                        "user_task_adjustment_debit_usd",
+                        "Negative task adjustments debited from user wallets.",
+                        "user_task_adjustment_debit",
+                    ),
+                    (
+                        "outstanding_liability_usd",
+                        "Positive user-wallet balances owed by the Product.",
+                        "outstanding_liability",
+                    ),
+                    (
+                        "negative_balance_total_usd",
+                        "Absolute sum of negative user-wallet balances.",
+                        "negative_balance_total",
+                    ),
+                    (
+                        "pending_payout_amount_usd",
+                        "Requested payouts awaiting completion or cancellation.",
+                        "pending_payout_amount",
+                    ),
+                    (
+                        "net_balance_usd",
+                        "Net balance across all user wallets.",
+                        "balance",
+                    ),
+                )
+                for suffix, description, attribute in monetary_metrics:
+                    metric = GaugeMetricFamily(
+                        f"grl_product_user_wallet_{suffix}",
+                        description,
+                        labels=["product_id"],
+                    )
+                    for product in products:
+                        metric.add_metric(
+                            [str(product.product_id)],
+                            int(getattr(product, attribute)) / 100,
+                        )
+                    yield metric
+
+                wallet_counts = GaugeMetricFamily(
+                    "grl_product_user_wallet_count",
+                    "Number of user wallets grouped by balance sign.",
+                    labels=["product_id", "balance_sign"],
+                )
+                for product in products:
+                    product_label = str(product.product_id)
+                    for sign, count in (
+                        ("positive", product.positive_wallet_count),
+                        ("zero", product.zero_wallet_count),
+                        ("negative", product.negative_wallet_count),
+                    ):
+                        wallet_counts.add_metric([product_label, sign], count)
+                yield wallet_counts
+
+                if any(p.pending_payout_count is not None for p in products):
+                    pending_count = GaugeMetricFamily(
+                        "grl_product_user_wallet_pending_payout_count",
+                        "Payout requests awaiting completion or cancellation.",
+                        labels=["product_id"],
+                    )
+                    for product in products:
+                        if product.pending_payout_count is not None:
+                            pending_count.add_metric(
+                                [str(product.product_id)],
+                                product.pending_payout_count,
+                            )
+                    yield pending_count
+
+                for event_name, attribute in (
+                    ("oldest", "oldest_event"),
+                    ("newest", "newest_event"),
+                ):
+                    event_timestamp = GaugeMetricFamily(
+                        f"grl_product_user_wallet_{event_name}_event_timestamp_seconds",
+                        f"Unix timestamp of the {event_name} included wallet event.",
+                        labels=["product_id"],
+                    )
+                    for product in products:
+                        event_time = getattr(product, attribute)
+                        if event_time is not None:
+                            event_timestamp.add_metric(
+                                [str(product.product_id)],
+                                event_time.timestamp(),
+                            )
+                    if event_timestamp.samples:
+                        yield event_timestamp
+
+                histogram = GaugeHistogramMetricFamily(
+                    "grl_product_user_wallet_balance_usd",
+                    "Current user-wallet balance distribution.",
+                    labels=["product_id"],
+                )
+                for product in products:
+                    histogram.add_metric(
+                        [str(product.product_id)],
+                        [
+                            (
+                                "+Inf"
+                                if bucket.upper_bound is None
+                                else str(bucket.upper_bound / 100),
+                                bucket.cumulative_count,
+                            )
+                            for bucket in product.wallet_balance_buckets
+                        ],
+                        product.wallet_balance_sum / 100,
+                    )
+                yield histogram
+
+        registry = CollectorRegistry()
+        registry.register(ProductUserWalletCollector())
+        return generate_latest(registry), CONTENT_TYPE_LATEST
+
 
 class ProductBalances(BaseModel):
     model_config = ConfigDict(extra="ignore", populate_by_name=True)
@@ -991,6 +1153,166 @@ class ProductBalances(BaseModel):
             return 0.00
 
         return abs(self.adjustment) / self.payout
+
+    def to_prometheus(self) -> tuple[bytes, str]:
+        """Render this Product as a Prometheus response body and content type."""
+        return self.many_to_prometheus([self])
+
+    @staticmethod
+    def many_to_prometheus(
+        snapshots: Iterable[ProductBalances],
+    ) -> tuple[bytes, str]:
+        """Render Product balance snapshots as one Prometheus response.
+
+        Fields documented as always zero and formatted USD strings are omitted.
+        Every included Product must have a unique ``product_id``.
+        """
+        from prometheus_client import (
+            CONTENT_TYPE_LATEST,
+            CollectorRegistry,
+            generate_latest,
+        )
+        from prometheus_client.core import GaugeMetricFamily
+
+        products = tuple(snapshots)
+        if any(product.product_id is None for product in products):
+            raise ValueError("every snapshot must have a product_id")
+
+        product_ids = [str(product.product_id) for product in products]
+        if len(product_ids) != len(set(product_ids)):
+            raise ValueError("snapshots must contain unique product_id values")
+
+        class ProductBalanceCollector:
+            def collect(collector_self):
+                usd_metrics = (
+                    (
+                        "task_payment_credit_usd",
+                        "Task-completion earnings credited to the Product account.",
+                        "bp_payment_credit",
+                    ),
+                    (
+                        "adjustment_credit_usd",
+                        "Positive task reconciliations credited to the Product.",
+                        "adjustment_credit",
+                    ),
+                    (
+                        "adjustment_debit_usd",
+                        "Negative task reconciliations debited from the Product.",
+                        "adjustment_debit",
+                    ),
+                    (
+                        "supplier_credit_usd",
+                        "Supplier funds received to recoup a negative balance.",
+                        "supplier_credit",
+                    ),
+                    (
+                        "supplier_debit_usd",
+                        "Supplier payments sent by ACH or wire.",
+                        "supplier_debit",
+                    ),
+                    (
+                        "user_bonus_debit_usd",
+                        "Bonuses and other non-task payments sent to user wallets.",
+                        "user_bonus_debit",
+                    ),
+                    (
+                        "user_payout_fee_usd",
+                        "User payout processing fees charged to the Product.",
+                        "user_payout_complete_debit",
+                    ),
+                    (
+                        "issued_payment_usd",
+                        "Amount credited as taken from this Product for payment.",
+                        "issued_payment",
+                    ),
+                    (
+                        "payout_usd",
+                        "Total task payouts earned by the Product.",
+                        "payout",
+                    ),
+                    (
+                        "adjustment_usd",
+                        "Net value of all task adjustments.",
+                        "adjustment",
+                    ),
+                    (
+                        "expense_usd",
+                        "Net Product expenses, including bonuses and payout fees.",
+                        "expense",
+                    ),
+                    (
+                        "net_earnings_usd",
+                        "Task payouts after adjustments and Product expenses.",
+                        "net",
+                    ),
+                    (
+                        "supplier_payment_usd",
+                        "Net supplier payments made by ACH or wire.",
+                        "payment",
+                    ),
+                    (
+                        "balance_usd",
+                        "Product net earnings after supplier payments.",
+                        "balance",
+                    ),
+                    (
+                        "retainer_usd",
+                        "Amount held to cover possible future task adjustments.",
+                        "retainer",
+                    ),
+                    (
+                        "available_balance_usd",
+                        "Product balance currently available for withdrawal.",
+                        "available_balance",
+                    ),
+                    (
+                        "recoup_usd",
+                        "Amount required to recover a negative Product balance.",
+                        "recoup",
+                    ),
+                )
+                for suffix, description, attribute in usd_metrics:
+                    metric = GaugeMetricFamily(
+                        f"grl_product_balance_{suffix}",
+                        description,
+                        labels=["product_id"],
+                    )
+                    for product in products:
+                        metric.add_metric(
+                            [str(product.product_id)],
+                            int(getattr(product, attribute)) / 100,
+                        )
+                    yield metric
+
+                adjustment_ratio = GaugeMetricFamily(
+                    "grl_product_balance_adjustment_ratio",
+                    "Absolute net adjustment divided by total task payouts.",
+                    labels=["product_id"],
+                )
+                for product in products:
+                    adjustment_ratio.add_metric(
+                        [str(product.product_id)],
+                        product.adjustment_percent,
+                    )
+                yield adjustment_ratio
+
+                last_event = GaugeMetricFamily(
+                    "grl_product_balance_last_event_timestamp_seconds",
+                    "Unix timestamp of the most recent included ledger event.",
+                    labels=["product_id"],
+                )
+                for product in products:
+                    if product.last_event is not None:
+                        last_event.add_metric(
+                            [str(product.product_id)],
+                            product.last_event.timestamp(),
+                        )
+                if last_event.samples:
+                    yield last_event
+
+        registry = CollectorRegistry()
+        registry.register(ProductBalanceCollector())
+        return generate_latest(registry), CONTENT_TYPE_LATEST
 
     @staticmethod
     def from_pandas(
