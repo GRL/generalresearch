@@ -84,6 +84,12 @@ if TYPE_CHECKING:
     from generalresearch.models.thl.ledger import LedgerAccount
 
 
+PRODUCT_BALANCES_METRICS_CACHE_KEY = "metrics:product_balances"
+PRODUCT_USER_WALLET_BALANCES_METRICS_CACHE_KEY = (
+    "metrics:product_user_wallet_balances"
+)
+
+
 # fmt: off
 GRS_SKINS = [
     "mmfwcl.com", "profile.generalresearch.com",
@@ -1475,8 +1481,26 @@ class Product(BaseModel, validate_assignment=True):
         #   a delay in the incite merge file not being built yet.
         # bal = thl_lm.get_account_balance_timerange(time_end=)
 
+        assert self.balance is not None
         rc = redis_config.create_redis_client()
-        rc.set(name=self.cache_key, value=self.model_dump_json(), ex=timedelta(days=3))
+        with rc.pipeline() as pipe:
+            pipe.set(
+                name=self.cache_key,
+                value=self.model_dump_json(),
+                ex=timedelta(days=3),
+            )
+            pipe.hset(
+                name=PRODUCT_BALANCES_METRICS_CACHE_KEY,
+                key=self.uuid,
+                value=self.balance.model_dump_json(),
+            )
+            if self.user_wallet_balance is not None:
+                pipe.hset(
+                    name=PRODUCT_USER_WALLET_BALANCES_METRICS_CACHE_KEY,
+                    key=self.uuid,
+                    value=self.user_wallet_balance.model_dump_json(),
+                )
+            pipe.execute()
 
     def determine_bp_payment(self, thl_net: Decimal) -> Decimal:
         """

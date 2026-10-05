@@ -1174,6 +1174,18 @@ class TestProductCache:
         assert p1.balance.retainer_usd_str == "$0.17"
         assert p1.balance.available_balance_usd_str == "$0.54"
 
+        from generalresearch.models.thl.product import (
+            PRODUCT_BALANCES_METRICS_CACHE_KEY,
+        )
+
+        metrics_balance_json = rc.hget(
+            PRODUCT_BALANCES_METRICS_CACHE_KEY,
+            product.uuid,
+        )
+        assert isinstance(metrics_balance_json, str)
+        metrics_balance = ProductBalances.model_validate_json(metrics_balance_json)
+        assert metrics_balance == p1.balance
+
     def test_neg_balance_cache(
         self,
         product: Product,
