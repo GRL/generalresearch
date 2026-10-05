@@ -1088,7 +1088,6 @@ class Product(BaseModel, validate_assignment=True):
         self.bp_account = account
 
     # --- Prebuild ---
-
     @staticmethod
     def get_pop_ledger_df(
         product_ids: Collection[UUIDStr],
@@ -1158,10 +1157,26 @@ class Product(BaseModel, validate_assignment=True):
             ]
         return df
 
-    def prebuild_balance(
+    def prebuild_balance_individual(
         self,
         thl_lm: ThlLedgerManager,
-        pop_ledger_df: pd.DataFrame,
+        client: Client,
+        ds: GRLDatasets | None = None,
+        pop_ledger: PopLedgerMerge | None = None,
+    ) -> None:
+        if pop_ledger is None:
+            assert ds is not None
+            from generalresearch.incite.defaults import pop_ledger as plm
+
+            pop_ledger = plm(ds=ds)
+
+        pop_ledger_df = self.get_pop_ledger_df(
+            product_ids=[self.uuid], thl_lm=thl_lm, client=client, pop_ledger=pop_ledger
+        )
+        self.prebuild_balance(thl_lm=thl_lm, pop_ledger_df=pop_ledger_df)
+
+    def prebuild_balance(
+        self, thl_lm: ThlLedgerManager, pop_ledger_df: pd.DataFrame
     ) -> None:
         """
         This returns the Product's Balances that are calculated across
@@ -1185,7 +1200,7 @@ class Product(BaseModel, validate_assignment=True):
         absolutely required, Smart Retainer accounts are supported for any
         volume levels.
         """
-        LOG.debug(f"Product.prebuild_balance_from_pop_ledger_df({self.uuid=})")
+        LOG.debug(f"Product.prebuild_balance({self.uuid=})")
 
         self.balance = None
         if self.bp_account is None:
@@ -1322,7 +1337,6 @@ class Product(BaseModel, validate_assignment=True):
 
     def prebuild_payouts(
         self,
-        thl_lm: ThlLedgerManager,
         bp_pem: BrokerageProductPayoutEventManager,
     ) -> None:
         LOG.debug(f"Product.prebuild_payouts({self.uuid=})")
@@ -1341,140 +1355,63 @@ class Product(BaseModel, validate_assignment=True):
         self.payouts_total = USDCent(sum([po.amount for po in self.payouts]))
         self.payouts_total_str = self.payouts_total.to_usd_str()
 
-    # def prebuild_pop(self):
-    #     account = LM.get_account(qualified_name=f"{LM.currency.value}:bp_wallet:{product.id}")
-    #
-    #     from main import data
-    #
-    #     gv: GlobalVar = data["gv"]
-    #
-    #     ddf = gv.pop_ledger.ddf(
-    #         force_rr_latest=False,
-    #         include_partial=True,
-    #         columns=numerical_col_names + ["time_idx"],
-    #         filters=[
-    #             ("account_id", "==", account.uuid),
-    #             ("time_idx", ">=", rr.start),
-    #         ],
-    #     )
-    #
-    #     df = gv.dask_client.compute(collections=ddf, sync=True)
-    #     df = df.set_index("time_idx").resample(rr.freq).sum()
-    #
-    #     res = []
-    #     for index, row in df.iterrows():
-    #         index: pd.Timestamp
-    #         row: pd.DataFrame
-    #
-    #         dt = index.to_pydatetime().replace(tzinfo=None)
-    #         instance = ProductBalances.from_pandas(row)
-    #
-    #         res.append(
-    #             {
-    #                 "time": dt,
-    #                 "payout": instance.payout / 100,
-    #                 "adjustment": instance.adjustment / 100,
-    #                 "expense": instance.expense / 100,
-    #                 "net": (instance.payout + instance.adjustment + instance.expense) / 100,
-    #             }
-    #         )
-    #
-    #     df = pd.DataFrame.from_records(res)
-
-    # def financial(
-    #         product: Product = Depends(product_from_path),
-    #         rr: ReportRequest = Depends(rr_from_query),
-    # ) -> Any:
-    #     account = LM.get_account(qualified_name=f"{LM.currency.value}:bp_wallet:{product.id}")
-    #
-    #     from main import data
-    #
-    #     gv: GlobalVar = data["gv"]
-    #
-    #     ddf = gv.pop_ledger.ddf(
-    #         force_rr_latest=False,
-    #         include_partial=True,
-    #         columns=numerical_col_names + ["time_idx", "account_id"],
-    #         filters=[("account_id", "==", account.uuid), ("time_idx", ">=", rr.start)],
-    #     )
-    #
-    #     df = gv.dask_client.compute(collections=ddf, sync=True)
-    #
-    #     # We only do it this way so it's consistent with the Business.financial view
-    #     df = df.groupby([pd.Grouper(key="time_idx", freq=rr.interval), "account_id"]).sum()
-    #     return POPFinancial.list_from_pandas(df, accounts=[account])
-
-    # def payments(self):
-    #     """Payments are the amount of money that General Research has sent
-    #     the owner of this Product.
-    #
-    #     These are typically ACH or Wire payments to company bank accounts.
-    #     These are not respondent payments for Products where
-    #
-    #     This is Provided in a standard list without any POP Grouping to show
-    #     the exact time and amount of any Issued Payments.
-    #     """
-    #
-    #     account = LM.get_account(qualified_name=f"{LM.currency.value}:bp_wallet:{product.id}")
-    #
-    #     from main import data
-    #
-    #     gv: GlobalVar = data["gv"]
-    #     ddf = gv.pop_ledger.ddf(
-    #         force_rr_latest=False,
-    #         include_partial=True,
-    #         columns=numerical_col_names + ["time_idx", "account_id"],
-    #         filters=[("account_id", "==", account.uuid)],
-    #     )
-    #
-    #     df = gv.dask_client.compute(collections=ddf, sync=True)
-
-    # --- Methods ---
     def set_cache(
         self,
         thl_lm: ThlLedgerManager,
-        ds: GRLDatasets,
         client: Client,
         bp_pem: BrokerageProductPayoutEventManager,
         redis_config: RedisConfig,
+        ds: GRLDatasets | None = None,
         pop_ledger: PopLedgerMerge | None = None,
-        pop_ledger_df: pd.DataFrame | None = None,
-    ) -> None:
+    ):
         LOG.debug(f"Product.set_cache({self.uuid=})")
 
         if pop_ledger is None:
+            assert ds is not None
             from generalresearch.incite.defaults import pop_ledger as plm
 
             pop_ledger = plm(ds=ds)
 
+        pop_ledger_df = Product.get_pop_ledger_df(
+            product_ids=[self.uuid],
+            client=client,
+            thl_lm=thl_lm,
+            pop_ledger=pop_ledger,
+        )
+        self.set_cache_from_pop_ledger_df(
+            thl_lm=thl_lm,
+            bp_pem=bp_pem,
+            redis_config=redis_config,
+            pop_ledger_df=pop_ledger_df,
+        )
+
+    def set_cache_from_pop_ledger_df(
+        self,
+        thl_lm: ThlLedgerManager,
+        bp_pem: BrokerageProductPayoutEventManager,
+        redis_config: RedisConfig,
+        pop_ledger_df: pd.DataFrame,
+    ) -> None:
+        LOG.debug(f"Product.set_cache({self.uuid=})")
         if self.bp_account is None:
             self.prefetch_bp_account(thl_lm=thl_lm)
 
         self.prebuild_balance(
             thl_lm=thl_lm,
-            client=client,
-            pop_ledger=pop_ledger,
             pop_ledger_df=pop_ledger_df,
         )
         if self.balance:
             self.prebuild_private_balance(
                 thl_lm=thl_lm,
-                client=client,
-                pop_ledger=pop_ledger,
                 pop_ledger_df=pop_ledger_df,
             )
             if self.user_wallet_enabled:
                 self.prebuild_user_wallet_balances(
-                    client=client,
-                    pop_ledger=pop_ledger,
                     pop_ledger_df=pop_ledger_df,
                 )
-        self.prebuild_payouts(thl_lm=thl_lm, bp_pem=bp_pem)
+        self.prebuild_payouts(bp_pem=bp_pem)
         self.prebuild_pop_financial(
             thl_lm=thl_lm,
-            ds=ds,
-            client=client,
-            pop_ledger=pop_ledger,
             pop_ledger_df=pop_ledger_df,
         )
 

@@ -673,17 +673,17 @@ class TestProductFinancials:
         )
 
         with pytest.raises(expected_exception=AssertionError) as cm:
-            p1.prebuild_balance(
+            p1.prebuild_balance_individual(
                 thl_lm=thl_ledger_manager,
                 ds=mnt_filepath,
                 client=client_no_amm,
             )
-        assert "Cannot build Product Balance" in str(cm.value)
+        assert "Cannot load Product POP ledger" in str(cm.value)
 
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
-        p1.prebuild_balance(
+        p1.prebuild_balance_individual(
             thl_lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -700,7 +700,6 @@ class TestProductFinancials:
         body, content_type = p1.balance.to_prometheus()
 
         p1.prebuild_payouts(
-            thl_lm=thl_ledger_manager,
             bp_pem=brokerage_product_payout_event_manager,
         )
         assert p1.payouts is not None
@@ -735,7 +734,7 @@ class TestProductFinancials:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
-        p1.prebuild_balance(
+        p1.prebuild_balance_individual(
             thl_lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -750,7 +749,6 @@ class TestProductFinancials:
         assert p1.balance.available_balance == 70
 
         p1.prebuild_payouts(
-            thl_lm=thl_ledger_manager,
             bp_pem=brokerage_product_payout_event_manager,
         )
         assert p1.payouts is not None
@@ -783,7 +781,7 @@ class TestProductFinancials:
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
-        p1.prebuild_balance(
+        p1.prebuild_balance_individual(
             thl_lm=thl_ledger_manager,
             ds=mnt_filepath,
             client=client_no_amm,
@@ -798,7 +796,6 @@ class TestProductFinancials:
         assert p1.balance.available_balance == 66
 
         p1.prebuild_payouts(
-            thl_lm=thl_ledger_manager,
             bp_pem=brokerage_product_payout_event_manager,
         )
         assert p1.payouts is not None
@@ -856,22 +853,17 @@ class TestProductFinancials:
         txs = thl_ledger_manager.get_tx_filtered_by_account(bp_wallet.uuid)
         assert len(txs) == 2
 
-        with pytest.raises(expected_exception=AssertionError) as cm:
-            p1.prebuild_balance(
-                thl_lm=thl_ledger_manager,
-                ds=mnt_filepath,
-                client=client_no_amm,
-            )
-        assert "Cannot build Product Balance" in str(cm.value)
-
         ledger_collection.initial_load(client=None, sync=True)
         pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
 
-        p1.prebuild_balance(
+        df = p1.get_pop_ledger_df(
+            product_ids=[p1.uuid],
             thl_lm=thl_ledger_manager,
-            ds=mnt_filepath,
+            pop_ledger=pop_ledger_merge,
             client=client_no_amm,
         )
+
+        p1.prebuild_balance(thl_lm=thl_ledger_manager, pop_ledger_df=df)
         assert isinstance(p1.balance, ProductBalances)
         assert p1.balance.payout == 114
         assert p1.balance.adjustment == 0
@@ -881,19 +873,105 @@ class TestProductFinancials:
 
         body, content_type = p1.balance.to_prometheus()
 
-        p1.prebuild_private_balance(
-            thl_lm=thl_ledger_manager,
-            ds=mnt_filepath,
-            client=client_no_amm,
-        )
+        p1.prebuild_private_balance(thl_lm=thl_ledger_manager, pop_ledger_df=df)
         assert p1.private_balance.commission == 5 * 2
 
-        p1.prebuild_user_wallet_balances(
-            ds=mnt_filepath,
-            client=client_no_amm,
-        )
+        p1.prebuild_user_wallet_balances(pop_ledger_df=df)
         assert p1.user_wallet_balance.outstanding_liability == 38 * 2
         body, content_type = p1.user_wallet_balance.to_prometheus()
+
+    def test_balance_both_kinds_of_products(
+        self,
+        gr_business: Business,
+        product_factory: Callable[..., Product],
+        user_factory: Callable[..., User],
+        mnt_filepath: GRLDatasets,
+        thl_ledger_manager: ThlLedgerManager,
+        start: datetime,
+        session_with_tx_factory: Callable[..., Session],
+        delete_ledger_db: Callable[..., None],
+        create_main_accounts: Callable[..., None],
+        client_no_amm: DaskClient,
+        ledger_collection: LedgerDFCollection,
+        pop_ledger_merge: PopLedgerMerge,
+        delete_df_collection: Callable[..., None],
+        payout_config,
+        thl_redis_config: RedisConfig,
+        brokerage_product_payout_event_manager: BrokerageProductPayoutEventManager,
+    ):
+        delete_ledger_db()
+        create_main_accounts()
+        delete_df_collection(coll=ledger_collection)
+
+        p1: Product = product_factory(
+            business=gr_business,
+        )
+        u1: User = user_factory(product=p1)
+        bp_wallet1 = thl_ledger_manager.get_account_or_create_bp_wallet(product=p1)
+        commission_wallet1 = thl_ledger_manager.get_account_or_create_bp_commission(p1)
+        p2: Product = product_factory(
+            business=gr_business,
+            user_wallet_config=UserWalletConfig(enabled=True),
+            payout_config=payout_config,
+        )
+        u2: User = user_factory(product=p2)
+        bp_wallet2 = thl_ledger_manager.get_account_or_create_bp_wallet(product=p2)
+        user_wallet2 = thl_ledger_manager.get_account_or_create_user_wallet(user=u2)
+        commission_wallet2 = thl_ledger_manager.get_account_or_create_bp_commission(p2)
+
+        session_with_tx_factory(
+            user=u1,
+            wall_req_cpi=Decimal("1.00"),
+            started=start,
+        )
+        session_with_tx_factory(
+            user=u2,
+            wall_req_cpi=Decimal("1.00"),
+            started=start,
+        )
+
+        ledger_collection.initial_load(client=None, sync=True)
+        pop_ledger_merge.build(client=client_no_amm, ledger_coll=ledger_collection)
+
+        df = Product.get_pop_ledger_df(
+            product_ids=[p1.uuid, p2.uuid],
+            client=client_no_amm,
+            thl_lm=thl_ledger_manager,
+            pop_ledger=pop_ledger_merge,
+        )
+        expected_accounts = [
+            bp_wallet1.uuid,
+            bp_wallet2.uuid,
+            commission_wallet1.uuid,
+            commission_wallet2.uuid,
+            user_wallet2.uuid,
+        ]
+        assert set(df["account_id"]) == set(expected_accounts)
+        # The product_id column in pop ledger is set only for user txs
+        assert set(df["product_id"].dropna()) == {p2.uuid}
+
+        p1.prebuild_balance(thl_lm=thl_ledger_manager, pop_ledger_df=df)
+        assert p1.balance.payout == 95
+
+        p1.prebuild_private_balance(thl_lm=thl_ledger_manager, pop_ledger_df=df)
+        assert p1.private_balance.commission == 5
+
+        p2.prebuild_balance(thl_lm=thl_ledger_manager, pop_ledger_df=df)
+        assert p2.balance.payout == 57
+
+        p2.prebuild_private_balance(thl_lm=thl_ledger_manager, pop_ledger_df=df)
+        assert p2.private_balance.commission == 5
+
+        p2.prebuild_user_wallet_balances(pop_ledger_df=df)
+        assert p2.user_wallet_balance.outstanding_liability == 38
+
+        p1.set_cache(
+            thl_lm=thl_ledger_manager,
+            client=client_no_amm,
+            bp_pem=brokerage_product_payout_event_manager,
+            redis_config=thl_redis_config,
+            pop_ledger=pop_ledger_merge,
+        )
 
 
 class TestProductBalance:
@@ -1070,12 +1148,13 @@ class TestProductPOPFinancial:
 
         # --- test ---
         assert product.pop_financial is None
-        product.prebuild_pop_financial(
+        df = product.get_pop_ledger_df(
+            product_ids=[product.uuid],
             thl_lm=thl_ledger_manager,
-            ds=mnt_filepath,
-            client=client_no_amm,
             pop_ledger=pop_ledger_merge,
+            client=client_no_amm,
         )
+        product.prebuild_pop_financial(thl_lm=thl_ledger_manager, pop_ledger_df=df)
 
         from generalresearch.models.thl.finance import POPFinancial
 
@@ -1124,6 +1203,10 @@ class TestProductCache:
         delete_ledger_db()
         create_main_accounts()
         delete_df_collection(coll=ledger_collection)
+
+        # In gr-api when we create a product, we create the bp wallet.
+        # maybe that should be standardized...
+        thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
 
         # Confirm the default / null behavior
         rc = thl_redis_config.create_redis_client()
