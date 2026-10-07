@@ -3,10 +3,7 @@ from enum import StrEnum
 
 class SupplierTag(StrEnum):
     """Available tags which can be used to annotate supplier traffic
-
-    Note: should not include commas!
     """
-
     MOBILE = "mobile"
     JS_OFFERWALL = "js-offerwall"
     DOI = "double-opt-in"

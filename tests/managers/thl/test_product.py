@@ -86,8 +86,8 @@ class TestProductManagerGetMethods:
         instance = product_manager.get_by_uuid_if_exists(product_uuid=product.id)
         assert isinstance(instance, Product)
 
-        instance = product_manager.get_by_uuid_if_exists(product_uuid="abc123")
-        assert instance == None
+        instance = product_manager.get_by_uuid_if_exists(product_uuid=uuid4().hex)
+        assert instance is None
 
     def test_get_by_uuids_if_exists(
         self, product_factory: Callable[..., Product], product_manager: ProductManager
@@ -128,7 +128,8 @@ class TestProductManagerGetMethods:
     ):
         business_ids = [uuid4().hex for _ in range(5)]
 
-        product_manager.fetch_uuids(business_uuids=business_ids)
+        res = product_manager.filter_paginated(business_uuids=business_ids)
+        assert len(res) == 0
 
         for business_id in business_ids:
             product_factory(
@@ -139,10 +140,11 @@ class TestProductManagerGetMethods:
                 name=f"Test Product ID #{uuid4().hex[:6]}",
                 user_create_config=None,
             )
+        res = product_manager.filter_paginated(business_uuids=business_ids)
+        assert len(res) == len(business_ids)
 
 
 class TestProductManagerCreation:
-
     def test_base(
         self, product_factory: Callable[..., Product], product_manager: ProductManager
     ):
@@ -156,7 +158,6 @@ class TestProductManagerCreation:
 
 
 class TestProductManagerCreate:
-
     def test_create_simple(self, product_manager: ProductManager):
         # Always required: product_id, team_id, name, redirect_url
         # Required internally - if not passed use default: harmonizer_domain,
@@ -354,7 +355,6 @@ class TestProductManager:
 
 
 class TestProductManagerUpdate:
-
     def test_update(
         self, product_factory: Callable[..., Product], product_manager: ProductManager
     ):
@@ -377,7 +377,6 @@ class TestProductManagerUpdate:
 
 
 class TestProductManagerCacheClear:
-
     def test_cache_clear(
         self, product_factory: Callable[..., Product], product_manager: ProductManager
     ):

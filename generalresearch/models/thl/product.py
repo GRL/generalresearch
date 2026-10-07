@@ -986,6 +986,17 @@ class Product(BaseModel, validate_assignment=True):
     pop_financial: list[POPFinancial] | None = Field(default=None)
     bp_account: LedgerAccount | None = Field(default=None)
 
+    users_active_7d: int | None = Field(
+        default=None, description="Count of active users in the past 7 days"
+    )
+    task_completes_7d: int | None = Field(
+        default=None, description="Count of completes in the past 7 days"
+    )
+    balance_net_7d: int | None = Field(
+        default=None,
+        description="Net Earnings over the last 7 days (in USD Cents, this can be positive or negative)",
+    )
+
     # --- Validators ---
     @field_validator("harmonizer_domain", mode="before")
     def harmonizer_domain_https(cls, s: str | None):
