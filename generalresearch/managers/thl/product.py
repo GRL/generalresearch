@@ -151,6 +151,9 @@ class ProductManager(PostgresManager):
         team_uuids: list[UUIDStr] | None = None,
         name_like: str | None = None,
         supplier_tags: list[str] | None = None,
+        harmonizer_domain_like: str | None = None,
+        redirect_url_like: str | None = None,
+        user_wallet_enabled: bool | None = None,
         order_field: str = "created",
         descending: bool = False,
         conn: Connection | None = None,
@@ -169,6 +172,9 @@ class ProductManager(PostgresManager):
                     team_uuids=team_uuids,
                     name_like=name_like,
                     supplier_tags=supplier_tags,
+                    harmonizer_domain_like=harmonizer_domain_like,
+                    redirect_url_like=redirect_url_like,
+                    user_wallet_enabled=user_wallet_enabled,
                     page=page,
                     size=size,
                     order_field=order_field,
@@ -188,6 +194,9 @@ class ProductManager(PostgresManager):
         team_uuids: list[UUIDStr] | None = None,
         name_like: str | None = None,
         supplier_tags: list[str] | None = None,
+        harmonizer_domain_like: str | None = None,
+        redirect_url_like: str | None = None,
+        user_wallet_enabled: bool | None = None,
         page: int | None = None,
         size: int | None = None,
         order_field: str = "created",
@@ -200,6 +209,9 @@ class ProductManager(PostgresManager):
             team_uuids=team_uuids,
             name_like=name_like,
             supplier_tags=supplier_tags,
+            harmonizer_domain_like=harmonizer_domain_like,
+            redirect_url_like=redirect_url_like,
+            user_wallet_enabled=user_wallet_enabled,
             page=page,
             size=size,
             order_field=order_field,
@@ -212,6 +224,9 @@ class ProductManager(PostgresManager):
             team_uuids=team_uuids,
             name_like=name_like,
             supplier_tags=supplier_tags,
+            harmonizer_domain_like=harmonizer_domain_like,
+            redirect_url_like=redirect_url_like,
+            user_wallet_enabled=user_wallet_enabled,
         )
         return products, count
 
@@ -222,6 +237,9 @@ class ProductManager(PostgresManager):
         team_uuids: list[UUIDStr] | None = None,
         name_like: str | None = None,
         supplier_tags: list[str] | None = None,
+        harmonizer_domain_like: str | None = None,
+        redirect_url_like: str | None = None,
+        user_wallet_enabled: bool | None = None,
         page: int | None = None,
         size: int | None = None,
         order_field: str = "created",
@@ -247,13 +265,27 @@ class ProductManager(PostgresManager):
             team_uuids=team_uuids,
             name_like=name_like,
             supplier_tags=supplier_tags,
+            harmonizer_domain_like=harmonizer_domain_like,
+            redirect_url_like=redirect_url_like,
+            user_wallet_enabled=user_wallet_enabled,
         )
         order_fields = {
             "name": "bp.name",
             "created": "bp.created",
+            # bp_payment_credit is also called "payout"
+            "bp_payment_credit": "(bp.balance ->> 'bp_payment_credit')::bigint",
+            "adjustment_credit": "(bp.balance ->> 'adjustment_credit')::bigint",
+            "adjustment_debit": "(bp.balance ->> 'adjustment_debit')::bigint",
+            "net": "(bp.balance ->> 'net')::bigint",
+            "payment": "(bp.balance ->> 'payment')::bigint",
+            "balance": "(bp.balance ->> 'balance')::bigint",
+            "available_balance": "(bp.balance ->> 'available_balance')::bigint",
+            "adjustment_percent": "(bp.balance ->> 'adjustment_percent')::bigint",
         }
         order_by_sql = (
-            f"{order_fields[order_field]} {'DESC' if descending else 'ASC'}, bp.id"
+            f"{order_fields[order_field]} "
+            f"{'DESC' if descending else 'ASC'} "
+            "NULLS LAST, bp.id"
         )
         query = f"""
         WITH selected_products AS MATERIALIZED (
@@ -321,6 +353,9 @@ class ProductManager(PostgresManager):
         team_uuids: list[UUIDStr] | None = None,
         name_like: str | None = None,
         supplier_tags: list[str] | None = None,
+        harmonizer_domain_like: str | None = None,
+        redirect_url_like: str | None = None,
+        user_wallet_enabled: bool | None = None,
         conn: Connection | None = None,
     ) -> NonNegativeInt:
         filter_str, params = self.make_filter_str(
@@ -329,6 +364,9 @@ class ProductManager(PostgresManager):
             team_uuids=team_uuids,
             name_like=name_like,
             supplier_tags=supplier_tags,
+            harmonizer_domain_like=harmonizer_domain_like,
+            redirect_url_like=redirect_url_like,
+            user_wallet_enabled=user_wallet_enabled,
         )
         query = f"""
         SELECT COUNT(1) AS cnt
@@ -347,6 +385,9 @@ class ProductManager(PostgresManager):
         team_uuids: list[UUIDStr] | None = None,
         name_like: str | None = None,
         supplier_tags: list[str] | None = None,
+        harmonizer_domain_like: str | None = None,
+        redirect_url_like: str | None = None,
+        user_wallet_enabled: bool | None = None,
     ) -> tuple[str, dict[str, Any]]:
         params = {}
         filters = []
@@ -369,6 +410,31 @@ class ProductManager(PostgresManager):
         if name_like:
             filters.append("bp.name ILIKE '%%' || %(name_like)s || '%%'")
             params["name_like"] = name_like
+        if harmonizer_domain_like:
+            filters.append(
+                "bp.grs_domain ILIKE '%%' || %(harmonizer_domain_like)s || '%%'"
+            )
+            params["harmonizer_domain_like"] = harmonizer_domain_like
+        if redirect_url_like:
+            filters.append(
+                "bp.redirect_url ILIKE '%%' || %(redirect_url_like)s || '%%'"
+            )
+            params["redirect_url_like"] = redirect_url_like
+        if user_wallet_enabled is not None:
+            filters.append("""
+            EXISTS (
+                SELECT 1
+                FROM userprofile_brokerageproductconfig AS wallet_filter
+                WHERE wallet_filter.product_id = bp.id
+                  AND wallet_filter.key = 'user_wallet'
+                  AND (
+                      wallet_filter.value
+                      -> 'user_wallet'
+                      ->> 'enabled'
+                  )::boolean = %(user_wallet_enabled)s
+            )
+            """)
+            params["user_wallet_enabled"] = user_wallet_enabled
         if supplier_tags:
             filters.append("""
                 EXISTS (
