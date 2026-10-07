@@ -48,13 +48,11 @@ from generalresearch.models.custom_types import (
 from generalresearch.models.definitions import Source
 from generalresearch.models.thl.finance import (
     POPFinancial,
-    PrivateProductBalances,
     ProductBalances,
+    ProductPOPFinancials,
     ProductUserWalletBalances,
 )
-from generalresearch.models.thl.payout import (
-    BrokerageProductPayoutEvent,
-)
+from generalresearch.models.thl.payout import ProductPayouts
 from generalresearch.models.thl.payout_format import (
     PayoutFormatType,
     format_payout_format,
@@ -85,7 +83,6 @@ if TYPE_CHECKING:
 
 
 PRODUCT_BALANCES_METRICS_CACHE_KEY = "metrics:product_balances"
-PRODUCT_PRIVATE_BALANCES_METRICS_CACHE_KEY = "metrics:private_product_balances"
 PRODUCT_USER_WALLET_BALANCES_METRICS_CACHE_KEY = "metrics:product_user_wallet_balances"
 
 
@@ -969,22 +966,16 @@ class Product(BaseModel, validate_assignment=True):
 
     # Initialization is deferred until unless it's called
     # (see .prebuild_***())
-    balance: ProductBalances | None = Field(default=None, description="Product Balance")
-    private_balance: PrivateProductBalances | None = Field(
-        default=None, description="Product Balance including private keys"
-    )
-    user_wallet_balance: ProductUserWalletBalances | None = Field(default=None)
+    bp_account: LedgerAccount | None = Field(default=None)
 
-    payouts_total_str: str | None = Field(default=None)
-    payouts_total: USDCent | None = Field(default=None)
-    payouts: list[BrokerageProductPayoutEvent] | None = Field(
+    balance: ProductBalances | None = Field(default=None, description="Product Balance")
+    user_wallet_balance: ProductUserWalletBalances | None = Field(default=None)
+    payouts: ProductPayouts | None = Field(
         default=None,
         description="Product Payouts. These are the ACH or Wire payments that were sent to the"
         "Business on behalf of this specific Product",
     )
-
-    pop_financial: list[POPFinancial] | None = Field(default=None)
-    bp_account: LedgerAccount | None = Field(default=None)
+    pop_financial: ProductPOPFinancials | None = Field(default=None)
 
     users_active_7d: int | None = Field(
         default=None, description="Count of active users in the past 7 days"
@@ -1230,42 +1221,26 @@ class Product(BaseModel, validate_assignment=True):
         ).set_index("time_idx")
         balance = ProductBalances.from_pandas(balance_df)
         balance.product_id = self.uuid
-        self.balance = balance
-
-    def prebuild_private_balance(
-        self,
-        thl_lm: ThlLedgerManager,
-        pop_ledger_df: pd.DataFrame | None = None,
-    ) -> None:
-        from generalresearch.models.thl.finance import PrivateProductBalances
 
         commission_account = thl_lm.get_account_or_create_bp_commission_by_uuid(
             self.uuid
         )
-
-        df = pop_ledger_df.loc[pop_ledger_df["account_id"].eq(commission_account.uuid)]
-        if df.empty:
-            LOG.warning(
-                f"Product({self.uuid=}).prebuild_private_balance empty dataframe"
-            )
-            return
-
-        s = df[
+        commission_rows = pop_ledger_df.loc[
+            pop_ledger_df["account_id"].eq(commission_account.uuid)
+        ]
+        commission_totals = commission_rows[
             [
                 "bp_payment.CREDIT",
                 "bp_adjustment.CREDIT",
                 "bp_adjustment.DEBIT",
             ]
         ].sum()
-
-        commission = (
-            s["bp_payment.CREDIT"]
-            + s["bp_adjustment.CREDIT"]
-            - s["bp_adjustment.DEBIT"]
+        balance.commission = int(
+            commission_totals["bp_payment.CREDIT"]
+            + commission_totals["bp_adjustment.CREDIT"]
+            - commission_totals["bp_adjustment.DEBIT"]
         )
-        self.private_balance = PrivateProductBalances.model_validate(
-            self.balance.model_dump() | {"commission": commission}
-        )
+        self.balance = balance
 
     def prebuild_user_wallet_balances(
         self,
@@ -1331,20 +1306,18 @@ class Product(BaseModel, validate_assignment=True):
         ]
 
         if df.empty:
-            self.pop_financial = []
+            self.pop_financial = ProductPOPFinancials()
             return
 
         df = df.groupby(
             [pd.Grouper(key="time_idx", freq=rr.interval), "account_id"]
         ).sum()
 
-        from generalresearch.models.thl.finance import POPFinancial
-
-        self.pop_financial = POPFinancial.list_from_pandas(
+        periods = POPFinancial.list_from_pandas(
             input_data=df, accounts=[self.bp_account]
         )
 
-        return
+        self.pop_financial = ProductPOPFinancials(periods=periods)
 
     def prebuild_payouts(
         self,
@@ -1353,18 +1326,25 @@ class Product(BaseModel, validate_assignment=True):
         LOG.debug(f"Product.prebuild_payouts({self.uuid=})")
         from generalresearch.models.thl.ledger import OrderBy
 
-        self.payouts = bp_pem.get_bp_bp_payout_events_for_products(
+        events = bp_pem.get_bp_bp_payout_events_for_products(
             product_uuids=[self.uuid],
             order_by=OrderBy.DESC,
         )
+        self.payouts = ProductPayouts(events=events)
 
-        self.prebuild_payouts_total()
+    @computed_field
+    @property
+    def payouts_total(self) -> USDCent | None:
+        if self.payouts is None:
+            return None
+        return USDCent(sum(event.amount for event in self.payouts.events))
 
-    def prebuild_payouts_total(self) -> None:
-        assert self.payouts is not None
-
-        self.payouts_total = USDCent(sum([po.amount for po in self.payouts]))
-        self.payouts_total_str = self.payouts_total.to_usd_str()
+    @computed_field
+    @property
+    def payouts_total_str(self) -> str | None:
+        if self.payouts_total is None:
+            return None
+        return self.payouts_total.to_usd_str()
 
     def set_cache(
         self,
@@ -1411,15 +1391,10 @@ class Product(BaseModel, validate_assignment=True):
             thl_lm=thl_lm,
             pop_ledger_df=pop_ledger_df,
         )
-        if self.balance:
-            self.prebuild_private_balance(
-                thl_lm=thl_lm,
+        if self.balance and self.user_wallet_enabled:
+            self.prebuild_user_wallet_balances(
                 pop_ledger_df=pop_ledger_df,
             )
-            if self.user_wallet_enabled:
-                self.prebuild_user_wallet_balances(
-                    pop_ledger_df=pop_ledger_df,
-                )
         self.prebuild_payouts(bp_pem=bp_pem)
         self.prebuild_pop_financial(
             thl_lm=thl_lm,
@@ -1438,12 +1413,6 @@ class Product(BaseModel, validate_assignment=True):
                     name=PRODUCT_BALANCES_METRICS_CACHE_KEY,
                     key=self.uuid,
                     value=self.balance.model_dump_json(),
-                )
-            if self.private_balance is not None:
-                pipe.hset(
-                    name=PRODUCT_PRIVATE_BALANCES_METRICS_CACHE_KEY,
-                    key=self.uuid,
-                    value=self.private_balance.model_dump_json(),
                 )
             if self.user_wallet_balance is not None:
                 pipe.hset(

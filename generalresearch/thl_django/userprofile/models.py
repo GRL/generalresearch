@@ -79,16 +79,14 @@ class BrokerageProduct(models.Model):
     # Store configuration regarding user creation. See: models/thl/product.py:UserCreateConfig
     user_create_config = models.JSONField(default=dict)
 
-    # PrivateProductBalances model (can be converted to ProductBalances)
-    cache_balance = models.JSONField(default=None, null=True)
+    # ProductBalances model
+    balance = models.JSONField(default=None, null=True)
     # ProductUserWalletBalances model
-    cache_user_wallet_balance = models.JSONField(default=None, null=True)
-    # list[BrokerageProductPayoutEvent]
-    cache_payouts = models.JSONField(default=None, null=True)
-    # list[POPFinancial]
-    cache_pop_financial = models.JSONField(default=None, null=True)
-    # We should update all the cache_* fields at once
-    cache_updated_at = models.DateTimeField(default=None, null=True)
+    user_wallet_balance = models.JSONField(default=None, null=True)
+    # ProductPayouts model
+    payouts = models.JSONField(default=None, null=True)
+    # ProductPOPFinancials model
+    pop_financial = models.JSONField(default=None, null=True)
 
     users_active_7d = models.IntegerField(default=None, null=True)
     task_completes_7d = models.IntegerField(default=None, null=True)

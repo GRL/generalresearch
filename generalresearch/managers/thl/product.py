@@ -10,7 +10,7 @@ from threading import Lock
 from typing import TYPE_CHECKING, Any
 
 from cachetools import TTLCache, cachedmethod, keys
-from psycopg import Connection
+from psycopg import Connection, sql
 from pydantic import NonNegativeInt
 from sentry_sdk import capture_exception
 
@@ -40,6 +40,22 @@ logger = logging.getLogger()
 
 
 class ProductManager(PostgresManager):
+    CACHED_FIELDS = {
+        "balance",
+        "user_wallet_balance",
+        "payouts",
+        "pop_financial",
+        "users_active_7d",
+        "task_completes_7d",
+        "balance_net_7d",
+    }
+    CACHED_FIELDS_JSON = {
+        "balance",
+        "user_wallet_balance",
+        "payouts",
+        "pop_financial",
+    }
+
     def __init__(
         self,
         pg_config: PostgresConfig,
@@ -260,9 +276,8 @@ class ProductManager(PostgresManager):
                 bp.session_config,
                 bp.payout_config,
                 bp.user_create_config,
-                bp.cache_balance,
-                bp.cache_user_wallet_balance,
-                bp.cache_updated_at,
+                bp.balance,
+                bp.user_wallet_balance,
                 bp.users_active_7d,
                 bp.task_completes_7d,
                 bp.balance_net_7d
@@ -275,9 +290,6 @@ class ProductManager(PostgresManager):
             bp.*,
             bp.commission AS commission_pct, 
             bp.grs_domain AS harmonizer_domain,
-            bp.cache_balance AS balance,
-            bp.cache_balance AS private_balance,
-            bp.cache_user_wallet_balance AS user_wallet_balance,
             COALESCE(t.tags, ARRAY[]::varchar[]) AS tags,
             sources.value -> 'sources_config' AS sources_config,
             wallet.value -> 'user_wallet' AS user_wallet_config
@@ -636,3 +648,60 @@ class ProductManager(PostgresManager):
                 conn.commit()
 
         self.cache_clear(product_uuid)
+
+    def update_cached_fields(self, products: list[Product]) -> None:
+        """
+        Use this to update any of the cache_* keys on a product
+        or any of the calculated fields such as users_active_7d.
+        All supported fields are updated at once
+        """
+        updates_by_field = {}
+        for product in products:
+            data = product.model_dump(mode="json", include=self.CACHED_FIELDS)
+            for k, v in data.items():
+                if k in self.CACHED_FIELDS_JSON and v is not None:
+                    v = json.dumps(v)
+                updates_by_field.setdefault(k, {})[product.id] = v
+        for field, data in updates_by_field.items():
+            self.update_field_bulk(field=field, data=data)
+
+    def update_field_bulk(self, field: str, data: dict[str, Any]) -> None:
+        """
+        Update one field for multiple products.
+
+        data maps product UUID -> new value.
+        """
+        if not data:
+            return
+
+        assert field in self.CACHED_FIELDS, f"Unsupported field: {field!r}"
+
+        value_rows = sql.SQL(", ").join(sql.SQL("(%s, %s)") for _ in data)
+        value_expression = (
+            sql.SQL("updates.value::jsonb")
+            if field in self.CACHED_FIELDS_JSON
+            else sql.SQL("updates.value::integer")
+        )
+
+        query = sql.SQL("""
+        UPDATE userprofile_brokerageproduct AS bp
+        SET {field} = {value_expression}
+        FROM (VALUES {value_rows}) AS updates(product_id, value)
+        WHERE bp.id = updates.product_id::uuid
+        """).format(
+            field=sql.Identifier(field),
+            value_expression=value_expression,
+            value_rows=value_rows,
+        )
+
+        params = [
+            item for product_id, value in data.items() for item in (product_id, value)
+        ]
+
+        with self.pg_config.make_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query, params)
+            conn.commit()
+
+        for product_id in data:
+            self.cache_clear(product_id)

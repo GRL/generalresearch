@@ -873,8 +873,7 @@ class TestProductFinancials:
 
         body, content_type = p1.balance.to_prometheus()
 
-        p1.prebuild_private_balance(thl_lm=thl_ledger_manager, pop_ledger_df=df)
-        assert p1.private_balance.commission == 5 * 2
+        assert p1.balance.commission == 5 * 2
 
         p1.prebuild_user_wallet_balances(pop_ledger_df=df)
         assert p1.user_wallet_balance.outstanding_liability == 38 * 2
@@ -952,15 +951,11 @@ class TestProductFinancials:
 
         p1.prebuild_balance(thl_lm=thl_ledger_manager, pop_ledger_df=df)
         assert p1.balance.payout == 95
-
-        p1.prebuild_private_balance(thl_lm=thl_ledger_manager, pop_ledger_df=df)
-        assert p1.private_balance.commission == 5
+        assert p1.balance.commission == 5
 
         p2.prebuild_balance(thl_lm=thl_ledger_manager, pop_ledger_df=df)
         assert p2.balance.payout == 57
-
-        p2.prebuild_private_balance(thl_lm=thl_ledger_manager, pop_ledger_df=df)
-        assert p2.private_balance.commission == 5
+        assert p2.balance.commission == 5
 
         p2.prebuild_user_wallet_balances(pop_ledger_df=df)
         assert p2.user_wallet_balance.outstanding_liability == 38

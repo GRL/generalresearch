@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Iterable
-from datetime import UTC
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -239,6 +239,13 @@ class POPFinancial(BaseModel):
         return res
 
 
+class ProductPOPFinancials(BaseModel):
+    periods: list[POPFinancial] = Field(default_factory=list)
+    updated_at: AwareDatetimeISO = Field(
+        default_factory=lambda: datetime.now(tz=UTC),
+    )
+
+
 class UserWalletBalances(BaseModel):
     """Cumulative ledger activity and balance for one user's USD wallet.
 
@@ -408,9 +415,7 @@ class UserWalletBalances(BaseModel):
         data.update(
             product_id=product_id,
             product_user_id=product_user_id,
-            last_event=(
-                None if wallet_rows.empty else wallet_rows["time_idx"].max()
-            ),
+            last_event=(None if wallet_rows.empty else wallet_rows["time_idx"].max()),
         )
         return cls.model_validate(data)
 
@@ -937,6 +942,15 @@ class ProductBalances(BaseModel):
         "balances elsewhere.",
     )
 
+    commission: NonNegativeInt | None = Field(
+        default=None,
+        description=(
+            "Net commission revenue from this Brokerage Product. "
+            "Positive adjustments increase this value and reversals decrease it."
+        ),
+        examples=[5_038],
+    )
+
     # --- Validate ---
     @model_validator(mode="after")
     def check_unknown_fields(self) -> ProductBalances:
@@ -1001,7 +1015,11 @@ class ProductBalances(BaseModel):
     )
     @property
     def expense(self) -> int:
-        return self.user_bonus_credit - self.user_bonus_debit - self.user_payout_complete_debit
+        return (
+            self.user_bonus_credit
+            - self.user_bonus_debit
+            - self.user_payout_complete_debit
+        )
 
     # --- Properties: account related ---
     @computed_field(
@@ -1226,6 +1244,11 @@ class ProductBalances(BaseModel):
                         "issued_payment",
                     ),
                     (
+                        "commission_usd",
+                        "Net commission revenue from the Product.",
+                        "commission",
+                    ),
+                    (
                         "payout_usd",
                         "Total task payouts earned by the Product.",
                         "payout",
@@ -1278,9 +1301,12 @@ class ProductBalances(BaseModel):
                         labels=["product_id"],
                     )
                     for product in products:
+                        value = getattr(product, attribute)
+                        if value is None:
+                            continue
                         metric.add_metric(
                             [str(product.product_id)],
-                            int(getattr(product, attribute)) / 100,
+                            int(value) / 100,
                         )
                     yield metric
 
@@ -1348,19 +1374,6 @@ class ProductBalances(BaseModel):
             f"Smart Retainer: ${self.retainer / 100:,.2f}\n"
             f"Available Balance: ${self.available_balance / 100:,.2f}"
         ).replace("$-", "-$")
-
-
-class PrivateProductBalances(ProductBalances):
-    """Product balances with internal revenue visible to administrative APIs."""
-
-    commission: int = Field(
-        default=0,
-        description=(
-            "Net commission revenue earned by GRL from this Brokerage Product. "
-            "Positive adjustments increase this value and reversals decrease it."
-        ),
-        examples=[5_038],
-    )
 
 
 class BusinessBalances(BaseModel):
