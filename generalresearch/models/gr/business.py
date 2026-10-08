@@ -286,7 +286,7 @@ class Business(BaseModel):
         :return: All the Products for this Business
         """
 
-        self.products = product_manager.fetch_uuids(business_uuids=[self.uuid])
+        self.products = product_manager.filter_paginated(business_uuids=[self.uuid])
 
     def prefetch_bank_accounts(
         self, business_bank_account_manager: BusinessBankAccountManager

@@ -136,7 +136,7 @@ class Team(BaseModel):
         self.businesses = gr_business_manager.get_by_team(team_id=self.id)
 
     def prefetch_products(self, product_manager: ProductManager) -> None:
-        self.products = product_manager.fetch_uuids(team_uuids=[self.uuid])
+        self.products = product_manager.filter_paginated(team_uuids=[self.uuid])
 
     # --- Prebuild Methods ---
 

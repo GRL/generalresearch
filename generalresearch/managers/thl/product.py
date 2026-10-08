@@ -40,12 +40,14 @@ logger = logging.getLogger()
 
 
 class ProductManager(PostgresManager):
+    # Commented out payouts and pop_financial. These are sometimes
+    #  really big; we need to store only a summary or not at all.
     CACHED_FIELDS: frozenset[str] = frozenset(
         {
             "balance",
             "user_wallet_balance",
-            "payouts",
-            "pop_financial",
+            # "payouts",
+            # "pop_financial",
             "users_active_7d",
             "task_completes_7d",
             "balance_net_7d",
@@ -55,8 +57,8 @@ class ProductManager(PostgresManager):
         {
             "balance",
             "user_wallet_balance",
-            "payouts",
-            "pop_financial",
+            # "payouts",
+            # "pop_financial",
         }
     )
 
