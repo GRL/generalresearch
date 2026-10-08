@@ -7,16 +7,13 @@ from collections.abc import Collection
 from datetime import UTC, datetime
 from decimal import Decimal
 from threading import Lock
-from typing import TYPE_CHECKING
-from uuid import UUID
+from typing import TYPE_CHECKING, Any
 
 from cachetools import TTLCache, cachedmethod, keys
-from more_itertools import chunked
-from psycopg import Cursor
-from pydantic import ValidationError
+from psycopg import Connection, sql
+from pydantic import NonNegativeInt
 from sentry_sdk import capture_exception
 
-from generalresearch.decorators import LOG
 from generalresearch.managers.base import (
     PostgresManager,
 )
@@ -43,6 +40,22 @@ logger = logging.getLogger()
 
 
 class ProductManager(PostgresManager):
+    CACHED_FIELDS: frozenset[str] = frozenset({
+        "balance",
+        "user_wallet_balance",
+        "payouts",
+        "pop_financial",
+        "users_active_7d",
+        "task_completes_7d",
+        "balance_net_7d",
+    })
+    CACHED_FIELDS_JSON: frozenset[str] = frozenset({
+        "balance",
+        "user_wallet_balance",
+        "payouts",
+        "pop_financial",
+    })
+
     def __init__(
         self,
         pg_config: PostgresConfig,
@@ -66,53 +79,48 @@ class ProductManager(PostgresManager):
         product_uuid: UUIDStr,
     ) -> Product:
         assert is_valid_uuid(product_uuid), "invalid uuid"
-        res = self.fetch_uuids(
+        res = self.filter_by(
             product_uuids=[product_uuid],
         )
-        # do this so we uniformly raise AssertionErrors
         assert len(res) == 1, "product not found"
         return res[0]
+
+    def get_by_uuid_if_exists(
+        self,
+        product_uuid: UUIDStr,
+    ) -> Product | None:
+        # Do not attach the cache decorator here, since we don't
+        #   want to cache a None. The interior call is cached if
+        #   the product exists.
+        try:
+            return self.get_by_uuid(product_uuid=product_uuid)
+        except AssertionError as e:
+            if "product not found" in str(e):
+                return None
+            raise
 
     def get_by_uuids(
         self,
         product_uuids: list[UUIDStr],
     ) -> list[Product]:
-
-        res = self.fetch_uuids(
+        res = self.filter_paginated(
             product_uuids=product_uuids,
         )
         assert len(product_uuids) == len(res), "incomplete product response"
         return res
-
-    @cachedmethod(
-        operator.attrgetter("uuid_cache"), lock=operator.attrgetter("uuid_lock")
-    )
-    def get_by_uuid_if_exists(
-        self,
-        product_uuid: UUIDStr,
-    ) -> Product | None:
-        # many=False, raise_on_error=False
-        try:
-            return self.fetch_uuids(
-                product_uuids=[product_uuid],
-            )[0]
-        except AssertionError:
-            return None
-        except IndexError:
-            return None
 
     def get_by_uuids_if_exists(
         self,
         product_uuids: list[UUIDStr],
     ) -> list[Product]:
         # Same as .get_by_uuids but doesn't raise Exception if len(product_uuids) != len(res)
-        return self.fetch_uuids(
+        return self.filter_paginated(
             product_uuids=product_uuids,
         )
 
     def get_all(self, rand_limit: int | None) -> list[Product]:
         product_uuids = self.get_all_uuids(rand_limit=rand_limit)
-        return self.fetch_uuids(product_uuids=product_uuids)
+        return self.filter_paginated(product_uuids=product_uuids)
 
     def get_all_uuids(self, rand_limit: int | None) -> list[UUIDStr]:
 
@@ -128,143 +136,317 @@ class ProductManager(PostgresManager):
             )
 
         else:
-            res = self.pg_config.execute_sql_query(query="""
+            res = self.pg_config.execute_sql_query(
+                query="""
                     SELECT p.id::uuid
                     FROM userprofile_brokerageproduct AS p
-                """)
+                """
+            )
         return [i["id"] for i in res]
 
-    def fetch_uuids(
+    def filter_paginated(
         self,
         product_uuids: list[UUIDStr] | None = None,
         business_uuids: list[UUIDStr] | None = None,
         team_uuids: list[UUIDStr] | None = None,
-    ) -> list[Product]:
-        LOG.debug(f"PM.fetch_uuids({product_uuids=}, {business_uuids=}, {team_uuids=})")
-
-        assert (
-            sum(
-                bool(x)  # This will also be False is the array is empty
-                for x in [product_uuids, business_uuids, team_uuids]
-            )
-            == 1
-        ), "Can only provide one set of identifiers"
-
-        filter_column = None
-        filter_uuids = None
-        if bool(product_uuids):
-            assert all(is_valid_uuid(v) for v in product_uuids), "invalid uuid passed"
-            filter_column = "id"
-            filter_uuids = product_uuids
-        elif bool(business_uuids):
-            assert all(is_valid_uuid(v) for v in business_uuids), "invalid uuid passed"
-            filter_column = "business_id"
-            filter_uuids = business_uuids
-        elif bool(team_uuids):
-            assert all(is_valid_uuid(v) for v in team_uuids), "invalid uuid passed"
-            filter_column = "team_id"
-            filter_uuids = team_uuids
-
-        assert filter_column is not None
-
-        if filter_uuids is None or len(filter_uuids) == 0:
-            return []
-
-        with self.pg_config.make_connection() as sql_connection, sql_connection.cursor() as c:
-            res = []
-            for chunk in chunked(filter_uuids, 500):
-                res.extend(
-                    self.fetch_uuids_(
-                        c=c, filter_uuids=chunk, filter_column=filter_column
-                    )
+        name_like: str | None = None,
+        supplier_tags: list[str] | None = None,
+        harmonizer_domain_like: str | None = None,
+        redirect_url_like: str | None = None,
+        user_wallet_enabled: bool | None = None,
+        order_field: str = "created",
+        descending: bool = False,
+        conn: Connection | None = None,
+    ):
+        """
+        Automatically paginate the results of a filter query.
+        """
+        res = []
+        page = 1
+        size = self.DEFAULT_PAGE_SIZE
+        with self.connection(conn) as conn:
+            while True:
+                _res = self.filter_by(
+                    product_uuids=product_uuids,
+                    business_uuids=business_uuids,
+                    team_uuids=team_uuids,
+                    name_like=name_like,
+                    supplier_tags=supplier_tags,
+                    harmonizer_domain_like=harmonizer_domain_like,
+                    redirect_url_like=redirect_url_like,
+                    user_wallet_enabled=user_wallet_enabled,
+                    page=page,
+                    size=size,
+                    order_field=order_field,
+                    descending=descending,
+                    conn=conn,
                 )
+                res.extend(_res)
+                if len(_res) < size:
+                    break
+                page += 1
         return res
 
-    def fetch_uuids_(
-        self, c: Cursor, filter_uuids: list[UUIDStr], filter_column: str
-    ) -> list[Product]:
+    def filter_page(
+        self,
+        product_uuids: list[UUIDStr] | None = None,
+        business_uuids: list[UUIDStr] | None = None,
+        team_uuids: list[UUIDStr] | None = None,
+        name_like: str | None = None,
+        supplier_tags: list[str] | None = None,
+        harmonizer_domain_like: str | None = None,
+        redirect_url_like: str | None = None,
+        user_wallet_enabled: bool | None = None,
+        page: int | None = None,
+        size: int | None = None,
+        order_field: str = "created",
+        descending: bool = False,
+        conn: Connection | None = None,
+    ) -> tuple[list[Product], NonNegativeInt]:
+        products = self.filter_by(
+            product_uuids=product_uuids,
+            business_uuids=business_uuids,
+            team_uuids=team_uuids,
+            name_like=name_like,
+            supplier_tags=supplier_tags,
+            harmonizer_domain_like=harmonizer_domain_like,
+            redirect_url_like=redirect_url_like,
+            user_wallet_enabled=user_wallet_enabled,
+            page=page,
+            size=size,
+            order_field=order_field,
+            descending=descending,
+            conn=conn,
+        )
+        count = self.filter_count(
+            product_uuids=product_uuids,
+            business_uuids=business_uuids,
+            team_uuids=team_uuids,
+            name_like=name_like,
+            supplier_tags=supplier_tags,
+            harmonizer_domain_like=harmonizer_domain_like,
+            redirect_url_like=redirect_url_like,
+            user_wallet_enabled=user_wallet_enabled,
+        )
+        return products, count
+
+    def filter_by(
+        self,
+        product_uuids: list[UUIDStr] | None = None,
+        business_uuids: list[UUIDStr] | None = None,
+        team_uuids: list[UUIDStr] | None = None,
+        name_like: str | None = None,
+        supplier_tags: list[str] | None = None,
+        harmonizer_domain_like: str | None = None,
+        redirect_url_like: str | None = None,
+        user_wallet_enabled: bool | None = None,
+        page: int | None = None,
+        size: int | None = None,
+        order_field: str = "created",
+        descending: bool = False,
+        conn: Connection | None = None,
+    ):
         from generalresearch.models.thl.product import Product
 
-        assert len(filter_uuids) <= 500, "chunk me"
-        assert filter_column in {"id", "business_id", "team_id"}
-
-        # Step 1: Retrieve the basic columns from the "Product table"
+        # Enforce explicit pagination if we've querying for more than 1 item
+        identifiers = [product_uuids, business_uuids, team_uuids]
+        if (
+            (sum(len(x) for x in identifiers if x is not None) > 1)
+            and page is None
+            and size is None
+        ):
+            raise ValueError("must paginate")
+        paginated_filter_str = ""
+        if page is not None or size is not None:
+            paginated_filter_str = self.validate_pagination(page=page, size=size)
+        filter_str, params = self.make_filter_str(
+            product_uuids=product_uuids,
+            business_uuids=business_uuids,
+            team_uuids=team_uuids,
+            name_like=name_like,
+            supplier_tags=supplier_tags,
+            harmonizer_domain_like=harmonizer_domain_like,
+            redirect_url_like=redirect_url_like,
+            user_wallet_enabled=user_wallet_enabled,
+        )
+        order_fields = {
+            "name": "bp.name",
+            "created": "bp.created",
+            # bp_payment_credit is also called "payout"
+            "bp_payment_credit": "(bp.balance ->> 'bp_payment_credit')::bigint",
+            "adjustment_credit": "(bp.balance ->> 'adjustment_credit')::bigint",
+            "adjustment_debit": "(bp.balance ->> 'adjustment_debit')::bigint",
+            "net": "(bp.balance ->> 'net')::bigint",
+            "payment": "(bp.balance ->> 'payment')::bigint",
+            "balance": "(bp.balance ->> 'balance')::bigint",
+            "available_balance": "(bp.balance ->> 'available_balance')::bigint",
+            "adjustment_percent": "(bp.balance ->> 'adjustment_percent')::bigint",
+        }
+        order_by_sql = (
+            f"{order_fields[order_field]} "
+            f"{'DESC' if descending else 'ASC'} "
+            "NULLS LAST, bp.id"
+        )
         query = f"""
-        SELECT  
-            bp.id,
-            bp.id_int,
-            bp.name,
-            bp.enabled,
-            bp.created::timestamptz, 
-            bp.team_id::uuid,
-            bp.business_id::uuid,
+        WITH selected_products AS MATERIALIZED (
+            SELECT  
+                bp.id,
+                bp.id_int,
+                bp.name,
+                bp.team_id,
+                bp.business_id,
+                bp.created,
+                bp.enabled,
+                bp.payments_enabled,
+                bp.commission,
+                bp.redirect_url,
+                bp.grs_domain,
+                bp.profiling_config,
+                bp.user_health_config,
+                bp.yield_man_config,
+                bp.offerwall_config,
+                bp.session_config,
+                bp.payout_config,
+                bp.user_create_config,
+                bp.balance,
+                bp.user_wallet_balance,
+                bp.users_active_7d,
+                bp.task_completes_7d,
+                bp.balance_net_7d
+                FROM userprofile_brokerageproduct bp
+                {filter_str}
+                ORDER BY {order_by_sql}
+                {paginated_filter_str}
+            )
+        SELECT
+            bp.*,
             bp.commission AS commission_pct, 
-            bp.grs_domain as harmonizer_domain,
-            bp.redirect_url,
-            bp.session_config::jsonb,
-            bp.payout_config::jsonb,
-            bp.user_create_config::jsonb, 
-            bp.offerwall_config::jsonb,
-            bp.profiling_config::jsonb,
-            bp.user_health_config::jsonb,
-            bp.yield_man_config::jsonb,
-            t.tags
-        FROM userprofile_brokerageproduct AS bp
-        LEFT JOIN (
-            SELECT product_id, STRING_AGG(tag, ',') as tags
-            FROM userprofile_brokerageproducttag
-            GROUP BY product_id
-        ) t ON t.product_id = bp.id_int
-        WHERE {filter_column} = ANY(%s)
+            bp.grs_domain AS harmonizer_domain,
+            COALESCE(t.tags, ARRAY[]::varchar[]) AS tags,
+            sources.value -> 'sources_config' AS sources_config,
+            wallet.value -> 'user_wallet' AS user_wallet_config
+        FROM selected_products bp
+        LEFT JOIN LATERAL (
+            SELECT array_agg(pt.tag) AS tags
+            FROM userprofile_brokerageproducttag pt
+            WHERE pt.product_id = bp.id_int
+        ) t ON true
+        LEFT JOIN userprofile_brokerageproductconfig sources
+            ON sources.product_id = bp.id
+           AND sources.key = 'sources_config'
+        LEFT JOIN userprofile_brokerageproductconfig wallet
+            ON wallet.product_id = bp.id
+           AND wallet.key = 'user_wallet'
+        ORDER BY {order_by_sql}
         """
 
-        c.execute(query, [list(filter_uuids)])
+        with self.connection(conn) as conn, conn.cursor() as c:
+            c.execute(query, params)
+            res = c.fetchall()
+        products = [Product.model_validate(x) for x in res]
+        return products
 
-        res = c.fetchall()
-
-        if len(res) == 0:
-            return []
-        for x in res:
-            x["id"] = UUID(x["id"]).hex
-            x["team_id"] = UUID(x["team_id"]).hex if x["team_id"] else None
-            x["business_id"] = UUID(x["business_id"]).hex if x["business_id"] else None
-            x["tags"] = set(x["tags"].split(",")) if x["tags"] else set()
-
-        res1 = {i["id"]: i for i in res}
-
-        # Step 2: Retrieve additional metadata from the "Product Config table"
-        c.execute(
-            query="""
-            SELECT bpc.product_id::uuid as product_id, bpc.key, bpc.value::jsonb
-            FROM userprofile_brokerageproductconfig AS bpc
-            WHERE product_id = ANY(%s)
-            AND key IN ('sources_config', 'user_wallet')
-            """,
-            # Pulling from keys b/c no reason to try to retrieve any config
-            #   k,v rows for products that we know aren't in the other table.
-            params=[list(res1.keys())],
+    def filter_count(
+        self,
+        product_uuids: list[UUIDStr] | None = None,
+        business_uuids: list[UUIDStr] | None = None,
+        team_uuids: list[UUIDStr] | None = None,
+        name_like: str | None = None,
+        supplier_tags: list[str] | None = None,
+        harmonizer_domain_like: str | None = None,
+        redirect_url_like: str | None = None,
+        user_wallet_enabled: bool | None = None,
+        conn: Connection | None = None,
+    ) -> NonNegativeInt:
+        filter_str, params = self.make_filter_str(
+            product_uuids=product_uuids,
+            business_uuids=business_uuids,
+            team_uuids=team_uuids,
+            name_like=name_like,
+            supplier_tags=supplier_tags,
+            harmonizer_domain_like=harmonizer_domain_like,
+            redirect_url_like=redirect_url_like,
+            user_wallet_enabled=user_wallet_enabled,
         )
-        kv_res = c.fetchall()
-        for item in kv_res:
-            item["value"] = item["value"][item["key"]]
-            if item["key"] == "user_wallet":
-                item["key"] = "user_wallet_config"
+        query = f"""
+        SELECT COUNT(1) AS cnt
+        FROM userprofile_brokerageproduct AS bp
+        {filter_str}
+        """
+        with self.connection(conn) as conn, conn.cursor() as c:
+            c.execute(query, params)
+            res = c.fetchone()
+        return int(res["cnt"])
 
-        # Step 2.1: go through them all, and add the key,vals to the correct
-        #   Product in the dictionary
-        for item in kv_res:
-            k: str = item["key"]
-            product_id: str = UUID(item["product_id"]).hex
-            res1[product_id][k] = item["value"]
-        r = []
-        for k, v in res1.items():
-            try:
-                r.append(Product.model_validate(v))
-            except ValidationError:
-                logger.info(f"failed to parse product: {k}")
-                raise
+    @staticmethod
+    def make_filter_str(
+        product_uuids: list[UUIDStr] | None = None,
+        business_uuids: list[UUIDStr] | None = None,
+        team_uuids: list[UUIDStr] | None = None,
+        name_like: str | None = None,
+        supplier_tags: list[str] | None = None,
+        harmonizer_domain_like: str | None = None,
+        redirect_url_like: str | None = None,
+        user_wallet_enabled: bool | None = None,
+    ) -> tuple[str, dict[str, Any]]:
+        params = {}
+        filters = []
+        identifiers = [product_uuids, business_uuids, team_uuids]
+        assert sum([bool(x) for x in identifiers]) == 1, (
+            "Must provide exactly one set of identifiers"
+        )
+        identifier = next(x for x in identifiers if x)
+        assert all(is_valid_uuid(v) for v in identifier), "invalid uuid"
 
-        return r
+        if product_uuids is not None:
+            filters.append("bp.id = ANY(%(product_uuids)s)")
+            params["product_uuids"] = list(product_uuids)
+        if business_uuids is not None:
+            filters.append("bp.business_id = ANY(%(business_uuids)s)")
+            params["business_uuids"] = list(business_uuids)
+        if team_uuids is not None:
+            filters.append("bp.team_id = ANY(%(team_uuids)s)")
+            params["team_uuids"] = list(team_uuids)
+        if name_like:
+            filters.append("bp.name ILIKE '%%' || %(name_like)s || '%%'")
+            params["name_like"] = name_like
+        if harmonizer_domain_like:
+            filters.append(
+                "bp.grs_domain ILIKE '%%' || %(harmonizer_domain_like)s || '%%'"
+            )
+            params["harmonizer_domain_like"] = harmonizer_domain_like
+        if redirect_url_like:
+            filters.append(
+                "bp.redirect_url ILIKE '%%' || %(redirect_url_like)s || '%%'"
+            )
+            params["redirect_url_like"] = redirect_url_like
+        if user_wallet_enabled is not None:
+            filters.append("""
+            EXISTS (
+                SELECT 1
+                FROM userprofile_brokerageproductconfig AS wallet_filter
+                WHERE wallet_filter.product_id = bp.id
+                  AND wallet_filter.key = 'user_wallet'
+                  AND (
+                      wallet_filter.value
+                      -> 'user_wallet'
+                      ->> 'enabled'
+                  )::boolean = %(user_wallet_enabled)s
+            )
+            """)
+            params["user_wallet_enabled"] = user_wallet_enabled
+        if supplier_tags:
+            filters.append("""
+                EXISTS (
+                    SELECT 1
+                    FROM userprofile_brokerageproducttag pt
+                    WHERE pt.product_id = bp.id_int
+                      AND pt.tag = ANY(%(supplier_tags)s::text[])
+                )
+            """)
+            params["supplier_tags"] = list(supplier_tags)
+        assert len(filters) > 0, "must pass at least 1 filter"
+        return "WHERE " + " AND ".join(filters), params
 
     def create(
         self,
@@ -363,10 +545,16 @@ class ProductManager(PostgresManager):
         insert_data["payments_enabled"] = instance.payments_enabled
 
         try:
-            insert_data["id_int"] = next(iter(self.pg_config.execute_sql_query(query="""
+            insert_data["id_int"] = next(
+                iter(
+                    self.pg_config.execute_sql_query(
+                        query="""
             SELECT COALESCE(MAX(id_int), 0) + 1 as id_int
             FROM userprofile_brokerageproduct
-            """)))["id_int"]
+            """
+                    )
+                )
+            )["id_int"]
             instance.id_int = insert_data["id_int"]
 
             query = """
@@ -400,7 +588,6 @@ class ProductManager(PostgresManager):
         # from pymysql import IntegrityError
         # except IntegrityError as e:
         except Exception as e:
-
             try:
                 return self.get_by_uuid(product_uuid=instance.id)
             except AssertionError:
@@ -527,3 +714,60 @@ class ProductManager(PostgresManager):
                 conn.commit()
 
         self.cache_clear(product_uuid)
+
+    def update_cached_fields(self, products: list[Product]) -> None:
+        """
+        Use this to update any of the cache_* keys on a product
+        or any of the calculated fields such as users_active_7d.
+        All supported fields are updated at once
+        """
+        updates_by_field = {}
+        for product in products:
+            data = product.model_dump(mode="json", include=set(self.CACHED_FIELDS))
+            for k, v in data.items():
+                if k in self.CACHED_FIELDS_JSON and v is not None:
+                    v = json.dumps(v)
+                updates_by_field.setdefault(k, {})[product.id] = v
+        for field, data in updates_by_field.items():
+            self.update_field_bulk(field=field, data=data)
+
+    def update_field_bulk(self, field: str, data: dict[str, Any]) -> None:
+        """
+        Update one field for multiple products.
+
+        data maps product UUID -> new value.
+        """
+        if not data:
+            return
+
+        assert field in self.CACHED_FIELDS, f"Unsupported field: {field!r}"
+
+        value_rows = sql.SQL(", ").join(sql.SQL("(%s, %s)") for _ in data)
+        value_expression = (
+            sql.SQL("updates.value::jsonb")
+            if field in self.CACHED_FIELDS_JSON
+            else sql.SQL("updates.value::integer")
+        )
+
+        query = sql.SQL("""
+        UPDATE userprofile_brokerageproduct AS bp
+        SET {field} = {value_expression}
+        FROM (VALUES {value_rows}) AS updates(product_id, value)
+        WHERE bp.id = updates.product_id::uuid
+        """).format(
+            field=sql.Identifier(field),
+            value_expression=value_expression,
+            value_rows=value_rows,
+        )
+
+        params = [
+            item for product_id, value in data.items() for item in (product_id, value)
+        ]
+
+        with self.pg_config.make_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query, params)
+            conn.commit()
+
+        for product_id in data:
+            self.cache_clear(product_id)

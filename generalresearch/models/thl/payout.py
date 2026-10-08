@@ -238,6 +238,13 @@ class BrokerageProductPayoutEvent(PayoutEvent):
         return self.amount_usd.to_usd_str()
 
 
+class ProductPayouts(BaseModel):
+    events: list[BrokerageProductPayoutEvent] = Field(default_factory=list)
+    updated_at: AwareDatetimeISO = Field(
+        default_factory=lambda: datetime.now(tz=UTC),
+    )
+
+
 class BusinessPayoutEventCreate(BaseModel):
     """A single payout event to a supplier Business."""
 

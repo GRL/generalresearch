@@ -79,6 +79,21 @@ class BrokerageProduct(models.Model):
     # Store configuration regarding user creation. See: models/thl/product.py:UserCreateConfig
     user_create_config = models.JSONField(default=dict)
 
+    # ProductBalances model
+    balance = models.JSONField(default=None, null=True)
+    # ProductUserWalletBalances model
+    user_wallet_balance = models.JSONField(default=None, null=True)
+    # ProductPayouts model
+    payouts = models.JSONField(default=None, null=True)
+    # ProductPOPFinancials model
+    pop_financial = models.JSONField(default=None, null=True)
+
+    users_active_7d = models.IntegerField(default=None, null=True)
+    task_completes_7d = models.IntegerField(default=None, null=True)
+    # Net Earnings over the last 7 days (in USD Cents, this can be positive or negative)
+    balance_net_7d = models.IntegerField(default=None, null=True)
+
+
     class Meta:
         db_table = "userprofile_brokerageproduct"
 

@@ -51,7 +51,7 @@ class TestProductManagerGetMethods:
             product_manager.get_by_uuids(
                 product_uuids=[p.id for p in products] + ["abc123"]
             )
-        assert "invalid uuid passed" in str(cm.value)
+        assert "invalid uuid" in str(cm.value)
 
     def test_get_by_uuid_if_exists(
         self, product_factory: Callable[..., Product], product_manager: ProductManager
@@ -61,7 +61,7 @@ class TestProductManagerGetMethods:
         instance = product_manager.get_by_uuid_if_exists(product_uuid=products[0].id)
         assert isinstance(instance, Product)
 
-        instance = product_manager.get_by_uuid_if_exists(product_uuid="abc123")
+        instance = product_manager.get_by_uuid_if_exists(product_uuid=uuid4().hex)
         assert instance is None
 
     def test_get_by_uuids_if_exists(
