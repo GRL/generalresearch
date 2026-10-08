@@ -1494,7 +1494,7 @@ class Product(BaseModel, validate_assignment=True):
         with rc.pipeline() as pipe:
             pipe.set(
                 name=self.cache_key,
-                value=self.model_dump_json(),
+                value=self.model_dump_json(exclude={"payouts", "pop_financial"}),
                 ex=timedelta(days=3),
             )
             if self.balance is not None:
