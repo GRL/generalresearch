@@ -202,7 +202,7 @@ class ProductManager(PostgresManager):
         order_field: str = "created",
         descending: bool = False,
         conn: Connection | None = None,
-    ) -> tuple[list[Product], int]:
+    ) -> tuple[list[Product], NonNegativeInt]:
         products = self.filter_by(
             product_uuids=product_uuids,
             business_uuids=business_uuids,
@@ -723,7 +723,7 @@ class ProductManager(PostgresManager):
         """
         updates_by_field = {}
         for product in products:
-            data = product.model_dump(mode="json", include=self.CACHED_FIELDS)
+            data = product.model_dump(mode="json", include=set(self.CACHED_FIELDS))
             for k, v in data.items():
                 if k in self.CACHED_FIELDS_JSON and v is not None:
                     v = json.dumps(v)
