@@ -1205,6 +1205,7 @@ class Product(BaseModel, validate_assignment=True):
         LOG.debug(f"Product.prebuild_balance({self.uuid=})")
 
         self.balance = None
+        self.balance_net_7d = None
         if self.bp_account is None:
             self.prefetch_bp_account(thl_lm=thl_lm)
         assert self.bp_account is not None
@@ -1219,6 +1220,16 @@ class Product(BaseModel, validate_assignment=True):
         balance_df = balance_df.drop(
             columns=["account_id", "product_id", "product_user_id"]
         ).set_index("time_idx")
+        balance_df.index = pd.to_datetime(balance_df.index, utc=True)
+
+        cutoff = pd.Timestamp.now(tz="UTC") - timedelta(days=7)
+        balance_7d_df = balance_df.loc[balance_df.index >= cutoff]
+        self.balance_net_7d = (
+            0
+            if balance_7d_df.empty
+            else ProductBalances.from_pandas(balance_7d_df).net
+        )
+
         balance = ProductBalances.from_pandas(balance_df)
         balance.product_id = self.uuid
 
