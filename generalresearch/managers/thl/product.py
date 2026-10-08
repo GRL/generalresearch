@@ -40,21 +40,25 @@ logger = logging.getLogger()
 
 
 class ProductManager(PostgresManager):
-    CACHED_FIELDS: frozenset[str] = frozenset({
-        "balance",
-        "user_wallet_balance",
-        "payouts",
-        "pop_financial",
-        "users_active_7d",
-        "task_completes_7d",
-        "balance_net_7d",
-    })
-    CACHED_FIELDS_JSON: frozenset[str] = frozenset({
-        "balance",
-        "user_wallet_balance",
-        "payouts",
-        "pop_financial",
-    })
+    CACHED_FIELDS: frozenset[str] = frozenset(
+        {
+            "balance",
+            "user_wallet_balance",
+            "payouts",
+            "pop_financial",
+            "users_active_7d",
+            "task_completes_7d",
+            "balance_net_7d",
+        }
+    )
+    CACHED_FIELDS_JSON: frozenset[str] = frozenset(
+        {
+            "balance",
+            "user_wallet_balance",
+            "payouts",
+            "pop_financial",
+        }
+    )
 
     def __init__(
         self,
@@ -281,6 +285,9 @@ class ProductManager(PostgresManager):
             "balance": "(bp.balance ->> 'balance')::bigint",
             "available_balance": "(bp.balance ->> 'available_balance')::bigint",
             "adjustment_percent": "(bp.balance ->> 'adjustment_percent')::bigint",
+            "users_active_7d": "bp.users_active_7d",
+            "task_completes_7d": "bp.task_completes_7d",
+            "balance_net_7d": "bp.balance_net_7d",
         }
         order_by_sql = (
             f"{order_fields[order_field]} "
