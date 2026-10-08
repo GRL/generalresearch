@@ -4,8 +4,9 @@ import os
 import subprocess
 import time
 import warnings
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
+from pathlib import Path
 from sys import platform
 from typing import Any
 
@@ -91,6 +92,11 @@ DFCollectionTypeSchemas = {
     DFCollectionType.MORNING_SURVEY_TIMESERIES: MorningSurveyTimeseriesSchema,
     DFCollectionType.SAGO_SURVEY_HISTORY: SagoSurveyHistorySchema,
     DFCollectionType.SPECTRUM_SURVEY_TIMESERIES: SpectrumSurveyTimeseriesSchema,
+}
+
+DFCollectionTypeTimestampColumns: dict[DFCollectionType, str] = {
+    data_type: schema.metadata[ORDER_KEY]
+    for data_type, schema in DFCollectionTypeSchemas.items()
 }
 
 # This is not a technical limitation, it is just a double check
@@ -180,6 +186,38 @@ class DFCollectionItem(CollectionItemBase):
     # --- ORM / Data handlers---
     def to_dict(self) -> dict[str, Any]:
         return self._to_dict()
+
+    def validate_time_coverage(self, path: Path) -> None:
+        timestamp_column = DFCollectionTypeTimestampColumns[self._collection.data_type]
+        df = pd.read_parquet(path, columns=[timestamp_column])
+        timestamps = pd.to_datetime(df[timestamp_column])
+        coverage = timestamps.max() - timestamps.min()
+        minimum_coverage = self.interval.length - timedelta(days=2)
+
+        if pd.isna(coverage) or coverage < minimum_coverage:
+            raise ValueError(
+                f"{self.name} archive does not cover its interval: "
+                f"{coverage=} < {minimum_coverage=}"
+            )
+
+    def valid_archive(
+        self,
+        generic_path: FilePath | None = None,
+        sample: int | None = None,
+    ) -> bool:
+        if not super().valid_archive(generic_path=generic_path, sample=sample):
+            return False
+
+        path = Path(generic_path or self.path)
+        if path == self.partial_path or ".partial." in path.name:
+            return True
+
+        try:
+            self.validate_time_coverage(path)
+        except ValueError as e:
+            LOG.warning(f"Invalid archive time coverage {path=} {e=}")
+            return False
+        return True
 
     def from_db(self, since: datetime | None = None) -> pd.DataFrame | None:
         if self._collection.data_type == DFCollectionType.LEDGER:

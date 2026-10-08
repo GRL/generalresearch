@@ -1,7 +1,8 @@
 import os.path
 import subprocess
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from pathlib import Path
 from sys import platform
 from typing import Self
 
@@ -63,6 +64,16 @@ MergeTypeSchemas = {
     MergeType.ENRICHED_TASK_ADJUST: EnrichedTaskAdjustSchema,
 }
 
+MergeTypeTimestampColumns: dict[MergeType, str | None] = {
+    MergeType.YM_SURVEY_WALL: "started",
+    MergeType.YM_WALL_SUMMARY: "date",
+    MergeType.POP_LEDGER: "time_idx",
+    MergeType.USER_ID_PRODUCT: None,
+    MergeType.ENRICHED_WALL: "started",
+    MergeType.ENRICHED_SESSION: "started",
+    MergeType.ENRICHED_TASK_ADJUST: "alerted",
+}
+
 
 class MergeCollectionItem(CollectionItemBase):
     # --- Properties ---
@@ -99,6 +110,34 @@ class MergeCollectionItem(CollectionItemBase):
         res = self._to_dict()
         res["group_by"] = self._collection.group_by
         return res
+
+    def validate_time_coverage(self, path: Path) -> None:
+        timestamp_column = MergeTypeTimestampColumns[self._collection.merge_type]
+        if timestamp_column is None:
+            return
+
+        df = pd.read_parquet(path, columns=[timestamp_column])
+        timestamps = pd.to_datetime(df[timestamp_column])
+        coverage = timestamps.max() - timestamps.min()
+        minimum_coverage = self.interval.length - timedelta(days=2)
+
+        if pd.isna(coverage) or coverage < minimum_coverage:
+            raise ValueError(
+                f"{self.name} archive does not cover its interval: "
+                f"{coverage=} < {minimum_coverage=}"
+            )
+
+    def valid_archive(self, generic_path=None, sample: int | None = None) -> bool:
+        if not super().valid_archive(generic_path=generic_path, sample=sample):
+            return False
+
+        path = generic_path or self.path
+        try:
+            self.validate_time_coverage(path)
+        except ValueError as e:
+            LOG.warning(f"Invalid archive time coverage {path=} {e=}")
+            return False
+        return True
 
     def to_archive(
         self,
@@ -140,6 +179,11 @@ class MergeCollectionItem(CollectionItemBase):
             compression="brotli",
         )
         client.compute(f, sync=True, priority=2, resources=client_resources)
+        try:
+            self.validate_time_coverage(tmp_path)
+        except Exception:
+            self.delete_archive(tmp_path)
+            raise
         assert not os.path.exists(self.path.as_posix()), (
             f"already exits!: {self.path.as_posix()}"
         )
