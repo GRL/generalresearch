@@ -324,7 +324,10 @@ class ProductManager(PostgresManager):
             bp.grs_domain AS harmonizer_domain,
             COALESCE(t.tags, ARRAY[]::varchar[]) AS tags,
             sources.value -> 'sources_config' AS sources_config,
-            wallet.value -> 'user_wallet' AS user_wallet_config
+            COALESCE(
+                NULLIF(wallet.value -> 'user_wallet', 'null'::jsonb),
+                jsonb_build_object()
+            ) AS user_wallet_config
         FROM selected_products bp
         LEFT JOIN LATERAL (
             SELECT array_agg(pt.tag) AS tags
