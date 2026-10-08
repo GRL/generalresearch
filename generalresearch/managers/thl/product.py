@@ -284,7 +284,7 @@ class ProductManager(PostgresManager):
             "payment": "(bp.balance ->> 'payment')::bigint",
             "balance": "(bp.balance ->> 'balance')::bigint",
             "available_balance": "(bp.balance ->> 'available_balance')::bigint",
-            "adjustment_percent": "(bp.balance ->> 'adjustment_percent')::bigint",
+            "adjustment_percent": "(bp.balance ->> 'adjustment_percent')::numeric",
             "users_active_7d": "bp.users_active_7d",
             "task_completes_7d": "bp.task_completes_7d",
             "balance_net_7d": "bp.balance_net_7d",
