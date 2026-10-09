@@ -442,27 +442,10 @@ def _empty_user_wallet_balance_histogram() -> list[UserWalletBalanceHistogramBuc
     ]
 
 
-class ProductUserWalletBalances(BaseModel):
-    """Aggregate user-wallet activity for one Brokerage Product.
-
-    All monetary values are integer USD cents.
-
-    These totals should be computed directly by the data layer rather than by
-    materializing every ``UserWalletBalances`` instance. Products may have many
-    thousands of user wallets.
-
-    Positive and negative wallet balances are aggregated separately because
-    a negative user balance MUST not reduce the BP's outstanding liability to
-    users with positive balances.
-
-    Pending payouts are reported separately because a payout request removes funds
-    from the user's wallet before disbursement.
+class UserWalletBalanceSummary(BaseModel):
     """
-
-    product_id: UUIDStr = Field(
-        description="Brokerage Product represented by this aggregation.",
-        examples=[uuid4().hex],
-    )
+    Abstract class for aggregating UserWalletBalance objects -> {ProductUserWalletBalances, BusinessUserWalletBalances}
+    """
 
     debit: NonNegativeInt = Field(
         default=0,
@@ -585,6 +568,46 @@ class ProductUserWalletBalances(BaseModel):
         )
         return self
 
+    @computed_field(
+        title="Wallet Balance",
+        description=(
+            "Net balance across all user wallets (credits minus debits). This is a "
+            "net position, not the BP's outstanding liability when any individual "
+            "wallet has a negative balance."
+        ),
+        examples=[5_341],
+    )
+    @property
+    def balance(self) -> int:
+        return self.credit + (self.debit * -1)
+
+    def to_prometheus(self) -> tuple[bytes, str]:
+        """Render this Product as a Prometheus response body and content type."""
+        return self.many_to_prometheus([self])
+
+
+class ProductUserWalletBalances(UserWalletBalanceSummary):
+    """Aggregate user-wallet activity for one Brokerage Product.
+
+    All monetary values are integer USD cents.
+
+    These totals should be computed directly by the data layer rather than by
+    materializing every ``UserWalletBalances`` instance. Products may have many
+    thousands of user wallets.
+
+    Positive and negative wallet balances are aggregated separately because
+    a negative user balance MUST not reduce the BP's outstanding liability to
+    users with positive balances.
+
+    Pending payouts are reported separately because a payout request removes funds
+    from the user's wallet before disbursement.
+    """
+
+    product_id: UUIDStr = Field(
+        description="Brokerage Product represented by this aggregation.",
+        examples=[uuid4().hex],
+    )
+
     @classmethod
     def from_pop_ledger(
         cls,
@@ -662,23 +685,6 @@ class ProductUserWalletBalances(BaseModel):
             oldest_event=wallet_rows["time_idx"].min(),
             newest_event=wallet_rows["time_idx"].max(),
         )
-
-    @computed_field(
-        title="Wallet Balance",
-        description=(
-            "Net balance across all user wallets (credits minus debits). This is a "
-            "net position, not the BP's outstanding liability when any individual "
-            "wallet has a negative balance."
-        ),
-        examples=[5_341],
-    )
-    @property
-    def balance(self) -> int:
-        return self.credit + (self.debit * -1)
-
-    def to_prometheus(self) -> tuple[bytes, str]:
-        """Render this Product as a Prometheus response body and content type."""
-        return self.many_to_prometheus([self])
 
     @classmethod
     def many_to_prometheus(
@@ -1376,7 +1382,7 @@ class ProductBalances(BaseModel):
         ).replace("$-", "-$")
 
 
-class BusinessBalances(BaseModel):
+class BusinessBalancesCalculator(BaseModel):
     product_balances: list[ProductBalances] = Field(default_factory=list)
 
     # --- Validators ---
@@ -1703,4 +1709,103 @@ class BusinessBalances(BaseModel):
             product_balances, key=lambda pb: product_uuid_order[pb.product_id]
         )
 
-        return BusinessBalances.model_validate({"product_balances": product_balances})
+        return BusinessBalances.from_product_balances(product_balances)
+
+
+class BusinessUserWalletBalances(UserWalletBalanceSummary):
+    business_id: UUIDStr = Field(
+        description="Business represented by this aggregation.",
+        examples=[uuid4().hex],
+    )
+
+    @classmethod
+    def from_product_user_wallet_balances(
+        cls,
+        product_user_wallet_balances: list[ProductUserWalletBalances],
+    ):
+        sum_fields = [
+            k
+            for k, v in UserWalletBalanceSummary.model_fields.items()
+            if v.annotation in {int, float}
+        ]
+        d = {}
+        for key in sum_fields:
+            d[key] = sum(getattr(pb, key) for pb in product_user_wallet_balances)
+        d["oldest_event"] = min(
+            [
+                pb.oldest_event
+                for pb in product_user_wallet_balances
+                if pb.oldest_event is not None
+            ],
+            default=None,
+        )
+        d["newest_event"] = max(
+            [
+                pb.newest_event
+                for pb in product_user_wallet_balances
+                if pb.newest_event is not None
+            ],
+            default=None,
+        )
+        return cls.model_validate(d)
+
+
+class BusinessBalances(BaseModel):
+    """Persistable business-balance snapshot used by the API."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    product_count: NonNegativeInt
+    payout: int
+    payout_usd_str: str
+    adjustment: int
+    adjustment_usd_str: str
+    expense: int
+    expense_usd_str: str
+    net: int
+    net_usd_str: str
+    payment: int
+    payment_usd_str: str
+    balance: int
+    balance_usd_str: str
+    retainer: NonNegativeInt
+    retainer_usd_str: str
+    available_balance: NonNegativeInt
+    available_balance_usd_str: str
+    adjustment_percent: float
+    recoup: USDCent
+    recoup_usd_str: str
+
+    @classmethod
+    def from_product_balances(
+        cls, product_balances: list[ProductBalances]
+    ) -> BusinessBalances:
+        calculator = BusinessBalancesCalculator(product_balances=product_balances)
+        values = calculator.model_dump(exclude={"product_balances"})
+        values["product_count"] = len(product_balances)
+        return cls.model_validate(values)
+
+    @staticmethod
+    def from_pandas(
+        input_data: pd.DataFrame,
+        accounts: list[LedgerAccount],
+        product_manager: ProductManager,
+    ) -> BusinessBalances:
+        return BusinessBalancesCalculator.from_pandas(
+            input_data=input_data,
+            accounts=accounts,
+            product_manager=product_manager,
+        )
+
+    def __str__(self) -> str:
+        return (
+            f"Products: {self.product_count}\n"
+            f"Total Payout: ${self.payout / 100:,.2f}\n"
+            f"Total Adjustment: ${self.adjustment / 100:,.2f}\n"
+            f"Total Expense: ${self.expense / 100:,.2f}\n"
+            f"–––\n"
+            f"Net: ${self.net / 100:,.2f}\n"
+            f"Balance: ${self.balance / 100:,.2f}\n"
+            f"Smart Retainer: ${self.retainer / 100:,.2f}\n"
+            f"Available Balance: ${self.available_balance / 100:,.2f}"
+        ).replace("$-", "-$")

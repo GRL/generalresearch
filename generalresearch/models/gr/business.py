@@ -658,25 +658,25 @@ class Business(BaseModel):
             pop_ledger=pop_ledger,
         )
         self.prebuild_payouts(bpem=bpem)
-        self.prebuild_pop_financial(
-            product_manager=product_manager,
-            thl_lm=thl_lm,
-            ds=ds,
-            client=client,
-            pop_ledger=pop_ledger,
-        )
+        # self.prebuild_pop_financial(
+        #     product_manager=product_manager,
+        #     thl_lm=thl_lm,
+        #     ds=ds,
+        #     client=client,
+        #     pop_ledger=pop_ledger,
+        # )
 
         rc = redis_config.create_redis_client()
         mapping = self.model_dump(mode="json")
 
-        # For POP Financial data, we want to also break that out by year
-        res = {
-            f"pop_financial:{key}": value
-            for key, value in group_by_year(
-                records=mapping["pop_financial"], datetime_field="time"
-            ).items()
-        }
-        mapping = mapping | res
+        # # For POP Financial data, we want to also break that out by year
+        # res = {
+        #     f"pop_financial:{key}": value
+        #     for key, value in group_by_year(
+        #         records=mapping["pop_financial"], datetime_field="time"
+        #     ).items()
+        # }
+        # mapping = mapping | res
 
         for key in mapping:
             mapping[key] = json.dumps(mapping[key])
