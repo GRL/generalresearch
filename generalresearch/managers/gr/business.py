@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
@@ -155,6 +156,21 @@ class BusinessManager(PostgresManagerWithRedis):
         referenced by the gr-api services
 
     """
+    CACHED_FIELDS: frozenset[str] = frozenset(
+        {
+            "balance",
+            "user_wallet_balance",
+            "users_active_7d",
+            "task_completes_7d",
+            "balance_net_7d",
+        }
+    )
+    CACHED_FIELDS_JSON: frozenset[str] = frozenset(
+        {
+            "balance",
+            "user_wallet_balance",
+        }
+    )
 
     def get_or_create(
         self,
@@ -408,3 +424,30 @@ class BusinessManager(PostgresManagerWithRedis):
             return None
 
         return Business.model_validate(res[0])
+
+    def update_cached_fields(self, business: Business) -> None:
+        """
+        Use this to update any of the cached keys on a business
+        or any of the calculated fields such as users_active_7d.
+        All supported fields are updated at once
+        """
+        data = business.model_dump(mode="json", include=set(self.CACHED_FIELDS))
+        for k, v in data.items():
+            if k in self.CACHED_FIELDS_JSON and v is not None:
+                data[k] = json.dumps(v)
+
+        assert business.id is not None, "Business must be persisted before updating"
+        assignments = sql.SQL(", ").join(
+            sql.SQL("{} = %s").format(sql.Identifier(field)) for field in data
+        )
+        query = sql.SQL("""
+            UPDATE common_business
+            SET {assignments}
+            WHERE id = %s
+        """).format(assignments=assignments)
+        params = [*data.values(), business.id]
+
+        with self.pg_config.make_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query, params)
+            conn.commit()
