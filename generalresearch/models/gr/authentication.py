@@ -16,10 +16,12 @@ from pydantic import (
     field_validator,
 )
 
-from generalresearch.decorators import LOG
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 
 if TYPE_CHECKING:
+    from generalresearch.managers.gr.business import BusinessManager
+    from generalresearch.managers.gr.team import TeamManager
+    from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.gr.business import Business
     from generalresearch.models.gr.team import Team
     from generalresearch.models.thl.product import Product
@@ -164,8 +166,8 @@ class GRUser(BaseModel):
 
         self.prefetch_businesses(pg_config=pg_config, redis_config=redis_config)
         self.prefetch_teams(pg_config=pg_config, redis_config=redis_config)
-        business_uuids = self.business_uuids or []
-        team_uuids = self.team_uuids or []
+        business_uuids = [b.uuid for b in self.businesses or []]
+        team_uuids = [t.uuid for t in self.teams or []]
 
         if len(business_uuids + team_uuids) == 0:
             self.products = []
@@ -205,83 +207,78 @@ class GRUser(BaseModel):
     def cache_key(self) -> str:
         return f"gr_user:{self.id}"
 
-    @property
-    def business_uuids(self) -> list[UUIDStr] | None:
-        if self.businesses is None:
-            LOG.warning("prefetch not run")
-            return None
-
-        return [b.uuid for b in self.businesses]
-
-    @property
-    def business_ids(self) -> list[PositiveInt] | None:
-        if self.businesses is None:
-            LOG.warning("prefetch not run")
-            return None
-
-        return [b.id for b in self.businesses if b.id is not None]
-
-    @property
-    def team_uuids(self) -> list[UUIDStr] | None:
-        if self.teams is None:
-            LOG.warning("prefetch not run")
-            return None
-
-        return [t.uuid for t in self.teams]
-
-    @property
-    def team_ids(self) -> list[PositiveInt] | None:
-        if self.teams is None:
-            LOG.warning("prefetch not run")
-            return None
-
-        return [t.id for t in self.teams if t.id is not None]
-
-    @property
-    def product_uuids(self) -> list[UUIDStr] | None:
-        if self.products is None:
-            LOG.warning("prefetch not run")
-            return None
-
-        return [p.uuid for p in self.products]
-
     # --- Methods ---
 
-    def set_cache(
+    def business_uuids(self, business_manager: BusinessManager) -> list[UUIDStr]:
+        if self.is_superuser:
+            return business_manager.get_uuids(user_id=None)
+        else:
+            return business_manager.get_uuids(user_id=self.id)
+
+    def team_uuids(self, team_manager: TeamManager) -> list[UUIDStr]:
+        if self.is_superuser:
+            return team_manager.get_uuids(user_id=None)
+        else:
+            return team_manager.get_uuids(user_id=self.id)
+
+    def product_uuids(
         self,
-        pg_config: PostgresConfig,
-        thl_web_rr: PostgresConfig,
-        redis_config: RedisConfig,
-    ) -> None:
-        ex_secs = 60 * 60 * 24 * 3  # 3 days
+        business_manager: BusinessManager | None,
+        team_manager: TeamManager | None,
+        product_manager: ProductManager,
+    ) -> list[UUIDStr]:
+        assert (
+            business_manager is not None or team_manager is not None
+        ), "At least one of business_manager or team_manager is required"
 
-        self.prefetch_teams(pg_config=pg_config, redis_config=redis_config)
-        self.prefetch_businesses(pg_config=pg_config, redis_config=redis_config)
-        self.prefetch_products(
-            pg_config=pg_config,
-            thl_pg_config=thl_web_rr,
-            redis_config=redis_config,
+        return product_manager.get_uuids(
+            business_uuids=(
+                self.business_uuids(business_manager=business_manager)
+                if business_manager is not None
+                else None
+            ),
+            team_uuids=(
+                self.team_uuids(team_manager=team_manager)
+                if team_manager is not None
+                else None
+            ),
         )
-        self.prefetch_token(pg_config=pg_config)
 
-        rc = redis_config.create_redis_client()
+    # def set_cache(
+    #     self,
+    #     pg_config: PostgresConfig,
+    #     thl_web_rr: PostgresConfig,
+    #     redis_config: RedisConfig,
+    # ) -> None:
+    #     ex_secs = 60 * 60 * 24 * 3  # 3 days
 
-        rc.set(name=self.cache_key, value=self.to_redis(), ex=ex_secs)
-        rc.set(
-            name=f"{self.cache_key}:team_uuids",
-            value=json.dumps(self.team_uuids),
-            ex=ex_secs,
-        )
-        rc.set(
-            name=f"{self.cache_key}:business_uuids",
-            value=json.dumps(self.business_uuids),
-            ex=ex_secs,
-        )
-        rc.set(
-            name=f"{self.cache_key}:product_uuids",
-            value=json.dumps(self.product_uuids),
-            ex=ex_secs,
-        )
+    #     self.prefetch_teams(pg_config=pg_config, redis_config=redis_config)
+    #     self.prefetch_businesses(pg_config=pg_config, redis_config=redis_config)
+    #     self.prefetch_products(
+    #         pg_config=pg_config,
+    #         thl_pg_config=thl_web_rr,
+    #         redis_config=redis_config,
+    #     )
+    #     self.prefetch_token(pg_config=pg_config)
+
+    #     rc = redis_config.create_redis_client()
+
+    #     rc.set(name=self.cache_key, value=self.to_redis(), ex=ex_secs)
+    # rc.set(
+    #     name=f"{self.cache_key}:team_uuids",
+    #     value=json.dumps(self.team_uuids),
+    #     ex=ex_secs,
+    # )
+    # rc.set(
+    #     name=f"{self.cache_key}:business_uuids",
+    #     value=json.dumps(self.business_uuids),
+    #     ex=ex_secs,
+    # )
+    # rc.set(
+    #     name=f"{self.cache_key}:product_uuids",
+    #     value=json.dumps(self.product_uuids),
+    #     ex=ex_secs,
+    # )
 
     # --- ORM ---
 
@@ -290,26 +287,26 @@ class GRUser(BaseModel):
         d["date_joined"] = d["date_joined"].replace(tzinfo=UTC)
         return GRUser.model_validate(d)
 
-    @classmethod
-    def from_redis(cls, d: str | dict[str, Any]) -> GRUser:
-        if isinstance(d, str):
-            d = json.loads(d)
-        assert isinstance(d, dict)
+    # @classmethod
+    # def from_redis(cls, d: str | dict[str, Any]) -> GRUser:
+    #     if isinstance(d, str):
+    #         d = json.loads(d)
+    #     assert isinstance(d, dict)
 
-        d["date_joined"] = datetime.fromisoformat(d["date_joined"])
+    #     d["date_joined"] = datetime.fromisoformat(d["date_joined"])
 
-        if d.get("token"):
-            d["token"] = GRToken.from_redis(d["token"])
+    #     if d.get("token"):
+    #         d["token"] = GRToken.from_redis(d["token"])
 
-        return GRUser.model_validate(d)
+    #     return GRUser.model_validate(d)
 
-    def to_redis(self) -> str:
-        d = self.model_dump(mode="json", exclude={"businesses", "teams", "products"})
-        d["business_uuids"] = self.business_uuids
-        d["team_uuids"] = self.team_uuids
-        d["product_uuids"] = self.product_uuids
+    # def to_redis(self) -> str:
+    #     d = self.model_dump(mode="json", exclude={"businesses", "teams", "products"})
+    #     d["business_uuids"] = self.business_uuids
+    #     d["team_uuids"] = self.team_uuids
+    #     d["product_uuids"] = self.product_uuids
 
-        return json.dumps(d)
+    #     return json.dumps(d)
 
 
 class GRToken(BaseModel):

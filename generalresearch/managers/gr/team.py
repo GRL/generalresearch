@@ -278,3 +278,32 @@ class TeamManager(PostgresManagerWithRedis):
             res = c.fetchall()
 
         return [Team.model_validate(item) for item in res]
+
+    def get_uuids(self, user_id: PositiveInt | None) -> list[UUIDStr]:
+        """
+        :param user_id: If given, restrict to Teams this GRUser has permission to view.
+            If None, return every Team.
+        :return: Team UUIDStrs
+        """
+
+        if user_id is None:
+            query = sql.SQL("""
+                SELECT team.uuid
+                FROM common_team AS team
+            """)
+            params: tuple[int, ...] = ()
+        else:
+            query = sql.SQL("""
+                SELECT team.uuid
+                FROM common_team AS team
+                INNER JOIN common_membership AS mem
+                    ON mem.team_id = team.id
+                WHERE mem.user_id = %s
+            """)
+            params = (user_id,)
+
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query=query, params=params)
+            res = c.fetchall()
+
+        return [i["uuid"] for i in res]

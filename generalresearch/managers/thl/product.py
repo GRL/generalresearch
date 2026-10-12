@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 from cachetools import TTLCache, cachedmethod, keys
 from psycopg import Connection, sql
-from pydantic import NonNegativeInt
+from pydantic import NonNegativeInt, PositiveInt
 from sentry_sdk import capture_exception
 
 from generalresearch.managers.base import (
@@ -128,7 +128,7 @@ class ProductManager(PostgresManager):
         product_uuids = self.get_all_uuids(rand_limit=rand_limit)
         return self.filter_paginated(product_uuids=product_uuids)
 
-    def get_all_uuids(self, rand_limit: int | None) -> list[UUIDStr]:
+    def get_all_uuids(self, rand_limit: PositiveInt | None) -> list[UUIDStr]:
 
         if rand_limit:
             res = self.pg_config.execute_sql_query(
@@ -142,12 +142,10 @@ class ProductManager(PostgresManager):
             )
 
         else:
-            res = self.pg_config.execute_sql_query(
-                query="""
+            res = self.pg_config.execute_sql_query(query="""
                     SELECT p.id::uuid
                     FROM userprofile_brokerageproduct AS p
-                """
-            )
+                """)
         return [i["id"] for i in res]
 
     def filter_paginated(
@@ -163,7 +161,7 @@ class ProductManager(PostgresManager):
         order_field: str = "created",
         descending: bool = False,
         conn: Connection | None = None,
-    ):
+    ) -> list[Product]:
         """
         Automatically paginate the results of a filter query.
         """
@@ -390,6 +388,27 @@ class ProductManager(PostgresManager):
             res = c.fetchone()
         return int(res["cnt"])
 
+    def get_uuids(
+        self,
+        business_uuids: list[UUIDStr] | None = None,
+        team_uuids: list[UUIDStr] | None = None,
+        conn: Connection | None = None,
+    ) -> list[UUIDStr]:
+        filter_str, params = self.make_filter_str(
+            business_uuids=business_uuids,
+            team_uuids=team_uuids,
+        )
+        query = f"""
+        SELECT bp.uuid 
+        FROM userprofile_brokerageproduct AS bp
+        {filter_str}
+        """
+        with self.connection(conn) as conn, conn.cursor() as c:
+            c.execute(query=query, params=params)
+            res = c.fetchall()
+
+        return [i["uuid"] for i in res]
+
     @staticmethod
     def make_filter_str(
         product_uuids: list[UUIDStr] | None = None,
@@ -404,9 +423,9 @@ class ProductManager(PostgresManager):
         params = {}
         filters = []
         identifiers = [product_uuids, business_uuids, team_uuids]
-        assert sum([bool(x) for x in identifiers]) == 1, (
-            "Must provide exactly one set of identifiers"
-        )
+        assert (
+            sum([bool(x) for x in identifiers]) == 1
+        ), "Must provide exactly one set of identifiers"
         identifier = next(x for x in identifiers if x)
         assert all(is_valid_uuid(v) for v in identifier), "invalid uuid"
 
@@ -557,16 +576,10 @@ class ProductManager(PostgresManager):
         insert_data["payments_enabled"] = instance.payments_enabled
 
         try:
-            insert_data["id_int"] = next(
-                iter(
-                    self.pg_config.execute_sql_query(
-                        query="""
+            insert_data["id_int"] = next(iter(self.pg_config.execute_sql_query(query="""
             SELECT COALESCE(MAX(id_int), 0) + 1 as id_int
             FROM userprofile_brokerageproduct
-            """
-                    )
-                )
-            )["id_int"]
+            """)))["id_int"]
             instance.id_int = insert_data["id_int"]
 
             query = """

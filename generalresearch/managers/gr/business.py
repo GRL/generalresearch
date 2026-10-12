@@ -314,48 +314,33 @@ class BusinessManager(PostgresManagerWithRedis):
 
         return response
 
-    def get_ids_by_user_id(self, user_id: PositiveInt) -> list[PositiveInt]:
+    def get_uuids(self, user_id: PositiveInt | None) -> list[UUIDStr]:
         """
-        :return: Every Business UUIDStr that this GRUser has permission to view
-        """
-
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query=sql.SQL("""
-                SELECT b.id
-                FROM common_business AS b
-                INNER JOIN common_team_businesses AS tb 
-                    ON tb.business_id = b.id
-                INNER JOIN common_membership AS cm 
-                    ON tb.team_id = cm.team_id
-                WHERE cm.user_id = %s
-            """),
-                params=(user_id,),
-            )
-
-            res = c.fetchall()
-
-        return [i["id"] for i in res]
-
-    def get_uuids_by_user_id(self, user_id: PositiveInt) -> list[UUIDStr]:
-        """
-        :return: Every Business UUIDStr that this GRUser has permission to view
+        :param user_id: If given, restrict to Businesses this GRUser has permission to view.
+            If None, return every Business.
+        :return: Business UUIDStrs
         """
 
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query=sql.SQL("""
+        if user_id is None:
+            query = sql.SQL("""
                 SELECT b.uuid
                 FROM common_business AS b
-                INNER JOIN common_team_businesses AS tb 
+            """)
+            params: tuple[int, ...] = ()
+        else:
+            query = sql.SQL("""
+                SELECT b.uuid
+                FROM common_business AS b
+                INNER JOIN common_team_businesses AS tb
                     ON tb.business_id = b.id
-                INNER JOIN common_membership AS cm 
+                INNER JOIN common_membership AS cm
                     ON tb.team_id = cm.team_id
                 WHERE cm.user_id = %s
-            """),
-                params=(user_id,),
-            )
+            """)
+            params = (user_id,)
 
+        with self.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query=query, params=params)
             res = c.fetchall()
 
         return [i["uuid"] for i in res]
