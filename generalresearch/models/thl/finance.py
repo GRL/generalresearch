@@ -1721,8 +1721,9 @@ class BusinessUserWalletBalances(UserWalletBalanceSummary):
     @classmethod
     def from_product_user_wallet_balances(
         cls,
+        business_id: str,
         product_user_wallet_balances: list[ProductUserWalletBalances],
-    ):
+    ) -> BusinessUserWalletBalances:
         sum_fields = [
             k
             for k, v in UserWalletBalanceSummary.model_fields.items()
@@ -1747,7 +1748,17 @@ class BusinessUserWalletBalances(UserWalletBalanceSummary):
             ],
             default=None,
         )
-        return cls.model_validate(d)
+        d["wallet_balance_buckets"] = [
+            UserWalletBalanceHistogramBucket(
+                upper_bound=upper_bound,
+                cumulative_count=sum(
+                    product.wallet_balance_buckets[index].cumulative_count
+                    for product in product_user_wallet_balances
+                ),
+            )
+            for index, upper_bound in enumerate(USER_WALLET_BALANCE_BUCKETS)
+        ]
+        return cls.model_validate(d | {"business_id": business_id})
 
 
 class BusinessBalances(BaseModel):

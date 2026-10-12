@@ -30,7 +30,11 @@ from generalresearch.models.custom_types import (
 )
 from generalresearch.models.gr.definitions import BusinessType, TransferMethod
 from generalresearch.models.gr.team import Team
-from generalresearch.models.thl.finance import BusinessBalances, POPFinancial
+from generalresearch.models.thl.finance import (
+    BusinessBalances,
+    BusinessUserWalletBalances,
+    POPFinancial,
+)
 from generalresearch.models.thl.ledger import LedgerAccount, OrderBy
 from generalresearch.models.thl.payout import BusinessPayoutEvent
 
@@ -202,6 +206,7 @@ class Business(BaseModel):
     # Initialization is deferred until unless it's called
     # (see .prebuild_***())
     balance: BusinessBalances | None = Field(default=None, title="Business Balance")
+    user_wallet_balance: BusinessUserWalletBalances | None = Field(default=None)
 
     payouts_total_str: str | None = Field(default=None)
     payouts_total: USDCent | None = Field(default=None)
@@ -351,6 +356,45 @@ class Business(BaseModel):
         self.bp_accounts = accounts
 
     # --- Prebuild ---
+
+    def prebuild_user_wallet_balance(
+        self,
+        client: DaskClient,
+        pop_ledger: PopLedgerMerge | None = None,
+    ):
+        from generalresearch.incite.schemas.mergers.pop_ledger import (
+            numerical_col_names,
+        )
+
+        assert self.products is not None, "prefetch products"
+        product_uuids = self.product_uuids
+        assert product_uuids is not None, "prefetch products"
+        if not any(p.user_wallet_enabled for p in self.products):
+            return
+
+        ddf = pop_ledger.ddf(
+            force_rr_latest=False,
+            include_partial=True,
+            columns=numerical_col_names
+            + ["time_idx", "account_id", "product_id", "product_user_id"],
+            filters=[("product_id", "in", list(product_uuids))],
+        )
+        df: pd.DataFrame = client.compute(collections=ddf, sync=True)
+        for product in self.products:
+            if product.user_wallet_enabled and product.user_wallet_balance is None:
+                product.prebuild_user_wallet_balances(df)
+        product_user_wallet_balances = [
+            p.user_wallet_balance
+            for p in self.products
+            if p.user_wallet_balance is not None
+        ]
+        if product_user_wallet_balances:
+            self.user_wallet_balance = (
+                BusinessUserWalletBalances.from_product_user_wallet_balances(
+                    business_id=self.uuid,
+                    product_user_wallet_balances=product_user_wallet_balances,
+                )
+            )
 
     def prebuild_balance(
         self,
@@ -658,7 +702,6 @@ class Business(BaseModel):
         pg_config: PostgresConfig,
         product_manager: ProductManager,
         business_bank_account_manager: BusinessBankAccountManager,
-        thl_web_rr: PostgresConfig,
         redis_config: RedisConfig,
         client: DaskClient,
         ds: GRLDatasets,
@@ -673,6 +716,10 @@ class Business(BaseModel):
         LOG.debug(f"Business.set_cache({self.uuid=})")
 
         # ex_secs = 60 * 60 * 24 * 3  # 3 days
+        if pop_ledger is None:
+            from generalresearch.incite.defaults import pop_ledger as plm
+
+            pop_ledger = plm(ds=ds)
 
         self.prefetch_addresses(pg_config=pg_config)
         self.prefetch_teams(pg_config=pg_config)
@@ -689,6 +736,11 @@ class Business(BaseModel):
             client=client,
             pop_ledger=pop_ledger,
         )
+        self.prebuild_user_wallet_balance(
+            client=client,
+            pop_ledger=pop_ledger,
+        )
+
         self.prebuild_payouts(bpem=bpem)
         self.prebuild_metrics(product_manager=product_manager)
         # self.prebuild_pop_financial(
