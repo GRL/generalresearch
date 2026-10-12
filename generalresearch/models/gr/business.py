@@ -13,7 +13,14 @@ import pyarrow as pa
 from dask.distributed import Client as DaskClient
 from psycopg.cursor import Cursor
 from psycopg.rows import dict_row
-from pydantic import BaseModel, ConfigDict, Field, PositiveInt, ValidationError
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    PositiveInt,
+    ValidationError,
+    computed_field,
+)
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_extra_types.phone_numbers import PhoneNumber
 
@@ -208,17 +215,16 @@ class Business(BaseModel):
     balance: BusinessBalances | None = Field(default=None, title="Business Balance")
     user_wallet_balance: BusinessUserWalletBalances | None = Field(default=None)
 
-    payouts_total_str: str | None = Field(default=None)
-    payouts_total: USDCent | None = Field(default=None)
-    payouts: list[BusinessPayoutEvent] | None = Field(
-        default=None,
-        title="Business Payouts",
-        description=(
-            "These are the ACH or Wire payments that were sent to the"
-            "Business as a single amount, summed for all the Business"
-            "child Products"
-        ),
-    )
+    # These should be queried for if we want them
+    # payouts: list[BusinessPayoutEvent] | None = Field(
+    #     default=None,
+    #     title="Business Payouts",
+    #     description=(
+    #         "These are the ACH or Wire payments that were sent to the"
+    #         "Business as a single amount, summed for all the Business"
+    #         "child Products"
+    #     ),
+    # )
 
     pop_financial: list[POPFinancial] | None = Field(default=None)
     bp_accounts: list[LedgerAccount] | None = Field(default=None)
@@ -243,7 +249,7 @@ class Business(BaseModel):
             f"Teams: {len(self.teams) if self.teams else 'Not Loaded'}\n"
             f"Bank Accounts: {len(self.bank_accounts) if self.bank_accounts else 'Not Loaded'}\n"
             f"–––\n"
-            f"Payouts: {len(self.payouts) if self.payouts else 'Not Loaded'}\n"
+            # f"Payouts: {len(self.payouts) if self.payouts else 'Not Loaded'}\n"
             f"Available Balance: {self.balance.available_balance if self.balance else 'Not Loaded'}\n"
         )
 
@@ -302,12 +308,12 @@ class Business(BaseModel):
         """
         :return: All the Products for this Business
         """
-
         self.products = product_manager.filter_paginated(business_uuids=[self.uuid])
 
     def prefetch_bank_accounts(
         self, business_bank_account_manager: BusinessBankAccountManager
     ) -> None:
+        assert self.id is not None
         self.bank_accounts = business_bank_account_manager.get_by_business_id(
             business_id=self.id
         )
@@ -510,22 +516,30 @@ class Business(BaseModel):
         self.task_completes_7d = res["task_completes_7d"]
         self.balance_net_7d = res["balance_net_7d"]
 
-    def prebuild_payouts(
-        self,
-        bpem: BusinessPayoutEventManager,
-    ) -> None:
-        LOG.debug(f"Business.prebuild_payouts({self.uuid=})")
-
-        self.payouts = bpem.get_business_payout_events_for_business(
-            business_uuid=self.uuid,
-            order_by=OrderBy.DESC,
-        )
-        self.prebuild_payouts_total()
-
-    def prebuild_payouts_total(self):
-        assert self.payouts is not None
-        self.payouts_total = USDCent(sum([po.amount for po in self.payouts]))
-        self.payouts_total_str = self.payouts_total.to_usd_str()
+    # def prebuild_payouts(
+    #     self,
+    #     bpem: BusinessPayoutEventManager,
+    # ) -> None:
+    #     LOG.debug(f"Business.prebuild_payouts({self.uuid=})")
+    #
+    #     self.payouts = bpem.get_business_payout_events_for_business(
+    #         business_uuid=self.uuid,
+    #         order_by=OrderBy.DESC,
+    #     )
+    #
+    # @computed_field
+    # @property
+    # def payouts_total(self) -> USDCent | None:
+    #     if self.payouts is None:
+    #         return None
+    #     return USDCent(sum(payout.amount for payout in self.payouts))
+    #
+    # @computed_field
+    # @property
+    # def payouts_total_str(self) -> str | None:
+    #     if self.payouts_total is None:
+    #         return None
+    #     return self.payouts_total.to_usd_str()
 
     def prebuild_pop_financial(
         self,
@@ -741,8 +755,8 @@ class Business(BaseModel):
             pop_ledger=pop_ledger,
         )
 
-        self.prebuild_payouts(bpem=bpem)
         self.prebuild_metrics(product_manager=product_manager)
+        # self.prebuild_payouts(bpem=bpem)
         # self.prebuild_pop_financial(
         #     product_manager=product_manager,
         #     thl_lm=thl_lm,

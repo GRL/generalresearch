@@ -73,7 +73,7 @@ class BusinessBankAccountManager(PostgresManager):
         ba.id = ba_id
         return ba
 
-    def get_by_business_id(self, business_id: UUIDStr) -> list[BusinessBankAccount]:
+    def get_by_business_id(self, business_id: int) -> list[BusinessBankAccount]:
 
         with self.pg_config.make_connection() as conn, conn.cursor() as c:
             c.execute(
@@ -239,7 +239,9 @@ class BusinessManager(PostgresManagerWithRedis):
             tm = TeamManager(pg_config=self.pg_config, redis_config=self.redis_config)
             tm.add_business(team=team, business=business)
 
-        return business
+        persisted_business = self.get_by_id(business_id=business_id)
+        assert persisted_business is not None
+        return persisted_business
 
     def get_all(self) -> list[Business]:
         """WARNING: This should be access by the /god/ page only, and only
@@ -251,84 +253,86 @@ class BusinessManager(PostgresManagerWithRedis):
 
         :return:
         """
-        from generalresearch.models.gr.business import Business
+        return self.filter()
+
+    def filter(
+        self,
+        *,
+        business_id: PositiveInt | None = None,
+        business_uuid: UUIDStr | None = None,
+        team_id: PositiveInt | None = None,
+        user_id: PositiveInt | None = None,
+    ) -> list[Business]:
+        """Return businesses matching all of the supplied identifiers."""
+        joins: list[sql.Composable] = []
+        conditions: list[sql.Composable] = []
+        params: list[int | str] = []
+
+        if business_id is not None:
+            conditions.append(sql.SQL("b.id = %s"))
+            params.append(business_id)
+        if business_uuid is not None:
+            conditions.append(sql.SQL("b.uuid = %s"))
+            params.append(business_uuid)
+        if team_id is not None or user_id is not None:
+            joins.append(
+                sql.SQL("""
+                    INNER JOIN common_team_businesses AS tb
+                        ON tb.business_id = b.id
+                """)
+            )
+        if team_id is not None:
+            conditions.append(sql.SQL("tb.team_id = %s"))
+            params.append(team_id)
+        if user_id is not None:
+            joins.append(
+                sql.SQL("""
+                    INNER JOIN common_membership AS m
+                        ON m.team_id = tb.team_id
+                """)
+            )
+            conditions.append(sql.SQL("m.user_id = %s"))
+            params.append(user_id)
+
+        where = sql.SQL("")
+        if conditions:
+            where = sql.SQL("WHERE ") + sql.SQL(" AND ").join(conditions)
+
+        query = sql.SQL("""
+            SELECT DISTINCT
+                b.id,
+                b.uuid,
+                b.kind,
+                b.name,
+                b.tax_number,
+                b.balance,
+                b.user_wallet_balance,
+                b.users_active_7d,
+                b.task_completes_7d,
+                b.balance_net_7d
+            FROM common_business AS b
+            {joins}
+            {where}
+        """).format(joins=sql.SQL(" ").join(joins), where=where)
 
         with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(query=sql.SQL("""
-                SELECT b.id, b.uuid, b.kind, b.name, b.tax_number
-                FROM common_business AS b
-            """))
+            c.execute(query=query, params=params)
             res = c.fetchall()
 
-        response = []
-        for i in res:
-            # i["contact"] = BusinessContact.model_validate(i)
-            # i["address"] = BusinessAddress.model_validate(i)
-            i["contact"] = None
-            i["address"] = None
-
-            response.append(Business.model_validate(i))
-
-        return response
+        return [Business.model_validate(item) for item in res]
 
     def get_by_team(
         self,
         team_id: PositiveInt,
     ) -> list[Business]:
 
-        # conn: psycopg.Connection = GR_POSTGRES_C.make_connection()
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query=sql.SQL("""
-                SELECT  b.id, b.uuid, b.kind, b.name, b.tax_number
-                FROM common_business AS b 
-                INNER JOIN common_team_businesses as tb
-                    ON tb.business_id = b.id
-                WHERE tb.team_id = %s
-            """),
-                params=(team_id,),
-            )
-
-            res = c.fetchall()
-
-        response = []
-
-        for i in res:
-            # i["contact"] = BusinessContact.model_validate(i)
-            # i["address"] = BusinessAddress.model_validate(i)
-            response.append(Business.model_validate(i))
-
-        return response
+        return self.filter(team_id=team_id)
 
     def get_by_user_id(
         self,
         user_id: PositiveInt,
     ) -> list[Business]:
-        from generalresearch.models.gr.business import Business
-
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query=sql.SQL("""
-                        SELECT  b.id, b.uuid, b.kind, b.name, b.tax_number 
-                        FROM common_business AS b
-                        INNER JOIN common_team_businesses AS tb 
-                            ON tb.business_id = b.id
-                        INNER JOIN common_membership AS m 
-                            ON m.team_id = tb.team_id
-                        WHERE m.user_id = %s
-                    """),
-                params=(user_id,),
-            )
-
-            res = c.fetchall()
-
-        response = []
-        for i in res:
-            # i["contact"] = BusinessContact.model_validate(i)
-            # i["address"] = BusinessAddress.model_validate(i)
-            response.append(Business.model_validate(i))
-
-        return response
+        return self.filter(user_id=user_id)
 
     def get_uuids(self, user_id: PositiveInt | None) -> list[UUIDStr]:
         """
@@ -367,48 +371,24 @@ class BusinessManager(PostgresManagerWithRedis):
     ) -> Business | None:
         assert UUID(hex=business_uuid).hex == business_uuid
 
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query=sql.SQL("""
-                        SELECT id, uuid, kind, name, tax_number
-                        FROM common_business
-                        WHERE uuid = %s
-                        LIMIT 1;
-                    """),
-                params=(business_uuid,),
-            )
-
-            res = c.fetchall()
+        res = self.filter(business_uuid=business_uuid)
 
         if len(res) == 0:
             return None
 
         assert len(res) == 1, "BusinessManager.get_by_uuid returned invalid results"
-        data = res[0]
-        # data["address"] = BusinessAddress.model_validate(data)
-        # data["contact"] = BusinessContact.model_validate(data)
-        return Business.model_validate(data)
+        return res[0]
 
     def get_by_id(self, business_id: PositiveInt) -> Business | None:
         assert isinstance(business_id, int)
 
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query=sql.SQL("""
-                        SELECT id, uuid, kind, name, tax_number
-                        FROM common_business
-                        WHERE id = %s
-                        LIMIT 1;
-                    """),
-                params=(business_id,),
-            )
-
-            res = c.fetchall()
+        res = self.filter(business_id=business_id)
 
         if len(res) == 0:
             return None
 
-        return Business.model_validate(res[0])
+        assert len(res) == 1, "BusinessManager.get_by_id returned invalid results"
+        return res[0]
 
     def update_cached_fields(self, business: Business) -> None:
         """
