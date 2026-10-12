@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from psycopg import sql
+from psycopg import Connection, sql
 from pydantic import PositiveInt
 
 from generalresearch.managers.base import (
@@ -19,9 +19,7 @@ from generalresearch.models.gr.team import (
 )
 
 if TYPE_CHECKING:
-
     from generalresearch.models.gr.authentication import GRUser
-    from generalresearch.models.gr.business import Business
     from generalresearch.models.gr.team import Team
 
 
@@ -139,7 +137,6 @@ class MembershipManager(PostgresManager):
 
 
 class TeamManager(PostgresManagerWithRedis):
-
     def get_or_create(
         self, uuid: UUIDStr | None = None, name: str | None = None
     ) -> Team:
@@ -155,10 +152,12 @@ class TeamManager(PostgresManagerWithRedis):
         from generalresearch.models.gr.team import Team
 
         with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(query=sql.SQL("""
+            c.execute(
+                query=sql.SQL("""
                 SELECT t.id, t.uuid, t.name
                 FROM common_team AS t
-            """))
+            """)
+            )
             res = c.fetchall()
 
         return [Team.model_validate(i) for i in res]
@@ -196,26 +195,30 @@ class TeamManager(PostgresManagerWithRedis):
         team.prefetch_gr_users(gr_user_manager=gr_user_manager)
 
         assert gr_user not in team.gr_users, (
-            "Can't create multiple Memberships for " "the same User to the same Team"
+            "Can't create multiple Memberships for the same User to the same Team"
         )
         mm = MembershipManager(pg_config=self.pg_config)
 
         return mm.create(team=team, gr_user=gr_user)
 
-    def add_business(self, team: Team, business: Business) -> None:
-        with self.pg_config.make_connection() as conn:
-            with conn.cursor() as c:
-                c.execute(
-                    query=sql.SQL("""
-                            INSERT INTO common_team_businesses 
-                                (team_id, business_id) 
-                            VALUES (%s, %s)
-                        """),
-                    params=(
-                        team.id,
-                        business.id,
-                    ),
-                )
+    def add_business(
+        self,
+        team_id: PositiveInt,
+        business_id: PositiveInt,
+        conn: Connection | None = None,
+    ) -> None:
+        with self.connection(conn) as conn, conn.cursor() as c:
+            c.execute(
+                query=sql.SQL("""
+                            INSERT INTO common_team_businesses
+                                (team_id, business_id)
+                VALUES (%s, %s)
+                """),
+                params=(
+                    team_id,
+                    business_id,
+                ),
+            )
             conn.commit()
 
     def get_by_uuid(self, team_uuid: UUIDStr) -> Team | None:

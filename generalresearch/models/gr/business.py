@@ -180,12 +180,11 @@ class BusinessContact(BaseModel):
     )
 
 
-class Business(BaseModel):
+class BusinessCreate(BaseModel):
     """This is the Base model to represent a Business,"""
 
     model_config = ConfigDict(extra="ignore")
 
-    id: SkipJsonSchema[PositiveInt | None] = Field(default=None)
     uuid: UUIDStrCoerce = Field(examples=[uuid4().hex])
 
     name: str = Field(
@@ -256,7 +255,11 @@ class Business(BaseModel):
     def __repr__(self):
         return f"<Business: {self.name} ({self.uuid}) >"
 
-        # --- Prefetch ---
+
+class Business(BusinessCreate):
+    id: SkipJsonSchema[PositiveInt] = Field(exclude=True)
+
+    # --- Prefetch ---
 
     def prefetch_addresses(self, pg_config: PostgresConfig) -> None:
         with (
@@ -437,6 +440,7 @@ class Business(BaseModel):
         assert lm.currency
 
         self.prefetch_products(product_manager=product_manager)
+        assert self.products is not None, "prefetch products"
 
         accounts: list[LedgerAccount] = lm.get_accounts_if_exists(
             qualified_names=(
@@ -694,11 +698,8 @@ class Business(BaseModel):
     # --- Properties ---
 
     @property
-    def product_uuids(self) -> list[UUIDStr] | None:
-        if self.products is None:
-            LOG.warning("prefetch not run")
-            return None
-
+    def product_uuids(self) -> list[UUIDStr]:
+        assert self.products is not None, "prefetch not run"
         return [p.uuid for p in self.products]
 
     @property

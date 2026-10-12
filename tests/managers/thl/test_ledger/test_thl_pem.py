@@ -69,12 +69,24 @@ class TestThlPayoutEventManager:
         accounts = thl_ledger_manager.get_accounts_bp_wallet_for_products(
             product_uuids=[i.uuid for i in products]
         )
-        res = brokerage_product_payout_event_manager.filter_by(
+        res, count = brokerage_product_payout_event_manager.filter_by(
             debit_account_uuids=[i.uuid for i in accounts]
         )
 
         assert len(res) == (N_PRODUCTS * N_PAYOUT_EVENTS)
+        assert count == len(res)
         assert sum([i.amount for i in res]) == sum(amounts)
+
+        page, count = brokerage_product_payout_event_manager.filter_by(
+            debit_account_uuids=[i.uuid for i in accounts],
+            page=1,
+            size=2,
+            order_field="created",
+            descending=True,
+        )
+        assert len(page) == 2
+        assert count == (N_PRODUCTS * N_PAYOUT_EVENTS)
+        assert page == sorted(page, key=lambda payout: payout.created, reverse=True)
 
     def test_get_bp_payout_events_for_product(
         self,

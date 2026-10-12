@@ -183,7 +183,11 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         product_ids: Collection[str] | None = None,
         cashout_types: Collection[PayoutType] | None = None,
         statuses: Collection[PayoutStatus] | None = None,
-    ) -> list[BrokerageProductPayoutEvent]:
+        page: int | None = None,
+        size: int | None = None,
+        order_field: str = "created",
+        descending: bool = False,
+    ) -> tuple[list[BrokerageProductPayoutEvent], NonNegativeInt]:
         """Try to retrieve BP payout events.
 
         WARNING: This is only on the "payout events" table and nothing to
@@ -191,71 +195,158 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
 
         *** IT IS ONLY FOR Brokerage Product PAYOUTS ***
         """
-        params = {}
-        filters = []
-        if ext_ref_id:
-            # This is transaction id for tracking ACH/Wires with a banking institution
-            filters.append("ep.ext_ref_id = %(ext_ref_id)s")
-            params["ext_ref_id"] = ext_ref_id
-        if debit_account_uuids:
-            # Or we could use the bp_wallet's account uuid
-            # instead of looking up by the product
-            filters.append("ep.debit_account_uuid = ANY(%(debit_account_uuids)s)")
-            params["debit_account_uuids"] = debit_account_uuids
-        if amount:
-            filters.append("ep.amount = %(amount)s")
-            params["amount"] = amount
-        if created:
-            filters.append("ep.created = %(created)s")
-            params["created"] = created
-        if created_after:
-            filters.append("ep.created >= %(created_after)s")
-            params["created_after"] = created_after
-        if product_ids is not None:
-            filters.append("la.reference_uuid = ANY(%(product_ids)s)")
-            params["product_ids"] = product_ids
-        if cashout_types is not None:
-            filters.append("payout_type = ANY(%(cashout_types)s)")
-            params["cashout_types"] = [x.value for x in cashout_types]
-        if statuses is not None:
-            filters.append("status = ANY(%(statuses)s)")
-            params["statuses"] = [x.value for x in statuses]
-
-        assert len(filters) > 0, "must pass at least 1 filter"
-        filter_str = " AND ".join(filters)
-        params["cashout_method_uuid"] = self.CASHOUT_METHOD_UUID
+        filter_str, params = self.make_filter_str(
+            ext_ref_id=ext_ref_id,
+            debit_account_uuids=debit_account_uuids,
+            amount=amount,
+            created=created,
+            created_after=created_after,
+            product_ids=product_ids,
+            cashout_types=cashout_types,
+            statuses=statuses,
+        )
+        pagination_sql = ""
+        if page is not None or size is not None:
+            pagination_sql = self.validate_pagination(page=page, size=size)
+        order_fields = {
+            "created": "ep.created",
+            "amount": "ep.amount",
+            "status": "ep.status",
+        }
+        order_by_sql = (
+            f"{order_fields[order_field]} {'DESC' if descending else 'ASC'}, ep.uuid"
+        )
 
         res = self.pg_config.execute_sql_query(
             query=f"""
-                SELECT  ep.uuid, ep.debit_account_uuid, ep.cashout_method_uuid, 
-                        ep.created, ep.amount, ep.status, ep.ext_ref_id, 
+                SELECT  ep.uuid, ep.debit_account_uuid, ep.cashout_method_uuid,
+                        ep.created, ep.amount, ep.status, ep.ext_ref_id,
                         ep.payout_type, ep.supplier_payout_id,
                         ep.request_data::jsonb, ep.order_data::jsonb,
                         ac.name as description,
                         la.reference_uuid as product_id
                 FROM event_payout AS ep
-                LEFT JOIN accounting_cashoutmethod AS ac 
-                    ON ep.cashout_method_uuid = ac.id 
+                LEFT JOIN accounting_cashoutmethod AS ac
+                    ON ep.cashout_method_uuid = ac.id
                 LEFT JOIN ledger_account AS la
                     ON la.uuid = ep.debit_account_uuid
-                WHERE cashout_method_uuid = %(cashout_method_uuid)s
-                    AND la.reference_type = 'bp'
-                    AND {filter_str}
+                {filter_str}
+                ORDER BY {order_by_sql}
+                {pagination_sql}
             """,
             params=params,
         )
         pes = []
         for row in res:
             pes.append(BrokerageProductPayoutEvent.model_validate(row))
-        return pes
+        count = self.filter_count(
+            ext_ref_id=ext_ref_id,
+            debit_account_uuids=debit_account_uuids,
+            amount=amount,
+            created=created,
+            created_after=created_after,
+            product_ids=product_ids,
+            cashout_types=cashout_types,
+            statuses=statuses,
+        )
+        return pes, count
+
+    def filter_count(
+        self,
+        ext_ref_id: str | None = None,
+        debit_account_uuids: Collection[UUIDStr] | None = None,
+        amount: int | None = None,
+        created: datetime | None = None,
+        created_after: datetime | None = None,
+        product_ids: Collection[str] | None = None,
+        cashout_types: Collection[PayoutType] | None = None,
+        statuses: Collection[PayoutStatus] | None = None,
+    ) -> NonNegativeInt:
+        filter_str, params = self.make_filter_str(
+            ext_ref_id=ext_ref_id,
+            debit_account_uuids=debit_account_uuids,
+            amount=amount,
+            created=created,
+            created_after=created_after,
+            product_ids=product_ids,
+            cashout_types=cashout_types,
+            statuses=statuses,
+        )
+        res = self.pg_config.execute_sql_query(
+            query=f"""
+                SELECT COUNT(1) AS cnt
+                FROM event_payout AS ep
+                LEFT JOIN ledger_account AS la
+                    ON la.uuid = ep.debit_account_uuid
+                {filter_str}
+            """,
+            params=params,
+        )
+        return int(res[0]["cnt"])
+
+    def make_filter_str(
+        self,
+        ext_ref_id: str | None = None,
+        debit_account_uuids: Collection[UUIDStr] | None = None,
+        amount: int | None = None,
+        created: datetime | None = None,
+        created_after: datetime | None = None,
+        product_ids: Collection[str] | None = None,
+        cashout_types: Collection[PayoutType] | None = None,
+        statuses: Collection[PayoutStatus] | None = None,
+    ) -> tuple[str, dict[str, Any]]:
+        params: dict[str, Any] = {
+            "cashout_method_uuid": self.CASHOUT_METHOD_UUID,
+        }
+        filters = [
+            "ep.cashout_method_uuid = %(cashout_method_uuid)s",
+            "la.reference_type = 'bp'",
+        ]
+        supplied_filter = False
+        if ext_ref_id:
+            filters.append("ep.ext_ref_id = %(ext_ref_id)s")
+            params["ext_ref_id"] = ext_ref_id
+            supplied_filter = True
+        if debit_account_uuids:
+            filters.append("ep.debit_account_uuid = ANY(%(debit_account_uuids)s)")
+            params["debit_account_uuids"] = list(debit_account_uuids)
+            supplied_filter = True
+        if amount:
+            filters.append("ep.amount = %(amount)s")
+            params["amount"] = amount
+            supplied_filter = True
+        if created:
+            filters.append("ep.created = %(created)s")
+            params["created"] = created
+            supplied_filter = True
+        if created_after:
+            filters.append("ep.created >= %(created_after)s")
+            params["created_after"] = created_after
+            supplied_filter = True
+        if product_ids is not None:
+            filters.append("la.reference_uuid = ANY(%(product_ids)s)")
+            params["product_ids"] = list(product_ids)
+            supplied_filter = True
+        if cashout_types is not None:
+            filters.append("ep.payout_type = ANY(%(cashout_types)s)")
+            params["cashout_types"] = [x.value for x in cashout_types]
+            supplied_filter = True
+        if statuses is not None:
+            filters.append("ep.status = ANY(%(statuses)s)")
+            params["statuses"] = [x.value for x in statuses]
+            supplied_filter = True
+
+        assert supplied_filter, "must pass at least 1 filter"
+        return "WHERE " + " AND ".join(filters), params
 
     def get_bp_payout_events_for_accounts(
         self, accounts: Collection[LedgerAccount]
     ) -> list[BrokerageProductPayoutEvent]:
-        return self.filter_by(
+        payout_events, _ = self.filter_by(
             debit_account_uuids=[i.uuid for i in accounts],
             cashout_types=[PayoutType.ACH],
         )
+        return payout_events
 
     def get_bp_bp_payout_events_for_products(
         self,
@@ -271,12 +362,10 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         assert len(product_uuids) > 0, "Must provide product_uuids"
         order_by = order_by or OrderBy.ASC
 
-        payout_events = self.filter_by(
+        payout_events, _ = self.filter_by(
             product_ids=product_uuids,
             cashout_types=[PayoutType.ACH],
-        )
-        payout_events = sorted(
-            payout_events, key=lambda x: x.created, reverse=order_by == OrderBy.DESC
+            descending=order_by == OrderBy.DESC,
         )
         return payout_events
 
@@ -389,52 +478,37 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
         self.bp_pe_manager = BrokerageProductPayoutEventManager(*arg, **kwargs)
 
     def get_by_ext_ref_id(self, ext_ref_id: str) -> BusinessPayoutEvent:
-        res = self.pg_config.execute_sql_query(
-            """
-        SELECT
-            sp.*,
-            ep.bp_payouts
-        FROM supplier_payout sp
-        JOIN (
-            SELECT
-                ep_inner.supplier_payout_id,
-                jsonb_agg(
-                    to_jsonb(ep_inner)
-                    || jsonb_build_object('product_id', la.reference_uuid)
-                    ORDER BY ep_inner.created
-                ) AS bp_payouts
-            FROM event_payout ep_inner
-            JOIN ledger_account la
-                ON ep_inner.debit_account_uuid = la.uuid
-            GROUP BY ep_inner.supplier_payout_id
-        ) ep ON sp.id = ep.supplier_payout_id
-        WHERE sp.ext_ref_id = %(ext_ref_id)s
-        """,
-            {"ext_ref_id": ext_ref_id},
-        )
-        assert len(res) == 1, f"No Business Payout found with ext ref: {ext_ref_id}"
-        d = res[0]
-        for bp_payout in d["bp_payouts"]:
-            bp_payout["created"] = datetime.fromisoformat(bp_payout["created"])
-        bpe = BusinessPayoutEvent.model_validate(d)
-        assert bpe.bp_payouts is not None and len(bpe.bp_payouts) > 0, (
-            "No BP payouts found for this Business Payout Event. This shouldn't happen!"
-        )
-        return bpe
+        payouts, count = self.filter_by(ext_ref_id=ext_ref_id)
+        assert count == 1, f"No Business Payout found with ext ref: {ext_ref_id}"
+        assert len(payouts) == 1
+        return payouts[0]
 
     def filter_by(
         self,
         business_uuids: Collection[UUIDStr] | None = None,
-    ) -> list[BusinessPayoutEvent]:
-
-        params = {}
-        filters = []
-        if business_uuids is not None:
-            filters.append("business_id = ANY(%(business_uuids)s)")
-            params["business_uuids"] = business_uuids
-
-        assert len(filters) > 0, "must pass at least 1 filter"
-        filter_str = " AND ".join(filters)
+        business_uuid: UUIDStr | None = None,
+        ext_ref_id: str | None = None,
+        page: int | None = None,
+        size: int | None = None,
+        order_field: str = "created",
+        descending: bool = False,
+    ) -> tuple[list[BusinessPayoutEvent], NonNegativeInt]:
+        filter_str, params = self.make_filter_str(
+            business_uuids=business_uuids,
+            business_uuid=business_uuid,
+            ext_ref_id=ext_ref_id,
+        )
+        pagination_sql = ""
+        if page is not None or size is not None:
+            pagination_sql = self.validate_pagination(page=page, size=size)
+        order_fields = {
+            "created": "sp.created",
+            "amount": "sp.amount",
+            "status": "sp.status",
+        }
+        order_by_sql = (
+            f"{order_fields[order_field]} {'DESC' if descending else 'ASC'}, sp.id"
+        )
 
         res = self.pg_config.execute_sql_query(
             f"""
@@ -455,7 +529,9 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
                 ON ep_inner.debit_account_uuid = la.uuid
             GROUP BY ep_inner.supplier_payout_id
         ) ep ON sp.id = ep.supplier_payout_id
-        WHERE {filter_str}
+        {filter_str}
+        ORDER BY {order_by_sql}
+        {pagination_sql}
         """,
             params,
         )
@@ -468,7 +544,54 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
                 "No BP payouts found for this Business Payout Event. This shouldn't happen!"
             )
             bpes.append(bpe)
-        return bpes
+        count = self.filter_count(
+            business_uuids=business_uuids,
+            business_uuid=business_uuid,
+            ext_ref_id=ext_ref_id,
+        )
+        return bpes, count
+
+    def filter_count(
+        self,
+        business_uuids: Collection[UUIDStr] | None = None,
+        business_uuid: UUIDStr | None = None,
+        ext_ref_id: str | None = None,
+    ) -> NonNegativeInt:
+        filter_str, params = self.make_filter_str(
+            business_uuids=business_uuids,
+            business_uuid=business_uuid,
+            ext_ref_id=ext_ref_id,
+        )
+        res = self.pg_config.execute_sql_query(
+            f"""
+            SELECT COUNT(1) AS cnt
+            FROM supplier_payout AS sp
+            {filter_str}
+            """,
+            params,
+        )
+        return int(res[0]["cnt"])
+
+    @staticmethod
+    def make_filter_str(
+        business_uuids: Collection[UUIDStr] | None = None,
+        business_uuid: UUIDStr | None = None,
+        ext_ref_id: str | None = None,
+    ) -> tuple[str, dict[str, Any]]:
+        params: dict[str, Any] = {}
+        filters = []
+        if business_uuids is not None:
+            filters.append("sp.business_id = ANY(%(business_uuids)s)")
+            params["business_uuids"] = list(business_uuids)
+        if business_uuid is not None:
+            filters.append("sp.business_id = %(business_uuid)s")
+            params["business_uuid"] = business_uuid
+        if ext_ref_id:
+            filters.append("sp.ext_ref_id = %(ext_ref_id)s")
+            params["ext_ref_id"] = ext_ref_id
+
+        assert len(filters) > 0, "must pass at least 1 filter"
+        return "WHERE " + " AND ".join(filters), params
 
     def validate_business_payout_in_ledger(
         self, ext_ref_id: str, thl_lm: ThlLedgerManager
@@ -541,18 +664,6 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
         self.update_business_payout_event(pk=bpe.id, status=PayoutStatus.COMPLETE)
 
         return
-
-    def get_business_payout_events_for_business(
-        self,
-        business_uuid: UUIDStr,
-        order_by: OrderBy | None = OrderBy.ASC,
-    ) -> list[BusinessPayoutEvent]:
-        order_by = order_by or OrderBy.ASC
-        bpes = self.filter_by(
-            business_uuids=[business_uuid],
-        )
-        bpes = sorted(bpes, key=lambda x: x.created, reverse=order_by == OrderBy.DESC)
-        return bpes
 
     @staticmethod
     def recoup_proportional(

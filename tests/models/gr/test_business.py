@@ -218,7 +218,9 @@ class TestBusiness:
         assert isinstance(gr_business.teams, list)
         assert len(gr_business.teams) == 0
 
-        gr_team_manager.add_business(team=gr_team, business=gr_business)
+        gr_team_manager.add_business(
+            team_id=gr_team.id, business_id=gr_business.id
+        )
         assert len(gr_business.teams) == 0
         gr_business.prefetch_teams(pg_config=gr_db)
         assert len(gr_business.teams) == 1
@@ -1246,7 +1248,9 @@ class TestBusinessMethods:
 
         p1 = product_factory(team=gr_team, business=gr_business)
         u1 = user_factory(product=p1)
-        gr_team_manager.add_business(team=gr_team, business=gr_business)
+        gr_team_manager.add_business(
+            team_id=gr_team.id, business_id=gr_business.id
+        )
 
         # Business needs tx & incite to build balance
         delete_ledger_db()
