@@ -952,6 +952,8 @@ class TestProductFinancials:
         p1.prebuild_balance(thl_lm=thl_ledger_manager, pop_ledger_df=df)
         assert p1.balance.payout == 95
         assert p1.balance.commission == 5
+        # This will equal 0 b/c the wall events are in 2018
+        assert p1.balance_net_7d == 0
 
         p2.prebuild_balance(thl_lm=thl_ledger_manager, pop_ledger_df=df)
         assert p2.balance.payout == 57

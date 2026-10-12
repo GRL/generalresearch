@@ -30,10 +30,13 @@ from generalresearch.models.custom_types import (
 )
 from generalresearch.models.gr.definitions import BusinessType, TransferMethod
 from generalresearch.models.gr.team import Team
-from generalresearch.models.thl.finance import BusinessBalances, POPFinancial
+from generalresearch.models.thl.finance import (
+    BusinessBalances,
+    BusinessUserWalletBalances,
+    POPFinancial,
+)
 from generalresearch.models.thl.ledger import LedgerAccount, OrderBy
 from generalresearch.models.thl.payout import BusinessPayoutEvent
-from generalresearch.utils.aggregation import group_by_year
 
 if TYPE_CHECKING:
     from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
@@ -203,6 +206,7 @@ class Business(BaseModel):
     # Initialization is deferred until unless it's called
     # (see .prebuild_***())
     balance: BusinessBalances | None = Field(default=None, title="Business Balance")
+    user_wallet_balance: BusinessUserWalletBalances | None = Field(default=None)
 
     payouts_total_str: str | None = Field(default=None)
     payouts_total: USDCent | None = Field(default=None)
@@ -218,6 +222,17 @@ class Business(BaseModel):
 
     pop_financial: list[POPFinancial] | None = Field(default=None)
     bp_accounts: list[LedgerAccount] | None = Field(default=None)
+
+    users_active_7d: int | None = Field(
+        default=None, description="Count of active users in the past 7 days"
+    )
+    task_completes_7d: int | None = Field(
+        default=None, description="Count of completes in the past 7 days"
+    )
+    balance_net_7d: int | None = Field(
+        default=None,
+        description="Net Earnings over the last 7 days (in USD Cents, this can be positive or negative)",
+    )
 
     def __str__(self) -> str:
         return (
@@ -238,9 +253,10 @@ class Business(BaseModel):
         # --- Prefetch ---
 
     def prefetch_addresses(self, pg_config: PostgresConfig) -> None:
-        with pg_config.make_connection() as conn, conn.cursor(
-            row_factory=dict_row
-        ) as c:
+        with (
+            pg_config.make_connection() as conn,
+            conn.cursor(row_factory=dict_row) as c,
+        ):
             c.execute(
                 query="""
                         SELECT *
@@ -258,9 +274,10 @@ class Business(BaseModel):
         self.addresses = [BusinessAddress.model_validate(i) for i in res]
 
     def prefetch_teams(self, pg_config: PostgresConfig) -> None:
-        with pg_config.make_connection() as conn, conn.cursor(
-            row_factory=dict_row
-        ) as c:
+        with (
+            pg_config.make_connection() as conn,
+            conn.cursor(row_factory=dict_row) as c,
+        ):
             c: Cursor
 
             c.execute(
@@ -339,6 +356,45 @@ class Business(BaseModel):
         self.bp_accounts = accounts
 
     # --- Prebuild ---
+
+    def prebuild_user_wallet_balance(
+        self,
+        client: DaskClient,
+        pop_ledger: PopLedgerMerge | None = None,
+    ):
+        from generalresearch.incite.schemas.mergers.pop_ledger import (
+            numerical_col_names,
+        )
+
+        assert self.products is not None, "prefetch products"
+        product_uuids = self.product_uuids
+        assert product_uuids is not None, "prefetch products"
+        if not any(p.user_wallet_enabled for p in self.products):
+            return
+
+        ddf = pop_ledger.ddf(
+            force_rr_latest=False,
+            include_partial=True,
+            columns=numerical_col_names
+            + ["time_idx", "account_id", "product_id", "product_user_id"],
+            filters=[("product_id", "in", list(product_uuids))],
+        )
+        df: pd.DataFrame = client.compute(collections=ddf, sync=True)
+        for product in self.products:
+            if product.user_wallet_enabled and product.user_wallet_balance is None:
+                product.prebuild_user_wallet_balances(df)
+        product_user_wallet_balances = [
+            p.user_wallet_balance
+            for p in self.products
+            if p.user_wallet_balance is not None
+        ]
+        if product_user_wallet_balances:
+            self.user_wallet_balance = (
+                BusinessUserWalletBalances.from_product_user_wallet_balances(
+                    business_id=self.uuid,
+                    product_user_wallet_balances=product_user_wallet_balances,
+                )
+            )
 
     def prebuild_balance(
         self,
@@ -433,6 +489,26 @@ class Business(BaseModel):
         )
 
         return
+
+    def prebuild_metrics(self, product_manager: ProductManager):
+        """
+        Simply sum the products' metrics
+        """
+        product_ids = self.product_uuids
+        query = """
+        SELECT
+            SUM(users_active_7d) AS users_active_7d,
+            SUM(task_completes_7d) AS task_completes_7d,
+            SUM(balance_net_7d) AS balance_net_7d
+        FROM userprofile_brokerageproduct
+        WHERE id = ANY(%(product_ids)s)
+        """
+        with product_manager.pg_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query, {"product_ids": product_ids})
+            res = c.fetchone()
+        self.users_active_7d = res["users_active_7d"]
+        self.task_completes_7d = res["task_completes_7d"]
+        self.balance_net_7d = res["balance_net_7d"]
 
     def prebuild_payouts(
         self,
@@ -626,7 +702,6 @@ class Business(BaseModel):
         pg_config: PostgresConfig,
         product_manager: ProductManager,
         business_bank_account_manager: BusinessBankAccountManager,
-        thl_web_rr: PostgresConfig,
         redis_config: RedisConfig,
         client: DaskClient,
         ds: GRLDatasets,
@@ -641,6 +716,10 @@ class Business(BaseModel):
         LOG.debug(f"Business.set_cache({self.uuid=})")
 
         # ex_secs = 60 * 60 * 24 * 3  # 3 days
+        if pop_ledger is None:
+            from generalresearch.incite.defaults import pop_ledger as plm
+
+            pop_ledger = plm(ds=ds)
 
         self.prefetch_addresses(pg_config=pg_config)
         self.prefetch_teams(pg_config=pg_config)
@@ -657,26 +736,32 @@ class Business(BaseModel):
             client=client,
             pop_ledger=pop_ledger,
         )
-        self.prebuild_payouts(bpem=bpem)
-        self.prebuild_pop_financial(
-            product_manager=product_manager,
-            thl_lm=thl_lm,
-            ds=ds,
+        self.prebuild_user_wallet_balance(
             client=client,
             pop_ledger=pop_ledger,
         )
 
+        self.prebuild_payouts(bpem=bpem)
+        self.prebuild_metrics(product_manager=product_manager)
+        # self.prebuild_pop_financial(
+        #     product_manager=product_manager,
+        #     thl_lm=thl_lm,
+        #     ds=ds,
+        #     client=client,
+        #     pop_ledger=pop_ledger,
+        # )
+
         rc = redis_config.create_redis_client()
         mapping = self.model_dump(mode="json")
 
-        # For POP Financial data, we want to also break that out by year
-        res = {
-            f"pop_financial:{key}": value
-            for key, value in group_by_year(
-                records=mapping["pop_financial"], datetime_field="time"
-            ).items()
-        }
-        mapping = mapping | res
+        # # For POP Financial data, we want to also break that out by year
+        # res = {
+        #     f"pop_financial:{key}": value
+        #     for key, value in group_by_year(
+        #         records=mapping["pop_financial"], datetime_field="time"
+        #     ).items()
+        # }
+        # mapping = mapping | res
 
         for key in mapping:
             mapping[key] = json.dumps(mapping[key])

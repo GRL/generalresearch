@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import psycopg
 from psycopg import sql
-from pydantic import AwareDatetime, NonNegativeInt, PositiveInt
+from pydantic import AwareDatetime, NonNegativeInt
 
 from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
@@ -20,7 +20,7 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionConditionFailedError,
     LedgerTransactionReleaseLockError,
 )
-from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.ledger import (
     Direction,
@@ -99,7 +99,6 @@ class PayoutEventManager(PostgresManagerWithRedis):
                     "Nothing was updated! Are you sure this payout_event exists?"
                 )
             conn.commit()
-
 
 
 class BrokerageProductPayoutEventManager(PayoutEventManager):
@@ -767,9 +766,18 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
         #   a simple DF. We're using the available balance because we need it
         #   to always be positive. We never want to get into a negative
         #   situation again, so it's best to be extra conservative.
+        if business.products is None:
+            business.prefetch_products(product_manager=pm)
+        assert business.products is not None
+
+        product_balances = [product.balance for product in business.products]
+        if any(balance is None for balance in product_balances):
+            raise ValueError("Every Business Product must have a balance")
+
         balances = {
             pb.product_id: pb.available_balance
-            for pb in business.balance.product_balances
+            for pb in product_balances
+            if pb is not None
         }
         df = pd.DataFrame.from_dict(balances, orient="index").reset_index()
         df.columns = ["product_id", "available_balance"]
