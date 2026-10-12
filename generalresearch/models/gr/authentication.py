@@ -176,9 +176,9 @@ class GRUser(BaseModel):
         pm = ProductManager(pg_config=thl_pg_config)
 
         business_products = (
-            pm.fetch_uuids(business_uuids=business_uuids) if business_uuids else []
+            pm.filter_paginated(business_uuids=business_uuids) if business_uuids else []
         )
-        team_products = pm.fetch_uuids(team_uuids=team_uuids) if team_uuids else []
+        team_products = pm.filter_paginated(team_uuids=team_uuids) if team_uuids else []
         products = {p.id: p for p in business_products + team_products}
 
         self.products = sorted(products.values(), key=lambda x: x.created)
