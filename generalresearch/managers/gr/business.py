@@ -17,6 +17,7 @@ from generalresearch.models.gr.business import (
     Business,
     BusinessBankAccount,
     BusinessCreate,
+    BusinessUpdate,
 )
 from generalresearch.models.gr.definitions import BusinessType, TransferMethod
 
@@ -243,6 +244,34 @@ class BusinessManager(PostgresManagerWithRedis):
         persisted_business = self.get_by_id(business_id=business_id)
         assert persisted_business is not None
         return persisted_business
+
+    def update(
+        self,
+        business_id: PositiveInt,
+        update: BusinessUpdate,
+    ) -> Business:
+        data = update.model_dump(exclude_unset=True)
+
+        assignments = sql.SQL(", ").join(
+            sql.SQL("{} = %s").format(sql.Identifier(field)) for field in data
+        )
+
+        query = sql.SQL("""
+        UPDATE common_business
+        SET {assignments}
+        WHERE id = %s
+        """).format(assignments=assignments)
+
+        with self.pg_config.make_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query, [*data.values(), business_id])
+                if cursor.rowcount != 1:
+                    raise LookupError(f"Business {business_id} does not exist")
+            conn.commit()
+
+        business = self.get_by_id(business_id)
+        assert business is not None
+        return business
 
     def get_all(self) -> list[Business]:
         """WARNING: This should be access by the /god/ page only, and only

@@ -5,7 +5,7 @@ import logging
 import os
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 from uuid import uuid4
 
 import pandas as pd
@@ -19,6 +19,8 @@ from pydantic import (
     Field,
     PositiveInt,
     ValidationError,
+    field_validator,
+    model_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -173,6 +175,31 @@ class BusinessContact(BaseModel):
         max_length=31,
         examples=["+1 (888) 888-8888"],
     )
+
+
+class BusinessUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(
+        min_length=3,
+        max_length=255,
+        examples=["General Research Laboratories, LLC"],
+        default=None,
+    )
+    tax_number: str | None = Field(default=None, max_length=20)
+
+    @field_validator("name")
+    @classmethod
+    def name_cannot_be_null(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("name cannot be null")
+        return value
+
+    @model_validator(mode="after")
+    def require_field(self) -> Self:
+        if not self.model_fields_set:
+            raise ValueError("Must provide a key to update")
+        return self
 
 
 class BusinessCreate(BaseModel):
