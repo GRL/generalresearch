@@ -19,12 +19,10 @@ from pydantic import (
     Field,
     PositiveInt,
     ValidationError,
-    computed_field,
 )
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_extra_types.phone_numbers import PhoneNumber
 
-from generalresearch.currency import USDCent
 from generalresearch.decorators import LOG
 from generalresearch.incite.schemas.mergers.pop_ledger import (
     numerical_col_names,
@@ -42,16 +40,7 @@ from generalresearch.models.thl.finance import (
     BusinessUserWalletBalances,
     POPFinancial,
 )
-from generalresearch.models.thl.ledger import LedgerAccount, OrderBy
-from generalresearch.models.thl.payout import BusinessPayoutEvent
-
-if TYPE_CHECKING:
-    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
-    from generalresearch.pg_helper import PostgresConfig
-    from generalresearch.redis_helper import RedisConfig
-
-logging.basicConfig()
-logger = logging.getLogger(__name__)
+from generalresearch.models.thl.ledger import LedgerAccount
 
 if TYPE_CHECKING:
     from generalresearch.incite.base import GRLDatasets
@@ -61,6 +50,7 @@ if TYPE_CHECKING:
     from generalresearch.incite.mergers.foundations.enriched_wall import (
         EnrichedWallMerge,
     )
+    from generalresearch.incite.mergers.pop_ledger import PopLedgerMerge
     from generalresearch.managers.gr.business import (
         BusinessBankAccountManager,
     )
@@ -75,6 +65,11 @@ if TYPE_CHECKING:
     )
     from generalresearch.managers.thl.product import ProductManager
     from generalresearch.models.thl.product import Product
+    from generalresearch.pg_helper import PostgresConfig
+    from generalresearch.redis_helper import RedisConfig
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
 
 
 class BusinessBankAccount(BaseModel):
