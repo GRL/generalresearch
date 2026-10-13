@@ -973,11 +973,13 @@ class Product(BaseModel, validate_assignment=True):
 
     balance: ProductBalances | None = Field(default=None, description="Product Balance")
     user_wallet_balance: ProductUserWalletBalances | None = Field(default=None)
-    payouts: ProductPayouts | None = Field(
-        default=None,
-        description="Product Payouts. These are the ACH or Wire payments that were sent to the"
-        "Business on behalf of this specific Product",
-    )
+
+    # This should be queried for
+    # payouts: ProductPayouts | None = Field(
+    #     default=None,
+    #     description="Product Payouts. These are the ACH or Wire payments that were sent to the"
+    #     "Business on behalf of this specific Product",
+    # )
     pop_financial: ProductPOPFinancials | None = Field(default=None)
 
     users_active_7d: int | None = Field(
@@ -1408,32 +1410,32 @@ class Product(BaseModel, validate_assignment=True):
 
         self.pop_financial = ProductPOPFinancials(periods=periods)
 
-    def prebuild_payouts(
-        self,
-        bp_pem: BrokerageProductPayoutEventManager,
-    ) -> None:
-        LOG.debug(f"Product.prebuild_payouts({self.uuid=})")
-        from generalresearch.models.thl.ledger import OrderBy
-
-        events = bp_pem.get_bp_bp_payout_events_for_products(
-            product_uuids=[self.uuid],
-            order_by=OrderBy.DESC,
-        )
-        self.payouts = ProductPayouts(events=events)
-
-    @computed_field
-    @property
-    def payouts_total(self) -> USDCent | None:
-        if self.payouts is None:
-            return None
-        return USDCent(sum(event.amount for event in self.payouts.events))
-
-    @computed_field
-    @property
-    def payouts_total_str(self) -> str | None:
-        if self.payouts_total is None:
-            return None
-        return self.payouts_total.to_usd_str()
+    # def prebuild_payouts(
+    #     self,
+    #     bp_pem: BrokerageProductPayoutEventManager,
+    # ) -> None:
+    #     LOG.debug(f"Product.prebuild_payouts({self.uuid=})")
+    #     from generalresearch.models.thl.ledger import OrderBy
+    #
+    #     events = bp_pem.get_bp_bp_payout_events_for_products(
+    #         product_uuids=[self.uuid],
+    #         order_by=OrderBy.DESC,
+    #     )
+    #     self.payouts = ProductPayouts(events=events)
+    #
+    # @computed_field
+    # @property
+    # def payouts_total(self) -> USDCent | None:
+    #     if self.payouts is None:
+    #         return None
+    #     return USDCent(sum(event.amount for event in self.payouts.events))
+    #
+    # @computed_field
+    # @property
+    # def payouts_total_str(self) -> str | None:
+    #     if self.payouts_total is None:
+    #         return None
+    #     return self.payouts_total.to_usd_str()
 
     def set_cache(
         self,
@@ -1484,7 +1486,8 @@ class Product(BaseModel, validate_assignment=True):
             self.prebuild_user_wallet_balances(
                 pop_ledger_df=pop_ledger_df,
             )
-        self.prebuild_payouts(bp_pem=bp_pem)
+        # This should be queried for
+        # self.prebuild_payouts(bp_pem=bp_pem)
         self.prebuild_pop_financial(
             thl_lm=thl_lm,
             pop_ledger_df=pop_ledger_df,

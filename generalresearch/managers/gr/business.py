@@ -16,6 +16,7 @@ from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.gr.business import (
     Business,
     BusinessBankAccount,
+    BusinessCreate,
 )
 from generalresearch.models.gr.definitions import BusinessType, TransferMethod
 
@@ -208,7 +209,7 @@ class BusinessManager(PostgresManagerWithRedis):
         Behavior: does this raise on duplicate?
         """
         # Business.model_rebuild()
-        business = Business.model_validate(
+        business = BusinessCreate.model_validate(
             {
                 "uuid": uuid or uuid4().hex,
                 "name": name,
@@ -231,13 +232,13 @@ class BusinessManager(PostgresManagerWithRedis):
                 )
                 business_id = c.fetchone()["id"]  # type: ignore
             conn.commit()
-        business.id = business_id
 
         if team:
             from generalresearch.managers.gr.team import TeamManager
 
+            assert team.id is not None, "Team must be persisted before adding a Business"
             tm = TeamManager(pg_config=self.pg_config, redis_config=self.redis_config)
-            tm.add_business(team=team, business=business)
+            tm.add_business(team_id=team.id, business_id=business_id)
 
         persisted_business = self.get_by_id(business_id=business_id)
         assert persisted_business is not None

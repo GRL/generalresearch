@@ -136,13 +136,13 @@ class TestBusinessManager:
 
         # Add the Business to the Team... now the Business should be available
         # to the gr_user
-        gr_team_manager.add_business(team=t1, business=b1)
+        gr_team_manager.add_business(team_id=t1.id, business_id=b1.id)
         res = gr_business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 1
 
         # Add another Business to the Team!
         b2 = gr_business_factory()
-        gr_team_manager.add_business(team=t1, business=b2)
+        gr_team_manager.add_business(team_id=t1.id, business_id=b2.id)
         res = gr_business_manager.get_by_user_id(user_id=gr_user.id)
         assert len(res) == 2
 
@@ -163,6 +163,26 @@ class TestBusinessManager:
         instance = gr_business_manager.get_by_id(business_id=gr_business.id)
         assert isinstance(instance, Business)
         assert gr_business.uuid == instance.uuid
+
+    def test_get_methods_include_cached_fields(
+        self, gr_business: Business, gr_business_manager: BusinessManager
+    ):
+        gr_business.users_active_7d = 11
+        gr_business.task_completes_7d = 22
+        gr_business.balance_net_7d = 33
+        gr_business_manager.update_cached_fields(gr_business)
+
+        by_id = gr_business_manager.get_by_id(business_id=gr_business.id)
+        by_uuid = gr_business_manager.get_by_uuid(business_uuid=gr_business.uuid)
+        filtered = gr_business_manager.filter(business_id=gr_business.id)
+
+        assert by_id is not None
+        assert by_uuid is not None
+        assert len(filtered) == 1
+        for business in (by_id, by_uuid, filtered[0]):
+            assert business.users_active_7d == 11
+            assert business.task_completes_7d == 22
+            assert business.balance_net_7d == 33
 
     def test_cache_key(self, gr_business: Business):
         assert "business:" in gr_business.cache_key
