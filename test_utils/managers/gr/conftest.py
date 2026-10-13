@@ -67,7 +67,7 @@ def gr_redis_config(
 
 @pytest.fixture(scope="session")
 def gr_db(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
-    _dsn = django_db_factory("gr.common")
+    _dsn = django_db_factory("generalresearch.gr_django")
 
     return PostgresConfig(
         dsn=_dsn,

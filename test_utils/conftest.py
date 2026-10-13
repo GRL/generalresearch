@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 import shutil
-import stat
 import subprocess
 import sys
 from collections.abc import Callable, Generator
@@ -156,66 +155,6 @@ def postgres_instance_host(
 
 
 @pytest.fixture(scope="session")
-def git_key_path(
-    tmp_path_factory: TempPathFactory,
-    settings: GRLBaseSettings,
-) -> Generator[Path]:
-    # We are using the tmp_path_factory because unlike the tmp_path (which
-    # is function scoped), this is session scoped.
-
-    assert settings.git_creds, "Must define key to download alternative models"
-    fn = tmp_path_factory.mktemp("keys") / "git_creds"
-    key_content = settings.git_creds.replace("\\n", "\n")
-    fn.write_text(key_content, encoding="utf-8")
-    os.chmod(fn, stat.S_IRUSR | stat.S_IWUSR)
-
-    yield Path(fn)
-
-    os.unlink(fn)
-
-
-@pytest.fixture(scope="session")
-def gr_repo(
-    git_key_path: Path,
-    tmp_path_factory: TempPathFactory,
-) -> Callable[..., Path | None]:
-    repo_url = "ssh://code.g-r-l.com:6611/general-research/gr-carer.git"
-
-    _ran = {}
-
-    fn = tmp_path_factory.mktemp("repos")
-    repo_path = fn / "gr-carer"
-
-    def _inner() -> Path:
-
-        if _ran.get(repo_url, False):
-            print(f"Already ran django_db_factory.{repo_url}")
-            return repo_path
-
-        _ran[repo_url] = True
-
-        ssh_cmd = (
-            f'ssh -i "{git_key_path}" '
-            "-o IdentitiesOnly=yes "
-            "-o StrictHostKeyChecking=no "
-        )
-        env = {**os.environ, "GIT_SSH_COMMAND": ssh_cmd}
-
-        if repo_path.exists():
-            subprocess.run(["git", "-C", str(repo_path), "pull"], check=True, env=env)
-        else:
-            subprocess.run(
-                ["git", "clone", "--depth", "1", repo_url, str(repo_path)],
-                check=True,
-                env=env,
-            )
-
-        return repo_path
-
-    return _inner
-
-
-@pytest.fixture(scope="session")
 def django_settings_file(
     postgres_instance_dict: PostgresDict,
     tmp_path_factory: TempPathFactory,
@@ -259,17 +198,14 @@ USE_TZ = True
 @pytest.fixture(scope="session")
 def django_db_factory(
     postgres_instance: PostgresDsn,
-    gr_repo: Callable[..., Path],
     django_settings_file: Callable[..., tuple[str, Path]],
-    postgres_instance_dict: PostgresDict,
-    tmp_path_factory: TempPathFactory,
-) -> Callable[..., PostgresDsn | None]:
+) -> Callable[..., PostgresDsn]:
 
     _ran = {}
 
     def _inner(
         django_project: str = "generalresearch.thl_django",
-    ) -> PostgresDsn | None:
+    ) -> PostgresDsn:
 
         if _ran.get(django_project, False):
             print(f"Already ran django_db_factory:{django_project}")
@@ -285,11 +221,11 @@ def django_db_factory(
                 ],
             )
 
-        elif django_project == "gr.common":
-            _cwd = gr_repo()
-            _manage_path = "gr.app.manage"
+        elif django_project == "generalresearch.gr_django":
+            _cwd = None
+            _manage_path = "generalresearch.gr_django.app.manage"
             _settings_module, _settings_dir = django_settings_file(
-                extra_installed_apps=["gr.common"]
+                extra_installed_apps=["generalresearch.gr_django"]
             )
 
         else:
