@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import operator
+import uuid
 from collections.abc import Collection
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -142,10 +143,12 @@ class ProductManager(PostgresManager):
             )
 
         else:
-            res = self.pg_config.execute_sql_query(query="""
+            res = self.pg_config.execute_sql_query(
+                query="""
                     SELECT p.id::uuid
                     FROM userprofile_brokerageproduct AS p
-                """)
+                """
+            )
         return [i["id"] for i in res]
 
     def filter_paginated(
@@ -154,6 +157,7 @@ class ProductManager(PostgresManager):
         business_uuids: list[UUIDStr] | None = None,
         team_uuids: list[UUIDStr] | None = None,
         name_like: str | None = None,
+        uuid_startswith: str | None = None,
         supplier_tags: list[str] | None = None,
         harmonizer_domain_like: str | None = None,
         redirect_url_like: str | None = None,
@@ -175,6 +179,7 @@ class ProductManager(PostgresManager):
                     business_uuids=business_uuids,
                     team_uuids=team_uuids,
                     name_like=name_like,
+                    uuid_startswith=uuid_startswith,
                     supplier_tags=supplier_tags,
                     harmonizer_domain_like=harmonizer_domain_like,
                     redirect_url_like=redirect_url_like,
@@ -197,6 +202,7 @@ class ProductManager(PostgresManager):
         business_uuids: list[UUIDStr] | None = None,
         team_uuids: list[UUIDStr] | None = None,
         name_like: str | None = None,
+        uuid_startswith: str | None = None,
         supplier_tags: list[str] | None = None,
         harmonizer_domain_like: str | None = None,
         redirect_url_like: str | None = None,
@@ -212,6 +218,7 @@ class ProductManager(PostgresManager):
             business_uuids=business_uuids,
             team_uuids=team_uuids,
             name_like=name_like,
+            uuid_startswith=uuid_startswith,
             supplier_tags=supplier_tags,
             harmonizer_domain_like=harmonizer_domain_like,
             redirect_url_like=redirect_url_like,
@@ -227,6 +234,7 @@ class ProductManager(PostgresManager):
             business_uuids=business_uuids,
             team_uuids=team_uuids,
             name_like=name_like,
+            uuid_startswith=uuid_startswith,
             supplier_tags=supplier_tags,
             harmonizer_domain_like=harmonizer_domain_like,
             redirect_url_like=redirect_url_like,
@@ -240,6 +248,7 @@ class ProductManager(PostgresManager):
         business_uuids: list[UUIDStr] | None = None,
         team_uuids: list[UUIDStr] | None = None,
         name_like: str | None = None,
+        uuid_startswith: str | None = None,
         supplier_tags: list[str] | None = None,
         harmonizer_domain_like: str | None = None,
         redirect_url_like: str | None = None,
@@ -268,6 +277,7 @@ class ProductManager(PostgresManager):
             business_uuids=business_uuids,
             team_uuids=team_uuids,
             name_like=name_like,
+            uuid_startswith=uuid_startswith,
             supplier_tags=supplier_tags,
             harmonizer_domain_like=harmonizer_domain_like,
             redirect_url_like=redirect_url_like,
@@ -362,6 +372,7 @@ class ProductManager(PostgresManager):
         business_uuids: list[UUIDStr] | None = None,
         team_uuids: list[UUIDStr] | None = None,
         name_like: str | None = None,
+        uuid_startswith: str | None = None,
         supplier_tags: list[str] | None = None,
         harmonizer_domain_like: str | None = None,
         redirect_url_like: str | None = None,
@@ -373,6 +384,7 @@ class ProductManager(PostgresManager):
             business_uuids=business_uuids,
             team_uuids=team_uuids,
             name_like=name_like,
+            uuid_startswith=uuid_startswith,
             supplier_tags=supplier_tags,
             harmonizer_domain_like=harmonizer_domain_like,
             redirect_url_like=redirect_url_like,
@@ -415,6 +427,7 @@ class ProductManager(PostgresManager):
         business_uuids: list[UUIDStr] | None = None,
         team_uuids: list[UUIDStr] | None = None,
         name_like: str | None = None,
+        uuid_startswith: str | None = None,
         supplier_tags: list[str] | None = None,
         harmonizer_domain_like: str | None = None,
         redirect_url_like: str | None = None,
@@ -423,9 +436,9 @@ class ProductManager(PostgresManager):
         params = {}
         filters = []
         identifiers = [product_uuids, business_uuids, team_uuids]
-        assert (
-            sum([bool(x) for x in identifiers]) == 1
-        ), "Must provide exactly one set of identifiers"
+        assert sum([bool(x) for x in identifiers]) == 1, (
+            "Must provide exactly one set of identifiers"
+        )
         identifier = next(x for x in identifiers if x)
         assert all(is_valid_uuid(v) for v in identifier), "invalid uuid"
 
@@ -441,6 +454,18 @@ class ProductManager(PostgresManager):
         if name_like:
             filters.append("bp.name ILIKE '%%' || %(name_like)s || '%%'")
             params["name_like"] = name_like
+        if uuid_startswith:
+            h = uuid_startswith.replace("-", "").lower().strip()
+            if len(h) > 32 or any(c not in "0123456789abcdef" for c in h):
+                raise ValueError(f"invalid uuid prefix: {uuid_startswith!r}")
+            uuid_starts_low = uuid.UUID(h.ljust(32, "0"))
+            uuid_starts_high = uuid.UUID(h.ljust(32, "f"))
+            # We have to do it like this, or else it won't use the index
+            # (because bp.id is a uuid field, which doesn't support LIKE,
+            #   or you have to cast it, which defeats the index)
+            filters.append("bp.id BETWEEN %(uuid_starts_low)s AND %(uuid_starts_high)s")
+            params["uuid_starts_low"] = uuid_starts_low
+            params["uuid_starts_high"] = uuid_starts_high
         if harmonizer_domain_like:
             filters.append(
                 "bp.grs_domain ILIKE '%%' || %(harmonizer_domain_like)s || '%%'"
@@ -576,10 +601,16 @@ class ProductManager(PostgresManager):
         insert_data["payments_enabled"] = instance.payments_enabled
 
         try:
-            insert_data["id_int"] = next(iter(self.pg_config.execute_sql_query(query="""
+            insert_data["id_int"] = next(
+                iter(
+                    self.pg_config.execute_sql_query(
+                        query="""
             SELECT COALESCE(MAX(id_int), 0) + 1 as id_int
             FROM userprofile_brokerageproduct
-            """)))["id_int"]
+            """
+                    )
+                )
+            )["id_int"]
             instance.id_int = insert_data["id_int"]
 
             query = """
