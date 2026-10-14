@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from typing import Self
+from typing import TYPE_CHECKING, Self
 from uuid import uuid4
 
 from pydantic import (
@@ -28,6 +28,9 @@ from generalresearch.models.thl.wallet.cashout_method import (
     CashMailOrderData,
 )
 from generalresearch.models.thl.wallet.definitions import PayoutType
+
+if TYPE_CHECKING:
+    from generalresearch.managers.thl.payout import BusinessPayoutEventManager
 
 
 class PayoutEvent(BaseModel):
@@ -332,8 +335,7 @@ class BusinessPayoutEventCreate(BaseModel):
         assert isinstance(v, list)
         return v
 
-    @model_validator(mode="after")
-    def validate_bp_payouts(self) -> Self:
+    def _validate_bp_payouts(self):
         bp_payout_amount = sum([p.amount for p in self.bp_payouts])
         if bp_payout_amount != self.amount:
             raise ValueError(
@@ -361,6 +363,10 @@ class BusinessPayoutEventCreate(BaseModel):
 
         return self
 
+    @model_validator(mode="after")
+    def validate_bp_payouts(self) -> Self:
+        return self._validate_bp_payouts()
+
     def model_dump_postgres(self):
         d = self.model_dump(
             mode="json",
@@ -377,3 +383,22 @@ class BusinessPayoutEventCreate(BaseModel):
 
 class BusinessPayoutEvent(BusinessPayoutEventCreate):
     id: SkipJsonSchema[PositiveInt] = Field(exclude=True)
+
+    # When we pull back a business payout event, we may skip pulling back the
+    # individual BP events (as there many be hella many)
+    bp_payouts: list[BrokerageProductPayoutEvent] | None = Field(
+        description="The list of Brokerage Product Payouts that this Business Payout includes",
+        min_length=1,
+        default=None,
+    )
+
+    @model_validator(mode="after")
+    def validate_bp_payouts(self) -> Self:
+        if self.bp_payouts is None:
+            return self
+        return self._validate_bp_payouts()
+
+    def prefetch_bp_payouts(
+        self, business_payout_event_manager: BusinessPayoutEventManager
+    ) -> None:
+        self.bp_payouts = business_payout_event_manager.get_bp_payouts(self)

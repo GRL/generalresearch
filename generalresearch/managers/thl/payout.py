@@ -8,7 +8,7 @@ from uuid import uuid4
 import numpy as np
 import pandas as pd
 import psycopg
-from psycopg import sql
+from psycopg import Connection, sql
 from pydantic import AwareDatetime, NonNegativeInt
 
 from generalresearch.currency import USDCent
@@ -173,6 +173,37 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
 
         return True
 
+    def filter_paginated(
+        self,
+        ext_ref_id: str | None = None,
+        supplier_payout_id: int | None = None,
+        order_field: str = "created",
+        descending: bool = False,
+        conn: Connection | None = None,
+    ) -> list[BrokerageProductPayoutEvent]:
+        """
+        Automatically paginate the results of a filter query.
+        """
+        res = []
+        page = 1
+        size = self.DEFAULT_PAGE_SIZE
+        with self.connection(conn) as conn:
+            while True:
+                _res, _ = self.filter_by(
+                    ext_ref_id=ext_ref_id,
+                    supplier_payout_id=supplier_payout_id,
+                    page=page,
+                    size=size,
+                    order_field=order_field,
+                    descending=descending,
+                    conn=conn,
+                )
+                res.extend(_res)
+                if len(_res) < size:
+                    break
+                page += 1
+        return res
+
     def filter_by(
         self,
         ext_ref_id: str | None = None,
@@ -183,10 +214,12 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         product_ids: Collection[str] | None = None,
         cashout_types: Collection[PayoutType] | None = None,
         statuses: Collection[PayoutStatus] | None = None,
+        supplier_payout_id: int | None = None,
         page: int | None = None,
         size: int | None = None,
         order_field: str = "created",
         descending: bool = False,
+        conn: Connection | None = None,
     ) -> tuple[list[BrokerageProductPayoutEvent], NonNegativeInt]:
         """Try to retrieve BP payout events.
 
@@ -204,6 +237,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
             product_ids=product_ids,
             cashout_types=cashout_types,
             statuses=statuses,
+            supplier_payout_id=supplier_payout_id,
         )
         pagination_sql = ""
         if page is not None or size is not None:
@@ -216,26 +250,25 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         order_by_sql = (
             f"{order_fields[order_field]} {'DESC' if descending else 'ASC'}, ep.uuid"
         )
-
-        res = self.pg_config.execute_sql_query(
-            query=f"""
-                SELECT  ep.uuid, ep.debit_account_uuid, ep.cashout_method_uuid,
-                        ep.created, ep.amount, ep.status, ep.ext_ref_id,
-                        ep.payout_type, ep.supplier_payout_id,
-                        ep.request_data::jsonb, ep.order_data::jsonb,
-                        ac.name as description,
-                        la.reference_uuid as product_id
-                FROM event_payout AS ep
-                LEFT JOIN accounting_cashoutmethod AS ac
-                    ON ep.cashout_method_uuid = ac.id
-                LEFT JOIN ledger_account AS la
-                    ON la.uuid = ep.debit_account_uuid
-                {filter_str}
-                ORDER BY {order_by_sql}
-                {pagination_sql}
-            """,
-            params=params,
-        )
+        query = f"""
+        SELECT  ep.uuid, ep.debit_account_uuid, ep.cashout_method_uuid,
+                ep.created, ep.amount, ep.status, ep.ext_ref_id,
+                ep.payout_type, ep.supplier_payout_id,
+                ep.request_data::jsonb, ep.order_data::jsonb,
+                ac.name as description,
+                la.reference_uuid as product_id
+        FROM event_payout AS ep
+        LEFT JOIN accounting_cashoutmethod AS ac
+            ON ep.cashout_method_uuid = ac.id
+        LEFT JOIN ledger_account AS la
+            ON la.uuid = ep.debit_account_uuid
+        {filter_str}
+        ORDER BY {order_by_sql}
+        {pagination_sql}
+        """
+        with self.connection(conn) as conn, conn.cursor() as c:
+            c.execute(query, params)
+            res = c.fetchall()
         pes = []
         for row in res:
             pes.append(BrokerageProductPayoutEvent.model_validate(row))
@@ -248,6 +281,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
             product_ids=product_ids,
             cashout_types=cashout_types,
             statuses=statuses,
+            supplier_payout_id=supplier_payout_id,
         )
         return pes, count
 
@@ -261,6 +295,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         product_ids: Collection[str] | None = None,
         cashout_types: Collection[PayoutType] | None = None,
         statuses: Collection[PayoutStatus] | None = None,
+        supplier_payout_id: int | None = None,
     ) -> NonNegativeInt:
         filter_str, params = self.make_filter_str(
             ext_ref_id=ext_ref_id,
@@ -271,6 +306,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
             product_ids=product_ids,
             cashout_types=cashout_types,
             statuses=statuses,
+            supplier_payout_id=supplier_payout_id,
         )
         res = self.pg_config.execute_sql_query(
             query=f"""
@@ -294,6 +330,7 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         product_ids: Collection[str] | None = None,
         cashout_types: Collection[PayoutType] | None = None,
         statuses: Collection[PayoutStatus] | None = None,
+        supplier_payout_id: int | None = None,
     ) -> tuple[str, dict[str, Any]]:
         params: dict[str, Any] = {
             "cashout_method_uuid": self.CASHOUT_METHOD_UUID,
@@ -334,6 +371,10 @@ class BrokerageProductPayoutEventManager(PayoutEventManager):
         if statuses is not None:
             filters.append("ep.status = ANY(%(statuses)s)")
             params["statuses"] = [x.value for x in statuses]
+            supplied_filter = True
+        if supplier_payout_id is not None:
+            filters.append("ep.supplier_payout_id = %(supplier_payout_id)s")
+            params["supplier_payout_id"] = supplier_payout_id
             supplied_filter = True
 
         assert supplied_filter, "must pass at least 1 filter"
@@ -483,6 +524,11 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
         assert len(payouts) == 1
         return payouts[0]
 
+    def get_bp_payouts(self, business_payout_event: BusinessPayoutEvent):
+        return self.bp_pe_manager.filter_paginated(
+            supplier_payout_id=business_payout_event.id
+        )
+
     def filter_by(
         self,
         business_uuids: Collection[UUIDStr] | None = None,
@@ -512,23 +558,8 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
 
         res = self.pg_config.execute_sql_query(
             f"""
-        SELECT
-            sp.*,
-            ep.bp_payouts
+        SELECT sp.*
         FROM supplier_payout sp
-        JOIN (
-            SELECT
-                ep_inner.supplier_payout_id,
-                jsonb_agg(
-                    to_jsonb(ep_inner)
-                    || jsonb_build_object('product_id', la.reference_uuid)
-                    ORDER BY ep_inner.created
-                ) AS bp_payouts
-            FROM event_payout ep_inner
-            JOIN ledger_account la
-                ON ep_inner.debit_account_uuid = la.uuid
-            GROUP BY ep_inner.supplier_payout_id
-        ) ep ON sp.id = ep.supplier_payout_id
         {filter_str}
         ORDER BY {order_by_sql}
         {pagination_sql}
@@ -537,12 +568,8 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
         )
         bpes = []
         for row in res:
-            for bp_payout in row["bp_payouts"]:
-                bp_payout["created"] = datetime.fromisoformat(bp_payout["created"])
             bpe = BusinessPayoutEvent.model_validate(row)
-            assert bpe.bp_payouts is not None and len(bpe.bp_payouts) > 0, (
-                "No BP payouts found for this Business Payout Event. This shouldn't happen!"
-            )
+            assert bpe.bp_payouts is None
             bpes.append(bpe)
         count = self.filter_count(
             business_uuids=business_uuids,
