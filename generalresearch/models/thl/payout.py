@@ -9,6 +9,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    NonNegativeInt,
     PositiveInt,
     computed_field,
     field_validator,
@@ -390,6 +391,10 @@ class BusinessPayoutEvent(BusinessPayoutEventCreate):
         description="The list of Brokerage Product Payouts that this Business Payout includes",
         min_length=1,
         default=None,
+    )
+
+    line_item_count: NonNegativeInt = Field(
+        description="The number of line items in the payout.",
     )
 
     @model_validator(mode="after")

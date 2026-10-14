@@ -14,13 +14,12 @@ from generalresearch.models.gr.business import (
 from generalresearch.models.gr.definitions import BusinessType
 from generalresearch.models.thl.payout import (
     BrokerageProductPayoutEvent,
-    BusinessPayoutEvent,
+    BusinessPayoutEventCreate,
 )
 from generalresearch.models.thl.wallet.definitions import PayoutType
 
 
 class TestBusinessPayoutEvent:
-
     def test_validate(self):
 
         # Doesn't validate anymore
@@ -51,30 +50,30 @@ class TestBusinessPayoutEvent:
         assert isinstance(b, Business)
 
         ext_ref_id = uuid4().hex
-        bpe = BusinessPayoutEvent(
+        bpe = BusinessPayoutEventCreate(
             business_id=uuid4().hex,
             amount=USDCent(100_00),
             payout_type=PayoutType.ACH,
             ext_ref_id=ext_ref_id,
+            bp_payouts=[
+                BrokerageProductPayoutEvent(
+                    product_id=uuid4().hex,
+                    payout_type=PayoutType.ACH,
+                    amount=USDCent(47_00),
+                    cashout_method_uuid=uuid4().hex,
+                    debit_account_uuid=uuid4().hex,
+                    ext_ref_id=ext_ref_id,
+                ),
+                BrokerageProductPayoutEvent(
+                    product_id=uuid4().hex,
+                    payout_type=PayoutType.ACH,
+                    amount=USDCent(53_00),
+                    cashout_method_uuid=uuid4().hex,
+                    debit_account_uuid=uuid4().hex,
+                    ext_ref_id=ext_ref_id,
+                ),
+            ],
         )
-        bpe.bp_payouts = [
-            BrokerageProductPayoutEvent(
-                product_id=uuid4().hex,
-                payout_type=PayoutType.ACH,
-                amount=USDCent(47_00),
-                cashout_method_uuid=uuid4().hex,
-                debit_account_uuid=uuid4().hex,
-                ext_ref_id=ext_ref_id,
-            ),
-            BrokerageProductPayoutEvent(
-                product_id=uuid4().hex,
-                payout_type=PayoutType.ACH,
-                amount=USDCent(53_00),
-                cashout_method_uuid=uuid4().hex,
-                debit_account_uuid=uuid4().hex,
-                ext_ref_id=ext_ref_id,
-            ),
-        ]
 
         # Test validations (amount sum)
         with pytest.raises(

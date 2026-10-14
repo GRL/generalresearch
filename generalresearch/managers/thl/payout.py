@@ -558,8 +558,16 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
 
         res = self.pg_config.execute_sql_query(
             f"""
-        SELECT sp.*
+        SELECT sp.*,
+            COALESCE(ep.line_item_count, 0) as line_item_count
         FROM supplier_payout sp
+        LEFT JOIN (
+            SELECT
+                supplier_payout_id,
+                COUNT(1) AS line_item_count
+            FROM event_payout
+            GROUP BY supplier_payout_id
+        ) AS ep ON sp.id = ep.supplier_payout_id
         {filter_str}
         ORDER BY {order_by_sql}
         {pagination_sql}
@@ -869,7 +877,11 @@ class BusinessPayoutEventManager(PostgresManagerWithRedis):
                         | {"supplier_payout_id": supplier_payout_pk},
                     )
             conn.commit()
-        return BusinessPayoutEvent(id=supplier_payout_pk, **bpe.model_dump())
+        return BusinessPayoutEvent(
+            id=supplier_payout_pk,
+            line_item_count=len(bpe.bp_payouts),
+            **bpe.model_dump(),
+        )
 
     def create_from_ach_or_wire(
         self,
