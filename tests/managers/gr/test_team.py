@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from generalresearch.models.gr.authentication import GRUser
-from generalresearch.models.gr.team import Membership, Team
+from generalresearch.models.gr.team import Membership, Team, TeamUpdate
 
 if TYPE_CHECKING:
     from generalresearch.managers.gr.authentication import GRUserManager
@@ -58,6 +58,22 @@ class TestTeamManager:
         team: Team = gr_team_factory()
         assert isinstance(team, Team)
         assert isinstance(team.id, int)
+
+    def test_update_name(
+        self, gr_team_factory: Callable[..., Team], gr_team_manager: TeamManager
+    ):
+        team = gr_team_factory()
+        updated = gr_team_manager.update(
+            team_id=team.id,
+            update=TeamUpdate(name="Updated Team Name"),
+        )
+
+        assert updated.id == team.id
+        assert updated.uuid == team.uuid
+        assert updated.name == "Updated Team Name"
+
+        persisted = gr_team_manager.get_by_id(team_id=team.id)
+        assert persisted == updated
 
     def test_add_user(
         self,

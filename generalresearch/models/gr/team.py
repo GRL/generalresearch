@@ -5,7 +5,7 @@ import os
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 from uuid import uuid4
 
 import pandas as pd
@@ -18,6 +18,7 @@ from pydantic import (
     PositiveInt,
     ValidationError,
     field_validator,
+    model_validator,
 )
 from pydantic.json_schema import SkipJsonSchema
 
@@ -113,10 +114,33 @@ class Membership(BaseModel):
         self.team = tm.get_by_id(team_id=self.team_id)
 
 
-class Team(BaseModel):
-    id: SkipJsonSchema[PositiveInt | None] = Field(default=None)
+class TeamUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # This is nullable with a validator that says it can't be set to null,
+    # so that in the future if we had another editable field, that field
+    # could be updated separate from 'name'
+    name: str | None = Field(
+        min_length=3, max_length=255, examples=["Team ABC"], default=None
+    )
+
+    @field_validator("name")
+    @classmethod
+    def name_cannot_be_null(cls, value: str | None) -> str:
+        if value is None:
+            raise ValueError("name cannot be null")
+        return value
+
+    @model_validator(mode="after")
+    def require_field(self) -> Self:
+        if not self.model_fields_set:
+            raise ValueError("Must provide a key to update")
+        return self
+
+
+class TeamCreate(BaseModel):
     uuid: UUIDStrCoerce = Field(examples=[uuid4().hex])
-    name: str = Field(max_length=255, examples=["Team ABC"])
+    name: str = Field(min_length=3, max_length=255, examples=["Team ABC"])
 
     # prefetch attributes
     memberships: SkipJsonSchema[list[Membership] | None] = Field(default=None)
@@ -124,7 +148,38 @@ class Team(BaseModel):
     businesses: SkipJsonSchema[list[Business] | None] = Field(default=None)
     products: SkipJsonSchema[list[Product] | None] = Field(default=None)
 
-    # --- Prefetch Methods ---
+    @classmethod
+    def required_fields(cls) -> list[str]:
+        return [
+            field_name
+            for field_name, field_info in cls.model_fields.items()
+            if field_info.is_required()
+        ]
+
+    # --- Properties ---
+    @property
+    def cache_key(self) -> str:
+        return f"team:{self.uuid}"
+
+    @property
+    def file_key(self) -> str:
+        return f"team-{self.uuid}"
+
+    @property
+    def product_ids(self) -> list[UUIDStr] | None:
+        if self.products is None:
+            LOG.warning("prefetch not run")
+            return None
+
+        return [p.uuid for p in self.products]
+
+    @property
+    def product_uuids(self) -> list[UUIDStr] | None:
+        return self.product_ids
+
+
+class Team(TeamCreate):
+    id: SkipJsonSchema[PositiveInt] = Field(exclude=True)
 
     def prefetch_memberships(self, gr_membership_manager: MembershipManager) -> None:
         self.memberships = gr_membership_manager.get_by_team_id(team_id=self.id)
@@ -225,37 +280,6 @@ class Team(BaseModel):
             _ = pd.read_parquet(path, engine="pyarrow")
         except (pa.ArrowException, OSError, ValueError) as e:
             raise OSError(f"Parquet verification failed: {e}")
-
-    @classmethod
-    def required_fields(cls) -> list[str]:
-        return [
-            field_name
-            for field_name, field_info in cls.model_fields.items()
-            if field_info.is_required()
-        ]
-
-    # --- Properties ---
-    @property
-    def cache_key(self) -> str:
-        return f"team:{self.uuid}"
-
-    @property
-    def file_key(self) -> str:
-        return f"team-{self.uuid}"
-
-    @property
-    def product_ids(self) -> list[UUIDStr] | None:
-        if self.products is None:
-            LOG.warning("prefetch not run")
-            return None
-
-        return [p.uuid for p in self.products]
-
-    @property
-    def product_uuids(self) -> list[UUIDStr] | None:
-        return self.product_ids
-
-    # --- Methods ---
 
     def set_cache(
         self,

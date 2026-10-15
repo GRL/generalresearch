@@ -16,6 +16,7 @@ from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.gr.team import (
     Membership,
     MembershipPrivilege,
+    TeamUpdate,
 )
 
 if TYPE_CHECKING:
@@ -167,9 +168,9 @@ class TeamManager(PostgresManagerWithRedis):
         name: str,
         uuid: UUIDStr | None = None,
     ) -> Team:
-        from generalresearch.models.gr.team import Team
+        from generalresearch.models.gr.team import TeamCreate
 
-        team = Team.model_validate({"uuid": uuid or uuid4().hex, "name": name})
+        team = TeamCreate.model_validate({"uuid": uuid or uuid4().hex, "name": name})
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
@@ -183,8 +184,37 @@ class TeamManager(PostgresManagerWithRedis):
                 )
                 team_id = c.fetchone()["id"]  # type: ignore
             conn.commit()
-            team.id = team_id
+        persisted_team = self.get_by_id(team_id=team_id)
+        assert persisted_team is not None
+        return persisted_team
 
+    def update(
+        self,
+        team_id: PositiveInt,
+        update: TeamUpdate,
+    ) -> Team:
+        data = update.model_dump(exclude_unset=True)
+
+        assignments = sql.SQL(", ").join(
+            sql.SQL("{} = %s").format(sql.Identifier(field)) for field in data
+        )
+
+        query = sql.SQL("""
+        UPDATE common_team
+        SET {assignments}
+        WHERE id = %s
+        """).format(assignments=assignments)
+
+        with self.pg_config.make_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query, [*data.values(), team_id])
+                if cursor.rowcount != 1:
+                    raise LookupError(f"Team {team_id} does not exist")
+            conn.commit()
+
+        team = self.get_by_id(team_id)
+        assert team is not None
+        self.redis_client.delete(team.cache_key)
         return team
 
     def add_user(
@@ -210,8 +240,8 @@ class TeamManager(PostgresManagerWithRedis):
         with self.connection(conn) as conn, conn.cursor() as c:
             c.execute(
                 query=sql.SQL("""
-                            INSERT INTO common_team_businesses
-                                (team_id, business_id)
+                INSERT INTO common_team_businesses
+                    (team_id, business_id)
                 VALUES (%s, %s)
                 """),
                 params=(
