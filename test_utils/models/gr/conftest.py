@@ -217,6 +217,7 @@ def gr_user_factory(gr_user_manager: GRUserManager) -> Callable[..., GRUser]:
     def _inner(
         save: bool = True,
         sub: str | None = None,
+        email: str | None = None,
         is_superuser: bool = False,
     ) -> GRUser:
         sub = sub or f"{uuid4().hex}-{uuid4().hex}"
@@ -224,6 +225,7 @@ def gr_user_factory(gr_user_manager: GRUserManager) -> Callable[..., GRUser]:
         if save:
             return gr_user_manager.create(
                 sub=sub,
+                email=email,
                 is_superuser=is_superuser,
             )
         else:
