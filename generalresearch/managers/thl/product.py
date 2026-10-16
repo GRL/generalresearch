@@ -436,11 +436,9 @@ class ProductManager(PostgresManager):
         params = {}
         filters = []
         identifiers = [product_uuids, business_uuids, team_uuids]
-        assert sum([bool(x) for x in identifiers]) == 1, (
-            "Must provide exactly one set of identifiers"
-        )
-        identifier = next(x for x in identifiers if x)
-        assert all(is_valid_uuid(v) for v in identifier), "invalid uuid"
+        for identifier in identifiers:
+            if identifier is not None:
+                assert all(is_valid_uuid(v) for v in identifier), "invalid uuid"
 
         if product_uuids is not None:
             filters.append("bp.id = ANY(%(product_uuids)s)")
