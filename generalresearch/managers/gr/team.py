@@ -49,6 +49,7 @@ class MembershipManager(PostgresManager):
         data = membership.model_dump(by_alias=True)
         data["team_id"] = team.id
         data["user_id"] = gr_user.id
+        data["privilege"] = membership.privilege.value
 
         # 'user_id' = {int} 5774
         # 'team_id' = {int} 20736
@@ -95,11 +96,18 @@ class MembershipManager(PostgresManager):
     def get_by_gr_user_id(self, gr_user_id: PositiveInt) -> list[Membership]:
         return self.filter(gr_user_id=gr_user_id)
 
+    def get_by_uuid(self, membership_uuid: UUIDStr) -> Membership | None:
+        memberships = self.filter(membership_uuid=membership_uuid)
+        if len(memberships) > 1:
+            raise ValueError("Multiple memberships have the same UUID")
+        return memberships[0] if memberships else None
+
     def filter(
         self,
         *,
         gr_user_id: PositiveInt | None = None,
         team_id: PositiveInt | None = None,
+        membership_uuid: UUIDStr | None = None,
     ) -> list[Membership]:
         """Return memberships matching all the supplied identifiers."""
         conditions = []
@@ -111,6 +119,9 @@ class MembershipManager(PostgresManager):
         if team_id is not None:
             conditions.append("m.team_id = %(team_id)s")
             params["team_id"] = team_id
+        if membership_uuid is not None:
+            conditions.append("m.uuid = %(membership_uuid)s")
+            params["membership_uuid"] = membership_uuid
 
         filter_str = " AND ".join(conditions)
         filter_str = "WHERE " + filter_str if filter_str else ""
@@ -133,6 +144,40 @@ class MembershipManager(PostgresManager):
             res = c.fetchall()
 
         return [Membership.model_validate(item) for item in res]
+
+    def update_privilege(
+        self,
+        membership_id: PositiveInt,
+        privilege: MembershipPrivilege,
+    ) -> Membership:
+        with self.pg_config.make_connection() as conn, conn.cursor() as cursor:
+            cursor.execute(
+                query="""
+                    UPDATE common_membership
+                    SET privilege = %s
+                    WHERE id = %s
+                    RETURNING uuid
+                """,
+                params=(privilege.value, membership_id),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                raise LookupError(f"Membership {membership_id} does not exist")
+            conn.commit()
+
+        membership = self.get_by_uuid(membership_uuid=row["uuid"])
+        assert membership is not None
+        return membership
+
+    def delete(self, membership_id: PositiveInt) -> None:
+        with self.pg_config.make_connection() as conn, conn.cursor() as cursor:
+            cursor.execute(
+                query="DELETE FROM common_membership WHERE id = %s",
+                params=(membership_id,),
+            )
+            if cursor.rowcount != 1:
+                raise LookupError(f"Membership {membership_id} does not exist")
+            conn.commit()
 
 
 class TeamManager(PostgresManagerWithRedis):

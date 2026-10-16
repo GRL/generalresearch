@@ -71,7 +71,7 @@ class Membership(BaseModel):
     a Team can have various levels of permissions and rights.
     """
 
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict()
 
     id: SkipJsonSchema[PositiveInt | None] = Field(
         default=None,
