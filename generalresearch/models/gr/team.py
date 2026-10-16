@@ -29,6 +29,7 @@ from generalresearch.models.custom_types import (
     UUIDStr,
     UUIDStrCoerce,
 )
+from generalresearch.models.gr.authentication import GRUserRef
 from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:
@@ -53,9 +54,14 @@ if TYPE_CHECKING:
 
 
 class MembershipPrivilege(Enum, metaclass=ReprEnumMeta):
+    """
+    This determines permissions regarding team membership management
+    """
+
+    # An admin can invite other users to a team
     ADMIN = 0
-    MAINTAIN = 1
-    READ = 2
+    # A member is not
+    MEMBER = 1
 
 
 class Membership(BaseModel):
@@ -66,20 +72,18 @@ class Membership(BaseModel):
     a Team can have various levels of permissions and rights.
     """
 
-    model_config = ConfigDict(use_enum_values=True)
+    model_config = ConfigDict()
 
-    id: SkipJsonSchema[PositiveInt | None] = Field(
+    id: PositiveInt | None = Field(
         default=None,
     )
     uuid: UUIDStrCoerce = Field(examples=[uuid4().hex])
 
     privilege: MembershipPrivilege = Field(
-        default=MembershipPrivilege.MAINTAIN,
-        examples=[MembershipPrivilege.READ.value],
+        default=MembershipPrivilege.ADMIN,
+        examples=[MembershipPrivilege.MEMBER.value],
         description=MembershipPrivilege.as_openapi(),
     )
-
-    owner: bool = Field(default=False, examples=[True])
 
     created: AwareDatetimeISO = Field(
         description="This is when the User was added to the Team, it's when"
@@ -87,9 +91,10 @@ class Membership(BaseModel):
         "account was created."
     )
 
-    user_id: SkipJsonSchema[PositiveInt] = Field()
+    user_id: PositiveInt = Field()
+    user: GRUserRef = Field()
 
-    team_id: SkipJsonSchema[PositiveInt] = Field()
+    team_id: PositiveInt = Field()
 
     # prefetch attributes
     team: SkipJsonSchema[Team | None] = Field(default=None)

@@ -6,6 +6,7 @@ from django.db import models
 class User(models.Model):
     id = models.BigAutoField(primary_key=True)
     sub = models.CharField(max_length=200, blank=False, null=False)
+    email = models.EmailField(null=True, unique=True)
 
     is_superuser = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
@@ -37,14 +38,22 @@ class Membership(models.Model):
 
     PRIVILEGES = (
         (0, "Admin"),
-        (1, "Maintain"),
-        (2, "Read"),
+        (1, "Member"),
     )
     privilege = models.PositiveSmallIntegerField(default=1, choices=PRIVILEGES)
-    owner = models.BooleanField(default=False)
+
+    # todo: delete this field once managers are not querying for it
+    owner = models.BooleanField(default=False, null=True)
 
     created = models.DateTimeField(auto_now_add=True, null=False)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user_id', 'team_id'],
+                name='uniq_membership_user_team'
+            )
+        ]
 
 class Team(models.Model):
     """

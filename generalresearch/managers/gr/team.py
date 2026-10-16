@@ -11,7 +11,6 @@ from generalresearch.managers.base import (
     PostgresManager,
     PostgresManagerWithRedis,
 )
-from generalresearch.managers.gr.authentication import GRUserManager
 from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.gr.team import (
     Membership,
@@ -37,20 +36,21 @@ class MembershipManager(PostgresManager):
         self,
         team: Team,
         gr_user: GRUser,
-        privilege: MembershipPrivilege = MembershipPrivilege.READ,
+        privilege: MembershipPrivilege = MembershipPrivilege.MEMBER,
     ) -> Membership:
         membership = Membership(
             uuid=uuid4().hex,
-            privilege=MembershipPrivilege.READ,
-            owner=False,
+            privilege=privilege,
             team_id=team.id,
             user_id=gr_user.id,
+            user=gr_user.to_user_ref(),
             created=datetime.now(tz=UTC),
         )
 
         data = membership.model_dump(by_alias=True)
         data["team_id"] = team.id
         data["user_id"] = gr_user.id
+        data["privilege"] = membership.privilege.value
 
         # 'user_id' = {int} 5774
         # 'team_id' = {int} 20736
@@ -70,8 +70,8 @@ class MembershipManager(PostgresManager):
                 c.execute(
                     query=sql.SQL("""
                     INSERT INTO common_membership
-                        (uuid, privilege, owner, team_id, user_id, created)
-                    VALUES (%(uuid)s, %(privilege)s, %(owner)s, %(team_id)s, 
+                        (uuid, privilege, team_id, user_id, created)
+                    VALUES (%(uuid)s, %(privilege)s, %(team_id)s, 
                             %(user_id)s, %(created)s)
                     RETURNING id
                 """),
@@ -86,55 +86,109 @@ class MembershipManager(PostgresManager):
     def exists(
         self, gr_user_id: PositiveInt, team_id: PositiveInt
     ) -> Membership | None:
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query=sql.SQL("""
-                            SELECT  id, uuid, privilege, owner, created, 
-                                    user_id, team_id
-                            FROM common_membership
-                            WHERE team_id = %s AND user_id = %s
-                            LIMIT 1
-                        """),
-                params=(team_id, gr_user_id),
-            )
-            res = c.fetchone()
-
-        if not res:
-            return None
-
-        return Membership.model_validate(res)
+        memberships = self.filter(gr_user_id=gr_user_id, team_id=team_id)
+        if len(memberships) > 1:
+            raise ValueError("User has multiple memberships in the same Team")
+        return memberships[0] if memberships else None
 
     def get_by_team_id(self, team_id: PositiveInt) -> list[Membership]:
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query=sql.SQL("""
-                            SELECT  id, uuid, privilege, owner, created, 
-                                    user_id, team_id
-                            FROM common_membership
-                            WHERE team_id = %s
-                            LIMIT 250
-                        """),
-                params=(team_id,),
-            )
-            res = c.fetchall()
-
-        return [Membership.model_validate(i) for i in res]
+        return self.filter(team_id=team_id)
 
     def get_by_gr_user_id(self, gr_user_id: PositiveInt) -> list[Membership]:
+        return self.filter(gr_user_id=gr_user_id)
+
+    def get_by_uuid(self, membership_uuid: UUIDStr) -> Membership | None:
+        memberships = self.filter(membership_uuid=membership_uuid)
+        if len(memberships) > 1:
+            raise ValueError("Multiple memberships have the same UUID")
+        return memberships[0] if memberships else None
+
+    def filter(
+        self,
+        *,
+        gr_user_id: PositiveInt | None = None,
+        team_id: PositiveInt | None = None,
+        membership_uuid: UUIDStr | None = None,
+    ) -> list[Membership]:
+        """Return memberships matching all the supplied identifiers."""
+        conditions = []
+        params = {}
+
+        if gr_user_id is not None:
+            conditions.append("m.user_id = %(user_id)s")
+            params["user_id"] = gr_user_id
+        if team_id is not None:
+            conditions.append("m.team_id = %(team_id)s")
+            params["team_id"] = team_id
+        if membership_uuid is not None:
+            conditions.append("m.uuid = %(membership_uuid)s")
+            params["membership_uuid"] = membership_uuid
+
+        filter_str = " AND ".join(conditions)
+        filter_str = "WHERE " + filter_str if filter_str else ""
+
+        query = f"""
+            SELECT
+                m.id,
+                m.uuid,
+                m.privilege,
+                m.created,
+                m.user_id,
+                u.email AS user_email,
+                u.date_joined AS user_date_joined,
+                m.team_id
+            FROM common_membership AS m
+            JOIN gr_user AS u
+                ON u.id = m.user_id
+            {filter_str}
+            LIMIT 250
+        """
+
         with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query=sql.SQL("""
-                            SELECT  id, uuid, privilege, owner, created, 
-                                    user_id, team_id
-                            FROM common_membership
-                            WHERE user_id = %s
-                            LIMIT 250
-                        """),
-                params=(gr_user_id,),
-            )
+            c.execute(query=query, params=params)
             res = c.fetchall()
 
-        return [Membership.model_validate(i) for i in res]
+        for item in res:
+            item["user"] = {
+                "email": item.pop("user_email"),
+                "date_joined": item.pop("user_date_joined"),
+            }
+
+        return [Membership.model_validate(item) for item in res]
+
+    def update_privilege(
+        self,
+        membership_id: PositiveInt,
+        privilege: MembershipPrivilege,
+    ) -> Membership:
+        with self.pg_config.make_connection() as conn, conn.cursor() as cursor:
+            cursor.execute(
+                query="""
+                    UPDATE common_membership
+                    SET privilege = %s
+                    WHERE id = %s
+                    RETURNING uuid
+                """,
+                params=(privilege.value, membership_id),
+            )
+            row = cursor.fetchone()
+            if row is None:
+                raise LookupError(f"Membership {membership_id} does not exist")
+            conn.commit()
+
+        membership = self.get_by_uuid(membership_uuid=row["uuid"])
+        assert membership is not None
+        return membership
+
+    def delete(self, membership_id: PositiveInt) -> None:
+        with self.pg_config.make_connection() as conn, conn.cursor() as cursor:
+            cursor.execute(
+                query="DELETE FROM common_membership WHERE id = %s",
+                params=(membership_id,),
+            )
+            if cursor.rowcount != 1:
+                raise LookupError(f"Membership {membership_id} does not exist")
+            conn.commit()
 
 
 class TeamManager(PostgresManagerWithRedis):
@@ -217,20 +271,6 @@ class TeamManager(PostgresManagerWithRedis):
         self.redis_client.delete(team.cache_key)
         return team
 
-    def add_user(
-        self, team: Team, gr_user: GRUser, gr_user_manager: GRUserManager
-    ) -> Membership:
-        """Create a Membership between a GRUser and a Team"""
-
-        team.prefetch_gr_users(gr_user_manager=gr_user_manager)
-
-        assert gr_user not in team.gr_users, (
-            "Can't create multiple Memberships for the same User to the same Team"
-        )
-        mm = MembershipManager(pg_config=self.pg_config)
-
-        return mm.create(team=team, gr_user=gr_user)
-
     def add_business(
         self,
         team_id: PositiveInt,
@@ -249,6 +289,26 @@ class TeamManager(PostgresManagerWithRedis):
                     business_id,
                 ),
             )
+            conn.commit()
+
+    def remove_business(
+        self,
+        team_id: PositiveInt,
+        business_id: PositiveInt,
+        conn: Connection | None = None,
+    ) -> None:
+        with self.connection(conn) as conn, conn.cursor() as c:
+            c.execute(
+                query=sql.SQL("""
+                DELETE FROM common_team_businesses
+                WHERE team_id = %s and business_id = %s
+                """),
+                params=(
+                    team_id,
+                    business_id,
+                ),
+            )
+            assert c.rowcount == 1, "Team Business Association not found"
             conn.commit()
 
     def get_by_uuid(self, team_uuid: UUIDStr) -> Team | None:
