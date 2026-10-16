@@ -43,7 +43,7 @@ class Membership(models.Model):
     privilege = models.PositiveSmallIntegerField(default=1, choices=PRIVILEGES)
 
     # todo: delete this field once managers are not querying for it
-    owner = models.BooleanField(default=False)
+    owner = models.BooleanField(default=False, null=True)
 
     created = models.DateTimeField(auto_now_add=True, null=False)
 
