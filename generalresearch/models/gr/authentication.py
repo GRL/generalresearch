@@ -14,6 +14,7 @@ from pydantic import (
     NonNegativeInt,
     PositiveInt,
     field_validator,
+    EmailStr,
 )
 
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
@@ -106,6 +107,7 @@ class GRUser(BaseModel):
 
     id: PositiveInt | None = Field(default=None)
     sub: str | None = Field(max_length=200)
+    email: EmailStr | None = Field(default=None)
     is_superuser: bool = Field(default=False)
 
     date_joined: AwareDatetimeISO = Field(

@@ -26,6 +26,7 @@ class GRUserManager(PostgresManagerWithRedis):
     def create(
         self,
         sub: str,
+        email: str | None = None,
         is_superuser: bool = False,
     ) -> GRUser:
         from generalresearch.models.gr.authentication import GRUser
@@ -35,6 +36,7 @@ class GRUserManager(PostgresManagerWithRedis):
         instance = GRUser.model_validate(
             {
                 "sub": sub,
+                "email": email,
                 "is_superuser": is_superuser,
                 "date_joined": now,
             }
@@ -45,8 +47,8 @@ class GRUserManager(PostgresManagerWithRedis):
             with conn.cursor() as c:
                 query = sql.SQL("""
                     INSERT INTO gr_user 
-                        (sub, is_superuser, date_joined)
-                    VALUES (%(sub)s, %(is_superuser)s, %(date_joined)s)
+                        (sub, email, is_superuser, date_joined)
+                    VALUES (%(sub)s, %(email)s, %(is_superuser)s, %(date_joined)s)
                     RETURNING id
                 """)
                 c.execute(query=query, params=data)
@@ -56,63 +58,61 @@ class GRUserManager(PostgresManagerWithRedis):
         instance.id = gr_user_id
         return instance
 
-    def get_by_id(self, gr_user_id: int) -> GRUser | None:
+    def filter(
+        self,
+        *,
+        gr_user_id: int | None = None,
+        sub: str | None = None,
+        email: str | None = None,
+    ) -> list[GRUser]:
         from generalresearch.models.gr.authentication import GRUser
 
+        conditions = []
+        params = {}
+
+        if gr_user_id is not None:
+            conditions.append("u.id = %(gr_user_id)s")
+            params['gr_user_id'] = gr_user_id
+        if sub is not None:
+            conditions.append("u.sub = %(sub)s")
+            params['sub'] = sub
+        if email is not None:
+            conditions.append("u.email = %(email)s")
+            params['email'] = email
+
+        filter_str = " AND ".join(conditions)
+        filter_str = "WHERE " + filter_str if filter_str else ""
+
+        query = f"""
+        SELECT u.*
+        FROM gr_user AS u
+        {filter_str}
+        """
         with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query="""
-                    SELECT u.* 
-                    FROM gr_user AS u
-                    WHERE u.id = %s
-                    LIMIT 1;
-                """,
-                params=(gr_user_id,),
-            )
-            res = c.fetchone()
+            c.execute(query=query, params=params)
+            res = c.fetchall()
 
-        if res is None:
-            raise ValueError("GRUser not found")
-        assert isinstance(
-            res, dict
-        ), "GRUserManager.get_by_id query returned invalid results"
+        return [GRUser.from_postgresql(item) for item in res]
 
-        # We can return None if no MySQL results were found... but raise an
-        # error if returning failed for a different reason
-        gr_user = GRUser.from_postgresql(res)
-        assert isinstance(gr_user, GRUser), "GRUser not serialized correctly"
-        return gr_user
+    def _get_one(self, *, raises: bool = True, **filters: int | str) -> GRUser | None:
+        users = self.filter(**filters)
 
-    def get_by_sub(self, sub: str, raises=True) -> GRUser | None:
-        from generalresearch.models.gr.authentication import GRUser
-
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query="""
-                    SELECT u.* 
-                    FROM gr_user AS u
-                    WHERE u.sub = %s
-                    LIMIT 1;
-                """,
-                params=(sub,),
-            )
-            res = c.fetchone()
-
-        if raises and res is None:
-            raise ValueError("GRUser not found")
-
-        if res is None:
+        if not users:
+            if raises:
+                raise ValueError("GRUser not found")
             return None
 
-        assert isinstance(
-            res, dict
-        ), "GRUserManager.get_by_id query returned invalid results"
+        assert len(users) == 1, "GRUserManager filter returned multiple users"
+        return users[0]
 
-        # We can return None if no MySQL results were found... but raise an
-        # error if returning failed for a different reason
-        gr_user = GRUser.from_postgresql(res)
-        assert isinstance(gr_user, GRUser), "GRUser not serialized correctly"
-        return gr_user
+    def get_by_id(self, gr_user_id: int) -> GRUser | None:
+        return self._get_one(gr_user_id=gr_user_id)
+
+    def get_by_sub(self, sub: str, raises=True) -> GRUser | None:
+        return self._get_one(sub=sub, raises=raises)
+
+    def get_by_email(self, email: str, raises=True) -> GRUser | None:
+        return self._get_one(email=email, raises=raises)
 
     def get_by_sub_or_create(self, sub: str) -> GRUser:
         return self.get_by_sub(sub=sub, raises=False) or self.create(sub=sub)
