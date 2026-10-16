@@ -29,6 +29,7 @@ from generalresearch.models.custom_types import (
     UUIDStr,
     UUIDStrCoerce,
 )
+from generalresearch.models.gr.authentication import GRUserRef
 from generalresearch.utils.enum import ReprEnumMeta
 
 if TYPE_CHECKING:
@@ -73,7 +74,7 @@ class Membership(BaseModel):
 
     model_config = ConfigDict()
 
-    id: SkipJsonSchema[PositiveInt | None] = Field(
+    id: PositiveInt | None = Field(
         default=None,
     )
     uuid: UUIDStrCoerce = Field(examples=[uuid4().hex])
@@ -90,9 +91,10 @@ class Membership(BaseModel):
         "account was created."
     )
 
-    user_id: SkipJsonSchema[PositiveInt] = Field()
+    user_id: PositiveInt = Field()
+    user: GRUserRef = Field()
 
-    team_id: SkipJsonSchema[PositiveInt] = Field()
+    team_id: PositiveInt = Field()
 
     # prefetch attributes
     team: SkipJsonSchema[Team | None] = Field(default=None)

@@ -10,11 +10,11 @@ from pydantic import (
     AnyHttpUrl,
     BaseModel,
     ConfigDict,
+    EmailStr,
     Field,
     NonNegativeInt,
     PositiveInt,
     field_validator,
-    EmailStr,
 )
 
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
@@ -98,6 +98,13 @@ class Claims(BaseModel):
         return self.sub
 
 
+class GRUserRef(BaseModel):
+    email: EmailStr | None = Field(default=None)
+    date_joined: AwareDatetimeISO = Field(
+        description="When the GR User account signed up."
+    )
+
+
 class GRUser(BaseModel):
     model_config = ConfigDict(
         # extra="forbid",
@@ -120,6 +127,12 @@ class GRUser(BaseModel):
     products: list[Product] | None = Field(default=None)
     token: GRToken | None = Field(default=None)
     claims: Claims | None = Field(default=None)
+
+    def to_user_ref(self) -> GRUserRef:
+        return GRUserRef(
+            email=self.email,
+            date_joined=self.date_joined,
+        )
 
     def prefetch_claims(
         self, token: str, key: dict[str, Any], audience: str, issuer: AnyHttpUrl

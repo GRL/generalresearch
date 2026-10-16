@@ -43,6 +43,7 @@ class MembershipManager(PostgresManager):
             privilege=privilege,
             team_id=team.id,
             user_id=gr_user.id,
+            user=gr_user.to_user_ref(),
             created=datetime.now(tz=UTC),
         )
 
@@ -133,8 +134,12 @@ class MembershipManager(PostgresManager):
                 m.privilege,
                 m.created,
                 m.user_id,
+                u.email AS user_email,
+                u.date_joined AS user_date_joined,
                 m.team_id
             FROM common_membership AS m
+            JOIN gr_user AS u
+                ON u.id = m.user_id
             {filter_str}
             LIMIT 250
         """
@@ -142,6 +147,12 @@ class MembershipManager(PostgresManager):
         with self.pg_config.make_connection() as conn, conn.cursor() as c:
             c.execute(query=query, params=params)
             res = c.fetchall()
+
+        for item in res:
+            item["user"] = {
+                "email": item.pop("user_email"),
+                "date_joined": item.pop("user_date_joined"),
+            }
 
         return [Membership.model_validate(item) for item in res]
 
