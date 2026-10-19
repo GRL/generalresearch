@@ -499,8 +499,7 @@ class ProductManager(PostgresManager):
                 )
             """)
             params["supplier_tags"] = list(supplier_tags)
-        assert len(filters) > 0, "must pass at least 1 filter"
-        return "WHERE " + " AND ".join(filters), params
+        return "WHERE " + " AND ".join(filters) if filters else "", params
 
     def create(
         self,
