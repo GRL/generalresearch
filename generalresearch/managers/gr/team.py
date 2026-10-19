@@ -196,7 +196,11 @@ class TeamManager(PostgresManagerWithRedis):
         self, uuid: UUIDStr | None = None, name: str | None = None
     ) -> Team:
 
-        team = self.get_by_uuid(team_uuid=uuid)
+        team = (
+            self.get_by_uuid(team_uuid=uuid, raises=False)
+            if uuid is not None
+            else None
+        )
 
         if team:
             return team
@@ -204,18 +208,7 @@ class TeamManager(PostgresManagerWithRedis):
         return self.create(uuid=uuid, name=name or "< Unknown >")
 
     def get_all(self) -> list[Team]:
-        from generalresearch.models.gr.team import Team
-
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query=sql.SQL("""
-                SELECT t.id, t.uuid, t.name
-                FROM common_team AS t
-            """)
-            )
-            res = c.fetchall()
-
-        return [Team.model_validate(i) for i in res]
+        return self.filter()
 
     def create(
         self,
@@ -311,66 +304,79 @@ class TeamManager(PostgresManagerWithRedis):
             assert c.rowcount == 1, "Team Business Association not found"
             conn.commit()
 
-    def get_by_uuid(self, team_uuid: UUIDStr) -> Team | None:
+    def filter(
+        self,
+        *,
+        team_id: PositiveInt | None = None,
+        team_uuid: UUIDStr | None = None,
+        gr_user_id: PositiveInt | None = None,
+    ) -> list[Team]:
         from generalresearch.models.gr.team import Team
 
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query="""
-                    SELECT t.* 
-                    FROM common_team AS t
-                    WHERE t.uuid = %s
-                    LIMIT 1;
-                """,
-                params=(team_uuid,),
+        conditions = []
+        params = {}
+
+        if team_id is not None:
+            conditions.append("t.id = %(team_id)s")
+            params["team_id"] = team_id
+        if team_uuid is not None:
+            conditions.append("t.uuid = %(team_uuid)s")
+            params["team_uuid"] = team_uuid
+        if gr_user_id is not None:
+            conditions.append(
+                "EXISTS ("
+                "SELECT 1 FROM common_membership AS user_membership "
+                "WHERE user_membership.team_id = t.id "
+                "AND user_membership.user_id = %(gr_user_id)s"
+                ")"
             )
+            params["gr_user_id"] = gr_user_id
 
-            res = c.fetchone()
+        filter_str = " AND ".join(conditions)
+        filter_str = "WHERE " + filter_str if filter_str else ""
 
-        if not isinstance(res, dict):
-            return None
-
-        return Team.model_validate(res)
-
-    def get_by_id(self, team_id: PositiveInt) -> Team | None:
-        from generalresearch.models.gr.team import Team
-
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query=sql.SQL("""
-                    SELECT t.id, t.uuid, t.name
-                    FROM common_team AS t
-                    WHERE t.id = %s
-                    LIMIT 1;
-                """),
-                params=(team_id,),
-            )
-
-            res = c.fetchone()
-
-        if not isinstance(res, dict):
-            return None
-
-        return Team.model_validate(res)
-
-    def get_by_user(self, gr_user: GRUser) -> list[Team]:
-        from generalresearch.models.gr.team import Team
+        query = f"""
+            SELECT
+                t.*,
+                (
+                    SELECT COUNT(*)
+                    FROM common_team_businesses AS team_business
+                    WHERE team_business.team_id = t.id
+                ) AS business_count,
+                (
+                    SELECT COUNT(*)
+                    FROM common_membership AS membership
+                    WHERE membership.team_id = t.id
+                ) AS membership_count
+            FROM common_team AS t
+            {filter_str}
+        """
 
         with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(
-                query=sql.SQL("""
-                    SELECT team.*
-                    FROM common_team AS team
-                    INNER JOIN common_membership AS mem 
-                        ON mem.team_id = team.id
-                    WHERE mem.user_id = %s
-                """),
-                params=(gr_user.id,),
-            )
-
+            c.execute(query=query, params=params)
             res = c.fetchall()
 
         return [Team.model_validate(item) for item in res]
+
+    def _get_one(self, *, raises: bool = True, **filters: int | str) -> Team | None:
+        teams = self.filter(**filters)
+
+        if not teams:
+            if raises:
+                raise ValueError("Team not found")
+            return None
+
+        assert len(teams) == 1, "TeamManager filter returned multiple teams"
+        return teams[0]
+
+    def get_by_uuid(self, team_uuid: UUIDStr, raises: bool = True) -> Team | None:
+        return self._get_one(team_uuid=team_uuid, raises=raises)
+
+    def get_by_id(self, team_id: PositiveInt, raises: bool = True) -> Team | None:
+        return self._get_one(team_id=team_id, raises=raises)
+
+    def get_by_user(self, gr_user: GRUser) -> list[Team]:
+        return self.filter(gr_user_id=gr_user.id)
 
     def get_uuids(self, user_id: PositiveInt | None) -> list[UUIDStr]:
         """

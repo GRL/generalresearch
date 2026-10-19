@@ -19,6 +19,7 @@ from pydantic import (
     ValidationError,
     field_validator,
     model_validator,
+    NonNegativeInt,
 )
 from pydantic.json_schema import SkipJsonSchema
 
@@ -184,7 +185,10 @@ class TeamCreate(BaseModel):
 
 
 class Team(TeamCreate):
-    id: SkipJsonSchema[PositiveInt] = Field(exclude=True)
+    id: PositiveInt = Field()
+
+    business_count: NonNegativeInt = Field(default=0)
+    membership_count: NonNegativeInt = Field(default=0)
 
     def prefetch_memberships(self, gr_membership_manager: MembershipManager) -> None:
         self.memberships = gr_membership_manager.get_by_team_id(team_id=self.id)
