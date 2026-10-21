@@ -31,7 +31,7 @@ class UserIPRecord(BaseModel):
 
     ip: IPvAnyAddressStr = Field()
     created: AwareDatetimeISO = Field()
-    information: GeoIPInformation | None = Field(default=None, exclude=True)
+    information: GeoIPInformation | None = Field(default=None)
 
     @property
     def country_iso(self) -> CountryISOLike | None:
