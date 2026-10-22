@@ -2330,12 +2330,17 @@ class ThlLedgerManager(LedgerManager):
     def get_bp_txs(
         self,
         product_id: str,
+        user: User | None = None,
         time_start: datetime | None = None,
         time_end: datetime | None = None,
         page: int = 1,
         size: int = 50,
         order_by: str | None = "created,tag",
     ):
+        """
+        Get transactions affecting the BP's wallet balance.
+        Optionally filter by txs related to this User
+        """
         bp_account = self.get_account_or_create_bp_wallet_by_uuid(product_id)
         assert bp_account.reference_type == "bp", "Account must be a BP ledger account"
         assert bp_account.reference_uuid == product_id, "Account must be owned by BP"
@@ -2357,10 +2362,18 @@ class ThlLedgerManager(LedgerManager):
                 if time_start is not None
                 else JAMES_BILLINGS_TX_CUTOFF
             )
+
+        metadata_key, metadata_value = None, None
+        if user is not None:
+            assert user.uuid is not None
+            metadata_key, metadata_value = "user", user.uuid
+
         txs, total = self.get_tx_filtered_by_account_paginated(
             bp_account.uuid,
             time_start=time_start,
             time_end=time_end,
+            metadata_key=metadata_key,
+            metadata_value=metadata_value,
             page=page,
             size=size,
             order_by=order_by,

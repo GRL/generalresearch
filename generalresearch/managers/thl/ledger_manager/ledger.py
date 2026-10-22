@@ -117,6 +117,7 @@ class LedgerManagerBasePostgres(PostgresManager, RedisManager):
             filters.append("le.account_id = %(account_uuid)s")
             params["account_uuid"] = account_uuid
         if metadata_key is not None:
+            assert metadata_value is not None
             filters.append("key = %(metadata_key)s")
             params["metadata_key"] = metadata_key
         if metadata_value is not None:
@@ -508,10 +509,20 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         account_uuid: UUIDStr,
         time_start: datetime | None = None,
         time_end: datetime | None = None,
+        metadata_key: str | None = None,
+        metadata_value: str | None = None,
     ) -> NonNegativeInt:
         filter_str, params = self.make_filter_str(
             time_start=time_start,
             time_end=time_end,
+            metadata_key=metadata_key,
+            metadata_value=metadata_value
+        )
+        ltm_join = (
+            """JOIN ledger_transactionmetadata ltm
+                  ON ltm.transaction_id = lt.id"""
+            if metadata_key is not None
+            else ""
         )
         params["account_uuid"] = account_uuid
 
@@ -522,6 +533,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
             JOIN ledger_entry le
               ON le.transaction_id = lt.id
              AND le.account_id = %(account_uuid)s
+            {ltm_join}
             {filter_str}
             """,
             params=params,
@@ -612,6 +624,8 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         account_uuid: UUIDStr,
         time_start: datetime | None = None,
         time_end: datetime | None = None,
+        metadata_key: str | None = None,
+        metadata_value: str | None = None,
         page: int | None = None,
         size: int | None = None,
         order_by: str | None = "created,tag",
@@ -639,7 +653,17 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         check_valid_uuid(account_uuid)
 
         filter_str, params = self.make_filter_str(
-            time_start=time_start, time_end=time_end, account_uuid=account_uuid
+            time_start=time_start,
+            time_end=time_end,
+            account_uuid=account_uuid,
+            metadata_key=metadata_key,
+            metadata_value=metadata_value,
+        )
+        ltm_join = (
+            """JOIN ledger_transactionmetadata ltm
+                  ON ltm.transaction_id = lt.id"""
+            if metadata_key is not None
+            else ""
         )
 
         if page is not None:
@@ -655,6 +679,8 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
                 account_uuid=account_uuid,
                 time_start=time_start,
                 time_end=time_end,
+                metadata_key=metadata_key,
+                metadata_value=metadata_value,
             )
         else:
             paginated_filter_str = ""
@@ -670,6 +696,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
                 FROM ledger_transaction lt
                 JOIN ledger_entry le
                   ON le.transaction_id = lt.id
+                {ltm_join}
                 {filter_str}
                 GROUP BY lt.id, lt.created
                 {order_by_str}
