@@ -262,10 +262,8 @@ class VirtualIncentivesManager(PostgresManagerWithRedis):
             order_data=order,
         )
 
-        # todo: What is the fee??
         ledger_manager.create_tx_user_payout_complete(
             user, payout_event=payout_event,
-            fee_amount=Decimal('0.10'),
         )
 
         return payout_event

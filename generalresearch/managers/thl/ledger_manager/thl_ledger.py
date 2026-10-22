@@ -1151,6 +1151,7 @@ class ThlLedgerManager(LedgerManager):
             PayoutType.PAYPAL: f"User Payout Paypal Complete {amt_str}",
             PayoutType.CASH_IN_MAIL: f"User Payout Cash Complete {amt_str}",
             PayoutType.TANGO: f"User Payout Tango Complete {amt_str}",
+            PayoutType.VIRTUAL_INCENTIVES: f"User Payout VI Complete {amt_str}",
         }
         description = descriptions[payout_event.payout_type]
         bp_wallet_account = self.get_account_or_create_bp_wallet(user.product)
@@ -1189,6 +1190,13 @@ class ThlLedgerManager(LedgerManager):
             )
             if fee_amount is None:
                 fee_amount = (amount_usd * Decimal("0.035")).quantize(Decimal("0.01"))
+        elif payout_event.payout_type == PayoutType.VIRTUAL_INCENTIVES:
+            bp_expense_account = self.get_account_or_create_bp_expense(
+                product=user.product, expense_name="virtual_incentives"
+            )
+            if fee_amount is None:
+                # todo: What is the fee????? On the website it says 0, which I don't really believe.
+                fee_amount = (amount_usd * Decimal("0.029")).quantize(Decimal("0.01"))
         else:
             raise NotImplementedError()
 

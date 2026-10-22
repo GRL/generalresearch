@@ -12,6 +12,11 @@ from generalresearch.managers.thl.cashout_method import CashoutMethodManager
 from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.managers.thl.userhealth import UserIpHistoryManager
+from generalresearch.managers.thl.virtual_incentives_api import (
+    VirtualIncentivesClient,
+    VirtualIncentivesManager,
+)
+from generalresearch.managers.thl.wallet import manage_pending_cashout
 from generalresearch.managers.thl.wallet.tango import TangoManager
 from generalresearch.managers.thl.wallet.user_payout import (
     UserPayoutEventManager,
@@ -19,6 +24,7 @@ from generalresearch.managers.thl.wallet.user_payout import (
 )
 from generalresearch.models.thl.definitions import PayoutStatus
 from generalresearch.models.thl.payout import UserPayoutEvent
+from generalresearch.models.thl.product import UserWalletConfig
 from generalresearch.models.thl.user import User
 from generalresearch.models.thl.wallet.cashout_method import (
     CashMailCashoutMethodData,
@@ -318,7 +324,7 @@ class TestUserRequestRedeem:
             user_ip_history_manager=user_iphistory_manager,
             redis_client=thl_redis_client,
         )
-        assert payout.request_data["amount"] == '1.74'
+        assert payout.request_data["amount"] == "1.74"
         assert payout.request_data["externalRefID"] == payout.uuid
 
         user_payout_event_manager.update(
@@ -364,6 +370,218 @@ class TestUserRequestRedeem:
             expense_name="tango",
         )
         assert thl_ledger_manager.get_account_balance(bp_expense) == -7
+
+    def test_user_request_redeem_virtual_incentives(
+        self,
+        product_factory,
+        payout_config,
+        user_factory,
+        user_payout_event_manager: UserPayoutEventManager,
+        cashout_method_manager: CashoutMethodManager,
+        thl_ledger_manager: ThlLedgerManager,
+        user_iphistory_manager: UserIpHistoryManager,
+        ip_record_factory,
+        thl_redis_client,
+        setup_cashoutmethod_db,
+        example_vi_cashout_methods,
+    ):
+        setup_cashoutmethod_db()
+        cm = example_vi_cashout_methods[0]
+        product = product_factory(
+            payout_config=payout_config,
+            user_wallet_config=UserWalletConfig(
+                enabled=True, supported_payout_types={PayoutType.VIRTUAL_INCENTIVES}
+            ),
+        )
+        user = user_factory(product=product)
+
+        ip_record_factory(user=user, ip="8.8.8.8")
+        bonus_ref = uuid4().hex
+        thl_ledger_manager.create_tx_user_bonus(
+            user=user,
+            amount=Decimal("10.00"),
+            ref_uuid=bonus_ref,
+            description="Fund Virtual Incentives redemption test",
+        )
+        tango_manager = Mock(spec=TangoManager)
+        tango_manager.get_exchange_rates.return_value = {}
+        virtual_incentives_manager = VirtualIncentivesManager.__new__(
+            VirtualIncentivesManager
+        )
+
+        payout = user_payout_event_manager.user_request_redeem(
+            user=user,
+            cashout_method_id=cm.id,
+            amount=USDCent(600),
+            tango_manager=tango_manager,
+            virtual_incentives_manager=virtual_incentives_manager,
+            cashout_method_manager=cashout_method_manager,
+            ledger_manager=thl_ledger_manager,
+            user_ip_history_manager=user_iphistory_manager,
+            redis_client=thl_redis_client,
+        )
+
+        assert payout.status == PayoutStatus.PENDING
+        assert payout.payout_type == PayoutType.VIRTUAL_INCENTIVES
+        assert payout.amount == 600
+        assert payout.request_data == {
+            "sku": "AMAZON-US",
+            "amount": "6.00",
+            "cashout_request_id": payout.uuid,
+        }
+        assert payout.cashout_method_uuid == cm.id
+        assert thl_ledger_manager.get_user_wallet_balance(user) == 400
+        assert user_payout_event_manager.get_by_uuid(payout.uuid) == payout
+
+        bonus_tag = f"test:user_bonus:{bonus_ref}"
+        request_tag = f"test:user_payout:{payout.uuid}:request"
+        assert len(thl_ledger_manager.get_tx_ids_by_tag(bonus_tag)) == 1
+        assert len(thl_ledger_manager.get_tx_ids_by_tag(request_tag)) == 1
+
+        user_wallet = thl_ledger_manager.get_account_or_create_user_wallet(user)
+        bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet(product)
+        pending_payout = thl_ledger_manager.get_or_create_bp_pending_payout_account(
+            product
+        )
+        assert thl_ledger_manager.get_account_balance(user_wallet) == 400
+        assert thl_ledger_manager.get_account_balance(bp_wallet) == -1_000
+        assert thl_ledger_manager.get_account_balance(pending_payout) == 600
+        assert (
+            thl_ledger_manager.get_account_filtered_balance(
+                account=user_wallet,
+                metadata_key="payoutevent",
+                metadata_value=payout.uuid,
+            )
+            == -600
+        )
+        assert (
+            thl_ledger_manager.get_account_filtered_balance(
+                account=pending_payout,
+                metadata_key="payoutevent",
+                metadata_value=payout.uuid,
+            )
+            == 600
+        )
+
+        detail = user_payout_event_manager.get_payout_detail(payout.uuid)
+        assert detail.status == PayoutStatus.PENDING
+        assert detail.description == "Amazon.com Gift Card"
+        assert not detail.transaction_info
+
+
+class TestManagePendingCashout:
+    def test_approve_virtual_incentives(
+        self,
+        product_factory,
+        payout_config,
+        user_factory,
+        user_manager,
+        user_payout_event_manager: UserPayoutEventManager,
+        cashout_method_manager: CashoutMethodManager,
+        thl_ledger_manager: ThlLedgerManager,
+        user_iphistory_manager: UserIpHistoryManager,
+        ip_record_factory,
+        thl_redis_client,
+        setup_cashoutmethod_db,
+        example_vi_cashout_methods,
+        create_main_accounts,
+    ):
+        create_main_accounts()
+        setup_cashoutmethod_db()
+        cashout_method = example_vi_cashout_methods[0]
+        product = product_factory(
+            payout_config=payout_config,
+            user_wallet_config=UserWalletConfig(
+                enabled=True,
+                supported_payout_types={PayoutType.VIRTUAL_INCENTIVES},
+            ),
+        )
+        user = user_factory(product=product)
+        ip_record_factory(user=user, ip="8.8.8.8")
+        thl_ledger_manager.create_tx_user_bonus(
+            user=user,
+            amount=Decimal("10.00"),
+            ref_uuid=uuid4().hex,
+            description="Fund Virtual Incentives approval test",
+        )
+        tango_manager = Mock(spec=TangoManager)
+        tango_manager.get_exchange_rates.return_value = {}
+        virtual_incentives_manager = VirtualIncentivesManager.__new__(
+            VirtualIncentivesManager
+        )
+        virtual_incentives_manager.client = Mock(spec=VirtualIncentivesClient)
+
+        payout = user_payout_event_manager.user_request_redeem(
+            user=user,
+            cashout_method_id=cashout_method.id,
+            amount=USDCent(600),
+            tango_manager=tango_manager,
+            virtual_incentives_manager=virtual_incentives_manager,
+            cashout_method_manager=cashout_method_manager,
+            ledger_manager=thl_ledger_manager,
+            user_ip_history_manager=user_iphistory_manager,
+            redis_client=thl_redis_client,
+        )
+
+        pending_payout = thl_ledger_manager.get_or_create_bp_pending_payout_account(
+            product
+        )
+        user_wallet = thl_ledger_manager.get_account_or_create_user_wallet(user)
+
+        assert thl_ledger_manager.get_account_balance(user_wallet) == 400
+        assert thl_ledger_manager.get_account_balance(pending_payout) == 600
+
+        order = {
+            "status": PayoutStatus.COMPLETE,
+            "number": "vi-order-1",
+            "accounts": [{"sku": "AMAZON-US", "amount": "6.00"}],
+        }
+        virtual_incentives_manager.client.create_order.return_value = order
+
+        result = manage_pending_cashout(
+            payout_id=payout.uuid,
+            new_status=PayoutStatus.APPROVED,
+            user_payout_event_manager=user_payout_event_manager,
+            user_ip_history_manager=user_iphistory_manager,
+            user_manager=user_manager,
+            ledger_manager=thl_ledger_manager,
+            virtual_incentives_manager=virtual_incentives_manager,
+        )
+
+        assert result.uuid == payout.uuid
+        assert result.status == PayoutStatus.COMPLETE
+        assert result.ext_ref_id == "vi-order-1"
+        assert result.order_data == order
+        virtual_incentives_manager.client.create_order.assert_called_once_with(
+            cashout_request_id=payout.uuid,
+            sku="AMAZON-US",
+            amount=Decimal("6.00"),
+        )
+
+        stored_payout = user_payout_event_manager.get_by_uuid(payout.uuid)
+        assert stored_payout.status == PayoutStatus.COMPLETE
+        assert stored_payout.ext_ref_id == "vi-order-1"
+        assert stored_payout.order_data == order
+
+        request_tag = f"test:user_payout:{payout.uuid}:request"
+        complete_tag = f"test:user_payout:{payout.uuid}:complete"
+        assert len(thl_ledger_manager.get_tx_ids_by_tag(request_tag)) == 1
+        assert len(thl_ledger_manager.get_tx_ids_by_tag(complete_tag)) == 1
+
+        bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet(product)
+
+        cash = thl_ledger_manager.get_account_cash()
+        vi_expense = thl_ledger_manager.get_account_or_create_bp_expense_by_uuid(
+            product_uuid=product.uuid,
+            expense_name="virtual_incentives",
+        )
+        assert thl_ledger_manager.get_account_balance(user_wallet) == 400
+        assert thl_ledger_manager.get_account_balance(pending_payout) == 0
+        assert thl_ledger_manager.get_account_balance(cash) == -600
+        # $10 bribe, 17c expense (2.9% x $6)
+        assert thl_ledger_manager.get_account_balance(bp_wallet) == -10_17
+        assert thl_ledger_manager.get_account_balance(vi_expense) == -17
+        assert thl_ledger_manager.check_ledger_balanced()
 
     def test_user_request_redeem_paypal_insufficient_balance(
         self,
