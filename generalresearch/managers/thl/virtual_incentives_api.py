@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from collections.abc import Collection
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
@@ -52,6 +53,11 @@ class VirtualIncentivesClient:
                 "Authorization": f"Basic {token}",
             }
         )
+
+    @staticmethod
+    def generate_token_from_login(username: str, password: str) -> str:
+        s = username + ":" + password
+        return base64.urlsafe_b64encode(s.encode()).decode()
 
     def _request(
         self,
@@ -263,7 +269,8 @@ class VirtualIncentivesManager(PostgresManagerWithRedis):
         )
 
         ledger_manager.create_tx_user_payout_complete(
-            user, payout_event=payout_event,
+            user,
+            payout_event=payout_event,
         )
 
         return payout_event

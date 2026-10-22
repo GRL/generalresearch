@@ -33,11 +33,11 @@ from generalresearch.models.thl.ledger import (
     LedgerAccount,
     LedgerEntry,
     LedgerTransaction,
+    UserLedgerTransactionType,
     UserLedgerTransactionTypesSummary,
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models.thl.ledger import UserLedgerTransactionType
     from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig
 

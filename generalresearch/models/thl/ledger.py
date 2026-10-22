@@ -418,6 +418,71 @@ class LedgerTransaction(BaseModel):
             d["description"] = "Payout Cancelled"
             return UserLedgerTransactionUserPayoutCancel.model_validate(d)
 
+    def to_brokerage_product_tx(
+        self, bp_account: LedgerAccount
+    ) -> BrokerageProductLedgerTransactionType:
+        """Project this transaction onto a Brokerage Product wallet.
+
+        ``amount`` is expressed from the product's point of view: credits to
+        its wallet are positive and debits are negative.
+        """
+        entries = [x for x in self.entries if x.account_uuid == bp_account.uuid]
+        if not entries:
+            raise ValueError(
+                "transaction does not contain an entry for the Brokerage Product account"
+            )
+        amount = sum(
+            entry.amount * (-1 if entry.direction == Direction.DEBIT else 1)
+            for entry in entries
+        )
+        if amount == 0:
+            raise ValueError("transaction has no net Brokerage Product wallet effect")
+        tx_type = TransactionType(self.metadata[TransactionMetadataColumns.TX_TYPE])
+        data: dict[str, Any] = {
+            "created": self.created,
+            "description": self.ext_description
+            or tx_type.value.replace("_", " ").title(),
+            "amount": amount,
+            "tx_type": tx_type,
+        }
+
+        model: type[BrokerageProductLedgerTransaction]
+        if tx_type == TransactionType.BP_PAYMENT:
+            model = BrokerageProductLedgerTransactionTaskComplete
+            data["tsid"] = self.metadata[TransactionMetadataColumns.SESSION]
+        elif tx_type == TransactionType.BP_ADJUSTMENT:
+            model = BrokerageProductLedgerTransactionTaskAdjustment
+            data["tsid"] = self.metadata[TransactionMetadataColumns.SESSION]
+        elif tx_type == TransactionType.BP_PAYOUT:
+            model = BrokerageProductLedgerTransactionPayout
+            data["payout_id"] = self.metadata[TransactionMetadataColumns.EVENT]
+        elif tx_type == TransactionType.USER_PAYOUT_COMPLETE:
+            model = BrokerageProductLedgerTransactionUserPayoutFee
+            data["payout_id"] = self.metadata[TransactionMetadataColumns.EVENT2]
+            data["user_id"] = self.metadata[TransactionMetadataColumns.USER]
+        elif tx_type == TransactionType.USER_BONUS:
+            model = BrokerageProductLedgerTransactionUserBonus
+            data["bonus_id"] = self.metadata[TransactionMetadataColumns.BONUS]
+            data["user_id"] = self.metadata[TransactionMetadataColumns.USER]
+        elif tx_type == TransactionType.USER_ATTEMPT_CREDIT:
+            model = BrokerageProductLedgerTransactionAttemptCredit
+            data["tsid"] = self.metadata[TransactionMetadataColumns.SESSION]
+            data["user_id"] = self.metadata[TransactionMetadataColumns.USER]
+        elif tx_type == TransactionType.USER_MILESTONE:
+            model = BrokerageProductLedgerTransactionMilestone
+            data["contest_id"] = self.metadata[TransactionMetadataColumns.CONTEST]
+            data["user_id"] = self.metadata[TransactionMetadataColumns.USER]
+        elif tx_type == TransactionType.CLOSE_CONTEST:
+            model = BrokerageProductLedgerTransactionContestClose
+            data["contest_id"] = self.metadata[TransactionMetadataColumns.CONTEST]
+        elif tx_type == TransactionType.PLUG:
+            model = BrokerageProductLedgerTransactionAdjustment
+        else:
+            raise ValueError(
+                f"{tx_type.value} is not a Brokerage Product wallet transaction"
+            )
+        return model.model_validate(data)
+
 
 class UserLedgerTransaction(BaseModel):
     """
@@ -631,6 +696,136 @@ UserLedgerTransactionType = Annotated[
     | UserLedgerTransactionTaskAdjustment
     | UserLedgerTransactionTaskComplete
     | UserLedgerTransactionAttemptCredit,
+    Field(discriminator="tx_type"),
+]
+
+
+class BrokerageProductLedgerTransaction(BaseModel):
+    """A ledger transaction as it affects a Brokerage Product wallet."""
+
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+
+    created: AwareDatetimeISO = Field(description="When the transaction was created")
+    description: str = Field(max_length=255)
+    amount: int = Field(
+        strict=True,
+        description=(
+            "The net change to the Brokerage Product wallet in USDCents. "
+            "Positive means its balance increased; negative means it decreased."
+        ),
+        examples=[500, -250],
+    )
+
+
+class BrokerageProductLedgerTransactionTaskComplete(BrokerageProductLedgerTransaction):
+    tx_type: Literal[TransactionType.BP_PAYMENT] = TransactionType.BP_PAYMENT
+    description: str = Field(default="Task Complete", max_length=255)
+    tsid: UUIDStr = Field(description="The session that generated the payment")
+
+    @model_validator(mode="after")
+    def validate_amount(self):
+        assert self.amount > 0, "a task completion must increase the product wallet"
+        return self
+
+
+class BrokerageProductLedgerTransactionTaskAdjustment(
+    BrokerageProductLedgerTransaction
+):
+    tx_type: Literal[TransactionType.BP_ADJUSTMENT] = TransactionType.BP_ADJUSTMENT
+    description: str = Field(default="Task Adjustment", max_length=255)
+    tsid: UUIDStr = Field(description="The adjusted session")
+
+
+class BrokerageProductLedgerTransactionPayout(BrokerageProductLedgerTransaction):
+    tx_type: Literal[TransactionType.BP_PAYOUT] = TransactionType.BP_PAYOUT
+    description: str = Field(default="Brokerage Product Payout", max_length=255)
+    payout_id: UUIDStr = Field(description="The Brokerage Product payout event")
+
+    @model_validator(mode="after")
+    def validate_amount(self):
+        assert self.amount < 0, "a payout must decrease the product wallet"
+        return self
+
+
+class BrokerageProductLedgerTransactionUserPayoutFee(BrokerageProductLedgerTransaction):
+    tx_type: Literal[TransactionType.USER_PAYOUT_COMPLETE] = (
+        TransactionType.USER_PAYOUT_COMPLETE
+    )
+    description: str = Field(default="User Payout Fee", max_length=255)
+    payout_id: UUIDStr = Field(
+        description="The user payout event that incurred the fee"
+    )
+    user_id: UUIDStr = Field(description="The user who received the payout")
+
+    @model_validator(mode="after")
+    def validate_amount(self):
+        assert self.amount < 0, "a user payout fee must decrease the product wallet"
+        return self
+
+
+class BrokerageProductLedgerTransactionUserBonus(BrokerageProductLedgerTransaction):
+    tx_type: Literal[TransactionType.USER_BONUS] = TransactionType.USER_BONUS
+    description: str = Field(default="User Bonus", max_length=255)
+    bonus_id: UUIDStr = Field(description="The bonus reference")
+    user_id: UUIDStr = Field(description="The user who received the bonus")
+
+    @model_validator(mode="after")
+    def validate_amount(self):
+        assert self.amount < 0, "a user bonus must decrease the product wallet"
+        return self
+
+
+class BrokerageProductLedgerTransactionAttemptCredit(BrokerageProductLedgerTransaction):
+    tx_type: Literal[TransactionType.USER_ATTEMPT_CREDIT] = (
+        TransactionType.USER_ATTEMPT_CREDIT
+    )
+    description: str = Field(default="Attempt Credit", max_length=255)
+    tsid: UUIDStr = Field(description="The session awarded an attempt credit")
+    user_id: UUIDStr = Field(description="The user who received the credit")
+
+    @model_validator(mode="after")
+    def validate_amount(self):
+        assert self.amount < 0, "an attempt credit must decrease the product wallet"
+        return self
+
+
+class BrokerageProductLedgerTransactionMilestone(BrokerageProductLedgerTransaction):
+    tx_type: Literal[TransactionType.USER_MILESTONE] = TransactionType.USER_MILESTONE
+    description: str = Field(default="Milestone Award", max_length=255)
+    contest_id: UUIDStr = Field(description="The milestone contest")
+    user_id: UUIDStr = Field(description="The milestone winner")
+
+    @model_validator(mode="after")
+    def validate_amount(self):
+        assert self.amount < 0, "a milestone award must decrease the product wallet"
+        return self
+
+
+class BrokerageProductLedgerTransactionContestClose(BrokerageProductLedgerTransaction):
+    """Unused contest funds returned to, or excess prizes charged to, the product."""
+
+    tx_type: Literal[TransactionType.CLOSE_CONTEST] = TransactionType.CLOSE_CONTEST
+    description: str = Field(default="Contest Close", max_length=255)
+    contest_id: UUIDStr = Field(description="The contest being settled")
+
+
+class BrokerageProductLedgerTransactionAdjustment(BrokerageProductLedgerTransaction):
+    """An accounting reconciliation applied directly to the product wallet."""
+
+    tx_type: Literal[TransactionType.PLUG] = TransactionType.PLUG
+    description: str = Field(default="Balance Adjustment", max_length=255)
+
+
+BrokerageProductLedgerTransactionType = Annotated[
+    BrokerageProductLedgerTransactionTaskComplete
+    | BrokerageProductLedgerTransactionTaskAdjustment
+    | BrokerageProductLedgerTransactionPayout
+    | BrokerageProductLedgerTransactionUserPayoutFee
+    | BrokerageProductLedgerTransactionUserBonus
+    | BrokerageProductLedgerTransactionAttemptCredit
+    | BrokerageProductLedgerTransactionMilestone
+    | BrokerageProductLedgerTransactionContestClose
+    | BrokerageProductLedgerTransactionAdjustment,
     Field(discriminator="tx_type"),
 ]
 

@@ -2326,3 +2326,44 @@ class ThlLedgerManager(LedgerManager):
             exclude_txs_before=exclude_txs_before,
         )
         return utx
+
+    def get_bp_txs(
+        self,
+        product_id: str,
+        time_start: datetime | None = None,
+        time_end: datetime | None = None,
+        page: int = 1,
+        size: int = 50,
+        order_by: str | None = "created,tag",
+    ):
+        bp_account = self.get_account_or_create_bp_wallet_by_uuid(product_id)
+        assert bp_account.reference_type == "bp", "Account must be a BP ledger account"
+        assert bp_account.reference_uuid == product_id, "Account must be owned by BP"
+
+        ago_limit = datetime.now(tz=UTC) - timedelta(days=365)
+        if time_start is not None:
+            assert time_start >= ago_limit
+        if time_end is not None:
+            assert time_end >= ago_limit
+        if time_start is None:
+            time_start = ago_limit
+        if time_end is None:
+            time_end = datetime.now(tz=UTC)
+        assert time_end >= time_start
+
+        if product_id == JAMES_BILLINGS_BPID:
+            time_start = (
+                max([JAMES_BILLINGS_TX_CUTOFF, time_start])
+                if time_start is not None
+                else JAMES_BILLINGS_TX_CUTOFF
+            )
+        txs, total = self.get_tx_filtered_by_account_paginated(
+            bp_account.uuid,
+            time_start=time_start,
+            time_end=time_end,
+            page=page,
+            size=size,
+            order_by=order_by,
+        )
+        txs = [tx.to_brokerage_product_tx(bp_account) for tx in txs]
+        return txs, total
