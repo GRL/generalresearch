@@ -203,9 +203,9 @@ class UserPayoutEvent(PayoutEvent):
     @field_validator("payout_type", mode="before")
     @classmethod
     def normalize_enum(cls, v):
-        if isinstance(v, str):
+        if type(v) is str:
             try:
-                return PayoutType[v.upper()]
+                return PayoutType(v.upper())
             except KeyError:
                 raise ValueError(f"Invalid payout_type: {v}")
         return v
