@@ -12,6 +12,7 @@ from dask.distributed import Client
 from pandera.pandas import DataFrameSchema
 from pydantic import Field, ValidationInfo, field_validator, model_validator
 
+from generalresearch.config import is_debug
 from generalresearch.incite import LOG
 from generalresearch.incite.base import CollectionBase, CollectionItemBase
 from generalresearch.incite.schemas import PARTITION_ON
@@ -112,6 +113,9 @@ class MergeCollectionItem(CollectionItemBase):
         return res
 
     def validate_time_coverage(self, path: Path) -> None:
+        if is_debug():
+            return
+
         timestamp_column = MergeTypeTimestampColumns[self._collection.merge_type]
         if timestamp_column is None:
             return

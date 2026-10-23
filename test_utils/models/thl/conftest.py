@@ -607,16 +607,14 @@ def user_failed_attempt_credit(
 
 @pytest.fixture
 def user_payout_event_factory(
-    user_payout_event_manager: UserPayoutEventManager,
+    user_payout_event_manager: UserPayoutEventManager, thl_ledger_manager: ThlLedgerManager
 ) -> Callable[..., UserPayoutEvent]:
 
     def _inner(
+        user: User,
         uuid: UUIDStr | None = None,
         debit_account_uuid: UUIDStr | None = None,
-        account_reference_type: str | None = None,
-        account_reference_uuid: UUIDStr | None = None,
         cashout_method_uuid: UUIDStr | None = None,
-        description: str | None = None,
         created: AwareDatetimeISO | None = None,
         amount: PositiveInt | None = None,
         status: PayoutStatus | None = None,
@@ -626,7 +624,9 @@ def user_payout_event_factory(
         order_data: dict[str, Any] | CashMailOrderData | None = None,
     ) -> UserPayoutEvent:
 
-        debit_account_uuid = debit_account_uuid or uuid4().hex
+        wallet = thl_ledger_manager.get_account_or_create_user_wallet(user)
+
+        debit_account_uuid = wallet.uuid
         cashout_method_uuid = cashout_method_uuid or uuid4().hex
         amount = amount or randint(a=99, b=9_999)
         status = status or rand_choice(list(PayoutStatus))

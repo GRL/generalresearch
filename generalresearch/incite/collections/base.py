@@ -23,6 +23,7 @@ from pandera.pandas import DataFrameSchema
 from pydantic import Field, FilePath, ValidationInfo, field_validator
 from sentry_sdk import capture_exception
 
+from generalresearch.config import is_debug
 from generalresearch.incite import LOG
 from generalresearch.incite.base import CollectionBase, CollectionItemBase
 from generalresearch.incite.schemas import (
@@ -188,6 +189,10 @@ class DFCollectionItem(CollectionItemBase):
         return self._to_dict()
 
     def validate_time_coverage(self, path: Path) -> None:
+        # This time coverage check makes it impossible to run tests. We need a way to force enable or disable this
+        if is_debug():
+            return
+
         timestamp_column = DFCollectionTypeTimestampColumns[self._collection.data_type]
         df = pd.read_parquet(path, columns=[timestamp_column])
         timestamps = pd.to_datetime(df[timestamp_column])

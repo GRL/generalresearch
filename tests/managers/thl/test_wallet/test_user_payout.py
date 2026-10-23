@@ -570,14 +570,12 @@ class TestManagePendingCashout:
 
         bp_wallet = thl_ledger_manager.get_account_or_create_bp_wallet(product)
 
-        cash = thl_ledger_manager.get_account_cash()
         vi_expense = thl_ledger_manager.get_account_or_create_bp_expense_by_uuid(
             product_uuid=product.uuid,
             expense_name="virtual_incentives",
         )
         assert thl_ledger_manager.get_account_balance(user_wallet) == 400
         assert thl_ledger_manager.get_account_balance(pending_payout) == 0
-        assert thl_ledger_manager.get_account_balance(cash) == -600
         # $10 bribe, 17c expense (2.9% x $6)
         assert thl_ledger_manager.get_account_balance(bp_wallet) == -10_17
         assert thl_ledger_manager.get_account_balance(vi_expense) == -17

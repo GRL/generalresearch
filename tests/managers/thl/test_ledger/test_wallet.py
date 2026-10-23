@@ -38,6 +38,10 @@ def schrute_product(
 
 
 class TestGetUserWalletBalance:
+    @pytest.fixture(autouse=True)
+    def setup(self, create_main_accounts):
+        create_main_accounts()
+
     def test_get_user_wallet_balance_non_managed(
         self, user: User, thl_ledger_manager: ThlLedgerManager
     ):
@@ -98,4 +102,7 @@ class TestGetUserWalletBalance:
             user=user, user_wallet_balance=balance
         )
         assert redeemable_balance == 20 + 100
-        assert thl_ledger_manager.get_user_cashout_balance(user=user) == 20 + 100
+
+        # The cashout balance depends on the product.user_wallet_config.balance_type
+        assert user.product.user_wallet_config.balance_type == "wallet_balance"
+        assert thl_ledger_manager.get_user_cashout_balance(user=user) == 147

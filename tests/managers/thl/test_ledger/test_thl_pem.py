@@ -11,6 +11,7 @@ from generalresearch.currency import USDCent
 from generalresearch.models.thl.payout import (
     BrokerageProductPayoutEvent,
 )
+from generalresearch.models.thl.user import User
 
 if TYPE_CHECKING:
     from generalresearch.managers.thl.ledger_manager.ledger import LedgerManager
@@ -135,11 +136,12 @@ class TestThlPayoutEventManager:
         self,
         user_payout_event_factory: Callable[..., UserPayoutEvent],
         user_payout_event_manager: UserPayoutEventManager,
+        user: User
     ):
         from generalresearch.models.thl.payout import UserPayoutEvent
 
         # Confirm the creation method returns back an instance.
-        pe = user_payout_event_factory()
+        pe = user_payout_event_factory(user=user)
         assert isinstance(pe, UserPayoutEvent)
 
         # Now query the DB for that PayoutEvent to confirm it was actually
