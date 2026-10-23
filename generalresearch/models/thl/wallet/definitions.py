@@ -32,6 +32,8 @@ class PayoutType(StrEnum, metaclass=ReprEnumMeta):
     TANGO = "TANGO"
     # Tremendous Gift Card
     TREMENDOUS = "TREMENDOUS"
+    # Virtual Incentives Gift Card
+    VIRTUAL_INCENTIVES = "VI"
     # DWOLLA
     DWOLLA = "DWOLLA"
     # A payment is made to a bank account using ACH

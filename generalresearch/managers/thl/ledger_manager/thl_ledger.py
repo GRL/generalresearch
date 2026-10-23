@@ -1069,6 +1069,7 @@ class ThlLedgerManager(LedgerManager):
             PayoutType.PAYPAL: f"User Payout Paypal Request {amt_str}",
             PayoutType.CASH_IN_MAIL: f"User Payout Cash Request {amt_str}",
             PayoutType.TANGO: f"User Payout Tango Request {amt_str}",
+            PayoutType.VIRTUAL_INCENTIVES: f"User Payout VI Request {amt_str}",
         }
         description = descriptions[payout_event.payout_type]
 
@@ -1150,6 +1151,7 @@ class ThlLedgerManager(LedgerManager):
             PayoutType.PAYPAL: f"User Payout Paypal Complete {amt_str}",
             PayoutType.CASH_IN_MAIL: f"User Payout Cash Complete {amt_str}",
             PayoutType.TANGO: f"User Payout Tango Complete {amt_str}",
+            PayoutType.VIRTUAL_INCENTIVES: f"User Payout VI Complete {amt_str}",
         }
         description = descriptions[payout_event.payout_type]
         bp_wallet_account = self.get_account_or_create_bp_wallet(user.product)
@@ -1188,6 +1190,13 @@ class ThlLedgerManager(LedgerManager):
             )
             if fee_amount is None:
                 fee_amount = (amount_usd * Decimal("0.035")).quantize(Decimal("0.01"))
+        elif payout_event.payout_type == PayoutType.VIRTUAL_INCENTIVES:
+            bp_expense_account = self.get_account_or_create_bp_expense(
+                product=user.product, expense_name="virtual_incentives"
+            )
+            if fee_amount is None:
+                # todo: What is the fee????? On the website it says 0, which I don't really believe.
+                fee_amount = (amount_usd * Decimal("0.029")).quantize(Decimal("0.01"))
         else:
             raise NotImplementedError()
 
@@ -2317,3 +2326,57 @@ class ThlLedgerManager(LedgerManager):
             exclude_txs_before=exclude_txs_before,
         )
         return utx
+
+    def get_bp_txs(
+        self,
+        product_id: str,
+        user: User | None = None,
+        time_start: datetime | None = None,
+        time_end: datetime | None = None,
+        page: int = 1,
+        size: int = 50,
+        order_by: str | None = "created,tag",
+    ):
+        """
+        Get transactions affecting the BP's wallet balance.
+        Optionally filter by txs related to this User
+        """
+        bp_account = self.get_account_or_create_bp_wallet_by_uuid(product_id)
+        assert bp_account.reference_type == "bp", "Account must be a BP ledger account"
+        assert bp_account.reference_uuid == product_id, "Account must be owned by BP"
+
+        ago_limit = datetime.now(tz=UTC) - timedelta(days=365)
+        if time_start is not None:
+            assert time_start >= ago_limit
+        if time_end is not None:
+            assert time_end >= ago_limit
+        if time_start is None:
+            time_start = ago_limit
+        if time_end is None:
+            time_end = datetime.now(tz=UTC)
+        assert time_end >= time_start
+
+        if product_id == JAMES_BILLINGS_BPID:
+            time_start = (
+                max([JAMES_BILLINGS_TX_CUTOFF, time_start])
+                if time_start is not None
+                else JAMES_BILLINGS_TX_CUTOFF
+            )
+
+        metadata_key, metadata_value = None, None
+        if user is not None:
+            assert user.uuid is not None
+            metadata_key, metadata_value = "user", user.uuid
+
+        txs, total = self.get_tx_filtered_by_account_paginated(
+            bp_account.uuid,
+            time_start=time_start,
+            time_end=time_end,
+            metadata_key=metadata_key,
+            metadata_value=metadata_value,
+            page=page,
+            size=size,
+            order_by=order_by,
+        )
+        txs = [tx.to_brokerage_product_tx(bp_account) for tx in txs]
+        return txs, total

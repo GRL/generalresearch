@@ -60,23 +60,29 @@ class TestTeam:
     def test_memberships(
         self,
         gr_team: Team,
-        gr_user: GRUser,
         gr_membership,
         gr_user_factory: Callable[..., GRUser],
         gr_membership_manager: MembershipManager,
     ):
+        gr_user = gr_user_factory(email="member@example.com")
+        gr_membership_manager.create(team=gr_team, gr_user=gr_user)
+
         assert gr_team.memberships is None
 
         gr_team.prefetch_memberships(gr_membership_manager=gr_membership_manager)
         assert isinstance(gr_team.memberships, list)
-        assert len(gr_team.memberships) == 1
-        assert gr_team.memberships[0].user_id == gr_user.id
+        assert len(gr_team.memberships) == 2
+        membership = next(
+            item for item in gr_team.memberships if item.user_id == gr_user.id
+        )
+        assert membership.user.id == gr_user.id
+        assert membership.user.email == gr_user.email
 
         # Create another new Membership
         gr_membership_manager.create(team=gr_team, gr_user=gr_user_factory())
-        assert len(gr_team.memberships) == 1
-        gr_team.prefetch_memberships(gr_membership_manager=gr_membership_manager)
         assert len(gr_team.memberships) == 2
+        gr_team.prefetch_memberships(gr_membership_manager=gr_membership_manager)
+        assert len(gr_team.memberships) == 3
 
     def test_gr_users(
         self,

@@ -83,6 +83,7 @@ class CashoutMethodBase(BaseModel):
         | TangoCashoutMethodData
         | CashMailCashoutMethodData
         | AmtCashoutMethodData
+        | VICashoutMethodData
     ) = Field(discriminator="type")
     description: str = Field(
         description="The description of the cashout method.", default=""
@@ -319,6 +320,25 @@ class TangoCashoutMethodData(BaseModel):
     @field_validator("countries", mode="after")
     def countries_case(cls, countries: list[str]) -> list[str]:
         return [x.lower() for x in countries]
+
+
+class VICashoutMethodData(BaseModel):
+    type: Literal[PayoutType.VIRTUAL_INCENTIVES] = Field(
+        default=PayoutType.VIRTUAL_INCENTIVES
+    )
+    sku: str = Field(description="VI sku")
+    value_type: Literal["variable", "fixed"] = Field()
+    marketing: str = Field(default="")
+    terms: str = Field(default="")
+
+
+class VICashoutMethodRequestData(BaseModel):
+    sku: str = Field(description="VI sku")
+    # This is not necessarily in USD. It is in whatever currency the card is in
+    amount: Decimal = Field(description="Amount to be paid out (in USD, EUR, etc)")
+    cashout_request_id: str = Field(
+        description="An external deduplication identifier. VI calls this the clientid"
+    )
 
 
 class AmtCashoutMethodData(BaseModel):

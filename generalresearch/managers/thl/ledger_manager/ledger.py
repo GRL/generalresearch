@@ -33,11 +33,11 @@ from generalresearch.models.thl.ledger import (
     LedgerAccount,
     LedgerEntry,
     LedgerTransaction,
+    UserLedgerTransactionType,
     UserLedgerTransactionTypesSummary,
 )
 
 if TYPE_CHECKING:
-    from generalresearch.models.thl.ledger import UserLedgerTransactionType
     from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig
 
@@ -117,6 +117,7 @@ class LedgerManagerBasePostgres(PostgresManager, RedisManager):
             filters.append("le.account_id = %(account_uuid)s")
             params["account_uuid"] = account_uuid
         if metadata_key is not None:
+            assert metadata_value is not None
             filters.append("key = %(metadata_key)s")
             params["metadata_key"] = metadata_key
         if metadata_value is not None:
@@ -131,6 +132,8 @@ class LedgerManagerBasePostgres(PostgresManager, RedisManager):
 
 
 class LedgerTransactionManager(LedgerManagerBasePostgres):
+    DEFAULT_PAGE_SIZE = 100
+
     def create_tx(
         self,
         entries: list[LedgerEntry],
@@ -508,10 +511,20 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         account_uuid: UUIDStr,
         time_start: datetime | None = None,
         time_end: datetime | None = None,
+        metadata_key: str | None = None,
+        metadata_value: str | None = None,
     ) -> NonNegativeInt:
         filter_str, params = self.make_filter_str(
             time_start=time_start,
             time_end=time_end,
+            metadata_key=metadata_key,
+            metadata_value=metadata_value,
+        )
+        ltm_join = (
+            """JOIN ledger_transactionmetadata ltm
+                  ON ltm.transaction_id = lt.id"""
+            if metadata_key is not None
+            else ""
         )
         params["account_uuid"] = account_uuid
 
@@ -522,6 +535,7 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
             JOIN ledger_entry le
               ON le.transaction_id = lt.id
              AND le.account_id = %(account_uuid)s
+            {ltm_join}
             {filter_str}
             """,
             params=params,
@@ -612,11 +626,14 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         account_uuid: UUIDStr,
         time_start: datetime | None = None,
         time_end: datetime | None = None,
+        metadata_key: str | None = None,
+        metadata_value: str | None = None,
         page: int | None = None,
         size: int | None = None,
         order_by: str | None = "created,tag",
     ) -> tuple[list[LedgerTransaction], int]:
         """
+        Return transactions touching an account and their filtered total
         If time_start and/or time_end are passed, the txs are filtered to
             include only that range.
           - time_start is optional, default = beginning of time
@@ -639,29 +656,29 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
         check_valid_uuid(account_uuid)
 
         filter_str, params = self.make_filter_str(
-            time_start=time_start, time_end=time_end, account_uuid=account_uuid
+            time_start=time_start,
+            time_end=time_end,
+            account_uuid=account_uuid,
+            metadata_key=metadata_key,
+            metadata_value=metadata_value,
         )
-
+        pagination_sql = ""
+        total: int | None = None
         if page is not None:
-            assert type(page) is int
-            assert page >= 1, "page starts at 1"
-            size = size if size is not None else 100
-            assert type(size) is int
-            assert 1 <= size <= 100
-            params["offset"] = (page - 1) * size
-            params["limit"] = size
-            paginated_filter_str = " LIMIT %(limit)s OFFSET %(offset)s"
+            pagination_sql = self.validate_pagination(page=page, size=size)
             total = self.get_tx_filtered_by_account_count(
                 account_uuid=account_uuid,
                 time_start=time_start,
                 time_end=time_end,
+                metadata_key=metadata_key,
+                metadata_value=metadata_value,
             )
-        else:
-            paginated_filter_str = ""
-            # Don't need to do a count if we aren't paginating
-            total = None
-
-        order_by_str = parse_order_by(order_by)
+        order_by_str = parse_order_by(order_by or "created,tag")
+        metadata_join = (
+            "JOIN ledger_transactionmetadata ltm ON ltm.transaction_id = lt.id"
+            if metadata_key is not None
+            else ""
+        )
 
         res = self.pg_config.execute_sql_query(
             query=f"""
@@ -670,10 +687,11 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
                 FROM ledger_transaction lt
                 JOIN ledger_entry le
                   ON le.transaction_id = lt.id
+                {metadata_join}
                 {filter_str}
                 GROUP BY lt.id, lt.created
                 {order_by_str}
-                {paginated_filter_str}
+                {pagination_sql}
             )
             SELECT
                 lt.id AS transaction_id,
@@ -682,23 +700,16 @@ class LedgerTransactionManager(LedgerManagerBasePostgres):
                 lt.tag,
                 meta.key_value_pairs,
                 entries.entries_json
-            
             FROM tx_ids t
             JOIN ledger_transaction lt ON lt.id = t.id
-            
             {FULL_TX_JOINS}
-            
-            {order_by_str};
-          """,
+            {order_by_str}
+            """,
             params=params,
         )
         if total is None:
             total = len(res)
-
-        return (
-            self.process_get_tx_mysql_rows_json(res),
-            total,
-        )
+        return self.process_get_tx_mysql_rows_json(res), total
 
     def get_tx_filtered_by_metadata(
         self,

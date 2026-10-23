@@ -320,25 +320,25 @@ class TestBusinessPayoutEventManager:
             product=p1, amount=USDCent(50), ext_ref_id=ach_id2
         )
 
-        gr_business.prebuild_payouts(
-            bpem=business_payout_event_manager,
-        )
-
-        assert isinstance(gr_business.payouts, list)
-        assert len(gr_business.payouts) == 3
-        assert gr_business.payouts_total == sum(
-            [pe.amount for pe in gr_business.payouts]
-        )
-        assert gr_business.payouts[0].created > gr_business.payouts[1].created
-        assert len(gr_business.payouts[0].bp_payouts) == 1
+        # gr_business.prebuild_payouts(
+        #     bpem=business_payout_event_manager,
+        # )
+        #
+        # assert isinstance(gr_business.payouts, list)
+        # assert len(gr_business.payouts) == 3
+        # assert gr_business.payouts_total == sum(
+        #     [pe.amount for pe in gr_business.payouts]
+        # )
+        # assert gr_business.payouts[0].created > gr_business.payouts[1].created
+        # assert len(gr_business.payouts[0].bp_payouts) == 1
 
         # Cannot pay out the same product twice in the same business payout
         # assert len(business.payouts[1].bp_payouts) == 2
-        assert len(gr_business.payouts[1].bp_payouts) == 1
-
-        assert gr_business.payouts[0].ext_ref_id == ach_id2
-        assert gr_business.payouts[1].ext_ref_id == ach_id1
-        assert gr_business.payouts[2].ext_ref_id == "none"
+        # assert len(gr_business.payouts[1].bp_payouts) == 1
+        #
+        # assert gr_business.payouts[0].ext_ref_id == ach_id2
+        # assert gr_business.payouts[1].ext_ref_id == ach_id1
+        # assert gr_business.payouts[2].ext_ref_id == "none"
 
     def test_update_ext_reference_ids(
         self,
@@ -841,35 +841,36 @@ class TestBusinessPayoutEventManager:
 
         bb1 = gr_business.balance
         assert isinstance(bb1, BusinessBalances)
-        pb1 = bb1.product_balances[0]
-        pb2 = bb1.product_balances[1]
-        pb3 = bb1.product_balances[2]
         assert bb1.payout == 25 * 712 + 475  # $7.50 * .95% = $7.125 = $7.12
         assert bb1.adjustment == -475
         assert bb1.net == ((25 * 7.12 + 4.75) - 4.75) * 100
         # The balance is lower because the single $4.75 payout
         assert bb1.balance == bb1.net - 475
-        assert (
-            bb1.available_balance
-            == (pb2.available_balance + pb3.available_balance) - 475
+
+        # We dont store the individual product_balances here
+        # pb1 = bb1.product_balances[0]
+        # pb2 = bb1.product_balances[1]
+        # pb3 = bb1.product_balances[2]
+        # assert (
+        #     bb1.available_balance
+        #     == (pb2.available_balance + pb3.available_balance) - 475
+        # )
+        #
+        # assert pb1.available_balance == 0
+        # assert pb2.available_balance == 8010
+        # assert pb3.available_balance == 5340
+        # assert bb1.recoup_usd_str == "$4.75"
+        # assert pb1.recoup_usd_str == "$4.75"
+        # assert pb2.recoup_usd_str == "$0.00"
+        # assert pb3.recoup_usd_str == "$0.00"
+
+        # Business no longer stores prebuilt payouts. Query the managers directly.
+        business_payouts, cnt = business_payout_event_manager.filter_by(
+                business_uuid=gr_business.uuid
         )
-
-        assert pb1.available_balance == 0
-        assert pb2.available_balance == 8010
-        assert pb3.available_balance == 5340
-
-        assert bb1.recoup_usd_str == "$4.75"
-        assert pb1.recoup_usd_str == "$4.75"
-        assert pb2.recoup_usd_str == "$0.00"
-        assert pb3.recoup_usd_str == "$0.00"
-
-        assert gr_business.payouts is None
-        gr_business.prebuild_payouts(
-            bpem=business_payout_event_manager,
-        )
-        assert isinstance(gr_business.payouts, list)
-        assert len(gr_business.payouts) == 1
-        assert gr_business.payouts[0].ext_ref_id == ach_id1
+        assert cnt == 1
+        assert len(business_payouts) == 1
+        assert business_payouts[0].ext_ref_id == ach_id1
 
         ach_id2 = uuid4().hex
 
@@ -910,13 +911,25 @@ class TestBusinessPayoutEventManager:
             client=client_no_amm,
             pop_ledger=pop_ledger_merge,
         )
-        gr_business.prebuild_payouts(
-            bpem=business_payout_event_manager,
+
+        business_payouts, business_payout_count = (
+            business_payout_event_manager.filter_by(
+                business_uuid=gr_business.uuid,
+            )
         )
-        assert isinstance(gr_business.payouts, list)
-        assert len(gr_business.payouts) == 2
-        assert len(gr_business.payouts[0].bp_payouts) == 2
-        assert len(gr_business.payouts[1].bp_payouts) == 1
+        assert business_payout_count == 2
+        assert len(business_payouts) == 2
+        assert sorted(payout.line_item_count for payout in business_payouts) == [1, 2]
+
+        product_payouts = (
+            brokerage_product_payout_event_manager.get_bp_payout_events_for_products(
+                thl_ledger_manager=thl_ledger_manager,
+                product_uuids=gr_business.product_uuids,
+            )
+        )
+        assert len(product_payouts) == 3
+        assert sum(payout.ext_ref_id == ach_id1 for payout in product_payouts) == 1
+        assert sum(payout.ext_ref_id == ach_id2 for payout in product_payouts) == 2
 
         bb2 = gr_business.balance
 

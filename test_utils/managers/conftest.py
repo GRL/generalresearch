@@ -31,6 +31,7 @@ from generalresearch.models.definitions import Source
 from generalresearch.models.thl.wallet.cashout_method import (
     CashoutMethod,
     TangoCashoutMethodData,
+    VICashoutMethodData,
 )
 from generalresearch.models.thl.wallet.definitions import Currency, PayoutType
 
@@ -177,12 +178,13 @@ def setup_cashoutmethod_db(
     cashout_method_manager: CashoutMethodManager,
     delete_cashoutmethod_db: Callable[..., None],
     example_tango_cashout_methods: list[CashoutMethod],
+    example_vi_cashout_methods: list[CashoutMethod],
 ) -> Callable[..., None]:
 
     def _inner():
         delete_cashoutmethod_db()
 
-        for x in example_tango_cashout_methods:
+        for x in example_tango_cashout_methods + example_vi_cashout_methods:
             cashout_method_manager.create(x)
 
     return _inner
@@ -199,8 +201,7 @@ def random_ext_id_factory(base: str = "U02") -> Callable[..., str]:
 
 
 @pytest.fixture(scope="session")
-def example_tango_cashout_methods(
-) -> list[CashoutMethod]:
+def example_tango_cashout_methods() -> list[CashoutMethod]:
     return [
         CashoutMethod(
             id=uuid4().hex,
@@ -234,6 +235,31 @@ def example_tango_cashout_methods(
             min_value=1,
             max_value=10000,
         ),
+    ]
+
+
+@pytest.fixture(scope="session")
+def example_vi_cashout_methods() -> list[CashoutMethod]:
+    return [
+        CashoutMethod(
+            id=uuid4().hex,
+            type=PayoutType.VIRTUAL_INCENTIVES,
+            ext_id="AMAZON-US",
+            name="Amazon.com Gift Card",
+            description="Amazon.com Gift Card",
+            data=VICashoutMethodData(
+                sku="AMAZON-US",
+                value_type="variable",
+                marketing="Amazon marketing copy",
+                terms="Amazon terms",
+            ),
+            user=None,
+            image_url="https://example.com/amazon.png",
+            currency=Currency.USD,
+            original_currency=Currency.USD,
+            min_value=500,
+            max_value=25_000,
+        )
     ]
 
 

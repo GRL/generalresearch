@@ -18,6 +18,7 @@ from generalresearch.managers.thl.ledger_manager.exceptions import (
 from generalresearch.managers.thl.ledger_manager.thl_ledger import ThlLedgerManager
 from generalresearch.managers.thl.payout import PayoutEventManager
 from generalresearch.managers.thl.userhealth import UserIpHistoryManager
+from generalresearch.managers.thl.virtual_incentives_api import VirtualIncentivesManager
 from generalresearch.managers.thl.wallet.tango import TangoManager
 from generalresearch.managers.utils import parse_order_by
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
@@ -32,6 +33,7 @@ from generalresearch.models.thl.wallet.cashout_method import (
     CashoutRequestDetail,
     PaypalCashoutMethodRequestData,
     TangoCashoutMethodRequestData,
+    VICashoutMethodRequestData,
 )
 from generalresearch.models.thl.wallet.definitions import PayoutType
 
@@ -491,6 +493,7 @@ class UserPayoutEventManager(PayoutEventManager):
         user_ip_history_manager: UserIpHistoryManager,
         redis_client: Redis,
         slack_client: slack.WebClient | None = None,
+        virtual_incentives_manager: VirtualIncentivesManager | None = None,
     ) -> tuple[UserPayoutEvent | None, str | None]:
         try:
             return self.user_request_redeem(
@@ -503,6 +506,7 @@ class UserPayoutEventManager(PayoutEventManager):
                 user_ip_history_manager=user_ip_history_manager,
                 redis_client=redis_client,
                 slack_client=slack_client,
+                virtual_incentives_manager=virtual_incentives_manager
             ), None
         except (AssertionError, LedgerTransactionCreateError) as e:
             return None, str(e)
@@ -518,6 +522,7 @@ class UserPayoutEventManager(PayoutEventManager):
         user_ip_history_manager: UserIpHistoryManager,
         redis_client: Redis,
         slack_client: slack.WebClient | None = None,
+        virtual_incentives_manager: VirtualIncentivesManager | None = None,
     ) -> UserPayoutEvent:
         """
         A user has requested to be paid from their wallet balance.
@@ -614,6 +619,10 @@ class UserPayoutEventManager(PayoutEventManager):
                 CashMailCashoutMethodRequestData.model_validate(
                     cashout_method.data.model_dump()
                 )
+            )
+        elif payout_type == PayoutType.VIRTUAL_INCENTIVES:
+            request_data: VICashoutMethodRequestData = (
+                virtual_incentives_manager.make_request(amount, cashout_method, pe_uuid)
             )
         else:
             raise ValueError(f"unknown {payout_type=}")
