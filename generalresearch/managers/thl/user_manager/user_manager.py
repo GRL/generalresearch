@@ -95,6 +95,14 @@ class UserManager:
         assert Permission.UPDATE in self.sql_permissions, "permission error"
         return self.mysql_user_manager._set_last_seen(user)
 
+    def set_last_country_ip(
+        self, user: User, last_ip: str, last_country_iso: str | None = None
+    ) -> None:
+        assert Permission.UPDATE in self.sql_permissions, "permission error"
+        return self.mysql_user_manager._set_last_country_ip(
+            user, last_ip, last_country_iso
+        )
+
     def change_product_user_id(self, *, user: User, new_product_user_id: str) -> User:
         """Change a user's supplier-provided ID and refresh user lookup caches.
 

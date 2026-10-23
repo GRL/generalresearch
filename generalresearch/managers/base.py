@@ -21,15 +21,16 @@ class Permission(int, Enum):
 class Manager:
     DEFAULT_PAGE_SIZE = 50
 
+    @classmethod
     def validate_pagination(
-        self,
+        cls,
         page: int | None = 1,
         size: int | None = None,
     ):
         page = page if page is not None else 1
         assert type(page) is int
         assert page >= 1, "page starts at 1"
-        size = size if size is not None else self.DEFAULT_PAGE_SIZE
+        size = size if size is not None else cls.DEFAULT_PAGE_SIZE
         assert type(size) is int
         assert 1 <= size <= 100
         offset = (page - 1) * size

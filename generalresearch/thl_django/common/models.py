@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 from django.db.models import Q
-
+from django.contrib.postgres.indexes import GinIndex
 
 class THLSession(models.Model):
     """
@@ -379,8 +379,7 @@ class THLUserMetadata(models.Model):
     canonical_email = models.CharField(max_length=320, null=True)
 
     # Not unique within a BP, or anything like that. A user
-    #   can set this to whatever they like. No index
-    #   as we will not ever look up a user by their name.
+    #   can set this to whatever they like.
     display_name = models.CharField(max_length=255, null=True)
 
     class Meta:
@@ -391,6 +390,11 @@ class THLUserMetadata(models.Model):
             models.Index(fields=["email_sha1"]),
             models.Index(fields=["email_md5"]),
             models.Index(fields=["canonical_email"]),
+            GinIndex(
+                fields=["display_name"],
+                opclasses=["gin_trgm_ops"],
+                name="usermetadata_name_trgm",
+            ),
         ]
 
 
