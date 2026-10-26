@@ -4,8 +4,9 @@ import logging
 import operator
 from collections.abc import Collection
 from datetime import UTC, datetime
+from enum import StrEnum
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Tuple
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import psycopg
@@ -25,6 +26,13 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
+class LastActivityColumn(StrEnum):
+    LAST_SEEN = "last_seen"
+    LAST_TASK_COMPLETED_AT = "last_task_completed_at"
+    LAST_OFFERWALL_REQUESTED_AT = "last_offerwall_requested_at"
+    LAST_PROFILING_SUBMISSION_AT = "last_profiling_submission_at"
+
+
 class MysqlUserManager(PostgresManager):
     def __init__(
         self,
@@ -37,18 +45,22 @@ class MysqlUserManager(PostgresManager):
         self.product_id_exists_cache_lock = Lock()
         super().__init__(pg_config=pg_config, permissions=permissions)
 
-    def _set_last_seen(self, user: User, conn: Connection | None = None) -> None:
-        # Don't call this directly. Use UserManager.set_last_seen()
+    def _set_last_activity(
+        self,
+        user: User,
+        column: LastActivityColumn,
+        conn: Connection | None = None,
+    ) -> None:
+        # Don't call this directly. Use UserManager.set_last_activity().
         assert not self.is_read_replica
-        now = datetime.now(tz=UTC)
+        column = LastActivityColumn(column)
+
         with self.connection(conn) as conn, conn.cursor() as c:
             c.execute(
-                """
-            UPDATE thl_user
-            SET last_seen = %s
-            WHERE id = %s
-            """,
-                params=[now, user.user_id],
+                sql.SQL("UPDATE thl_user SET {} = %s WHERE id = %s").format(
+                    sql.Identifier(column)
+                ),
+                params=[getattr(user, column), user.user_id],
             )
 
     def _set_last_country_ip(
@@ -535,7 +547,7 @@ class MysqlUserManager(PostgresManager):
             product_user_id=product_user_id,
             email_startswith=email_startswith,
             display_name_like=display_name_like,
-            allow_global_search=allow_global_search
+            allow_global_search=allow_global_search,
         )
         if not any([product_user_id, email_startswith, display_name_like]):
             # We're filtering on product, team, or business only. So use the

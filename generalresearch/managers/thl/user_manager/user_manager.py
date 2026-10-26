@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import operator
 from collections.abc import Collection
-from datetime import datetime
+from datetime import UTC, datetime
 from threading import Lock
 from typing import TYPE_CHECKING
 
@@ -17,6 +17,7 @@ from generalresearch.managers.thl.user_manager.exceptions import (
     UserDoesntExistError,
 )
 from generalresearch.managers.thl.user_manager.mysql_user_manager import (
+    LastActivityColumn,
     MysqlUserManager,
 )
 from generalresearch.managers.thl.user_manager.rate_limit import (
@@ -92,8 +93,16 @@ class UserManager:
         self.get_user_cache_lock = Lock()
 
     def set_last_seen(self, user: User) -> None:
+        return self.set_last_activity(user, LastActivityColumn.LAST_SEEN)
+
+    def set_last_activity(self, user: User, column: LastActivityColumn) -> None:
         assert Permission.UPDATE in self.sql_permissions, "permission error"
-        return self.mysql_user_manager._set_last_seen(user)
+        assert self.redis_user_manager is not None
+        column = LastActivityColumn(column)
+        key = f"user-activity:{user.user_id}:{column.value}"
+        if self.redis_user_manager.client.set(key, "1", nx=True, ex=60):
+            setattr(user, column, datetime.now(tz=UTC))
+            self.mysql_user_manager._set_last_activity(user, column)
 
     def set_last_country_ip(
         self, user: User, last_ip: str, last_country_iso: str | None = None

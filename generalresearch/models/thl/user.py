@@ -77,11 +77,23 @@ class User(BaseModel):
         description="When the user was created on the GRL platform.",
     )
 
-    # Note: due to cacheing, last_seen might be up to a day out of date!
+    # Note: due to cacheing, last_* timestamps might be up to a day out of date!
+    # Updates are rate-limited to once per minute
     last_seen: AwareDatetimeISO | None = Field(
         default=None,
-        description="When the user was last seen on, or acting on any"
-        "part of the GRL platform.",
+        description="When the user last started a task or returned from a marketplace redirect.",
+    )
+    last_task_completed_at: AwareDatetimeISO | None = Field(
+        default=None,
+        description="When the user most recently completed a task.",
+    )
+    last_offerwall_requested_at: AwareDatetimeISO | None = Field(
+        default=None,
+        description="When the user most recently requested an offerwall.",
+    )
+    last_profiling_submission_at: AwareDatetimeISO | None = Field(
+        default=None,
+        description="When the user most recently submitted profiling answers.",
     )
 
     # --- Prefetch Fields ---
