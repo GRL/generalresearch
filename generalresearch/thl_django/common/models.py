@@ -363,6 +363,7 @@ class THLUser(models.Model):
             # models.Index(fields=["product_id", "product_user_id"]),
             models.Index(fields=["created"]),
             models.Index(fields=["last_seen"]),
+            models.Index(fields=["product_id", "-last_seen"]),
             models.Index(
                 fields=["last_task_completed_at"],
                 name="thl_user_last_task_comp_nn",
