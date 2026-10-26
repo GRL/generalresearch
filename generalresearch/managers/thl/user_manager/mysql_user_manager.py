@@ -33,6 +33,15 @@ class LastActivityColumn(StrEnum):
     LAST_PROFILING_SUBMISSION_AT = "last_profiling_submission_at"
 
 
+class UserOrderField(StrEnum):
+    CREATED = "created"
+    LAST_SEEN = "last_seen"
+    LAST_TASK_COMPLETED_AT = "last_task_completed_at"
+    LAST_OFFERWALL_REQUESTED_AT = "last_offerwall_requested_at"
+    LAST_PROFILING_SUBMISSION_AT = "last_profiling_submission_at"
+    PRODUCT_USER_ID = "product_user_id"
+
+
 class MysqlUserManager(PostgresManager):
     def __init__(
         self,
@@ -446,7 +455,7 @@ class MysqlUserManager(PostgresManager):
         display_name_like: str | None = None,
         page: int | None = None,
         size: int | None = None,
-        order_field: str = "created",
+        order_field: UserOrderField = UserOrderField.CREATED,
         descending: bool = False,
         allow_global_search: bool = False,
     ) -> tuple[list[User], NonNegativeInt]:
@@ -487,7 +496,7 @@ class MysqlUserManager(PostgresManager):
         display_name_like: str | None = None,
         page: int | None = None,
         size: int | None = None,
-        order_field: str = "created",
+        order_field: UserOrderField = UserOrderField.CREATED,
         descending: bool = False,
         allow_global_search: bool = False,
         conn: Connection | None = None,
@@ -502,18 +511,15 @@ class MysqlUserManager(PostgresManager):
             display_name_like=display_name_like,
             allow_global_search=allow_global_search,
         )
-        order_fields = {
-            "created": "u.created",
-            "last_seen": "u.last_seen",
-            "product_user_id": "u.product_user_id",
-        }
+        order_field = UserOrderField(order_field)
         order_by_sql = (
-            f"{order_fields[order_field]} {'DESC' if descending else 'ASC'}, u.uuid"
+            f"u.{order_field.value} {'DESC' if descending else 'ASC'}, u.uuid"
         )
 
         query = f"""
-        SELECT u.id as user_id, u.uuid, u.product_id, u.product_user_id, 
-            u.blocked, u.created, u.last_seen,
+        SELECT u.id as user_id, u.uuid, u.product_id, u.product_user_id, u.blocked,
+            u.created, u.last_seen, u.last_task_completed_at,
+            u.last_offerwall_requested_at, u.last_profiling_submission_at,
             tu.email_address, tu.display_name, ubp.business_id, ubp.team_id
         FROM thl_user u
         LEFT JOIN thl_usermetadata tu on u.id = tu.user_id
