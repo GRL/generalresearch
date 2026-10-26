@@ -42,6 +42,15 @@ class UserOrderField(StrEnum):
     PRODUCT_USER_ID = "product_user_id"
 
 
+NULLABLE_ACTIVITY_ORDER_FIELDS = frozenset(
+    {
+        UserOrderField.LAST_TASK_COMPLETED_AT,
+        UserOrderField.LAST_OFFERWALL_REQUESTED_AT,
+        UserOrderField.LAST_PROFILING_SUBMISSION_AT,
+    }
+)
+
+
 class MysqlUserManager(PostgresManager):
     def __init__(
         self,
@@ -401,6 +410,7 @@ class MysqlUserManager(PostgresManager):
         product_user_id: str | None = None,
         email_startswith: str | None = None,
         display_name_like: str | None = None,
+        order_field: UserOrderField = UserOrderField.CREATED,
         allow_global_search: bool = False,
     ) -> tuple[str, dict[str, Any]]:
         filters = []
@@ -408,7 +418,7 @@ class MysqlUserManager(PostgresManager):
 
         if product_id is not None:
             params["product_id"] = product_id
-            filters.append("product_id = %(product_id)s")
+            filters.append("ubp.id = %(product_id)s")
         if business_id:
             params["business_id"] = business_id
             filters.append("ubp.business_id = %(business_id)s")
@@ -442,6 +452,10 @@ class MysqlUserManager(PostgresManager):
                 )
             params["display_name_like"] = f"{display_name_like}%"
             filters.append("display_name ILIKE %(display_name_like)s")
+        if order_field in NULLABLE_ACTIVITY_ORDER_FIELDS:
+            # If we are ordering by a nullable field, explicitly
+            #   exclude any users whose value for that field is null
+            filters.append(f"{order_field.value} IS NOT NULL")
 
         return "WHERE " + " AND ".join(filters) if filters else "", params
 
@@ -481,6 +495,7 @@ class MysqlUserManager(PostgresManager):
                 product_user_id=product_user_id,
                 email_startswith=email_startswith,
                 display_name_like=display_name_like,
+                order_field=order_field,
                 allow_global_search=allow_global_search,
                 conn=conn,
             )
@@ -502,6 +517,8 @@ class MysqlUserManager(PostgresManager):
         conn: Connection | None = None,
     ) -> list[User]:
         pagination_sql = self.validate_pagination(page=page, size=size)
+        order_field = UserOrderField(order_field)
+
         filter_str, params = self.make_filter_str(
             product_id=product_id,
             business_id=business_id,
@@ -509,11 +526,15 @@ class MysqlUserManager(PostgresManager):
             product_user_id=product_user_id,
             email_startswith=email_startswith,
             display_name_like=display_name_like,
+            order_field=order_field,
             allow_global_search=allow_global_search,
         )
-        order_field = UserOrderField(order_field)
+        nulls_str = ""
+        if order_field in NULLABLE_ACTIVITY_ORDER_FIELDS:
+            nulls_str = "NULLS LAST"
         order_by_sql = (
-            f"u.{order_field.value} {'DESC' if descending else 'ASC'}, u.uuid"
+            f"u.{order_field.value} "
+            f"{'DESC' if descending else 'ASC'} {nulls_str}, u.uuid"
         )
 
         query = f"""
@@ -542,10 +563,11 @@ class MysqlUserManager(PostgresManager):
         product_user_id: str | None = None,
         email_startswith: str | None = None,
         display_name_like: str | None = None,
+        order_field: UserOrderField = UserOrderField.CREATED,
         allow_global_search: bool = False,
         conn: Connection | None = None,
     ) -> NonNegativeInt:
-
+        order_field = UserOrderField(order_field)
         filter_str, params = self.make_filter_str(
             product_id=product_id,
             business_id=business_id,
@@ -553,9 +575,17 @@ class MysqlUserManager(PostgresManager):
             product_user_id=product_user_id,
             email_startswith=email_startswith,
             display_name_like=display_name_like,
+            order_field=order_field,
             allow_global_search=allow_global_search,
         )
-        if not any([product_user_id, email_startswith, display_name_like]):
+        if not any(
+            [
+                product_user_id,
+                email_startswith,
+                display_name_like,
+                order_field in NULLABLE_ACTIVITY_ORDER_FIELDS,
+            ]
+        ):
             # We're filtering on product, team, or business only. So use the
             # precomputed counts
             query = f"""
