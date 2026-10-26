@@ -75,7 +75,7 @@ class UserQuestionAnswer(BaseModel):
     def get_mrpqs(
         self, question_manager: QuestionManager
     ) -> Iterator[MarketplaceResearchProfileQuestion]:
-        assert self.calc_answers
+        assert self.calc_answers is not None
         property_codes = set(self.calc_answers.keys())
         qs = question_manager.filter_by_properties_and_locale(
             property_codes, country_iso=self.country_iso, language_iso=self.language_iso
