@@ -2,7 +2,7 @@ import uuid
 
 from django.db import models
 from django.db.models import Q
-
+from django.contrib.postgres.indexes import GinIndex
 
 class THLSession(models.Model):
     """
@@ -305,13 +305,24 @@ class THLUser(models.Model):
     # This will be useful for looking at signups per country globally.
     created = models.DateTimeField(null=False)
 
-    # This will be useful as our Daily Active User metric (DAU) that a lot
-    # of marketplaces want reported on. We'll be able to change the
-    # logic for when this is updated, but keeping it in a table will
-    # make queries much easier.
-    # We'll force null=True, and his will be the same as created
-    # until they're "seen again".
+    # The most recent time the user started a task or returned from a marketplace
+    # redirect. This is initialized to `created` and can be used to report users
+    # who were recently active in tasks.
     last_seen = models.DateTimeField(null=False)
+
+    # The time the user most recently completed a task.
+    last_task_completed_at = models.DateTimeField(null=True)
+
+    # The time of the user's most recent offerwall request. Database writes are
+    # rate-limited through Redis to at most once per minute to reduce table churn,
+    # so this value may lag the latest request by up to one minute.
+    last_offerwall_requested_at = models.DateTimeField(null=True)
+
+    # The time the user most recently submitted profiling answers, either during
+    # a GRS session or directly through the API. Database writes are rate-limited
+    # through Redis to at most once per minute, so this value may lag the latest
+    # submission by up to one minute.
+    last_profiling_submission_at = models.DateTimeField(null=True)
 
     # this isn't used for any security measures, but we have an increasing
     # need to provide a "live panel book" to describe our user base. This
@@ -352,6 +363,22 @@ class THLUser(models.Model):
             # models.Index(fields=["product_id", "product_user_id"]),
             models.Index(fields=["created"]),
             models.Index(fields=["last_seen"]),
+            models.Index(fields=["product_id", "-last_seen"]),
+            models.Index(
+                fields=["last_task_completed_at"],
+                name="thl_user_last_task_comp_nn",
+                condition=Q(last_task_completed_at__isnull=False),
+            ),
+            models.Index(
+                fields=["last_offerwall_requested_at"],
+                name="thl_user_last_offerwall_nn",
+                condition=Q(last_offerwall_requested_at__isnull=False),
+            ),
+            models.Index(
+                fields=["last_profiling_submission_at"],
+                name="thl_user_last_profile_nn",
+                condition=Q(last_profiling_submission_at__isnull=False),
+            ),
             models.Index(fields=["last_country_iso"]),
         ]
 
@@ -379,8 +406,7 @@ class THLUserMetadata(models.Model):
     canonical_email = models.CharField(max_length=320, null=True)
 
     # Not unique within a BP, or anything like that. A user
-    #   can set this to whatever they like. No index
-    #   as we will not ever look up a user by their name.
+    #   can set this to whatever they like.
     display_name = models.CharField(max_length=255, null=True)
 
     class Meta:
@@ -391,6 +417,11 @@ class THLUserMetadata(models.Model):
             models.Index(fields=["email_sha1"]),
             models.Index(fields=["email_md5"]),
             models.Index(fields=["canonical_email"]),
+            GinIndex(
+                fields=["display_name"],
+                opclasses=["gin_trgm_ops"],
+                name="usermetadata_name_trgm",
+            ),
         ]
 
 

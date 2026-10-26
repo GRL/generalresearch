@@ -47,6 +47,11 @@ def validate_canonical_email(value: str) -> str:
         )
     return value
 
+def try_normalize_email(value: str) -> str:
+    try:
+        return email_normalize.normalize(value).normalized_address
+    except ValueError:
+        return value
 
 CanonicalEmailStr = Annotated[
     EmailStr,

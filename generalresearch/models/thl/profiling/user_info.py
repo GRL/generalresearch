@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
-from pydantic.json_schema import SkipJsonSchema
 
 from generalresearch.models.custom_types import AwareDatetimeISO
 from generalresearch.models.definitions import Source
 from generalresearch.models.thl.profiling.user_question_answer import (
     MarketplaceResearchProfileQuestion,
 )
-from generalresearch.models.thl.user import User
+from generalresearch.models.thl.user_ref import UserRef
 
 
 class UserProfileKnowledgeAnswer(BaseModel):
@@ -43,13 +42,19 @@ class MarketProfileKnowledge(BaseModel):
     )
 
     question_id: str = Field(examples=["gender", "1843", "gender_plus"])
+    question_text: str | None = Field(default=None)
 
     answer: list[str] = Field(
         default_factory=list, examples=[["male"], ["7657644"], ["1"]]
     )
+    answer_text: list[str] | None = Field(default=None)
 
     created: AwareDatetimeISO = Field(
         description="When the User submitted this Profiling data"
+    )
+    is_derived: bool = Field(
+        default=False,
+        description='What this answer derived from a "harmonized" / "gold-standard" question?',
     )
 
     @classmethod
@@ -61,16 +66,24 @@ class MarketProfileKnowledge(BaseModel):
             question_id=q.question_code,
             answer=list(q.answer),
             created=q.timestamp,
+            question_text=q.question_text,
+            answer_text=list(q.answer_text) if q.answer_text is not None else None,
+            is_derived=q.is_derived,
         )
 
 
-class UserInfo(BaseModel):
+class UserProfilingData(BaseModel):
     model_config = ConfigDict()
 
-    user: SkipJsonSchema[User | None] = Field(exclude=True, default=None)
+    user: UserRef = Field()
 
     user_profile_knowledge: list[UserProfileKnowledge] = Field(default_factory=list)
 
     marketplace_profile_knowledge: list[MarketProfileKnowledge] = Field(
         default_factory=list
     )
+
+
+class UserInfo(UserProfilingData):
+    # fsb endpoint uses this name. todo: rename it
+    pass

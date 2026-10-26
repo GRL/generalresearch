@@ -17,7 +17,6 @@ from generalresearch.models.thl.profiling.upk_question import (
 
 
 class QuestionManager(PostgresManager):
-
     def get_multi_upk(self, question_ids: Collection[str]) -> list[UpkQuestion]:
         query = """
         SELECT data, property_code, explanation_template, explanation_fragment_template
@@ -78,7 +77,7 @@ class QuestionManager(PostgresManager):
         return res
 
     @cached(
-        cache=TTLCache(maxsize=256, ttl=3600 + random.randint(-900, 900)),
+        cache=TTLCache(maxsize=1024, ttl=3600 + random.randint(-900, 900)),
         lock=threading.Lock(),
         info=True,
     )
@@ -109,6 +108,39 @@ class QuestionManager(PostgresManager):
         x["data"]["explanation_fragment_template"] = x["explanation_fragment_template"]
         x["data"].pop("categories", None)
         return UpkQuestion.model_validate(x["data"])
+
+    def filter_by_properties_and_locale(
+        self, property_codes: Collection[str], country_iso: str, language_iso: str
+    ) -> list[UpkQuestion]:
+        query = """
+        SELECT data, property_code, explanation_template, explanation_fragment_template
+        FROM marketplace_question
+        WHERE property_code = ANY(%(property_codes)s)
+            AND country_iso = %(country_iso)s
+            AND language_iso = %(language_iso)s
+        """
+        res: list[dict[str, Any]] = self.pg_config.execute_sql_query(
+            query=query,
+            params={
+                "property_codes": list(property_codes),
+                "country_iso": country_iso,
+                "language_iso": language_iso,
+            },
+        )
+        for x in res:
+            x["data"]["ext_question_id"] = x["property_code"]
+            x["data"]["explanation_template"] = x["explanation_template"]
+            x["data"]["explanation_fragment_template"] = x[
+                "explanation_fragment_template"
+            ]
+            x["data"].pop("categories", None)
+        res2 = []
+        for x in res:
+            try:
+                res2.append(UpkQuestion.model_validate(x["data"]))
+            except ValidationError as e:
+                LOG.warning(e)
+        return res2
 
     def filter_by_property(
         self, lookup: Collection[tuple[str, str, str]]

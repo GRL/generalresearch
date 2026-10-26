@@ -88,6 +88,9 @@ class BrokerageProduct(models.Model):
     # ProductPOPFinancials model
     pop_financial = models.JSONField(default=None, null=True)
 
+    # This is the total number of users created
+    user_count = models.IntegerField(default=0, null=False)
+
     users_active_7d = models.IntegerField(default=None, null=True)
     task_completes_7d = models.IntegerField(default=None, null=True)
     # Net Earnings over the last 7 days (in USD Cents, this can be positive or negative)
