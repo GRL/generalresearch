@@ -8,6 +8,7 @@ from threading import Lock
 from typing import TYPE_CHECKING
 
 from cachetools import cachedmethod
+from cachetools.keys import hashkey
 from pydantic import RedisDsn
 
 from generalresearch.cacheing import InstrumentedTTLCache
@@ -98,11 +99,14 @@ class UserManager:
     def set_last_activity(self, user: User, column: LastActivityColumn) -> None:
         assert Permission.UPDATE in self.sql_permissions, "permission error"
         assert self.redis_user_manager is not None
+        assert user.user_id is not None
         column = LastActivityColumn(column)
         key = f"user-activity:{user.user_id}:{column.value}"
         if self.redis_user_manager.client.set(key, "1", nx=True, ex=60):
             setattr(user, column, datetime.now(tz=UTC))
             self.mysql_user_manager._set_last_activity(user, column)
+            self.cache_clear_user(user)
+            self.set_user_inmemory_cache(user)
 
     def set_last_country_ip(
         self, user: User, last_ip: str, last_country_iso: str | None = None
@@ -136,7 +140,8 @@ class UserManager:
             user=user, new_product_user_id=new_product_user_id
         )
 
-        self.cache_clear()
+        self.cache_clear_user(user)
+        self.cache_clear_user(updated_user)
         if self.redis_user_manager:
             self.redis_user_manager.clear_user(user)
         return updated_user
@@ -166,6 +171,20 @@ class UserManager:
         # It does not clear any redis caches; that has to be done separately.
         with self.get_user_cache_lock:
             self.get_user_cache.clear()
+
+    def cache_clear_user(self, user: User) -> None:
+        """Remove every local ``get_user`` cache entry for one user."""
+        keys = (
+            hashkey(user_id=user.user_id),
+            hashkey(user_uuid=user.uuid),
+            hashkey(
+                product_id=user.product_id,
+                product_user_id=user.product_user_id,
+            ),
+        )
+        with self.get_user_cache_lock:
+            for key in keys:
+                self.get_user_cache.pop(key, None)
 
     def cache_info(self):
         with self.get_user_cache_lock:
@@ -386,7 +405,7 @@ class UserManager:
         # If we change something about a user, we should update the in-memory caches
         self.set_user_inmemory_cache(user)
         # Clear local cached copies so the blocked state is returned immediately.
-        self.cache_clear()
+        self.cache_clear_user(user)
         return True
 
     def is_whitelisted(self, user: User) -> bool:
