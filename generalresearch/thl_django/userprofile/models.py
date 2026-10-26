@@ -89,7 +89,7 @@ class BrokerageProduct(models.Model):
     pop_financial = models.JSONField(default=None, null=True)
 
     # This is the total number of users created
-    user_count = models.IntegerField(default=0, null=False)
+    user_count = models.IntegerField(db_default=0, null=False)
 
     users_active_7d = models.IntegerField(default=None, null=True)
     task_completes_7d = models.IntegerField(default=None, null=True)

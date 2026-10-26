@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='brokerageproduct',
             name='user_count',
-            field=models.IntegerField(default=0),
+            field=models.IntegerField(db_default=0),
         ),
         migrations.AddIndex(
             model_name='thlusermetadata',
