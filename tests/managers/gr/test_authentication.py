@@ -47,6 +47,27 @@ class TestGRUserManager:
         assert isinstance(instance, GRUser)
         assert instance.id == gr_user.id
 
+    def test_update(self, gr_user: GRUser, gr_user_manager: GRUserManager):
+        gr_user.name = "Updated Name"
+        gr_user.avatar_url = "https://example.com/avatar.png"
+
+        assert gr_user_manager.update(gr_user) is None
+
+        assert gr_user.id is not None
+        instance = gr_user_manager.get_by_id(gr_user.id)
+        assert isinstance(instance, GRUser)
+        assert instance.name == "Updated Name"
+        assert instance.avatar_url == "https://example.com/avatar.png"
+
+        gr_user.name = None
+        gr_user.avatar_url = None
+        gr_user_manager.update(gr_user)
+
+        instance = gr_user_manager.get_by_id(gr_user.id)
+        assert isinstance(instance, GRUser)
+        assert instance.name is None
+        assert instance.avatar_url is None
+
     def test_get_all(
         self, gr_user_factory: Callable[..., GRUser], gr_user_manager: GRUserManager
     ):
