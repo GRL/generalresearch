@@ -299,10 +299,6 @@ class User(BaseModel):
 
     @classmethod
     def from_db(cls, res: dict[str, Any]) -> Self:
-        if res["created"]:
-            res["created"] = res["created"].replace(tzinfo=UTC)
-        if res["last_seen"]:
-            res["last_seen"] = res["last_seen"].replace(tzinfo=UTC)
         res["product_id"] = UUID(res["product_id"]).hex
         res["uuid"] = UUID(res["uuid"]).hex
         return cls(
@@ -313,6 +309,9 @@ class User(BaseModel):
             blocked=bool(res["blocked"]),
             created=res["created"],
             last_seen=res["last_seen"],
+            last_offerwall_requested_at=res["last_offerwall_requested_at"],
+            last_profiling_submission_at=res["last_profiling_submission_at"],
+            last_task_completed_at=res["last_task_completed_at"],
         )
 
 
