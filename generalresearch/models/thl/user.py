@@ -309,9 +309,9 @@ class User(BaseModel):
             blocked=bool(res["blocked"]),
             created=res["created"],
             last_seen=res["last_seen"],
-            last_offerwall_requested_at=res["last_offerwall_requested_at"],
-            last_profiling_submission_at=res["last_profiling_submission_at"],
-            last_task_completed_at=res["last_task_completed_at"],
+            last_offerwall_requested_at=res.get("last_offerwall_requested_at"),
+            last_profiling_submission_at=res.get("last_profiling_submission_at"),
+            last_task_completed_at=res.get("last_task_completed_at"),
         )
 
 
