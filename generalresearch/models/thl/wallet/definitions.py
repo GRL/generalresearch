@@ -58,6 +58,7 @@ PAYOUT_TYPE_TO_CATEGORY = {
     PayoutType.PAYPAL: PayoutCategory.CASH,
     PayoutType.TANGO: PayoutCategory.GIFT_CARD,
     PayoutType.TREMENDOUS: PayoutCategory.GIFT_CARD,
+    PayoutType.VIRTUAL_INCENTIVES: PayoutCategory.GIFT_CARD,
     PayoutType.DWOLLA: PayoutCategory.CASH,
     PayoutType.ACH: PayoutCategory.CASH,
     PayoutType.WIRE: PayoutCategory.CASH,
