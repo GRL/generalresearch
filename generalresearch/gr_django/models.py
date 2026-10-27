@@ -5,8 +5,10 @@ from django.db import models
 
 class User(models.Model):
     id = models.BigAutoField(primary_key=True)
-    sub = models.CharField(max_length=200, blank=False, null=False)
+    sub = models.CharField(max_length=200, blank=False, null=True)
     email = models.EmailField(null=True, unique=True)
+    name = models.CharField(max_length=200, null=True)
+    avatar_url = models.URLField(null=True)
 
     is_superuser = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
@@ -50,10 +52,10 @@ class Membership(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['user_id', 'team_id'],
-                name='uniq_membership_user_team'
+                fields=["user_id", "team_id"], name="uniq_membership_user_team"
             )
         ]
+
 
 class Team(models.Model):
     """

@@ -4,29 +4,27 @@ import binascii
 import logging
 import os
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from psycopg import sql
-from pydantic import AnyHttpUrl, PositiveInt
+from pydantic import PositiveInt
 
 from generalresearch.managers.base import PostgresManager, PostgresManagerWithRedis
 from generalresearch.models.custom_types import UUIDStr
 
 if TYPE_CHECKING:
-
     from generalresearch.models.gr.authentication import GRToken, GRUser
     from generalresearch.pg_helper import PostgresConfig
-    from generalresearch.redis_helper import RedisConfig
 
 LOG = logging.getLogger("gr")
 
 
 class GRUserManager(PostgresManagerWithRedis):
-
     def create(
         self,
-        sub: str,
-        email: str | None = None,
+        email: str,
+        name: str,
+        avatar_url: str | None = None,
         is_superuser: bool = False,
     ) -> GRUser:
         from generalresearch.models.gr.authentication import GRUser
@@ -35,8 +33,9 @@ class GRUserManager(PostgresManagerWithRedis):
 
         instance = GRUser.model_validate(
             {
-                "sub": sub,
                 "email": email,
+                "name": name,
+                "avatar_url": avatar_url,
                 "is_superuser": is_superuser,
                 "date_joined": now,
             }
@@ -46,10 +45,12 @@ class GRUserManager(PostgresManagerWithRedis):
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
                 query = sql.SQL("""
-                    INSERT INTO gr_user 
-                        (sub, email, is_superuser, date_joined)
-                    VALUES (%(sub)s, %(email)s, %(is_superuser)s, %(date_joined)s)
-                    RETURNING id
+                    INSERT INTO gr_user (
+                        email, name, is_superuser, date_joined, avatar_url
+                    ) VALUES (
+                        %(email)s, %(name)s, %(is_superuser)s, 
+                        %(date_joined)s, %(avatar_url)s
+                    ) RETURNING id;
                 """)
                 c.execute(query=query, params=data)
                 gr_user_id: int = c.fetchone()["id"]
@@ -62,7 +63,6 @@ class GRUserManager(PostgresManagerWithRedis):
         self,
         *,
         gr_user_id: int | None = None,
-        sub: str | None = None,
         email: str | None = None,
     ) -> list[GRUser]:
         from generalresearch.models.gr.authentication import GRUser
@@ -72,19 +72,16 @@ class GRUserManager(PostgresManagerWithRedis):
 
         if gr_user_id is not None:
             conditions.append("u.id = %(gr_user_id)s")
-            params['gr_user_id'] = gr_user_id
-        if sub is not None:
-            conditions.append("u.sub = %(sub)s")
-            params['sub'] = sub
+            params["gr_user_id"] = gr_user_id
         if email is not None:
             conditions.append("u.email = %(email)s")
-            params['email'] = email
+            params["email"] = email
 
         filter_str = " AND ".join(conditions)
         filter_str = "WHERE " + filter_str if filter_str else ""
 
         query = f"""
-        SELECT u.*
+        SELECT u.id, u.name, u.email, u.is_superuser, u.date_joined, u.avatar_url
         FROM gr_user AS u
         {filter_str}
         """
@@ -108,26 +105,11 @@ class GRUserManager(PostgresManagerWithRedis):
     def get_by_id(self, gr_user_id: int) -> GRUser | None:
         return self._get_one(gr_user_id=gr_user_id)
 
-    def get_by_sub(self, sub: str, raises=True) -> GRUser | None:
-        return self._get_one(sub=sub, raises=raises)
-
     def get_by_email(self, email: str, raises=True) -> GRUser | None:
         return self._get_one(email=email, raises=raises)
 
-    def get_by_sub_or_create(self, sub: str) -> GRUser:
-        return self.get_by_sub(sub=sub, raises=False) or self.create(sub=sub)
-
     def get_all(self) -> list[GRUser]:
-        from generalresearch.models.gr.authentication import GRUser
-
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            c.execute(query="""
-                        SELECT u.* 
-                        FROM gr_user AS u
-                    """)
-            res = c.fetchall()
-
-        return [GRUser.from_postgresql(i) for i in res]
+        return self.filter()
 
     def get_by_team(self, team_id: PositiveInt) -> list[GRUser]:
         from generalresearch.models.gr.authentication import GRUser
@@ -135,20 +117,16 @@ class GRUserManager(PostgresManagerWithRedis):
         with self.pg_config.make_connection() as conn, conn.cursor() as c:
             c.execute(
                 query="""
-                    SELECT gru.*
+                    SELECT u.id, u.name, u.email, u.avatar_url,
+                           u.is_superuser, u.date_joined
                     FROM common_membership AS membership
-                    INNER JOIN gr_user AS gru 
-                        ON gru.id = membership.user_id
+                    INNER JOIN gr_user AS u 
+                        ON u.id = membership.user_id
                     WHERE membership.team_id = %s
                 """,
                 params=(team_id,),
             )
             res = c.fetchall()
-
-        for item in res:
-            for k, v in item.items():
-                if isinstance(v, datetime):
-                    item[k] = item[k].replace(tzinfo=UTC)
 
         return [GRUser.model_validate(item) for item in res]
 
@@ -171,14 +149,9 @@ class GRUserManager(PostgresManagerWithRedis):
 
 
 class GRTokenManager(PostgresManager):
-
     def get_by_key(
         self,
         api_key: str,
-        jwks: dict[str, Any] | None = None,
-        audience: str | None = None,
-        issuer: AnyHttpUrl | str | None = None,
-        gr_redis_config: RedisConfig | None = None,
     ) -> GRToken:
         """Return the GRToken for this API Token.
 
@@ -191,46 +164,16 @@ class GRTokenManager(PostgresManager):
         :return GRToken instance (minified version, no relationships)
         :raises NotFoundException
         """
-        from generalresearch.models.gr.authentication import Claims, GRToken
-
-        # SSO Key
-        if GRToken.is_sso(api_key):
-            from jose import jwt
-
-            payload = jwt.decode(
-                token=api_key,
-                key=jwks,
-                algorithms=["RS256"],
-                audience=audience,
-                issuer=issuer,
-            )
-            claims = Claims.model_validate(payload)
-
-            gr_um = GRUserManager(
-                pg_config=self.pg_config, redis_config=gr_redis_config
-            )
-            gr_user = gr_um.get_by_sub_or_create(sub=claims.subject)
-            gr_user.claims = claims
-
-            gr_token = GRToken.model_validate(
-                {
-                    "key": api_key,
-                    "user_id": gr_user.id,
-                    "user": gr_user,
-                    "created": datetime.now(tz=UTC),
-                }
-            )
-
-            return gr_token
+        from generalresearch.models.gr.authentication import GRToken
 
         # API Key
         with self.pg_config.make_connection() as conn, conn.cursor() as c:
             query = sql.SQL("""
-                    SELECT grk.* 
-                    FROM gr_token AS grk
-                    WHERE grk.key = %s
-                    LIMIT 1
-                """)
+            SELECT grk.* 
+            FROM gr_token AS grk
+            WHERE grk.key = %s
+            LIMIT 2
+            """)
             c.execute(query=query, params=(api_key,))
             res = c.fetchall()
 
@@ -240,9 +183,7 @@ class GRTokenManager(PostgresManager):
         if len(res) > 1:
             raise ValueError(f"Too many GRUsers found with token of '{api_key}'")
 
-        item = res[0]
-
-        return GRToken.model_validate(item)
+        return GRToken.model_validate(res[0])
 
     def create(self, user_id: PositiveInt) -> None:
         # Taken directly from the DRF Token
@@ -285,18 +226,10 @@ class GRTokenManager(PostgresManager):
                     WHERE u.id = %s
                     LIMIT 1;
                 """)
-
             c.execute(query=query, params=(user_id,))
-
             result = c.fetchall()
 
         if not result:
             return None
 
-        res = result[0]
-
-        for k in res:
-            if isinstance(res[k], datetime):
-                res[k] = res[k].replace(tzinfo=UTC)
-
-        return GRToken.model_validate(res)
+        return GRToken.model_validate(result[0])
