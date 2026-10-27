@@ -7,17 +7,15 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from pydantic import (
-    AnyHttpUrl,
     BaseModel,
     ConfigDict,
     EmailStr,
     Field,
-    NonNegativeInt,
     PositiveInt,
     field_validator,
 )
 
-from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
+from generalresearch.models.custom_types import AwareDatetimeISO, HttpsUrlStr, UUIDStr
 
 if TYPE_CHECKING:
     from generalresearch.managers.gr.business import BusinessManager
@@ -30,76 +28,10 @@ if TYPE_CHECKING:
     from generalresearch.redis_helper import RedisConfig
 
 
-class Claims(BaseModel):
-    iss: str | None = Field(
-        default=None,
-        description="Issuer: https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.1",
-    )
-
-    sub: str | None = Field(
-        default=None,
-        description="Subject: https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.2",
-    )
-
-    aud: str | None = Field(
-        default=None,
-        description="Audience: https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.3",
-    )
-
-    exp: NonNegativeInt | None = Field(
-        default=None,
-        description="Expiration time: https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.4",
-    )
-
-    iat: NonNegativeInt | None = Field(
-        default=None,
-        description="Issued at: https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1.6",
-    )
-
-    auth_time: NonNegativeInt | None = Field(
-        default=None,
-        description="When authentication occured: https://openid.net/specs/openid-connect-core-1_0.html#IDToken",
-    )
-
-    acr: str | None = Field(
-        default=None,
-        description="Authentication Context Class Reference: https://openid.net/specs/openid-connect-core-1_0.html#IDToken",
-    )
-
-    amr: list[str] | None = Field(
-        default=None,
-        description="Authentication Methods References: https://openid.net/specs/openid-connect-core-1_0.html#IDToken",
-    )
-
-    c_hash: str | None = Field(
-        default=None,
-        description="Code hash value: http://openid.net/specs/openid-connect-core-1_0.html",
-    )
-
-    nonce: str | None = Field(
-        default=None,
-        description="Value used to associate a Client session with an ID Token: http://openid.net/specs/openid-connect-core-1_0.html",
-    )
-
-    at_hash: str | None = Field(
-        default=None,
-        description="Access Token hash value: http://openid.net/specs/openid-connect-core-1_0.html",
-    )
-
-    sid: str | None = Field(
-        default=None,
-        description="Session ID: https://openid.net/specs/openid-connect-frontchannel-1_0.html#ClaimsContents",
-    )
-
-    # --- Properties ---
-
-    @property
-    def subject(self):
-        return self.sub
-
-
 class GRUserRef(BaseModel):
     email: EmailStr | None = Field(default=None)
+    name: str | None = Field(default=None)
+    avatar_url: HttpsUrlStr | None = Field(default=None)
     date_joined: AwareDatetimeISO = Field(
         description="When the GR User account signed up."
     )
@@ -113,8 +45,10 @@ class GRUser(BaseModel):
     )
 
     id: PositiveInt | None = Field(default=None)
-    sub: str | None = Field(max_length=200)
     email: EmailStr | None = Field(default=None)
+    name: str | None = Field(default=None)
+    avatar_url: HttpsUrlStr | None = Field(default=None)
+
     is_superuser: bool = Field(default=False)
 
     date_joined: AwareDatetimeISO = Field(
@@ -126,27 +60,14 @@ class GRUser(BaseModel):
     teams: list[Team] | None = Field(default=None)
     products: list[Product] | None = Field(default=None)
     token: GRToken | None = Field(default=None)
-    claims: Claims | None = Field(default=None)
 
     def to_user_ref(self) -> GRUserRef:
         return GRUserRef(
             email=self.email,
+            name=self.name,
+            avatar_url=self.avatar_url,
             date_joined=self.date_joined,
         )
-
-    def prefetch_claims(
-        self, token: str, key: dict[str, Any], audience: str, issuer: AnyHttpUrl
-    ) -> None:
-        from jose import jwt
-
-        payload = jwt.decode(
-            token=token,
-            key=key,
-            algorithms=["RS256"],
-            audience=audience,
-            issuer=issuer,
-        )
-        self.claims = Claims.model_validate(payload)
 
     def prefetch_businesses(
         self, pg_config: PostgresConfig, redis_config: RedisConfig
@@ -158,6 +79,7 @@ class GRUser(BaseModel):
         if self.is_superuser:
             self.businesses = bm.get_all()
         else:
+            assert self.id is not None
             self.businesses = bm.get_by_user_id(user_id=self.id)
 
     def prefetch_teams(
@@ -206,6 +128,7 @@ class GRUser(BaseModel):
         )
 
         tm = GRTokenManager(pg_config=pg_config)
+        assert self.id is not None
         self.token = tm.get_by_user_id(user_id=self.id)
 
     def __eq__(self, other: GRUser) -> bool:
@@ -242,9 +165,9 @@ class GRUser(BaseModel):
         team_manager: TeamManager | None,
         product_manager: ProductManager,
     ) -> list[UUIDStr]:
-        assert (
-            business_manager is not None or team_manager is not None
-        ), "At least one of business_manager or team_manager is required"
+        assert business_manager is not None or team_manager is not None, (
+            "At least one of business_manager or team_manager is required"
+        )
 
         return product_manager.get_uuids(
             business_uuids=(
