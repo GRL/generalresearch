@@ -130,23 +130,6 @@ class GRUserManager(PostgresManagerWithRedis):
 
         return [GRUser.model_validate(item) for item in res]
 
-    def list_product_uuids(
-        self, user: GRUser, thl_pg_config: PostgresConfig
-    ) -> list[UUIDStr] | None:
-        if user.business_uuids is None:
-            LOG.warning("prefetch not run")
-            return None
-
-        res = thl_pg_config.execute_sql_query(
-            query="""
-                SELECT bp.id::uuid as uuid
-                FROM userprofile_brokerageproduct AS bp
-                WHERE bp.business_id = ANY(%s)
-            """,
-            params=[user.business_uuids],
-        )
-        return [item["uuid"] for item in res]
-
 
 class GRTokenManager(PostgresManager):
     def get_by_key(

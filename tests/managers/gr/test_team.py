@@ -11,13 +11,13 @@ if TYPE_CHECKING:
     from generalresearch.managers.gr.authentication import GRUserManager
     from generalresearch.managers.gr.team import MembershipManager, TeamManager
     from generalresearch.models.gr.authentication import GRUser
+    from generalresearch.models.gr.business import Business
     from generalresearch.models.thl.product import Product
     from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig
 
 
 class TestMembershipManager:
-
     def test_init(
         self, gr_membership_manager: MembershipManager, gr_db: PostgresConfig
     ):
@@ -25,7 +25,6 @@ class TestMembershipManager:
 
 
 class TestTeamManager:
-
     def test_init(self, gr_team_manager: TeamManager, gr_db: PostgresConfig):
         assert gr_team_manager.pg_config == gr_db
 
@@ -81,13 +80,11 @@ class TestTeamManager:
         gr_team_manager: TeamManager,
         gr_user_manager: GRUserManager,
         gr_user_factory: Callable[..., GRUser],
+        gr_membership_factory: Callable[..., Membership],
     ):
 
         user: GRUser = gr_user_factory()
-
-        instance = gr_team_manager.add_user(
-            gr_user_manager=gr_user_manager, team=gr_team, gr_user=user
-        )
+        instance = gr_membership_factory(gr_team=gr_team, gr_user=user)
         assert isinstance(instance, Membership)
 
         # assert team.gr_users is None
@@ -122,11 +119,10 @@ class TestTeamManager:
         gr_user_factory: Callable[..., GRUser],
         gr_team_manager: TeamManager,
         gr_user_manager: GRUserManager,
+        gr_membership_factory: Callable[..., Membership],
     ):
         user: GRUser = gr_user_factory()
-        gr_team_manager.add_user(
-            gr_user_manager=gr_user_manager, team=gr_team, gr_user=user
-        )
+        gr_membership_factory(gr_team=gr_team, gr_user=user)
 
         res = gr_team_manager.get_by_user(gr_user=user)
         assert isinstance(res, list)
@@ -134,6 +130,35 @@ class TestTeamManager:
         instance = res[0]
         assert isinstance(instance, Team)
         assert instance.uuid == gr_team.uuid
+
+    def test_filter_includes_relationship_counts(
+        self,
+        gr_team_factory: Callable[..., Team],
+        gr_team_manager: TeamManager,
+        gr_user_factory: Callable[..., GRUser],
+        gr_membership_factory: Callable[..., Membership],
+        gr_business_factory: Callable[..., Business],
+    ):
+        team = gr_team_factory()
+        other_team = gr_team_factory()
+        user = gr_user_factory()
+        other_user = gr_user_factory()
+        business = gr_business_factory()
+
+        gr_membership_factory(gr_team=team, gr_user=user)
+        gr_membership_factory(gr_team=team, gr_user=other_user)
+        gr_team_manager.add_business(team_id=team.id, business_id=business.id)
+
+        assert gr_team_manager.filter(team_id=other_team.id) == [other_team]
+
+        teams = gr_team_manager.filter(
+            team_uuid=team.uuid,
+            gr_user_id=user.id,
+        )
+        assert len(teams) == 1
+        assert teams[0].id == team.id
+        assert teams[0].business_count == 1
+        assert teams[0].membership_count == 2
 
     def test_get_by_user_duplicates(
         self,

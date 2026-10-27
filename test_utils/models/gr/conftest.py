@@ -5,6 +5,7 @@ from random import randint
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+import faker
 import pytest
 from pydantic import PositiveInt
 from pydantic_extra_types.phone_numbers import PhoneNumber
@@ -28,7 +29,9 @@ if TYPE_CHECKING:
     )
     from generalresearch.models.gr.team import Membership, Team
     from generalresearch.pg_helper import PostgresConfig
-    from generalresearch.redis_helper import RedisConfig
+
+
+fake = faker.Faker()
 
 # --- Static ---
 
@@ -216,15 +219,16 @@ def gr_user_factory(gr_user_manager: GRUserManager) -> Callable[..., GRUser]:
 
     def _inner(
         save: bool = True,
-        sub: str | None = None,
+        name: str | None = None,
         email: str | None = None,
         is_superuser: bool = False,
     ) -> GRUser:
-        sub = sub or f"{uuid4().hex}-{uuid4().hex}"
+        name = name or fake.name()
+        email = email or f"{uuid4().hex}@example.com"
 
         if save:
             return gr_user_manager.create(
-                sub=sub,
+                name=name,
                 email=email,
                 is_superuser=is_superuser,
             )
@@ -232,19 +236,6 @@ def gr_user_factory(gr_user_manager: GRUserManager) -> Callable[..., GRUser]:
             raise ValueError("Unsaved GR User not supported yet")
 
     return _inner
-
-
-@pytest.fixture
-def gr_user_cache(
-    gr_user: GRUser,
-    gr_db: PostgresConfig,
-    thl_web_rr: PostgresConfig,
-    gr_redis_config: RedisConfig,
-) -> GRUser:
-    gr_user.set_cache(
-        pg_config=gr_db, thl_web_rr=thl_web_rr, redis_config=gr_redis_config
-    )
-    return gr_user
 
 
 @pytest.fixture
