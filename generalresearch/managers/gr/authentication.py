@@ -23,7 +23,7 @@ class GRUserManager(PostgresManagerWithRedis):
     def create(
         self,
         email: str,
-        name: str,
+        name: str | None = None,
         avatar_url: str | None = None,
         is_superuser: bool = False,
     ) -> GRUser:
@@ -58,6 +58,27 @@ class GRUserManager(PostgresManagerWithRedis):
 
         instance.id = gr_user_id
         return instance
+
+    def update(self, user: GRUser) -> None:
+        """Persist the user's editable profile fields."""
+        assert user.id is not None
+        data = user.model_dump(
+            mode="json", include={"id", "name", "avatar_url"}
+        )
+
+        with self.pg_config.make_connection() as conn:
+            with conn.cursor() as c:
+                c.execute(
+                    query=sql.SQL("""
+                        UPDATE gr_user
+                        SET name = %(name)s, avatar_url = %(avatar_url)s
+                        WHERE id = %(id)s
+                    """),
+                    params=data,
+                )
+                if c.rowcount == 0:
+                    raise ValueError("GRUser not found")
+            conn.commit()
 
     def filter(
         self,
