@@ -84,6 +84,8 @@ class CashoutMethodBase(BaseModel):
         | CashMailCashoutMethodData
         | AmtCashoutMethodData
         | VICashoutMethodData
+        | GiftbitCashoutMethodData
+        | GiftronautCashoutMethodData
     ) = Field(discriminator="type")
     description: str = Field(
         description="The description of the cashout method.", default=""
@@ -339,6 +341,55 @@ class VICashoutMethodRequestData(BaseModel):
     cashout_request_id: str = Field(
         description="An external deduplication identifier. VI calls this the clientid"
     )
+
+
+class GiftbitCashoutMethodData(BaseModel):
+    type: Literal[PayoutType.GIFTBIT] = Field(default=PayoutType.GIFTBIT)
+    brand_code: str = Field(description="giftbit brand_code")
+    variable_price: bool = Field()
+    min_price_in_cents: int | None = Field(default=None)
+    max_price_in_cents: int | None = Field(default=None)
+    allowed_prices_in_cents: list[int] | None = Field(default=None)
+    countries: list[str] = Field()
+    disclaimer: str = Field(default="")
+
+
+class GiftbitCashoutMethodRequestData(BaseModel):
+    brand_code: str = Field(description="giftbit brand_code")
+    # This is not necessarily in USD. It is in whatever currency the card is in
+    amount: Decimal = Field(description="Amount to be paid out (in USD, EUR, etc)")
+    currency: Currency = Field()
+    cashout_request_id: str = Field(description="An external deduplication identifier.")
+
+
+class GiftronautCashoutMethodData(BaseModel):
+    type: Literal[PayoutType.GIFTRONAUT] = Field(default=PayoutType.GIFTRONAUT)
+    productId: str = Field(description="Giftronaut productId")
+    terms: str = Field()
+    redemptionInstructions: str = Field()
+    country_iso: str = Field()
+    priceStep: float = Field()
+
+
+class GiftronautCashoutMethodRequestData(BaseModel):
+    productId: str = Field(description="Giftronaut productId")
+    # This is not necessarily in USD. It is in whatever currency the card is in
+    amount: Decimal = Field(description="Amount to be paid out (in USD, EUR, etc)")
+    currency: Currency = Field()
+    cashout_request_id: str = Field(description="An external deduplication identifier.")
+
+
+class GiftedCashoutMethodData(BaseModel):
+    type: Literal[PayoutType.GIFTED] = Field(default=PayoutType.GIFTED)
+    card_id: str = Field(description="Gifted card")
+
+
+class GiftedCashoutMethodRequestData(BaseModel):
+    card_id: str = Field(description="Gifted card")
+    # This is not necessarily in USD. It is in whatever currency the card is in
+    amount: Decimal = Field(description="Amount to be paid out (in USD, EUR, etc)")
+    currency: Currency = Field()
+    cashout_request_id: str = Field(description="An external deduplication identifier.")
 
 
 class AmtCashoutMethodData(BaseModel):

@@ -34,6 +34,12 @@ class PayoutType(StrEnum, metaclass=ReprEnumMeta):
     TREMENDOUS = "TREMENDOUS"
     # Virtual Incentives Gift Card
     VIRTUAL_INCENTIVES = "VI"
+    # Giftbit
+    GIFTBIT = "GIFTBIT"
+    # Gifted.co
+    GIFTED = "GIFTED"
+    # giftronaut.com
+    GIFTRONAUT = "GIFTRONAUT"
     # DWOLLA
     DWOLLA = "DWOLLA"
     # A payment is made to a bank account using ACH
@@ -59,6 +65,9 @@ PAYOUT_TYPE_TO_CATEGORY = {
     PayoutType.TANGO: PayoutCategory.GIFT_CARD,
     PayoutType.TREMENDOUS: PayoutCategory.GIFT_CARD,
     PayoutType.VIRTUAL_INCENTIVES: PayoutCategory.GIFT_CARD,
+    PayoutType.GIFTBIT: PayoutCategory.GIFT_CARD,
+    PayoutType.GIFTED: PayoutCategory.GIFT_CARD,
+    PayoutType.GIFTRONAUT: PayoutCategory.GIFT_CARD,
     PayoutType.DWOLLA: PayoutCategory.CASH,
     PayoutType.ACH: PayoutCategory.CASH,
     PayoutType.WIRE: PayoutCategory.CASH,
