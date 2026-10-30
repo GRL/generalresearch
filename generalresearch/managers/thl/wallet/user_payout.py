@@ -12,6 +12,7 @@ from redis import Redis
 
 from generalresearch.currency import USDCent, format_usd_cent
 from generalresearch.managers.thl.cashout_method import CashoutMethodManager
+from generalresearch.managers.thl.giftbit import GiftbitManager
 from generalresearch.managers.thl.ledger_manager.exceptions import (
     LedgerTransactionCreateError,
 )
@@ -31,6 +32,7 @@ from generalresearch.models.thl.wallet.cashout_method import (
     CashoutMethod,
     CashoutMethodOut,
     CashoutRequestDetail,
+    GiftbitCashoutMethodRequestData,
     PaypalCashoutMethodRequestData,
     TangoCashoutMethodRequestData,
     VICashoutMethodRequestData,
@@ -494,6 +496,7 @@ class UserPayoutEventManager(PayoutEventManager):
         redis_client: Redis,
         slack_client: slack.WebClient | None = None,
         virtual_incentives_manager: VirtualIncentivesManager | None = None,
+        giftbit_manager: GiftbitManager | None = None,
     ) -> tuple[UserPayoutEvent | None, str | None]:
         try:
             return self.user_request_redeem(
@@ -506,7 +509,8 @@ class UserPayoutEventManager(PayoutEventManager):
                 user_ip_history_manager=user_ip_history_manager,
                 redis_client=redis_client,
                 slack_client=slack_client,
-                virtual_incentives_manager=virtual_incentives_manager
+                virtual_incentives_manager=virtual_incentives_manager,
+                giftbit_manager=giftbit_manager,
             ), None
         except (AssertionError, LedgerTransactionCreateError) as e:
             return None, str(e)
@@ -523,6 +527,7 @@ class UserPayoutEventManager(PayoutEventManager):
         redis_client: Redis,
         slack_client: slack.WebClient | None = None,
         virtual_incentives_manager: VirtualIncentivesManager | None = None,
+        giftbit_manager: GiftbitManager | None = None,
     ) -> UserPayoutEvent:
         """
         A user has requested to be paid from their wallet balance.
@@ -623,6 +628,10 @@ class UserPayoutEventManager(PayoutEventManager):
         elif payout_type == PayoutType.VIRTUAL_INCENTIVES:
             request_data: VICashoutMethodRequestData = (
                 virtual_incentives_manager.make_request(amount, cashout_method, pe_uuid)
+            )
+        elif payout_type == PayoutType.GIFTBIT:
+            request_data: GiftbitCashoutMethodRequestData = (
+                giftbit_manager.make_request(amount, cashout_method, pe_uuid)
             )
         else:
             raise ValueError(f"unknown {payout_type=}")

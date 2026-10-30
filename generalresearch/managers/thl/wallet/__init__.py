@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+from generalresearch.managers.thl.giftbit import GiftbitManager
 from generalresearch.managers.thl.ipinfo import GeoIpInfoManager
 from generalresearch.managers.thl.virtual_incentives_api import VirtualIncentivesManager
 from generalresearch.managers.thl.wallet.approve import (
@@ -38,7 +39,8 @@ def manage_pending_cashout(
     order_data: dict[str, Any] | CashMailOrderData | None = None,
     tango_client: TangoClient | None = None,
     paypal_client: PayPalPayoutManager | None = None,
-    virtual_incentives_manager: VirtualIncentivesManager | None = None
+    virtual_incentives_manager: VirtualIncentivesManager | None = None,
+    giftbit_manager: GiftbitManager | None = None
 ) -> UserPayoutEvent:
     """
     Called by a UI actions performed by Todd. This rejects/approves/cancels
@@ -89,6 +91,16 @@ def manage_pending_cashout(
             assert virtual_incentives_manager is not None
 
             virtual_incentives_manager.complete_order(
+                user=user,
+                payout_event=pe,
+                user_payout_event_manager=user_payout_event_manager,
+                ledger_manager=ledger_manager,
+            )
+
+        elif pe.payout_type == PayoutType.GIFTBIT:
+            assert giftbit_manager is not None
+
+            giftbit_manager.complete_order(
                 user=user,
                 payout_event=pe,
                 user_payout_event_manager=user_payout_event_manager,
