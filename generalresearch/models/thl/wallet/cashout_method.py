@@ -352,7 +352,6 @@ class GiftbitCashoutMethodData(BaseModel):
     allowed_prices_in_cents: list[int] | None = Field(default=None)
     countries: list[str] | None= Field(description="None means global")
     disclaimer: str = Field(default="")
-    description: str = Field(default="")
 
 
 class GiftbitCashoutMethodRequestData(BaseModel):

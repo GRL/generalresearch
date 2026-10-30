@@ -217,7 +217,7 @@ class GiftbitClient:
 
         return CashoutMethod(
             name=c["name"],
-            description=c["name"],
+            description=c["description"],
             id=uuid4().hex,
             currency=Currency.USD,
             original_currency=currency,
@@ -232,7 +232,6 @@ class GiftbitClient:
                 allowed_prices_in_cents=c.get("allowed_prices_in_cents"),
                 countries=countries,
                 disclaimer=c["disclaimer"],
-                description=c["description"],
             ),
             type=PayoutType.GIFTBIT,
             user=None,
