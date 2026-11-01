@@ -29,7 +29,9 @@ from generalresearch.redis_helper import RedisConfig
 if TYPE_CHECKING:
     from generalresearch.managers.thl.wallet.user_payout import UserPayoutEventManager
 
-BASE_URL = "https://api-testbed.giftbit.com/papi/v1"
+SANDBOX_BASE_URL = "https://api-testbed.giftbit.com/papi/v1"
+BASE_URL = "https://api.giftbit.com/papi/v1"
+
 locales = Localelator()
 
 logging.basicConfig()
@@ -109,6 +111,10 @@ region_to_country_iso = {
 
 
 class GiftbitClient:
+    """
+    https://www.giftbit.com/api-documentation
+    """
+
     def __init__(
         self,
         *,
@@ -162,8 +168,11 @@ class GiftbitClient:
         # Claude converted it to ISO for me
         res = self._request("GET", "/regions")["regions"]
 
+    def get_funds(self):
+        return self._request("GET", "/funds")["fundsbycurrency"]
+
     def list_brands_page(self, limit: int = 100, offset: int = 0) -> dict[str, Any]:
-        params = {"limit": limit, "offset": offset}
+        params = {"limit": limit, "offset": offset, "embeddable": True}
         _res = self._request("GET", "/brands", params=params)
         return _res
 
@@ -185,6 +194,9 @@ class GiftbitClient:
 
     def get_supported_brands(self):
         brands = self.list_brands()
+        # There are 1536 brands. Nobody wants a CorePower Yoga gift card. Start with these
+        names = {"visa", "amazon", "apple", "starbucks", "uber", "walmart", "google"}
+        brands = [b for b in brands if any(name in b["name"].lower() for name in names)]
         cms = []
         for b in brands:
             b = self.get_brand(b["brand_code"])
@@ -231,7 +243,7 @@ class GiftbitClient:
                 max_price_in_cents=c.get("max_price_in_cents"),
                 allowed_prices_in_cents=c.get("allowed_prices_in_cents"),
                 countries=countries,
-                disclaimer=c["disclaimer"],
+                disclaimer=c.get("disclaimer", ""),
             ),
             type=PayoutType.GIFTBIT,
             user=None,
