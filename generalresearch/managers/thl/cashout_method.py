@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Collection
 from copy import copy
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 from uuid import UUID, uuid4
 
 from pydantic import NonNegativeInt
@@ -25,7 +25,9 @@ if TYPE_CHECKING:
     from generalresearch.models.thl.wallet.cashout_method import (
         CashMailCashoutMethodData,
         CashoutMethod,
+        GiftbitCashoutMethodData,
         PaypalCashoutMethodData,
+        TangoCashoutMethodData,
     )
 
 
@@ -418,14 +420,24 @@ class CashoutMethodManager(PostgresManager):
         cms = self.get_cashout_methods(user=user)
 
         # Filter out by country before bothering w exchange rates
-        cms = [
-            cm
-            for cm in cms
-            if (
-                cm.type == PayoutType.TANGO and country_iso.lower() in cm.data.countries
-            )
-            or cm.type != PayoutType.TANGO
-        ]
+        country_iso = country_iso.lower()
+        country_cms = []
+        for cm in cms:
+            if cm.type == PayoutType.TANGO:
+                data = cast("TangoCashoutMethodData", cm.data)
+                if country_iso in data.countries:
+                    country_cms.append(cm)
+                continue
+
+            if cm.type == PayoutType.GIFTBIT:
+                data = cast("GiftbitCashoutMethodData", cm.data)
+                if data.countries is None or country_iso in data.countries:
+                    country_cms.append(cm)
+                continue
+
+            country_cms.append(cm)
+
+        cms = country_cms
 
         cms = [
             self.apply_currency_adjustments(x, product, usd_exchange_rate) for x in cms
