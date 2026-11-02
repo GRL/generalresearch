@@ -163,6 +163,21 @@ class VirtualIncentivesClient:
                 raise
             return None
 
+    @staticmethod
+    def format_order(d: dict):
+        order = d["order"]
+        assert len(order["accounts"]) == 1
+        acct = order.pop("accounts")[0]
+        order["sku"] = acct["sku"]
+        order["currency"] = acct["currency"]
+        order["amount"] = acct["amount"]
+        order["link"] = acct["link"]
+        return order
+
+    def get_order_detail(self, order_number: int):
+        res = self._request("GET", f"/orders/{order_number}")
+        return self.format_order(res)
+
     def create_order(self, cashout_request_id: str, sku: str, amount: Decimal):
         """
 
@@ -188,7 +203,8 @@ class VirtualIncentivesClient:
             ],
         }
 
-        return self._request("POST", "/orders", json={"order": data})
+        res = self._request("POST", "/orders", json={"order": data})
+        return self.format_order(res)
 
 
 class VirtualIncentivesManager(PostgresManagerWithRedis):
