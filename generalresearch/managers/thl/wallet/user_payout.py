@@ -227,6 +227,14 @@ class UserPayoutEventManager(PayoutEventManager):
             if "redemptionInstructions" in reward:
                 reward["redemption_instructions"] = reward.pop("redemptionInstructions")
             transaction_info = order["reward"]
+        elif (
+            pe.payout_type == PayoutType.GIFTBIT and pe.status == PayoutStatus.COMPLETE
+        ):
+            transaction_info = {
+                "expiry": order["expiry"],
+                "message": order["message"],
+                "direct_link": order["direct_link"],
+            }
         elif pe.payout_type == PayoutType.PAYPAL and pe.status == PayoutStatus.COMPLETE:
             info = {"transaction_id": order["transaction_id"]}
             transaction_info = info
