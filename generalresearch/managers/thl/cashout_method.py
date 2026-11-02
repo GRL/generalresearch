@@ -317,6 +317,8 @@ class CashoutMethodManager(PostgresManager):
         if cashout_method.original_currency in {None, Currency.USD}:
             exchange_rate = 1.0
         else:
+            if cashout_method.original_currency not in usd_exchange_rate:
+                return None
             exchange_rate = usd_exchange_rate[cashout_method.original_currency]
 
         method_min_value_usd = USDCent(round(cashout_method.min_value * exchange_rate))
