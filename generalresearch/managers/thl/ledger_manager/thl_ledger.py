@@ -1070,6 +1070,8 @@ class ThlLedgerManager(LedgerManager):
             PayoutType.CASH_IN_MAIL: f"User Payout Cash Request {amt_str}",
             PayoutType.TANGO: f"User Payout Tango Request {amt_str}",
             PayoutType.VIRTUAL_INCENTIVES: f"User Payout VI Request {amt_str}",
+            PayoutType.GIFTBIT: f"User Payout Giftbit Request {amt_str}",
+            PayoutType.GIFTRONAUT: f"User Payout Giftronaut Request {amt_str}",
         }
         description = descriptions[payout_event.payout_type]
 
