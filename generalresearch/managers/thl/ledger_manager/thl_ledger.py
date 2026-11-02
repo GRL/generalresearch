@@ -1154,6 +1154,8 @@ class ThlLedgerManager(LedgerManager):
             PayoutType.CASH_IN_MAIL: f"User Payout Cash Complete {amt_str}",
             PayoutType.TANGO: f"User Payout Tango Complete {amt_str}",
             PayoutType.VIRTUAL_INCENTIVES: f"User Payout VI Complete {amt_str}",
+            PayoutType.GIFTBIT: f"User Payout Giftbit Complete {amt_str}",
+            PayoutType.GIFTRONAUT: f"User Payout Giftronaut Complete {amt_str}",
         }
         description = descriptions[payout_event.payout_type]
         bp_wallet_account = self.get_account_or_create_bp_wallet(user.product)
@@ -1199,6 +1201,9 @@ class ThlLedgerManager(LedgerManager):
             if fee_amount is None:
                 # todo: What is the fee????? On the website it says 0, which I don't really believe.
                 fee_amount = (amount_usd * Decimal("0.029")).quantize(Decimal("0.01"))
+        elif payout_event.payout_type == PayoutType.GIFTBIT:
+            fee_amount = Decimal(0)
+            bp_expense_account = None
         else:
             raise NotImplementedError()
 
@@ -1317,7 +1322,7 @@ class ThlLedgerManager(LedgerManager):
         self,
         user: User,
         payout_event: UserPayoutEvent,
-        fee_expense_account: LedgerAccount,
+        fee_expense_account: LedgerAccount | None,
         fee_payer_account: LedgerAccount,
         fee_amount: Decimal,
         description: str,
