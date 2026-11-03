@@ -126,8 +126,8 @@ class MorningSurveyManager(SurveyManager):
         res = self.sql_helper.execute_sql_query(
             f"""
         SELECT {fields_str}
-        FROM {self.BID_DB_SOURCE} AS bid
-        JOIN {self.QUOTA_DB_SOURCE} AS quota ON bid.id = quota.bid_id
+        FROM {BID_DB_SOURCE} AS bid
+        JOIN {QUOTA_DB_SOURCE} AS quota ON bid.id = quota.bid_id
         {filter_str}
         GROUP BY bid.id;
         """,
@@ -141,7 +141,7 @@ class MorningSurveyManager(SurveyManager):
     def create(self, bid: MorningBid) -> bool:
         now = datetime.now(tz=UTC)
         d = bid.to_mysql()
-        create_fields = self.BID_FIELDS + ["created", "updated"]
+        create_fields = BID_FIELDS + ["created", "updated"]
 
         fields_str = ", ".join([f"`{x}`" for x in create_fields])
         values_str = ", ".join([f"%({x})s" for x in create_fields])
@@ -152,7 +152,7 @@ class MorningSurveyManager(SurveyManager):
         c = conn.cursor()
         c.execute(
             query=f"""
-            INSERT INTO {self.BID_DB_SOURCE}
+            INSERT INTO {BID_DB_SOURCE}
                 ({fields_str}) 
             VALUES ({values_str})
             """,
@@ -160,7 +160,7 @@ class MorningSurveyManager(SurveyManager):
         )
 
         quotas = d["quotas"]
-        create_fields = self.QUOTA_FIELDS + ["bid_id"]
+        create_fields = QUOTA_FIELDS + ["bid_id"]
         fields_str = ", ".join([f"`{x}`" for x in create_fields])
         values_str = ", ".join([f"%({x})s" for x in create_fields])
         quota_data = [
@@ -170,7 +170,7 @@ class MorningSurveyManager(SurveyManager):
         c = conn.cursor()
         c.executemany(
             query=f"""
-                INSERT INTO {self.QUOTA_DB_SOURCE}
+                INSERT INTO {QUOTA_DB_SOURCE}
                     ({fields_str}) 
                 VALUES ({values_str})
             """,
@@ -191,12 +191,12 @@ class MorningSurveyManager(SurveyManager):
         d = bid.to_mysql()
         d["updated"] = now
 
-        bid_data = {k: v for k, v in d.items() if k in self.BID_FIELDS + ["updated"]}
+        bid_data = {k: v for k, v in d.items() if k in BID_FIELDS + ["updated"]}
         set_str = ", ".join(
             [
                 f"`{k}` = %({k})s"
                 for k, v in d.items()
-                if k in self.BID_FIELDS + ["updated"] and k != "id"
+                if k in BID_FIELDS + ["updated"] and k != "id"
             ]
         )
 
@@ -205,7 +205,7 @@ class MorningSurveyManager(SurveyManager):
         c = conn.cursor()
         c.execute(
             f"""
-        UPDATE {self.BID_DB_SOURCE}
+        UPDATE {BID_DB_SOURCE}
         SET {set_str}
         WHERE `id`=%(id)s
         LIMIT 1""",
@@ -213,20 +213,20 @@ class MorningSurveyManager(SurveyManager):
         )
 
         quota_data = [
-            {k: v for k, v in quota.items() if k in self.QUOTA_FIELDS}
+            {k: v for k, v in quota.items() if k in QUOTA_FIELDS}
             for quota in d["quotas"]
         ]
         set_str = ", ".join(
             [
                 f"`{k}` = %({k})s"
                 for k, v in d["quotas"][0].items()
-                if k in self.QUOTA_FIELDS and k != "id"
+                if k in QUOTA_FIELDS and k != "id"
             ]
         )
         for quota in quota_data:
             c.execute(
                 f"""
-            UPDATE {self.QUOTA_DB_SOURCE}
+            UPDATE {QUOTA_DB_SOURCE}
             SET {set_str}
             WHERE `id`=%(id)s
             LIMIT 1""",
