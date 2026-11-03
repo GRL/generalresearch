@@ -439,10 +439,10 @@ class DynataSurvey(MarketplaceTask):
         return s
 
     @field_validator("category_ids", mode="before")
-    def split_category_ids(cls, v: object) -> object:
-        if isinstance(v, str):
-            return v.split("|")
-        return v
+    def split_category_ids(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.replace("|", ",").split(",") if value else []
+        return value
 
     @model_validator(mode="before")
     @classmethod
