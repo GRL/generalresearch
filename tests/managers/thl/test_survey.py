@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -23,6 +23,7 @@ from generalresearch.models.thl.survey.model import (
     SurveyCategoryModel,
     SurveyEligibilityDefinition,
     SurveyStat,
+    TimeInterval,
 )
 
 if TYPE_CHECKING:
@@ -111,6 +112,36 @@ class TestSurvey:
         assert res2[0].id == res[0].id
         assert res2[0] == res[0]
         assert len(res2) == len(surveys2)
+
+    def test_active_hours_round_trip(
+        self,
+        delete_buyers_surveys: Callable[..., None],
+        survey_manager: SurveyManager,
+    ):
+        delete_buyers_surveys()
+        active_hours = [
+            TimeInterval(start=time(5), end=time(1), timezone=None),
+            TimeInterval(
+                start=time(8),
+                end=time(17),
+                timezone="America/New_York",
+            ),
+        ]
+        survey = Survey(
+            source=Source.TESTING,
+            survey_id="active-hours",
+            buyer_code="active-hours-buyer",
+            active_hours=active_hours,
+        )
+
+        survey_manager.create_or_update([survey])
+        result = survey_manager.filter_by_natural_key(
+            source=survey.source,
+            survey_ids=[survey.survey_id],
+        )
+
+        assert len(result) == 1
+        assert result[0].active_hours == active_hours
 
     def test_category(self, survey_manager: SurveyManager):
         survey1 = Survey(id=562289, survey_id="a", source=Source.TESTING)

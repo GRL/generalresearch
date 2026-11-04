@@ -202,6 +202,7 @@ DeviceTypes = Annotated[set[DeviceType], enum_to_comma_sep_str, from_comma_sep_s
 
 # This is a set of alphanumeric strings, that serializes and de-serializes
 # into a (sorted) comma-separated str
+# 2026-11-03 GSS: Nothing in here checks if they are alphanumeric... Should they be??
 AlphaNumStr = Annotated[str, StringConstraints(max_length=32, min_length=1)]
 
 # a string like an IP address, but we don't need to validate that it is

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import json
+from datetime import UTC, datetime, time
 from decimal import Decimal
 from typing import Annotated, Any
+from zoneinfo import ZoneInfo
 
 from pydantic import (
     BaseModel,
@@ -15,6 +17,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from pydantic_extra_types.timezone_name import TimeZoneName
 
 from generalresearch.managers.thl.buyer import Buyer
 from generalresearch.models.custom_types import (
@@ -54,6 +57,48 @@ class SurveyEligibilityDefinition(BaseModel):
         return self
 
 
+class TimeInterval(BaseModel):
+    """
+    An optionally tz-aware time interval.
+    If timezone is null, the time interval is in the WORKER'S local time.
+
+    e.g. 07:00 to 22:00 America/New_York
+    """
+
+    start: time = Field(description="Start time", examples=[time(7)])
+    end: time = Field(description="End time", examples=[time(22)])
+    timezone: TimeZoneName | None = Field(
+        description="If timezone is null, the time interval is in the WORKER'S local time.",
+        examples=["America/New_York"],
+    )
+
+    def to_str(self):
+        return f"{self.start} - {self.end} tz={self.timezone}"
+
+    def is_currently_active(self, worker_local_time: datetime) -> bool:
+        assert worker_local_time.tzinfo is not None
+        if self.timezone is None:
+            current_time = worker_local_time.time()
+        else:
+            current_time = worker_local_time.astimezone(ZoneInfo(self.timezone)).time()
+
+        if self.start <= self.end:
+            return self.start <= current_time <= self.end
+
+        # An interval whose end precedes its start crosses midnight.
+        return current_time >= self.start or current_time <= self.end
+
+    def is_currently_active_by_worker_tz(self, worker_tz: ZoneInfo | None) -> bool:
+        if self.timezone is None:
+            if worker_tz is None:
+                return False
+            current_time = datetime.now(tz=worker_tz)
+        else:
+            current_time = datetime.now(tz=ZoneInfo(self.timezone))
+
+        return self.is_currently_active(current_time)
+
+
 class Survey(BaseModel):
     model_config = ConfigDict(validate_assignment=True)
 
@@ -79,6 +124,20 @@ class Survey(BaseModel):
     categories: list[SurveyCategoryModel] = Field(default_factory=list)
 
     eligibility_criteria: SurveyEligibilityDefinition | None = Field(default=None)
+
+    # Task only allows entrances during ANY of the time intervals specified
+    active_hours: list[TimeInterval] | None = Field(default=None)
+
+    @staticmethod
+    def active_hours_from_off_hours(off_hours: TimeInterval) -> list[TimeInterval]:
+        """Convert one off-hours interval to its complementary active hours."""
+        return [
+            TimeInterval(
+                start=off_hours.end,
+                end=off_hours.start,
+                timezone=off_hours.timezone,
+            )
+        ]
 
     @property
     def natural_key(self) -> SurveyKey:
@@ -110,7 +169,16 @@ class Survey(BaseModel):
         d["eligibility_criteria"] = None
         if self.eligibility_criteria is not None:
             d["eligibility_criteria"] = self.eligibility_criteria.model_dump_json()
+        if self.active_hours:
+            d['active_hours'] = json.dumps(d['active_hours'])
         return d
+
+    def is_currently_active(self, worker_local_time: datetime):
+        return (
+            any(h.is_currently_active(worker_local_time) for h in self.active_hours)
+            if self.active_hours
+            else True
+        )
 
 
 class SurveyStat(BaseModel):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from functools import cached_property
 from typing import (
@@ -46,6 +46,7 @@ from generalresearch.models.thl.survey.condition import (
     ConditionValueType,
     MarketplaceCondition,
 )
+from generalresearch.models.thl.survey.model import TimeInterval
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -373,6 +374,22 @@ class InnovateSurvey(MarketplaceTask):
         d["quotas"] = json.loads(d["quotas"])
         d["off_hour_traffic"] = json.loads(d["off_hour_traffic"])
         return cls.model_validate(d)
+
+    def to_active_hours(self) -> list[TimeInterval] | None:
+        if self.off_hour_traffic is None:
+            return None
+        if "from" not in self.off_hour_traffic or "to" not in self.off_hour_traffic:
+            return None
+        # e.g. {"from": "01:00:00 AM", "to": "05:00:00 AM"}
+        start = datetime.strptime(self.off_hour_traffic["from"], "%I:%M:%S %p").time()  # noqa: DTZ007
+        end = datetime.strptime(self.off_hour_traffic["to"], "%I:%M:%S %p").time()  # noqa: DTZ007
+        return [
+            TimeInterval(
+                start=end,
+                end=start,
+                timezone=None,
+            )
+        ]
 
     def participation_allowed(
         self, att_survey_ids: set[str], att_job_ids: set[str]
