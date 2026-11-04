@@ -91,10 +91,12 @@ class SurveyManager(PostgresManager):
         query = """
         INSERT INTO marketplace_survey (
             source, survey_id, created_at, updated_at,
-            is_live, is_recontact, buyer_id, eligibility_criteria
+            is_live, is_recontact, buyer_id, eligibility_criteria,
+            active_hours
         ) VALUES (
             %(source)s, %(survey_id)s, %(created_at)s, %(updated_at)s,
-            %(is_live)s, %(is_recontact)s, %(buyer_id)s, %(eligibility_criteria)s
+            %(is_live)s, %(is_recontact)s, %(buyer_id)s, %(eligibility_criteria)s,
+            %(active_hours)s
         ) ON CONFLICT (source, survey_id) DO NOTHING;"""
         params = [s.model_dump_sql() for s in surveys]
         with self.pg_config.make_connection() as conn:
@@ -216,7 +218,8 @@ class SurveyManager(PostgresManager):
     ) -> list[Survey]:
         query = """
         SELECT id, source, survey_id, created_at, updated_at,
-            is_live, is_recontact, buyer_id, eligibility_criteria
+            is_live, is_recontact, buyer_id, eligibility_criteria,
+            active_hours
         FROM marketplace_survey
         WHERE source = %(source)s AND
             survey_id = ANY(%(survey_ids)s);
@@ -233,7 +236,8 @@ class SurveyManager(PostgresManager):
         """
         query = """
         SELECT id, source, survey_id, created_at, updated_at,
-            is_live, is_recontact, buyer_id, eligibility_criteria
+            is_live, is_recontact, buyer_id, eligibility_criteria,
+            active_hours
         FROM marketplace_survey
         WHERE source = %(source)s AND is_live;
         """
@@ -245,7 +249,7 @@ class SurveyManager(PostgresManager):
         Return all live surveys
         """
         fields_default = """id, source, survey_id, created_at, updated_at,
-            is_live, is_recontact, buyer_id, eligibility_criteria"""
+            is_live, is_recontact, buyer_id, eligibility_criteria, active_hours"""
         fields = ", ".join(fields) if fields else fields_default
         query = f"""
         SELECT {fields}

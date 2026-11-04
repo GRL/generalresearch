@@ -524,6 +524,7 @@ class Survey(models.Model):
     is_live = models.BooleanField(null=False)
     is_recontact = models.BooleanField(default=False)
 
+    active_hours = models.JSONField(null=True)
     # .... more metadata: survey platform/host, category, etc ...
 
     class Meta:
