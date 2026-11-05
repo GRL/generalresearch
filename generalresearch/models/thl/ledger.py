@@ -384,6 +384,8 @@ class LedgerTransaction(BaseModel):
                 d["description"] = "Tango"
             elif payout_type == PayoutType.PAYPAL:
                 d["description"] = "PayPal"
+            elif payout_type in {PayoutType.GIFTBIT, PayoutType.GIFTRONAUT, PayoutType.GIFTED, PayoutType.VIRTUAL_INCENTIVES}:
+                d["description"] = payout_type.value
             else:
                 raise ValueError(payout_type)
             return UserLedgerTransactionUserPayout.model_validate(d)
