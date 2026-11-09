@@ -4,7 +4,7 @@ import logging
 from datetime import UTC, datetime
 from decimal import Decimal
 from functools import cached_property
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from generalresearch.managers.base import (
     PostgresManager,
@@ -23,6 +23,8 @@ from generalresearch.models.thl.session import (
 from generalresearch.models.thl.task_adjustment import TaskAdjustmentEvent
 
 if TYPE_CHECKING:
+    from influxdb import InfluxDBClient
+
     from generalresearch.managers.thl.ledger_manager.thl_ledger import (
         ThlLedgerManager,
     )
@@ -33,7 +35,6 @@ logger = logging.getLogger(__name__)
 
 
 class TaskAdjustmentManager(PostgresManager):
-
     @cached_property
     def wall_manager(self):
         return WallManager(pg_config=self.pg_config)
@@ -117,7 +118,8 @@ class TaskAdjustmentManager(PostgresManager):
         alert_time: datetime | None = None,
         ext_status_code: str | None = None,
         adjusted_cpi: Decimal | None = None,
-    ) -> None:
+        influx_client: InfluxDBClient | None = None,
+    ) -> TaskAdjustmentEvent | None:
         """
         We just got an adjustment notification from a marketplace.
 
@@ -204,4 +206,38 @@ class TaskAdjustmentManager(PostgresManager):
         self.session_manager.adjust_status(session)
         ledger_manager.create_tx_bp_adjustment(session, created=alert_time)
 
-        return
+        if influx_client:
+            self.write_influx_event(event, influx_client=influx_client)
+
+        return event
+
+    @staticmethod
+    def write_influx_event(
+        event: TaskAdjustmentEvent, influx_client: InfluxDBClient
+    ) -> None:
+        """Write a task adjustment point suitable for Grafana dashboards."""
+        tags: dict[str, str] = {
+            "source": event.source.value,
+            "adjusted_status": event.adjusted_status.value,
+        }
+        if event.ext_status_code is not None:
+            tags["ext_status_code"] = event.ext_status_code
+
+        fields: dict[str, Any] = {
+            "adjustment_count": 1,
+            "wall_uuid": event.wall_uuid,
+            "survey_id": event.survey_id,
+        }
+        if event.amount is not None:
+            fields["amount"] = float(event.amount)
+
+        influx_client.write_points(
+            [
+                {
+                    "measurement": "task_adjustment",
+                    "tags": tags,
+                    "time": event.alerted.isoformat(),
+                    "fields": fields,
+                }
+            ]
+        )

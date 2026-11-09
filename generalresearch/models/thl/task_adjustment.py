@@ -15,7 +15,7 @@ from generalresearch.models.thl.definitions import (
 
 class TaskAdjustmentEvent(BaseModel):
     """
-    This represents a notification that we've received from a marketplace
+    This represents a notification that we've processed from a marketplace
     about the adjustment of a Wall's status. We might have multiple events
     for the same wall event. The Wall.adjusted_status stores the latest
     status, while the thl_taskadjustment table stores each time a

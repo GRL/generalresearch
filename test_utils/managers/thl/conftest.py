@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING
 
 import pytest
 import redis
-from pydantic import PostgresDsn
-
 from generalresearch.managers.base import Permission
 from generalresearch.managers.thl.user_manager.mysql_user_manager import (
     MysqlUserManager,
@@ -18,6 +16,7 @@ from generalresearch.managers.thl.user_manager.redis_user_manager import (
 )
 from generalresearch.pg_helper import PostgresConfig
 from generalresearch.redis_helper import RedisConfig
+from pydantic import PostgresDsn
 
 if TYPE_CHECKING:
     from generalresearch.config import GRLBaseSettings
@@ -106,6 +105,11 @@ def thl_web_rr(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
 @pytest.fixture(scope="session")
 def thl_web_rw(thl_web_rr: PostgresConfig) -> PostgresConfig:
     return thl_web_rr
+
+
+@pytest.fixture(scope="session")
+def influx_client() -> None:
+    return None
 
 
 # === Managers ===

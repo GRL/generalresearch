@@ -147,10 +147,18 @@ def wall_factory(
             _status_code_options = list(
                 WALL_ALLOWED_STATUS_STATUS_CODE.get(wall_status, {})
             )
-            w.finish(
-                finished=w.started + timedelta(seconds=randint(a=60 * 2, b=60 * 10)),
+            # 2026-11-9 this was never persisted. idk what tests this would have broken or not... ?
+            # It needs to call the manager.finish, not the method
+            # w.finish(
+            #     finished=w.started + timedelta(seconds=randint(a=60 * 2, b=60 * 10)),
+            #     status=wall_status,
+            #     status_code_1=rand_choice(_status_code_options),
+            # )
+            wall_manager.finish(
+                wall=w,
                 status=wall_status,
                 status_code_1=rand_choice(_status_code_options),
+                finished=w.started + timedelta(seconds=randint(a=60 * 2, b=60 * 10)),
             )
 
             session.append_wall_event(w=w)
@@ -607,7 +615,8 @@ def user_failed_attempt_credit(
 
 @pytest.fixture
 def user_payout_event_factory(
-    user_payout_event_manager: UserPayoutEventManager, thl_ledger_manager: ThlLedgerManager
+    user_payout_event_manager: UserPayoutEventManager,
+    thl_ledger_manager: ThlLedgerManager,
 ) -> Callable[..., UserPayoutEvent]:
 
     def _inner(

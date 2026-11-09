@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import BaseModel, Field, PositiveInt, model_validator
 
 from generalresearch.models.custom_types import AwareDatetimeISO, UUIDStr
 from generalresearch.models.definitions import MAX_INT32, Source
@@ -13,9 +13,6 @@ from generalresearch.models.thl.definitions import WallAdjustedStatus
 from generalresearch.models.thl.user_identifiers import BPUIDStr
 from generalresearch.utils.enum import ReprEnumMeta
 
-"""
-Typically used internally. These affect a user's quality standing.
-"""
 
 
 class QualityEventType(StrEnum, metaclass=ReprEnumMeta):
@@ -57,32 +54,34 @@ class AccessControlEventBody(BaseModel):
     events: list[AccessControlEvent] = Field(max_length=100, min_length=1)
 
 
-class TaskAdjustmentEvent(BaseModel):
-    mid: UUIDStr = Field()
-    source: Source = Field()
-    status: WallAdjustedStatus = Field()
-    alert_time: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
+class TaskAdjustmentRequest(BaseModel):
+    """
+    A marketplace-initiated task adjustment. Used in API request.
+    This model has not yet passed any kind of validation or been applied.
+    It may be a duplicate, it may not exist, it may be invalid.
+    """
     quality_event_type: Literal[QualityEventType.task_adjustment] = Field(
         default=QualityEventType.task_adjustment
     )
 
-    # Only MID is needed to populate all the following, however we can pass them in order
-    #   to perform validation. If any disagree, an error should be raised.
-    survey_id: str | None = Field(max_length=32, default=None)
-    amount: Decimal | None = Field(
-        description="If negative, the status should adjusted to incomplete",
+    mid: UUIDStr = Field()
+    source: Source = Field()
+    status: WallAdjustedStatus = Field()
+    alert_time: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
+    ext_status_code: str | None = Field(
         default=None,
+        max_length=32,
+        description="Optional, marketplace-specific status code. This goes in the thl_taskadjustment table.",
     )
-    event_time: AwareDatetimeISO | None = Field(
-        description="This is when the original wall event was started",
-        default=None,
-    )
-    product_id: UUIDStr | None = Field(
-        default=None, examples=["4fe381fb7186416cb443a38fa66c6557"]
-    )
-    bpuid: BPUIDStr | None = Field(default=None, examples=["app-user-9329ebd"])
-    user_id: PositiveInt | None = Field(default=None, lt=MAX_INT32)
+    # Amount is required for WallAdjustedStatus.CPI_ADJUSTMENT and forbidden otherwise.
+    amount: Decimal | None = Field(default=None, gt=0, le=Decimal(40))
 
+    @model_validator(mode="after")
+    def validate_amount(self) -> Self:
+        if self.status == WallAdjustedStatus.CPI_ADJUSTMENT:
+            if self.amount is None:
+                raise ValueError("amount is required for a CPI adjustment")
+        elif self.amount is not None:
+            raise ValueError("amount is only allowed for a CPI adjustment")
+        return self
 
-class TaskAdjustmentEventBody(BaseModel):
-    events: list[TaskAdjustmentEvent] = Field(max_length=100, min_length=1)
