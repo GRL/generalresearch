@@ -70,10 +70,11 @@ class WallBase(BaseModel):
     req_cpi: Decimal = Field(decimal_places=5, lt=1000, ge=0)
     started: AwareDatetimeISO = Field(default_factory=lambda: datetime.now(tz=UTC))
 
-    # These get set on creation, or updated when the wall event is finished. So
+    # These get set on creation or updated when the wall event is finished. So
     #   they shouldn't really ever be NULL, but you don't have to pass them in
     #   on instantiation
     survey_id: str | None = Field(max_length=32, default=None)
+    # This is the (promised) CPI of the survey_id. It does not imply anything was finished or paid.
     cpi: Decimal | None = Field(lt=1000, ge=0, default=None)
 
     # Gets set when a wall is "finished"
@@ -1250,10 +1251,10 @@ class Session(BaseModel):
 
 
 def check_adjusted_status_consistent(
-    status: Status,
-    cpi: Decimal,
-    adjusted_status: WallAdjustedStatus,
-    adjusted_cpi: Decimal,
+    status: Status | None,
+    cpi: Decimal | None,
+    adjusted_status: WallAdjustedStatus | None,
+    adjusted_cpi: Decimal | None,
 ):
     if adjusted_status == WallAdjustedStatus.ADJUSTED_TO_COMPLETE:
         assert status != Status.COMPLETE, (
@@ -1282,7 +1283,7 @@ def check_adjusted_status_consistent(
 
 
 def check_adjusted_status_wall_consistent(
-    status: Status,
+    status: Status | None,
     cpi: Decimal | None = None,
     adjusted_status: WallAdjustedStatus | None = None,
     adjusted_cpi: Decimal | None = None,
@@ -1312,7 +1313,7 @@ def check_adjusted_status_wall_consistent(
 
 
 def _check_adjusted_status_wall_consistent(
-    status: Status,
+    status: Status | None,
     cpi: Decimal | None = None,
     adjusted_status: WallAdjustedStatus | None = None,
     adjusted_cpi: Decimal | None = None,

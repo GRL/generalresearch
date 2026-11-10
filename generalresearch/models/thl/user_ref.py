@@ -12,6 +12,7 @@ class UserRef(BaseModel):
     As a side-effect, this also avoids the type|None ruff issues.
     """
 
+    uuid: UUIDStr
     user_id: PositiveInt
     product_id: UUIDStr
     product_user_id: BPUIDStr

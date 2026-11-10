@@ -110,6 +110,30 @@ class TaskAdjustmentManager(PostgresManager):
         )
         return event
 
+    def try_handle_single_recon(
+        self,
+        ledger_manager: ThlLedgerManager,
+        wall_uuid: str,
+        adjusted_status: WallAdjustedStatus,
+        alert_time: datetime | None = None,
+        ext_status_code: str | None = None,
+        adjusted_cpi: Decimal | None = None,
+        influx_client: InfluxDBClient | None = None,
+    ) -> tuple[TaskAdjustmentEvent | None, str | None]:
+        try:
+            e = self.handle_single_recon(
+                ledger_manager=ledger_manager,
+                wall_uuid=wall_uuid,
+                adjusted_status=adjusted_status,
+                alert_time=alert_time,
+                ext_status_code=ext_status_code,
+                adjusted_cpi=adjusted_cpi,
+                influx_client=influx_client,
+            )
+        except AssertionError as e:
+            return None, str(e)
+        return e, None
+
     def handle_single_recon(
         self,
         ledger_manager: ThlLedgerManager,
@@ -119,7 +143,7 @@ class TaskAdjustmentManager(PostgresManager):
         ext_status_code: str | None = None,
         adjusted_cpi: Decimal | None = None,
         influx_client: InfluxDBClient | None = None,
-    ) -> TaskAdjustmentEvent | None:
+    ) -> TaskAdjustmentEvent:
         """
         We just got an adjustment notification from a marketplace.
 
@@ -130,12 +154,22 @@ class TaskAdjustmentManager(PostgresManager):
             what the Wall's final adjusted_* will be.
         """
         alert_time = alert_time or datetime.now(tz=UTC)
-        assert alert_time.tzinfo == UTC
+        assert alert_time.tzinfo == UTC, "alert_time must be tz-aware"
 
-        wall = self.wall_manager.get_from_uuid(wall_uuid)
+        wall = self.wall_manager.get_from_uuid_if_exists(wall_uuid)
+        assert wall is not None, "Wall {wall_uuid} not found"
+        assert wall.survey_id is not None, "wall.survey_id this shouldn't happen"
+        if (
+            wall.adjusted_timestamp is not None
+            and alert_time <= wall.adjusted_timestamp
+        ):
+            # This is an old adjustment being sent again for some reason. Ignore it
+            raise AssertionError(
+                "Alert time is <= the Wall's current adjusted_timestamp (replaying an old adjustment)"
+            )
+
         session = self.session_manager.get_from_id(wall.session_id)
-        user = session.user
-        user.prefetch_product(self.pg_config)
+        user = session.user.to_user_ref()
 
         if adjusted_status == WallAdjustedStatus.ADJUSTED_TO_FAIL:
             assert wall.cpi
@@ -149,7 +183,7 @@ class TaskAdjustmentManager(PostgresManager):
         elif adjusted_status == WallAdjustedStatus.CONFIRMED_COMPLETE:
             amount_usd = None
         else:
-            raise ValueError
+            raise ValueError(f"Unrecognized {adjusted_status=}")
 
         # If the wall event is a complete -> fail -> complete, we are going
         #   to receive an adjusted_status.adjust_to_complete, but internally,
@@ -169,18 +203,15 @@ class TaskAdjustmentManager(PostgresManager):
             new_adjusted_cpi = adjusted_cpi
 
         # Validate that this event's transition is allowed
-        try:
-            _check_adjusted_status_wall_consistent(
-                status=wall.status,
-                cpi=wall.cpi,
-                adjusted_status=wall.adjusted_status,
-                adjusted_cpi=wall.adjusted_cpi,
-                new_adjusted_status=new_adjusted_status,
-                new_adjusted_cpi=new_adjusted_cpi,
-            )
-        except AssertionError as e:
-            logger.warning(e)
-            return
+        # Raises an AssertionError otherwise
+        _check_adjusted_status_wall_consistent(
+            status=wall.status,
+            cpi=wall.cpi,
+            adjusted_status=wall.adjusted_status,
+            adjusted_cpi=wall.adjusted_cpi,
+            new_adjusted_status=new_adjusted_status,
+            new_adjusted_cpi=new_adjusted_cpi,
+        )
 
         event = TaskAdjustmentEvent(
             adjusted_status=adjusted_status,

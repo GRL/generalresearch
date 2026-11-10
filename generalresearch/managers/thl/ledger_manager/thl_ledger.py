@@ -56,6 +56,7 @@ from generalresearch.models.thl.payout_format import format_payout_format
 from generalresearch.models.thl.product import Product
 from generalresearch.models.thl.session import Session, Status, Wall
 from generalresearch.models.thl.user import User
+from generalresearch.models.thl.user_ref import UserRef
 from generalresearch.models.thl.wallet.definitions import PayoutType
 from generalresearch.models.thl.wallet.user_wallet import (
     UserDisplayedWalletBalance,
@@ -524,13 +525,12 @@ class ThlLedgerManager(LedgerManager):
         return t
 
     def create_tx_task_adjustment(
-        self, wall: Wall, user: User, created: datetime | None = None
+        self, wall: Wall, user: UserRef, created: datetime | None = None
     ) -> LedgerTransaction | None:
         """
-        How is this different then create_tx_bp_adjustment
-
+        This is the transaction for the marketplace adjusting the payment for the survey/task for THL.
+        vs create_tx_bp_adjustment which is the tx for us adjusting the payment to a BP
         """
-
         if created is None:
             created = wall.adjusted_timestamp
 

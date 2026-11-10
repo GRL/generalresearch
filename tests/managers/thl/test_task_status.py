@@ -19,7 +19,7 @@ from generalresearch.models.thl.product import (
     PayoutTransformationPercentArgs,
     UserWalletConfig,
 )
-from generalresearch.models.thl.session import WallOut
+from generalresearch.models.thl.session import WallOut, Wall
 from generalresearch.models.thl.task_status import TaskStatusResponse
 
 if TYPE_CHECKING:
@@ -525,20 +525,22 @@ class TestTaskStatus:
         self,
         bp1: Product,
         user_factory: Callable[..., User],
-        session_factory: Callable[..., Session],
+        bare_session_factory: Callable[..., Session],
+        wall_factory: Callable[..., Wall],
         wall_manager: WallManager,
         session_manager: SessionManager,
     ):
         # User Payout xform NULL
         user: User = user_factory(product=bp1)
-        s: Session = session_factory(
+        s: Session = bare_session_factory(
             user=user,
             started=start1,
-            wall_req_cpi=Decimal(1),
-            wall_count=2,
-            final_status=Status.ABANDON,
         )
-        w = s.wall_events[-1]
+        w: Wall = wall_factory(
+            session=s,
+            wall_status=None,
+            req_cpi=Decimal(1)
+        )
         wall_manager.adjust_status(
             wall=w,
             adjusted_status=WallAdjustedStatus.ADJUSTED_TO_COMPLETE,

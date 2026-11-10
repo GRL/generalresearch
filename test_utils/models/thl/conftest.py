@@ -80,8 +80,7 @@ def wall_factory(
 ) -> Callable[..., Wall]:
 
     def _inner(
-        wall_status: Status = Status.FAIL,
-        save: bool = True,
+        wall_status: Status | None = Status.FAIL,
         session: Session | None = None,
         session_id: PositiveInt | None = None,
         user: User | None = None,
@@ -93,57 +92,57 @@ def wall_factory(
         uuid_id: str | None = None,
     ) -> Wall:
         """To be used in tests, where we don't care about certain fields"""
-        user = user or user_factory()
-        if save:
-            _wall_started = started or fake.date_time_between(
-                start_date=datetime(year=1900, month=1, day=1, tzinfo=UTC),
-                end_date=datetime.now(tz=UTC),
-                tzinfo=UTC,
-            )
+        _wall_started = started or fake.date_time_between(
+            start_date=datetime(year=1900, month=1, day=1, tzinfo=UTC),
+            end_date=datetime.now(tz=UTC),
+            tzinfo=UTC,
+        )
 
-            if session:
-                # If an existing Session was provided, we want to do some
-                # additional validation.
+        if session:
+            # If an existing Session was provided, we want to do some
+            # additional validation.
+            assert user is None or user == session.user
 
-                if session.wall_events:
-                    # Subsequent Wall events
-                    _last_wall = session.wall_events[-1]
-                    assert not _last_wall.finished, (
-                        "Can't add new Walls until prior finishes"
-                    )
-                    _wall_started = _last_wall.started + timedelta(milliseconds=1)
-                else:
-                    # First Wall Event in a session
-                    _wall_started = session.started + timedelta(milliseconds=1)
+            if session.wall_events:
+                # Subsequent Wall events
+                _last_wall = session.wall_events[-1]
+                assert not _last_wall.finished, (
+                    "Can't add new Walls until prior finishes"
+                )
+                _wall_started = _last_wall.started + timedelta(milliseconds=1)
             else:
-                # If a Session was NOT provided, either (1) try to retrieve it
-                # from an optionally provided session_id int, or (2) proceed
-                # forward and make one
-                session = (
-                    session_manager.get_from_id(session_id=session_id)
-                    if session_id
-                    else None
-                ) or bare_session_factory(save=True, user=user)
+                # First Wall Event in a session
+                _wall_started = session.started + timedelta(milliseconds=1)
+        else:
+            # If a Session was NOT provided, either (1) try to retrieve it
+            # from an optionally provided session_id int, or (2) proceed
+            # forward and make one
+            user = user or user_factory()
+            session = (
+                session_manager.get_from_id(session_id=session_id)
+                if session_id
+                else None
+            ) or bare_session_factory(save=True, user=user)
 
-            assert session, "Wall factory requires Session"
+        assert session, "Wall factory requires Session"
 
-            source = source or rand_choice(list(Source))
-            req_survey_id = req_survey_id or uuid4().hex
-            req_cpi = req_cpi or Decimal(
-                fake.random_int(min=1, max=150) / 100
-            ).quantize(Decimal(".01"), rounding=ROUND_DOWN)
+        source = source or rand_choice(list(Source))
+        req_survey_id = req_survey_id or uuid4().hex
+        req_cpi = req_cpi or Decimal(
+            fake.random_int(min=1, max=150) / 100
+        ).quantize(Decimal(".01"), rounding=ROUND_DOWN)
 
-            w = wall_manager.create(
-                session_id=session.id,
-                user_id=session.user_id,
-                started=_wall_started,
-                source=source,
-                req_survey_id=req_survey_id,
-                req_cpi=req_cpi,
-                buyer_id=buyer_id,
-                uuid_id=uuid_id,
-            )
-
+        w = wall_manager.create(
+            session_id=session.id,
+            user_id=session.user_id,
+            started=_wall_started,
+            source=source,
+            req_survey_id=req_survey_id,
+            req_cpi=req_cpi,
+            buyer_id=buyer_id,
+            uuid_id=uuid_id,
+        )
+        if wall_status:
             _status_code_options = list(
                 WALL_ALLOWED_STATUS_STATUS_CODE.get(wall_status, {})
             )
@@ -161,24 +160,17 @@ def wall_factory(
                 finished=w.started + timedelta(seconds=randint(a=60 * 2, b=60 * 10)),
             )
 
-            session.append_wall_event(w=w)
+        session.append_wall_event(w=w)
 
-            return w
-
-        else:
-            raise ValueError("Unsaved Wall not yet supported")
+        return w
 
     return _inner
 
 
 @pytest.fixture
 def wall(wall_factory: Callable[..., Wall]) -> Wall:
-    return wall_factory(save=True)
+    return wall_factory()
 
-
-@pytest.fixture()
-def unsaved_wall(wall_factory: Callable[..., Wall]) -> Wall:
-    return wall_factory(save=False)
 
 
 # --- Wall: Enum(s) ---

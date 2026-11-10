@@ -204,10 +204,12 @@ class User(BaseModel):
         return json.dumps(d)
 
     def to_user_ref(self) -> UserRef:
+        assert self.uuid is not None
         assert self.user_id is not None
         assert self.product_id is not None
         assert self.product_user_id is not None
         return UserRef(
+            uuid=self.uuid,
             user_id=self.user_id,
             product_id=self.product_id,
             product_user_id=self.product_user_id,

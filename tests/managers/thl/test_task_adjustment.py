@@ -171,11 +171,14 @@ class TestHandleRecons:
         assert current_bp_payout == 0, "this is the amount paid to the BP"
 
         # And if we get an adj to fail, and handle it, it should do nothing at all
-        task_adjustment_manager.handle_single_recon(
+        e, reason = task_adjustment_manager.try_handle_single_recon(
             ledger_manager=thl_ledger_manager,
             wall_uuid=wall_uuid,
             adjusted_status=WallAdjustedStatus.ADJUSTED_TO_FAIL,
         )
+        assert e is None
+        assert 'attempt is already adjusted_status' in reason
+
         assert (
             len(task_adjustment_manager.filter_by_wall_uuid(wall_uuid=wall_uuid)) == 1
         )
@@ -256,11 +259,12 @@ class TestHandleRecons:
 
         for _ in range(4):
             # just run it 4 times to make sure nothing happens 4 times
-            task_adjustment_manager.handle_single_recon(
+            e, reason = task_adjustment_manager.try_handle_single_recon(
                 ledger_manager=thl_ledger_manager,
                 wall_uuid=wall_uuid,
                 adjusted_status=WallAdjustedStatus.ADJUSTED_TO_COMPLETE,
             )
+            assert e is None
 
         revenue_account = thl_ledger_manager.get_account_task_complete_revenue()
         bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(
@@ -290,11 +294,12 @@ class TestHandleRecons:
         wall_uuid = session_fail.wall_events[-1].uuid
 
         for _ in range(4):
-            task_adjustment_manager.handle_single_recon(
+            e, reason = task_adjustment_manager.try_handle_single_recon(
                 ledger_manager=thl_ledger_manager,
                 wall_uuid=wall_uuid,
                 adjusted_status=WallAdjustedStatus.ADJUSTED_TO_FAIL,
             )
+            assert e is None
 
         revenue_account = thl_ledger_manager.get_account_task_complete_revenue()
         bp_wallet_account = thl_ledger_manager.get_account_or_create_bp_wallet(

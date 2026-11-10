@@ -235,15 +235,13 @@ class WallManager(PostgresManager):
         adjusted_status: WallAdjustedStatus | None = None,
         adjusted_cpi: Decimal | None = None,
     ) -> None:
-        assert wall.status, "Wall must have an existing Status"
-
         # Be generous here, and if adjusted_status is adj to fail and
         #   adjusted_cpi is None, set it to 0
         if (
             adjusted_status == WallAdjustedStatus.ADJUSTED_TO_FAIL
             and adjusted_cpi is None
         ):
-            adjusted_cpi = 0
+            adjusted_cpi = Decimal(0)
         elif (
             adjusted_status == WallAdjustedStatus.ADJUSTED_TO_COMPLETE
             and adjusted_cpi is None
