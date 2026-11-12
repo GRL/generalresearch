@@ -1,6 +1,7 @@
 import uuid
 
 from django.db import models
+from django.db.models.functions import Now
 
 
 class User(models.Model):
@@ -18,12 +19,49 @@ class User(models.Model):
 
 
 class UserToken(models.Model):
+    """
+    DEPRECATED to be removed
+    """
+
     key = models.CharField(max_length=255, primary_key=True)
     user_id = models.BigIntegerField(null=True, db_index=True)
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = "gr_token"
+
+
+class APIToken(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    # e.g. tok_2mX9Kq6qNwVxAh3B (secrets.token_urlsafe(16))
+    public_id = models.CharField(max_length=32, unique=True)
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="api_tokens",
+    )
+
+    name = models.CharField(max_length=128, default="Default")
+    token_hash = models.CharField(max_length=64, unique=True)
+
+    is_active = models.BooleanField(db_default=True)
+    revoked_at = models.DateTimeField(null=True)
+    last_used_at = models.DateTimeField(null=True)
+
+    created_at = models.DateTimeField(db_default=Now())
+
+    class Meta:
+        db_table = "gr_api_token"
+        indexes = [
+            models.Index(fields=["user", "is_active"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "name"],
+                name="uniq_token_user_name",
+            )
+        ]
 
 
 class Membership(models.Model):

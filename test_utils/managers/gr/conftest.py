@@ -20,8 +20,12 @@ from generalresearch.redis_helper import RedisConfig
 
 if TYPE_CHECKING:
     from generalresearch.config import GRLBaseSettings
-    from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
+    from generalresearch.managers.gr.authentication import (
+        GRTokenManagerLegacy,
+        GRUserManager,
+    )
     from generalresearch.managers.gr.team import TeamManager
+    from generalresearch.managers.gr.token import TokenManager
 
 
 # === Msc ===
@@ -66,6 +70,11 @@ def gr_redis_config(
 
 
 @pytest.fixture(scope="session")
+def gr_redis_client(gr_redis_config):
+    return gr_redis_config.create_redis_client()
+
+
+@pytest.fixture(scope="session")
 def gr_db(django_db_factory: Callable[..., PostgresDsn]) -> PostgresConfig:
     _dsn = django_db_factory("generalresearch.gr_django")
 
@@ -102,13 +111,23 @@ def gr_team_manager(gr_db: PostgresConfig, gr_redis_config: RedisConfig) -> Team
 
 
 @pytest.fixture(scope="session")
-def gr_token_manager(gr_db: PostgresConfig) -> GRTokenManager:
+def gr_token_manager(gr_db: PostgresConfig) -> TokenManager:
     assert gr_db.dsn.path
     assert "/unittest-" in gr_db.dsn.path
 
-    from generalresearch.managers.gr.authentication import GRTokenManager
+    from generalresearch.managers.gr.token import TokenManager
 
-    return GRTokenManager(pg_config=gr_db)
+    return TokenManager(pg_config=gr_db)
+
+
+@pytest.fixture(scope="session")
+def gr_token_manager_legacy(gr_db: PostgresConfig) -> GRTokenManagerLegacy:
+    assert gr_db.dsn.path
+    assert "/unittest-" in gr_db.dsn.path
+
+    from generalresearch.managers.gr.authentication import GRTokenManagerLegacy
+
+    return GRTokenManagerLegacy(pg_config=gr_db)
 
 
 @pytest.fixture(scope="session")

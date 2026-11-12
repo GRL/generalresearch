@@ -14,21 +14,21 @@ from generalresearch.models.custom_types import UUIDStr
 from generalresearch.models.gr.definitions import TransferMethod
 
 if TYPE_CHECKING:
-    from generalresearch.managers.gr.authentication import GRTokenManager, GRUserManager
+    from generalresearch.managers.gr.authentication import GRUserManager
     from generalresearch.managers.gr.business import (
         BusinessAddressManager,
         BusinessBankAccountManager,
         BusinessManager,
     )
     from generalresearch.managers.gr.team import MembershipManager, TeamManager
-    from generalresearch.models.gr.authentication import GRToken, GRUser
+    from generalresearch.managers.gr.token import TokenManager
+    from generalresearch.models.gr.authentication import GRUser
     from generalresearch.models.gr.business import (
         Business,
         BusinessAddress,
         BusinessBankAccount,
     )
     from generalresearch.models.gr.team import Membership, Team
-    from generalresearch.pg_helper import PostgresConfig
 
 
 fake = faker.Faker()
@@ -255,43 +255,25 @@ def unsaved_gr_user(
 
 @pytest.fixture
 def gr_user_token_factory(
-    gr_user: GRUser, gr_token_manager: GRTokenManager, gr_db: PostgresConfig
-) -> Callable[..., GRToken]:
+    gr_user: GRUser, gr_token_manager: TokenManager
+) -> Callable[..., str]:
 
-    def _inner(
-        save: bool = True,
-    ) -> GRToken:
-
-        if save:
-            assert gr_user.id
-            gr_token_manager.create(user_id=gr_user.id)
-            gr_user.prefetch_token(pg_config=gr_db)
-
-            res = gr_user.token
-            assert res is not None, (
-                "GRToken should exist after creation and prefetching"
-            )
-            return res
-
-        else:
-            raise ValueError("Unsaved GR User not supported yet")
+    def _inner() -> str:
+        assert gr_user.id
+        res = gr_token_manager.create_token(user_id=gr_user.id)
+        return res.token
 
     return _inner
 
 
 @pytest.fixture
-def gr_user_token(gr_user_token_factory: Callable[..., GRToken]) -> GRToken:
-    return gr_user_token_factory(save=True)
+def gr_user_token(gr_user_token_factory: Callable[..., str]) -> str:
+    return gr_user_token_factory()
 
 
 @pytest.fixture
-def unsaved_gr_user_token(gr_user_token_factory: Callable[..., GRToken]) -> GRToken:
-    return gr_user_token_factory(save=False)
-
-
-@pytest.fixture()
-def gr_user_token_header(gr_user_token: GRToken) -> dict[str, str]:
-    return gr_user_token.auth_header
+def gr_user_token_header(gr_user_token) -> dict[str, str]:
+    return {"Authorization": f"Bearer {gr_user_token}"}
 
 
 # --- GR Membership ---

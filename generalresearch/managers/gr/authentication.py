@@ -10,11 +10,9 @@ from psycopg import sql
 from pydantic import PositiveInt
 
 from generalresearch.managers.base import PostgresManager, PostgresManagerWithRedis
-from generalresearch.models.custom_types import UUIDStr
 
 if TYPE_CHECKING:
     from generalresearch.models.gr.authentication import GRToken, GRUser
-    from generalresearch.pg_helper import PostgresConfig
 
 LOG = logging.getLogger("gr")
 
@@ -62,9 +60,7 @@ class GRUserManager(PostgresManagerWithRedis):
     def update(self, user: GRUser) -> None:
         """Persist the user's editable profile fields."""
         assert user.id is not None
-        data = user.model_dump(
-            mode="json", include={"id", "name", "avatar_url"}
-        )
+        data = user.model_dump(mode="json", include={"id", "name", "avatar_url"})
 
         with self.pg_config.make_connection() as conn:
             with conn.cursor() as c:
@@ -152,7 +148,8 @@ class GRUserManager(PostgresManagerWithRedis):
         return [GRUser.model_validate(item) for item in res]
 
 
-class GRTokenManager(PostgresManager):
+class GRTokenManagerLegacy(PostgresManager):
+    # DEPRECATED
     def get_by_key(
         self,
         api_key: str,
@@ -189,7 +186,7 @@ class GRTokenManager(PostgresManager):
 
         return GRToken.model_validate(res[0])
 
-    def create(self, user_id: PositiveInt) -> None:
+    def create(self, user_id: PositiveInt) -> str:
         # Taken directly from the DRF Token
         # https://github.com/encode/django-rest-framework/blob/0f39e0124d358b0098261f070175fa8e0359b739/rest_framework/authtoken/models.py#L35-L37
         from generalresearch.models.gr.authentication import GRToken
@@ -215,25 +212,4 @@ class GRTokenManager(PostgresManager):
                     params=data,
                 )
             conn.commit()
-
-    def get_by_user_id(self, user_id: PositiveInt) -> GRToken | None:
-        # django authtoken_token table has (user_id) UNIQUE constraint
-        # therefore, this will only return 0 or 1 GRTokens
-        from generalresearch.models.gr.authentication import GRToken
-
-        with self.pg_config.make_connection() as conn, conn.cursor() as c:
-            query = sql.SQL("""
-                    SELECT grt.*
-                    FROM gr_token AS grt
-                    LEFT JOIN gr_user AS u 
-                        ON u.id = grt.user_id
-                    WHERE u.id = %s
-                    LIMIT 1;
-                """)
-            c.execute(query=query, params=(user_id,))
-            result = c.fetchall()
-
-        if not result:
-            return None
-
-        return GRToken.model_validate(result[0])
+        return token.key
