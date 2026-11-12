@@ -375,7 +375,7 @@ def finished_session_factory(
 
 
 @pytest.fixture()
-def product_factory(product_manager: ProductManager) -> Callable[..., Product]:
+def product_factory(product_manager: ProductManager, thl_ledger_manager) -> Callable[..., Product]:
 
     def _inner(
         save: bool = True,
@@ -409,7 +409,7 @@ def product_factory(product_manager: ProductManager) -> Callable[..., Product]:
         redirect_url = redirect_url if redirect_url else "https://www.example.com/"
 
         if save:
-            return product_manager.create(
+            product = product_manager.create(
                 product_id=product_id,
                 team_id=team_id,
                 business_id=business_id,
@@ -425,6 +425,8 @@ def product_factory(product_manager: ProductManager) -> Callable[..., Product]:
                 user_create_config=user_create_config,
                 user_health_config=user_health_config,
             )
+            thl_ledger_manager.get_account_or_create_bp_wallet(product=product)
+            return product
         else:
             raise ValueError("Unsaved Product not yet supported")
 
