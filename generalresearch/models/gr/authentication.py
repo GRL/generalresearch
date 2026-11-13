@@ -29,9 +29,11 @@ if TYPE_CHECKING:
 
 
 class GRUserRef(BaseModel):
+    id: PositiveInt = Field()
     email: EmailStr | None = Field(default=None)
     name: str | None = Field(default=None)
     avatar_url: HttpsUrlStr | None = Field(default=None)
+    is_superuser: bool = Field(default=False)
     date_joined: AwareDatetimeISO = Field(
         description="When the GR User account signed up."
     )
@@ -62,10 +64,13 @@ class GRUser(BaseModel):
     token: GRToken | None = Field(default=None)
 
     def to_user_ref(self) -> GRUserRef:
+        assert self.id is not None
         return GRUserRef(
+            id=self.id,
             email=self.email,
             name=self.name,
             avatar_url=self.avatar_url,
+            is_superuser=self.is_superuser,
             date_joined=self.date_joined,
         )
 
@@ -121,15 +126,6 @@ class GRUser(BaseModel):
         products = {p.id: p for p in business_products + team_products}
 
         self.products = sorted(products.values(), key=lambda x: x.created)
-
-    def prefetch_token(self, pg_config: PostgresConfig):
-        from generalresearch.managers.gr.authentication import (
-            GRTokenManager,
-        )
-
-        tm = GRTokenManager(pg_config=pg_config)
-        assert self.id is not None
-        self.token = tm.get_by_user_id(user_id=self.id)
 
     def __eq__(self, other: GRUser) -> bool:
         return self.id == other.id

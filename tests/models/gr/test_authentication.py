@@ -79,6 +79,7 @@ class TestGRUser:
         gr_db: PostgresConfig,
         thl_web_rr: PostgresConfig,
         gr_redis_config: RedisConfig,
+            gr_team_manager
     ):
         from generalresearch.models.thl.product import Product
 
@@ -86,14 +87,14 @@ class TestGRUser:
 
         # Create a new Team membership, and then create a Product that
         #    is  part of that team
-        gr_membership.prefetch_team(pg_config=gr_db, redis_config=gr_redis_config)
-        assert isinstance(gr_membership.team, Team)
+        team = gr_team_manager.get_by_id(gr_membership.team_id)
+        assert isinstance(team, Team)
 
         p: Product = product_factory(team=gr_team)
         assert p.id_int
-        assert gr_team.uuid == gr_membership.team.uuid
+        assert gr_team.uuid == team.uuid
         assert p.team_id == gr_team.uuid
-        assert p.team_uuid == gr_membership.team.uuid
+        assert p.team_uuid == team.uuid
         assert gr_user.id == gr_membership.user_id
 
         gr_user.prefetch_products(

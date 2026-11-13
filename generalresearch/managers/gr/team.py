@@ -134,8 +134,12 @@ class MembershipManager(PostgresManager):
                 m.privilege,
                 m.created,
                 m.user_id,
-                u.email AS user_email,
-                u.date_joined AS user_date_joined,
+                u.id as user_id,
+                u.name,
+                u.email,
+                u.date_joined,
+                u.avatar_url,
+                u.is_superuser,
                 m.team_id
             FROM common_membership AS m
             JOIN gr_user AS u
@@ -150,8 +154,12 @@ class MembershipManager(PostgresManager):
 
         for item in res:
             item["user"] = {
-                "email": item.pop("user_email"),
-                "date_joined": item.pop("user_date_joined"),
+                "email": item.pop("email"),
+                "date_joined": item.pop("date_joined"),
+                "id": item["user_id"],
+                "name": item.pop("name"),
+                "avatar_url": item.pop("avatar_url"),
+                "is_superuser": item.pop("is_superuser"),
             }
 
         return [Membership.model_validate(item) for item in res]
