@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
@@ -15,11 +14,11 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    NonNegativeInt,
     PositiveInt,
     ValidationError,
     field_validator,
     model_validator,
-    NonNegativeInt,
 )
 from pydantic.json_schema import SkipJsonSchema
 
@@ -50,7 +49,6 @@ if TYPE_CHECKING:
     from generalresearch.models.gr.authentication import GRUser
     from generalresearch.models.gr.business import Business
     from generalresearch.models.thl.product import Product
-    from generalresearch.pg_helper import PostgresConfig
     from generalresearch.redis_helper import RedisConfig
 
 
@@ -96,28 +94,6 @@ class Membership(BaseModel):
     user: GRUserRef = Field()
 
     team_id: PositiveInt = Field()
-
-    # prefetch attributes
-    team: SkipJsonSchema[Team | None] = Field(default=None)
-
-    # --- Validators ---
-
-    @field_validator("created", mode="before")
-    @classmethod
-    def created_utc(cls, v: datetime | str) -> datetime | str:
-        if isinstance(v, datetime):
-            return v.replace(tzinfo=UTC)
-        return v
-
-    # --- prefetch methods ---
-
-    def prefetch_team(
-        self, pg_config: PostgresConfig, redis_config: RedisConfig
-    ) -> None:
-        from generalresearch.managers.gr.team import TeamManager
-
-        tm = TeamManager(pg_config=pg_config, redis_config=redis_config)
-        self.team = tm.get_by_id(team_id=self.team_id)
 
 
 class TeamUpdate(BaseModel):
