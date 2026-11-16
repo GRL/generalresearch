@@ -38,7 +38,7 @@ class UserIpHistoryManager(PostgresManagerWithRedis):
         self.geoip_info_manager = geoip_info_manager
 
     def get_redis_key(self, user_id: int) -> str:
-        return f"generalreserach:user-ip-history-v2:{user_id}"
+        return f"generalresearch:user-ip-history-v3:{user_id}"
 
     def get_user_ip_records_sql(self, user_id: int) -> list[UserIPRecord]:
         # The IP metadata is ONLY for the 'ip', NOT for any forwarded ips.
