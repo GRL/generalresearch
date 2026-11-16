@@ -84,7 +84,7 @@ class CriteriaManager(SqlManager, ABC):
                 for v in values
             ]
             values_str = ",".join(
-                [f"%({k})s" for k in self.DB_FIELDS + ["created", "last_used"]]
+                [f"%({k})s" for k in DB_FIELDS + ["created", "last_used"]]
             )
             conn = self.sql_helper.make_connection()
             c = conn.cursor()
@@ -101,7 +101,7 @@ class CriteriaManager(SqlManager, ABC):
 
     @property
     def mysql_fields(self) -> str:
-        return ", ".join([f"`{k}`" for k in self.DB_FIELDS])
+        return ", ".join([f"`{k}`" for k in DB_FIELDS])
 
     @property
     def mysql_db_table(self) -> str:
