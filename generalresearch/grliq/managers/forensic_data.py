@@ -21,6 +21,7 @@ from generalresearch.models.custom_types import UUIDStr
 
 if TYPE_CHECKING:
     from generalresearch.models.thl.user import User
+    from generalresearch.models.thl.user_ref import UserRef
     from generalresearch.pg_helper import PostgresConfig
 
 
@@ -348,12 +349,14 @@ class GrlIqDataManager:
         fingerprints: Collection[str] | None = None,
         product_id: str | None = None,
         product_ids: Collection[str] | None = None,
+        team_ids: Collection[str] | None = None,
+        business_ids: Collection[str] | None = None,
         uuids: Collection[str] | None = None,
         created_after: datetime | None = None,
         created_before: datetime | None = None,
         created_between: tuple[datetime, datetime] | None = None,
-        user: User | None = None,
-        users: Collection[User] | None = None,
+        user: User | UserRef | None = None,
+        users: Collection[User | UserRef] | None = None,
         phase: Phase | None = None,
         order_by: str = "created_at DESC",
         limit: int | None = None,
@@ -367,6 +370,8 @@ class GrlIqDataManager:
             fingerprints=fingerprints,
             product_id=product_id,
             product_ids=product_ids,
+            team_ids=team_ids,
+            business_ids=business_ids,
             created_after=created_after,
             created_before=created_before,
             created_between=created_between,
@@ -386,10 +391,12 @@ class GrlIqDataManager:
         uuid: str | None = None,
         product_ids: Collection[str] | None = None,
         product_id: str | None = None,
+        team_ids: Collection[str] | None = None,
+        business_ids: Collection[str] | None = None,
         created_after: datetime | None = None,
         created_before: datetime | None = None,
         created_between: tuple[datetime, datetime] | None = None,
-        user: User | None = None,
+        user: User | UserRef | None = None,
         limit: int | None = None,
         offset: int | None = None,
         order_by: str = "created_at DESC",
@@ -403,6 +410,8 @@ class GrlIqDataManager:
             uuids=[uuid] if uuid else None,
             product_ids=product_ids,
             product_id=product_id,
+            team_ids=team_ids,
+            business_ids=business_ids,
             created_after=created_after,
             created_before=created_before,
             created_between=created_between,
@@ -425,10 +434,12 @@ class GrlIqDataManager:
         uuid: str | None = None,
         product_id: str | None = None,
         product_ids: Collection[str] | None = None,
+        team_ids: Collection[str] | None = None,
+        business_ids: Collection[str] | None = None,
         created_after: datetime | None = None,
         created_before: datetime | None = None,
         created_between: tuple[datetime, datetime] | None = None,
-        user: User | None = None,
+        user: User | UserRef | None = None,
         order_by: str = "created_at DESC",
         limit: int | None = None,
         offset: int | None = None,
@@ -442,6 +453,8 @@ class GrlIqDataManager:
             uuids=[uuid] if uuid else None,
             product_id=product_id,
             product_ids=product_ids,
+            team_ids=team_ids,
+            business_ids=business_ids,
             created_after=created_after,
             created_before=created_before,
             created_between=created_between,
@@ -461,11 +474,13 @@ class GrlIqDataManager:
         uuids: Collection[str] | None = None,
         product_id: str | None = None,
         product_ids: Collection[str] | None = None,
+        team_ids: Collection[str] | None = None,
+        business_ids: Collection[str] | None = None,
         created_after: datetime | None = None,
         created_before: datetime | None = None,
         created_between: tuple[datetime, datetime] | None = None,
-        user: User | None = None,
-        users: Collection[User] | None = None,
+        user: User | UserRef | None = None,
+        users: Collection[User | UserRef] | None = None,
         phase: Phase | None = None,
     ) -> tuple[str, dict[str, Any]]:
 
@@ -487,6 +502,27 @@ class GrlIqDataManager:
         if product_ids and len(product_ids) == 1:
             product_id = next(iter(product_ids))
             product_ids = None
+
+        if team_ids or business_ids:
+            assert not (team_ids and business_ids), (
+                "team_ids and business_ids are mutually exclusive"
+            )
+            assert (
+                users is None
+                and user is None
+                and product_id is None
+                and product_ids is None
+            ), (
+                "team_ids/business_ids are mutually exclusive with "
+                "user, users, product_id, and product_ids"
+            )
+            if team_ids:
+                params["team_ids"] = list(set(team_ids))
+                filters.append("d.team_id = ANY(%(team_ids)s::UUID[])")
+            else:
+                assert business_ids is not None
+                params["business_ids"] = list(set(business_ids))
+                filters.append("d.business_id = ANY(%(business_ids)s::UUID[])")
 
         if product_ids:
             assert users is None and user is None and product_id is None, (
@@ -569,11 +605,13 @@ class GrlIqDataManager:
         uuids: Collection[str] | None = None,
         product_id: str | None = None,
         product_ids: Collection[str] | None = None,
+        team_ids: Collection[str] | None = None,
+        business_ids: Collection[str] | None = None,
         created_after: datetime | None = None,
         created_before: datetime | None = None,
         created_between: tuple[datetime, datetime] | None = None,
-        user: User | None = None,
-        users: Collection[User] | None = None,
+        user: User | UserRef | None = None,
+        users: Collection[User | UserRef] | None = None,
         phase: Phase | None = None,
     ) -> NonNegativeInt:
 
@@ -584,6 +622,8 @@ class GrlIqDataManager:
             uuids=uuids,
             product_id=product_id,
             product_ids=product_ids,
+            team_ids=team_ids,
+            business_ids=business_ids,
             created_after=created_after,
             created_before=created_before,
             created_between=created_between,
@@ -592,35 +632,33 @@ class GrlIqDataManager:
             phase=phase,
         )
 
-        only_product_id = (
-            product_id is not None
-            and session_uuid is None
-            and fingerprint is None
-            and fingerprints is None
-            and uuids is None
-            and product_ids is None
-            and created_after is None
-            and created_before is None
-            and created_between is None
-            and user is None
-            and users is None
-            and phase is None
+        # If the only filter is on product, team, or business, use the counts
+        #   table. Falsy checks match make_filter_str, which ignores falsy
+        #   filters. make_filter_str has already checked that at most one of
+        #   product_id(s) / team_ids / business_ids was passed.
+        other_filters = any(
+            (
+                session_uuid,
+                fingerprint,
+                fingerprints,
+                uuids,
+                created_after,
+                created_before,
+                created_between,
+                user,
+                users,
+                phase,
+            )
         )
-
-        if only_product_id:
-            with self.postgres_config.make_connection() as conn, conn.cursor() as c:
-                c.execute(
-                    query="""
-                            SELECT count AS c
-                            FROM grliq_forensicdata_product_counts
-                            WHERE product_id = %s
-                            LIMIT 1
-                        """,
-                    params=(product_id,),
-                )
-                res = c.fetchone()
-                if res and res["c"] >= 0:
-                    return int(res["c"])
+        if not other_filters:
+            if product_id:
+                return self.count_from_product_counts("product_id", [product_id])
+            if product_ids:
+                return self.count_from_product_counts("product_id", product_ids)
+            if business_ids:
+                return self.count_from_product_counts("business_id", business_ids)
+            if team_ids:
+                return self.count_from_product_counts("team_id", team_ids)
 
         query = f"""
         SELECT COUNT(1) AS c
@@ -629,6 +667,26 @@ class GrlIqDataManager:
         """
         with self.postgres_config.make_connection() as conn, conn.cursor() as c:
             c.execute(query=query, params=params)
+            res = c.fetchone()
+        return int(res["c"])
+
+    def count_from_product_counts(
+        self, column: str, ids: Collection[str]
+    ) -> NonNegativeInt:
+        """
+        Total rows for these products / teams / businesses, from the
+        trigger-maintained grliq_forensicdata_product_counts table (one row
+        per product). A product with no row there has no forensic data, so
+        it counts as 0.
+        """
+        assert column in {"product_id", "team_id", "business_id"}
+        query = f"""
+            SELECT COALESCE(SUM(count), 0) AS c
+            FROM grliq_forensicdata_product_counts
+            WHERE {column} = ANY(%(ids)s::UUID[])
+        """
+        with self.postgres_config.make_connection() as conn, conn.cursor() as c:
+            c.execute(query=query, params={"ids": list(set(ids))})
             res = c.fetchone()
         return int(res["c"])
 
@@ -641,11 +699,13 @@ class GrlIqDataManager:
         uuids: Collection[str] | None = None,
         product_id: str | None = None,
         product_ids: Collection[str] | None = None,
+        team_ids: Collection[str] | None = None,
+        business_ids: Collection[str] | None = None,
         created_after: datetime | None = None,
         created_before: datetime | None = None,
         created_between: tuple[datetime, datetime] | None = None,
-        user: User | None = None,
-        users: Collection[User] | None = None,
+        user: User | UserRef | None = None,
+        users: Collection[User | UserRef] | None = None,
         phase: Phase | None = None,
         order_by: str = "created_at DESC",
         limit: int | None = None,
@@ -666,6 +726,30 @@ class GrlIqDataManager:
                 "Cannot paginate using product_ids, use product_id instead"
             )
 
+        # When filtering by business or team, that "drives" the query: we do a
+        #   (business_id|team_id, created_at) index range scan per id (see
+        #   filter_by_driver_query), so it's not passed to make_filter_str.
+        assert not (team_ids and business_ids), (
+            "team_ids and business_ids are mutually exclusive"
+        )
+        driver_col: str | None = None
+        driver_ids: Collection[str] | None = None
+        if business_ids:
+            driver_col, driver_ids, business_ids = "business_id", business_ids, None
+        elif team_ids:
+            driver_col, driver_ids, team_ids = "team_id", team_ids, None
+
+        if driver_col:
+            assert (
+                users is None
+                and user is None
+                and product_id is None
+                and product_ids is None
+            ), (
+                "team_ids/business_ids are mutually exclusive with "
+                "user, users, product_id, and product_ids"
+            )
+
         filter_str, params = self.make_filter_str(
             session_uuid=session_uuid,
             fingerprint=fingerprint,
@@ -673,6 +757,8 @@ class GrlIqDataManager:
             uuids=uuids,
             product_id=product_id,
             product_ids=product_ids,
+            team_ids=team_ids,
+            business_ids=business_ids,
             created_after=created_after,
             created_before=created_before,
             created_between=created_between,
@@ -681,14 +767,27 @@ class GrlIqDataManager:
             phase=phase,
         )
 
-        query = f"""
-            SELECT {select_str}
-            FROM grliq_forensicdata d
-            {filter_str}
-            ORDER BY {order_by} 
-            LIMIT {limit} 
-            OFFSET {offset}
-        """
+        if driver_col:
+            assert driver_ids is not None
+            query, params = self.filter_by_driver_query(
+                select_str=select_str,
+                driver_col=driver_col,
+                driver_ids=driver_ids,
+                filter_str=filter_str,
+                params=params,
+                order_by=order_by,
+                limit=limit,
+                offset=offset,
+            )
+        else:
+            query = f"""
+                SELECT {select_str}
+                FROM grliq_forensicdata d
+                {filter_str}
+                ORDER BY {order_by}
+                LIMIT {limit}
+                OFFSET {offset}
+            """
         # print(query)
         with self.postgres_config.make_connection() as conn, conn.cursor() as c:
             c.execute(query=query, params=params)
@@ -718,6 +817,66 @@ class GrlIqDataManager:
                 )
 
         return res
+
+    @staticmethod
+    def filter_by_driver_query(
+        select_str: str,
+        driver_col: str,
+        driver_ids: Collection[str],
+        filter_str: str,
+        params: dict[str, Any],
+        order_by: str,
+        limit: int,
+        offset: int,
+    ) -> tuple[str, dict[str, Any]]:
+        """
+        `d.business_id = ANY(...) ORDER BY created_at LIMIT n` can't return
+        rows in created_at order from the (business_id, created_at) index
+        when there are multiple ids, so Postgres reads and sorts every
+        matching row. Instead, for each id, take the top (limit + offset)
+        rows with an index range scan, then merge those and take the page.
+
+        Only (id, created_at) are selected in the per-id scans, so the large
+        columns (data, result_data, ...) are only read for the final page.
+        """
+        assert driver_col in {"business_id", "team_id"}
+
+        parts = order_by.split()
+        assert (
+            parts and parts[0] in {"created_at", "d.created_at"} and len(parts) <= 2
+        ), f"order_by must be on created_at when filtering by {driver_col}"
+        direction = parts[1].upper() if len(parts) == 2 else "ASC"
+        assert direction in {"ASC", "DESC"}, f"invalid order_by: {order_by}"
+
+        extra_filters = filter_str.removeprefix("WHERE ").strip()
+        extra_filters = f"AND {extra_filters}" if extra_filters else ""
+
+        params = {**params, "_driver_ids": list(set(driver_ids))}
+
+        # The CTE's columns are renamed so they can't be ambiguous with
+        #   unqualified columns in select_str (e.g. "id, created_at, ...")
+        query = f"""
+            WITH page AS (
+                SELECT x.id AS _page_id, x.created_at AS _page_created_at
+                FROM unnest(%(_driver_ids)s::UUID[]) AS drv(id)
+                CROSS JOIN LATERAL (
+                    SELECT d.id, d.created_at
+                    FROM grliq_forensicdata d
+                    WHERE d.{driver_col} = drv.id
+                    {extra_filters}
+                    ORDER BY d.created_at {direction}
+                    LIMIT {limit + offset}
+                ) x
+                ORDER BY x.created_at {direction}
+                LIMIT {limit}
+                OFFSET {offset}
+            )
+            SELECT {select_str}
+            FROM page
+            JOIN grliq_forensicdata d ON d.id = page._page_id
+            ORDER BY page._page_created_at {direction}
+        """
+        return query, params
 
     @staticmethod
     def add_column_only_fields(x: dict[str, Any]) -> None:
