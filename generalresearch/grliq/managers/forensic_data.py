@@ -63,6 +63,7 @@ class GrlIqDataManager:
         query = sql.SQL("""
          INSERT INTO grliq_forensicdata
             (uuid, session_uuid, created_at, product_id, product_user_id,
+            business_id, team_id,
             country_iso, client_ip, ua_browser_family, ua_browser_version,
             ua_os_family, ua_os_version, ua_device_family, ua_device_brand,
             ua_device_model, ua_hash, data, phase,
@@ -70,6 +71,7 @@ class GrlIqDataManager:
             result_data, category_result)
          VALUES 
             (%(uuid)s, %(session_uuid)s, %(created_at)s, %(product_id)s, %(product_user_id)s,
+            %(business_id)s, %(team_id)s,
             %(country_iso)s, %(client_ip)s, %(ua_browser_family)s, %(ua_browser_version)s,
             %(ua_os_family)s, %(ua_os_version)s, %(ua_device_family)s, %(ua_device_brand)s,
             %(ua_device_model)s, %(ua_hash)s, %(data)s, %(phase)s,
