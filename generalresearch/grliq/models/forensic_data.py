@@ -160,6 +160,22 @@ class GrlIqData(BaseModel):
         examples=["test-user-2dbeaaf4"],
     )
 
+    team_id: UUIDStr | None = Field(
+        default=None,
+        examples=[uuid4().hex],
+        description="The organization (group of generalresearch.com admin "
+        "accounts) that is allowed to modify and manage this "
+        "Product",
+    )
+
+    business_id: UUIDStr | None = Field(
+        default=None,
+        examples=[uuid4().hex],
+        description="The legal business entity or individual that is "
+        "responsible for this account, and that receive Supplier "
+        "Payments for this Product's activity.",
+    )
+
     country_iso: CountryISOLike = Field(
         examples=["us"],
         description="This is the country that the offerwall was requested "
@@ -798,6 +814,8 @@ class GrlIqData(BaseModel):
             "product_id",
             "product_user_id",
             "phase",
+            "team_id",
+            "business_id",
         ]
 
         for k in keys:
