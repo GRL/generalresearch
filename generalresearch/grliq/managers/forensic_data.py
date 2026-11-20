@@ -8,7 +8,10 @@ from psycopg import sql
 from pydantic import NonNegativeInt, PositiveInt
 
 from generalresearch.grliq.models.events import PointerMove, TimingData
-from generalresearch.grliq.models.forensic_data import GrlIqData
+from generalresearch.grliq.models.forensic_data import (
+    COLUMN_ONLY_FIELDS,
+    GrlIqData,
+)
 from generalresearch.grliq.models.forensic_result import (
     GrlIqCheckerResults,
     GrlIqForensicCategoryResult,
@@ -184,7 +187,8 @@ class GrlIqDataManager:
             # created_at for this forensic item, and within 1 minute.
 
             query = sql.SQL("""
-                SELECT d.id, d.data, e.events, e.mouse_events, t.timing_data
+                SELECT d.id, d.data, d.team_id, d.business_id,
+                    e.events, e.mouse_events, t.timing_data
                 FROM grliq_forensicdata d
                 -- Closest event_start within 1 minute
                 LEFT JOIN LATERAL (
@@ -207,7 +211,7 @@ class GrlIqDataManager:
 
         else:
             query = sql.SQL("""
-                SELECT d.id, d.data
+                SELECT d.id, d.data, d.team_id, d.business_id
                 FROM grliq_forensicdata d
             """)
 
@@ -231,6 +235,7 @@ class GrlIqDataManager:
         assert x is not None, f"GrlIqDataManager.get_data({forensic_uuid=}) not found"
 
         self.temporary_add_missing_fields(x["data"])
+        self.add_column_only_fields(x)
         x["data"]["id"] = x["id"]
         d = GrlIqData.model_validate(x["data"])
 
@@ -356,7 +361,7 @@ class GrlIqDataManager:
     ) -> list[GrlIqData]:
 
         res = self.filter(
-            select_str="d.id, d.data",
+            select_str="d.id, d.data, d.team_id, d.business_id",
             session_uuid=session_uuid,
             fingerprint=fingerprint,
             fingerprints=fingerprints,
@@ -692,6 +697,7 @@ class GrlIqDataManager:
         for x in res:
             if "data" in x:
                 self.temporary_add_missing_fields(x["data"])
+                self.add_column_only_fields(x)
                 x["data"]["id"] = x["id"]
                 x["data"] = GrlIqData.model_validate(x["data"]) if x["data"] else None
 
@@ -712,6 +718,16 @@ class GrlIqDataManager:
                 )
 
         return res
+
+    @staticmethod
+    def add_column_only_fields(x: dict[str, Any]) -> None:
+        # These fields aren't stored in the data json, so copy them in from
+        #   their columns (if they were selected)
+        if not x.get("data"):
+            return
+        for k in COLUMN_ONLY_FIELDS:
+            if k in x:
+                x["data"][k] = x[k]
 
     @staticmethod
     def temporary_add_missing_fields(d: dict[str, Any]) -> None:

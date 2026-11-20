@@ -123,6 +123,10 @@ Hash128 = Annotated[
     AfterValidator(check_valid_hex),
 ]
 
+# GrlIqData fields that are stored in grliq_forensicdata columns, but not in
+#   the data json (see GrlIqData.model_dump_sql)
+COLUMN_ONLY_FIELDS = {"team_id", "business_id"}
+
 
 class GrlIqData(BaseModel):
     """Forensics JS POSTs ~200 pipe-separated fields to the fake SSO view. We
@@ -807,7 +811,11 @@ class GrlIqData(BaseModel):
         d["session_uuid"] = self.mid
         d["created_at"] = self.created_at
         d.update(self.useragent.ua_string_values)
-        d["data"] = self.model_dump_json(**kwargs)
+        # team_id and business_id are stored only in their own columns, not in
+        #   the data json. GrlIqData forbids extra fields, so older versions of
+        #   this library would fail to parse rows that had them in data.
+        exclude = set(kwargs.pop("exclude", None) or ()) | COLUMN_ONLY_FIELDS
+        d["data"] = self.model_dump_json(exclude=exclude, **kwargs)
         keys = [
             "client_ip",
             "country_iso",
@@ -825,7 +833,9 @@ class GrlIqData(BaseModel):
 
     @classmethod
     def from_db(cls, d: dict[str, Any]) -> GrlIqData:
-        res = GrlIqData.model_validate(d["data"])
+        res = GrlIqData.model_validate(
+            {**d["data"], **{k: d[k] for k in COLUMN_ONLY_FIELDS if k in d}}
+        )
 
         if d.get("category_result"):
             res.category_result = GrlIqForensicCategoryResult.model_validate(
